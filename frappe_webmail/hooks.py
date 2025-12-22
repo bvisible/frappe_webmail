@@ -1,9 +1,10 @@
 app_name = "frappe_webmail"
 app_title = "Frappe Webmail"
 app_publisher = "Neoservice"
-app_description = "Frappe Webmail app"
+app_description = "Native webmail client for Frappe with IMAP/SMTP support"
 app_email = "hello@neoservice.ai"
 app_license = "mit"
+app_icon = "mail"
 
 # Apps
 # ------------------
@@ -11,22 +12,22 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "frappe_webmail",
-# 		"logo": "/assets/frappe_webmail/logo.png",
-# 		"title": "Frappe Webmail",
-# 		"route": "/frappe_webmail",
-# 		"has_permission": "frappe_webmail.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "frappe_webmail",
+		"logo": "/assets/frappe_webmail/images/webmail-icon.svg",
+		"title": "Webmail",
+		"route": "/app/webmail",
+		"has_permission": "frappe_webmail.api.permission.has_app_permission",
+	}
+]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
-# app_include_js = "/assets/frappe_webmail/js/frappe_webmail.js"
+app_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
+app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
@@ -137,13 +138,11 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Email Signature": {
+		"before_save": "frappe_webmail.frappe_webmail.doctype.email_signature.email_signature.before_save"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
@@ -207,26 +206,19 @@ app_license = "mit"
 # User Data Protection
 # --------------------
 
-# user_data_fields = [
-# 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
-# 	}
-# ]
+user_data_fields = [
+	{
+		"doctype": "Webmail Account",
+		"filter_by": "user",
+		"redact_fields": ["imap_password", "smtp_password"],
+		"partial": 1,
+	},
+	{
+		"doctype": "Email Signature",
+		"filter_by": "user",
+		"partial": 1,
+	},
+]
 
 # Authentication and authorization
 # --------------------------------
@@ -236,9 +228,15 @@ app_license = "mit"
 # ]
 
 # Automatically update python controller files with type annotations for this app.
-# export_python_type_annotations = True
+export_python_type_annotations = True
 
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+# Website Route Rules
+# -------------------
+website_route_rules = [
+	{"from_route": "/webmail", "to_route": "webmail"},
+	{"from_route": "/webmail/<path:app_path>", "to_route": "webmail"},
+]

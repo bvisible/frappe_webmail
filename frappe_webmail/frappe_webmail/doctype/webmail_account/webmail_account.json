@@ -1,0 +1,175 @@
+{
+  "actions": [],
+  "autoname": "format:{email}",
+  "creation": "2024-01-01 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "enabled",
+    "user",
+    "email",
+    "sender_name",
+    "sb_imap",
+    "imap_host",
+    "imap_port",
+    "imap_ssl",
+    "cb_imap",
+    "imap_password",
+    "sb_smtp",
+    "smtp_host",
+    "smtp_port",
+    "smtp_ssl",
+    "smtp_starttls",
+    "cb_smtp",
+    "smtp_password",
+    "sb_signature",
+    "default_signature"
+  ],
+  "fields": [
+    {
+      "default": "1",
+      "fieldname": "enabled",
+      "fieldtype": "Check",
+      "label": "Enabled"
+    },
+    {
+      "default": "__user",
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "User",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "email",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Email Address",
+      "options": "Email",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "sender_name",
+      "fieldtype": "Data",
+      "label": "Sender Name"
+    },
+    {
+      "fieldname": "sb_imap",
+      "fieldtype": "Section Break",
+      "label": "IMAP Settings"
+    },
+    {
+      "fieldname": "imap_host",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "IMAP Host",
+      "reqd": 1
+    },
+    {
+      "default": "993",
+      "fieldname": "imap_port",
+      "fieldtype": "Int",
+      "label": "IMAP Port"
+    },
+    {
+      "default": "1",
+      "fieldname": "imap_ssl",
+      "fieldtype": "Check",
+      "label": "Use SSL"
+    },
+    {
+      "fieldname": "cb_imap",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "imap_password",
+      "fieldtype": "Password",
+      "label": "IMAP Password",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sb_smtp",
+      "fieldtype": "Section Break",
+      "label": "SMTP Settings"
+    },
+    {
+      "fieldname": "smtp_host",
+      "fieldtype": "Data",
+      "label": "SMTP Host",
+      "reqd": 1
+    },
+    {
+      "default": "587",
+      "fieldname": "smtp_port",
+      "fieldtype": "Int",
+      "label": "SMTP Port"
+    },
+    {
+      "default": "0",
+      "fieldname": "smtp_ssl",
+      "fieldtype": "Check",
+      "label": "Use SSL"
+    },
+    {
+      "default": "1",
+      "fieldname": "smtp_starttls",
+      "fieldtype": "Check",
+      "label": "Use STARTTLS"
+    },
+    {
+      "fieldname": "cb_smtp",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "smtp_password",
+      "fieldtype": "Password",
+      "label": "SMTP Password",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sb_signature",
+      "fieldtype": "Section Break",
+      "label": "Default Signature"
+    },
+    {
+      "fieldname": "default_signature",
+      "fieldtype": "Link",
+      "label": "Default Signature",
+      "options": "Email Signature"
+    }
+  ],
+  "index_web_pages_for_search": 1,
+  "links": [],
+  "modified": "2024-01-01 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe Webmail",
+  "name": "Webmail Account",
+  "naming_rule": "Expression",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "read": 1,
+      "role": "System Manager",
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "if_owner": 1,
+      "read": 1,
+      "role": "All",
+      "write": 1
+    }
+  ],
+  "search_fields": "email,sender_name",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "title_field": "email",
+  "track_changes": 1
+}

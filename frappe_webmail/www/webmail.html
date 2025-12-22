@@ -1,0 +1,41 @@
+{%- extends "templates/web.html" -%}
+
+{%- block title -%}Webmail{%- endblock -%}
+
+{%- block header -%}
+<style>
+  .webmail-page-container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .webmail-page-container .container {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  #webmail-app {
+    height: calc(100vh - 60px);
+    overflow: hidden;
+  }
+</style>
+{%- endblock -%}
+
+{%- block page_content -%}
+<div class="webmail-page-container">
+  <div id="webmail-app" class="webmail-container">
+    <div style="padding: 40px; text-align: center;">
+      <p>Chargement de Webmail...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  frappe.ready(function() {
+    if (frappe.webmail) {
+      frappe.webmail.init('#webmail-app');
+    }
+  });
+</script>
+{%- endblock -%}

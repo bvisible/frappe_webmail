@@ -1,0 +1,7 @@
+# Frappe Webmail Dependencies
+
+# IMAP client library for email retrieval
+imapclient>=2.3.0
+
+# HTML sanitization for security
+bleach>=6.0.0

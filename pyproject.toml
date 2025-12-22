@@ -3,12 +3,14 @@ name = "frappe_webmail"
 authors = [
     { name = "Neoservice", email = "hello@neoservice.ai"}
 ]
-description = "Frappe Webmail app"
+description = "Native webmail client for Frappe with IMAP/SMTP support"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
     # "frappe~=15.0.0" # Installed and managed by bench.
+    "imapclient>=2.3.0",
+    "bleach>=6.0.0",
 ]
 
 [build-system]
