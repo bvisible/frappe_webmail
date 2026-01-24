@@ -19,14 +19,10 @@ export default defineConfig({
         globals: {
           vue: 'Vue'
         },
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
-            return '../css/frappe_webmail.css'
-          }
-          return assetInfo.name
-        }
+        assetFileNames: 'frappe_webmail.[ext]'
       }
-    }
+    },
+    cssCodeSplit: false
   },
   resolve: {
     alias: {
