@@ -14,11 +14,7 @@ export default defineConfig({
       formats: ['iife']
     },
     rollupOptions: {
-      external: ['vue'],
       output: {
-        globals: {
-          vue: 'Vue'
-        },
         assetFileNames: 'frappe_webmail.[ext]'
       }
     },
