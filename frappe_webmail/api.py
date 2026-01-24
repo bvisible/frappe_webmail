@@ -42,8 +42,226 @@ def get_accounts():
 	return frappe.get_all(
 		"Webmail Account",
 		filters={"user": frappe.session.user, "enabled": 1},
-		fields=["name", "email", "sender_name", "default_signature"],
+		fields=["name", "email", "sender_name", "default_signature", "auth_type", "oauth_provider"],
 	)
+
+
+# ============================================
+# OAUTH2
+# ============================================
+
+
+OAUTH_PROVIDERS = {
+	"Gmail": {
+		"auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
+		"token_url": "https://oauth2.googleapis.com/token",
+		"scope": "https://mail.google.com/",
+	},
+	"Outlook": {
+		"auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		"token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+		"scope": "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access",
+	},
+}
+
+
+@frappe.whitelist()
+def get_oauth_authorization_url(account_name):
+	"""Get OAuth authorization URL to redirect user"""
+	import urllib.parse
+
+	account = get_account(account_name)
+
+	if account.auth_type != "OAuth2":
+		frappe.throw(_("Account is not configured for OAuth2"))
+
+	provider = OAUTH_PROVIDERS.get(account.oauth_provider)
+	if not provider:
+		frappe.throw(_("Unknown OAuth provider"))
+
+	# Get OAuth credentials from site config
+	oauth_config = get_oauth_config(account.oauth_provider)
+	if not oauth_config:
+		frappe.throw(
+			_("OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json").format(
+				account.oauth_provider.lower()
+			)
+		)
+
+	# Generate state token for security
+	import secrets
+
+	state = secrets.token_urlsafe(32)
+	frappe.cache().set_value(
+		f"webmail_oauth_state_{state}",
+		{"account": account_name, "user": frappe.session.user},
+		expires_in_sec=600,  # 10 minutes
+	)
+
+	# Build authorization URL
+	redirect_uri = get_oauth_redirect_uri()
+
+	params = {
+		"client_id": oauth_config["client_id"],
+		"redirect_uri": redirect_uri,
+		"response_type": "code",
+		"scope": provider["scope"],
+		"state": state,
+		"access_type": "offline",  # For refresh token
+		"prompt": "consent",  # Force consent to get refresh token
+	}
+
+	# Outlook specific
+	if account.oauth_provider == "Outlook":
+		params["login_hint"] = account.email
+
+	auth_url = f"{provider['auth_url']}?{urllib.parse.urlencode(params)}"
+
+	return {"authorization_url": auth_url, "state": state}
+
+
+@frappe.whitelist(allow_guest=True)
+def oauth_callback(code=None, state=None, error=None):
+	"""Handle OAuth callback from provider"""
+	import requests
+
+	if error:
+		frappe.throw(_("OAuth error: {0}").format(error))
+
+	if not code or not state:
+		frappe.throw(_("Invalid OAuth callback"))
+
+	# Verify state
+	state_data = frappe.cache().get_value(f"webmail_oauth_state_{state}")
+	if not state_data:
+		frappe.throw(_("Invalid or expired OAuth state"))
+
+	frappe.cache().delete_value(f"webmail_oauth_state_{state}")
+
+	account_name = state_data["account"]
+	user = state_data["user"]
+
+	# Get account
+	account = frappe.get_doc("Webmail Account", account_name)
+	if account.user != user:
+		frappe.throw(_("Access denied"))
+
+	provider = OAUTH_PROVIDERS.get(account.oauth_provider)
+	oauth_config = get_oauth_config(account.oauth_provider)
+
+	redirect_uri = get_oauth_redirect_uri()
+
+	# Exchange code for tokens
+	try:
+		response = requests.post(
+			provider["token_url"],
+			data={
+				"client_id": oauth_config["client_id"],
+				"client_secret": oauth_config["client_secret"],
+				"code": code,
+				"redirect_uri": redirect_uri,
+				"grant_type": "authorization_code",
+			},
+			timeout=30,
+		)
+
+		if response.status_code != 200:
+			frappe.log_error(f"OAuth token exchange failed: {response.text}", "Webmail OAuth")
+			frappe.throw(_("Failed to get OAuth tokens"))
+
+		data = response.json()
+
+		# Save tokens
+		account.oauth_access_token = data["access_token"]
+		if "refresh_token" in data:
+			account.oauth_refresh_token = data["refresh_token"]
+
+		expires_in = data.get("expires_in", 3600)
+		account.oauth_token_expiry = frappe.utils.add_to_date(
+			frappe.utils.now_datetime(), seconds=expires_in
+		)
+		account.oauth_status = "Connected"
+
+		account.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		# Redirect to webmail with success message
+		frappe.local.response["type"] = "redirect"
+		frappe.local.response["location"] = f"/app/webmail-account/{account_name}?oauth=success"
+
+	except requests.RequestException as e:
+		frappe.log_error(f"OAuth error: {str(e)}", "Webmail OAuth")
+		frappe.throw(_("OAuth authentication failed"))
+
+
+@frappe.whitelist()
+def disconnect_oauth(account_name):
+	"""Disconnect OAuth and clear tokens"""
+	account = get_account(account_name)
+
+	if account.auth_type != "OAuth2":
+		frappe.throw(_("Account is not using OAuth2"))
+
+	account.oauth_access_token = ""
+	account.oauth_refresh_token = ""
+	account.oauth_token_expiry = None
+	account.oauth_status = "Disconnected"
+
+	account.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+def get_oauth_config(provider):
+	"""Get OAuth credentials from site config"""
+	config_key = f"webmail_oauth_{provider.lower()}"
+	config = frappe.conf.get(config_key, {})
+
+	if not config.get("client_id") or not config.get("client_secret"):
+		return None
+
+	return config
+
+
+def get_oauth_redirect_uri():
+	"""Get the OAuth redirect URI"""
+	return frappe.utils.get_url("/api/method/frappe_webmail.api.oauth_callback")
+
+
+def imap_login(client, account):
+	"""Login to IMAP server using password or OAuth2"""
+	if account.auth_type == "OAuth2":
+		access_token = account.get_oauth_access_token()
+		if not access_token:
+			frappe.throw(_("OAuth token not available. Please reconnect your account."))
+
+		# Build XOAUTH2 authentication string
+		auth_string = f"user={account.email}\x01auth=Bearer {access_token}\x01\x01"
+
+		client.oauth2_login(account.email, access_token)
+	else:
+		imap_login(client, account)
+
+
+def smtp_login(server, account):
+	"""Login to SMTP server using password or OAuth2"""
+	if account.auth_type == "OAuth2":
+		access_token = account.get_oauth_access_token()
+		if not access_token:
+			frappe.throw(_("OAuth token not available. Please reconnect your account."))
+
+		# Build XOAUTH2 authentication string
+		auth_string = build_xoauth2_string(account.email, access_token)
+		server.auth("XOAUTH2", lambda x: auth_string)
+	else:
+		smtp_login(server, account)
+
+
+def build_xoauth2_string(user, access_token):
+	"""Build XOAUTH2 authentication string for SMTP"""
+	auth_string = f"user={user}\x01auth=Bearer {access_token}\x01\x01"
+	return auth_string
 
 
 @frappe.whitelist()
@@ -54,6 +272,13 @@ def test_connection(account_name):
 
 	account = get_account(account_name)
 
+	# Check OAuth2 status
+	if account.auth_type == "OAuth2" and not account.oauth_access_token:
+		return {
+			"success": False,
+			"errors": ["OAuth2 not connected. Please authorize your account first."],
+		}
+
 	errors = []
 
 	# Test IMAP
@@ -61,7 +286,7 @@ def test_connection(account_name):
 		with IMAPClient(
 			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 		) as client:
-			client.login(account.email, account.get_password("imap_password"))
+			imap_login(client, account)
 	except Exception as e:
 		errors.append(f"IMAP: {str(e)}")
 
@@ -71,7 +296,7 @@ def test_connection(account_name):
 		with smtp_class(account.smtp_host, account.smtp_port, timeout=10) as server:
 			if account.smtp_starttls and not account.smtp_ssl:
 				server.starttls()
-			server.login(account.email, account.get_password("smtp_password"))
+			smtp_login(server, account)
 	except Exception as e:
 		errors.append(f"SMTP: {str(e)}")
 
@@ -96,7 +321,7 @@ def get_folders(account_name):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		folders = client.list_folders()
 
 		result = []
@@ -131,7 +356,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		# Search criteria
@@ -201,7 +426,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		# Mark as read
@@ -406,7 +631,7 @@ def send_email(
 			if account.smtp_starttls:
 				server.starttls()
 
-		server.login(account.email, account.get_password("smtp_password"))
+		smtp_login(server, account)
 
 		recipients = [r.strip() for r in to.split(",")]
 		if cc:
@@ -441,7 +666,7 @@ def set_flags(account_name, uids, folder, add_flags=None, remove_flags=None):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		if add_flags:
@@ -471,7 +696,7 @@ def move_emails(account_name, uids, from_folder, to_folder):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(from_folder)
 
 		# Copy then delete
@@ -494,7 +719,7 @@ def delete_emails(account_name, uids, folder, permanent=False):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		if permanent:
@@ -535,7 +760,7 @@ def get_attachment(account_name, uid, folder, attachment_id):
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		data = client.fetch([uid], ["RFC822"])
@@ -607,7 +832,7 @@ def search_emails(
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
 	) as client:
-		client.login(account.email, account.get_password("imap_password"))
+		imap_login(client, account)
 		client.select_folder(folder)
 
 		# Build search criteria

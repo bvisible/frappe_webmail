@@ -9,6 +9,11 @@
     "user",
     "email",
     "sender_name",
+    "sb_auth",
+    "auth_type",
+    "oauth_provider",
+    "oauth_status",
+    "oauth_connect_btn",
     "sb_imap",
     "imap_host",
     "imap_port",
@@ -22,6 +27,10 @@
     "smtp_starttls",
     "cb_smtp",
     "smtp_password",
+    "sb_oauth_tokens",
+    "oauth_access_token",
+    "oauth_refresh_token",
+    "oauth_token_expiry",
     "sb_signature",
     "default_signature"
   ],
@@ -57,6 +66,40 @@
       "label": "Sender Name"
     },
     {
+      "fieldname": "sb_auth",
+      "fieldtype": "Section Break",
+      "label": "Authentication"
+    },
+    {
+      "default": "Password",
+      "fieldname": "auth_type",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Authentication Type",
+      "options": "Password\nOAuth2",
+      "reqd": 1
+    },
+    {
+      "depends_on": "eval:doc.auth_type=='OAuth2'",
+      "fieldname": "oauth_provider",
+      "fieldtype": "Select",
+      "label": "OAuth Provider",
+      "options": "\nGmail\nOutlook"
+    },
+    {
+      "depends_on": "eval:doc.auth_type=='OAuth2'",
+      "fieldname": "oauth_status",
+      "fieldtype": "Data",
+      "label": "OAuth Status",
+      "read_only": 1
+    },
+    {
+      "depends_on": "eval:doc.auth_type=='OAuth2'",
+      "fieldname": "oauth_connect_btn",
+      "fieldtype": "Button",
+      "label": "Connect OAuth"
+    },
+    {
       "fieldname": "sb_imap",
       "fieldtype": "Section Break",
       "label": "IMAP Settings"
@@ -85,10 +128,11 @@
       "fieldtype": "Column Break"
     },
     {
+      "depends_on": "eval:doc.auth_type=='Password'",
       "fieldname": "imap_password",
       "fieldtype": "Password",
       "label": "IMAP Password",
-      "reqd": 1
+      "mandatory_depends_on": "eval:doc.auth_type=='Password'"
     },
     {
       "fieldname": "sb_smtp",
@@ -124,10 +168,36 @@
       "fieldtype": "Column Break"
     },
     {
+      "depends_on": "eval:doc.auth_type=='Password'",
       "fieldname": "smtp_password",
       "fieldtype": "Password",
       "label": "SMTP Password",
-      "reqd": 1
+      "mandatory_depends_on": "eval:doc.auth_type=='Password'"
+    },
+    {
+      "collapsible": 1,
+      "depends_on": "eval:doc.auth_type=='OAuth2'",
+      "fieldname": "sb_oauth_tokens",
+      "fieldtype": "Section Break",
+      "label": "OAuth Tokens (Internal)"
+    },
+    {
+      "fieldname": "oauth_access_token",
+      "fieldtype": "Password",
+      "hidden": 1,
+      "label": "Access Token"
+    },
+    {
+      "fieldname": "oauth_refresh_token",
+      "fieldtype": "Password",
+      "hidden": 1,
+      "label": "Refresh Token"
+    },
+    {
+      "fieldname": "oauth_token_expiry",
+      "fieldtype": "Datetime",
+      "hidden": 1,
+      "label": "Token Expiry"
     },
     {
       "fieldname": "sb_signature",

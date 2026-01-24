@@ -367,6 +367,55 @@ docs: update API reference
 3. Pousser et créer la PR
 4. Review et merge
 
+## Configuration OAuth2
+
+Pour activer l'authentification OAuth2 pour Gmail et Outlook, vous devez configurer les credentials dans `site_config.json`.
+
+### Gmail OAuth2
+
+1. Créer un projet dans [Google Cloud Console](https://console.cloud.google.com/)
+2. Activer l'API Gmail
+3. Configurer l'écran de consentement OAuth
+4. Créer des identifiants OAuth 2.0 (Application Web)
+5. Ajouter l'URI de redirection: `https://votre-site.com/api/method/frappe_webmail.api.oauth_callback`
+6. Ajouter dans `site_config.json`:
+
+```json
+{
+  "webmail_oauth_gmail": {
+    "client_id": "votre-client-id.apps.googleusercontent.com",
+    "client_secret": "votre-client-secret"
+  }
+}
+```
+
+### Outlook OAuth2
+
+1. Aller sur [Azure Portal](https://portal.azure.com/)
+2. Créer une inscription d'application dans Azure Active Directory
+3. Ajouter les permissions API: `IMAP.AccessAsUser.All`, `SMTP.Send`, `offline_access`
+4. Créer un secret client
+5. Ajouter l'URI de redirection: `https://votre-site.com/api/method/frappe_webmail.api.oauth_callback`
+6. Ajouter dans `site_config.json`:
+
+```json
+{
+  "webmail_oauth_outlook": {
+    "client_id": "votre-application-id",
+    "client_secret": "votre-client-secret"
+  }
+}
+```
+
+### Utilisation
+
+1. Créer un nouveau Webmail Account
+2. Sélectionner "OAuth2" comme Authentication Type
+3. Choisir le provider (Gmail ou Outlook)
+4. Sauvegarder et cliquer sur "Connect OAuth"
+5. Autoriser l'accès dans la fenêtre du provider
+6. Le compte est maintenant connecté
+
 ## Release
 
 1. Mettre à jour la version dans `pyproject.toml`
