@@ -17,6 +17,9 @@
         <button @click="compose" class="btn btn-primary">
           ✉️ Nouveau message
         </button>
+        <button @click="showFilters = true" class="btn btn-secondary">
+          🗂️ Filtres
+        </button>
         <button @click="showSignatures = true" class="btn btn-secondary">
           ✍️ Signatures
         </button>
@@ -148,6 +151,17 @@
         />
       </div>
     </div>
+
+    <!-- Filter Manager Modal -->
+    <div class="modal-overlay" v-if="showFilters" @click.self="showFilters = false">
+      <div class="modal-content filter-modal">
+        <FilterManager
+          :account="currentAccount"
+          :folders="folders"
+          @close="showFilters = false"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -158,6 +172,7 @@ import EmailViewer from '../components/EmailViewer.vue'
 import EmailComposer from '../components/EmailComposer.vue'
 import SignatureEditor from '../components/SignatureEditor.vue'
 import AdvancedSearch from '../components/AdvancedSearch.vue'
+import FilterManager from '../components/FilterManager.vue'
 
 export default {
   name: 'Webmail',
@@ -168,7 +183,8 @@ export default {
     EmailViewer,
     EmailComposer,
     SignatureEditor,
-    AdvancedSearch
+    AdvancedSearch,
+    FilterManager
   },
 
   data() {
@@ -192,6 +208,7 @@ export default {
       pollingInterval: 60000, // 60 seconds
       unreadCount: 0,
       showSearch: false,
+      showFilters: false,
       folders: []
     }
   },
@@ -763,6 +780,14 @@ export default {
 .search-modal {
   width: 600px;
   height: 80vh;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.filter-modal {
+  width: 550px;
+  height: 70vh;
   max-width: 90vw;
   max-height: 80vh;
   overflow: hidden;

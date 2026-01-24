@@ -1405,6 +1405,314 @@ def link_contact_to_document(contact_name, link_doctype, link_name):
 
 
 # ============================================
+# EMAIL FILTERS
+# ============================================
+
+
+@frappe.whitelist()
+def get_filters(account_name=None):
+	"""Get all email filters for current user"""
+	filters = {"user": frappe.session.user}
+
+	if account_name:
+		get_account(account_name)  # Validate access
+		filters["account"] = account_name
+
+	return frappe.get_all(
+		"Email Filter",
+		filters=filters,
+		fields=[
+			"name",
+			"filter_name",
+			"account",
+			"enabled",
+			"match_type",
+			"from_contains",
+			"to_contains",
+			"subject_contains",
+			"has_attachment",
+			"action_type",
+			"target_folder",
+			"mark_as_read",
+			"mark_as_starred",
+			"times_applied",
+			"last_applied",
+		],
+		order_by="creation desc",
+	)
+
+
+@frappe.whitelist()
+def create_filter(
+	account_name,
+	filter_name,
+	match_type="any",
+	from_contains=None,
+	to_contains=None,
+	subject_contains=None,
+	has_attachment=False,
+	action_type="move",
+	target_folder=None,
+	mark_as_read=False,
+	mark_as_starred=False,
+):
+	"""Create a new email filter"""
+	get_account(account_name)  # Validate access
+
+	filter_doc = frappe.get_doc(
+		{
+			"doctype": "Email Filter",
+			"account": account_name,
+			"filter_name": filter_name,
+			"match_type": match_type,
+			"from_contains": from_contains,
+			"to_contains": to_contains,
+			"subject_contains": subject_contains,
+			"has_attachment": has_attachment,
+			"action_type": action_type,
+			"target_folder": target_folder,
+			"mark_as_read": mark_as_read,
+			"mark_as_starred": mark_as_starred,
+			"enabled": 1,
+		}
+	)
+
+	filter_doc.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True, "filter_name": filter_doc.name}
+
+
+@frappe.whitelist()
+def update_filter(filter_name, **kwargs):
+	"""Update an existing email filter"""
+	if not frappe.db.exists("Email Filter", filter_name):
+		frappe.throw(_("Filter not found"))
+
+	filter_doc = frappe.get_doc("Email Filter", filter_name)
+
+	if filter_doc.user != frappe.session.user:
+		frappe.throw(_("Access denied"))
+
+	# Update allowed fields
+	allowed_fields = [
+		"filter_name",
+		"enabled",
+		"match_type",
+		"from_contains",
+		"to_contains",
+		"subject_contains",
+		"has_attachment",
+		"action_type",
+		"target_folder",
+		"mark_as_read",
+		"mark_as_starred",
+	]
+
+	for field in allowed_fields:
+		if field in kwargs:
+			setattr(filter_doc, field, kwargs[field])
+
+	filter_doc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+@frappe.whitelist()
+def delete_filter(filter_name):
+	"""Delete an email filter"""
+	if not frappe.db.exists("Email Filter", filter_name):
+		frappe.throw(_("Filter not found"))
+
+	filter_doc = frappe.get_doc("Email Filter", filter_name)
+
+	if filter_doc.user != frappe.session.user:
+		frappe.throw(_("Access denied"))
+
+	filter_doc.delete(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+@frappe.whitelist()
+def apply_filters_to_email(account_name, uid, folder="INBOX"):
+	"""Apply all filters to a specific email"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	# Get all enabled filters for this account
+	filters = frappe.get_all(
+		"Email Filter",
+		filters={
+			"user": frappe.session.user,
+			"account": account_name,
+			"enabled": 1,
+		},
+		fields=["name"],
+	)
+
+	if not filters:
+		return {"success": True, "applied": []}
+
+	# Fetch email data
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		data = client.fetch([int(uid)], ["ENVELOPE", "FLAGS", "BODYSTRUCTURE"])
+
+		if int(uid) not in data:
+			frappe.throw(_("Email not found"))
+
+		msg_data = data[int(uid)]
+		env = msg_data[b"ENVELOPE"]
+
+		email_info = {
+			"uid": uid,
+			"from_email": format_address(env.from_[0]) if env.from_ else "",
+			"from_name": decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else "",
+			"to": ", ".join([format_address(a) for a in (env.to or [])]),
+			"subject": decode_mime_header(env.subject),
+			"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
+		}
+
+		applied = []
+
+		for filter_ref in filters:
+			filter_doc = frappe.get_doc("Email Filter", filter_ref.name)
+
+			if filter_doc.matches_email(email_info):
+				# Apply the filter action
+				result = apply_filter_action(client, account, filter_doc, uid, folder)
+				if result:
+					filter_doc.increment_applied()
+					applied.append(
+						{
+							"filter": filter_doc.filter_name,
+							"action": filter_doc.action_type,
+							"target": filter_doc.target_folder if filter_doc.action_type == "move" else None,
+						}
+					)
+
+		return {"success": True, "applied": applied}
+
+
+def apply_filter_action(client, account, filter_doc, uid, current_folder):
+	"""Apply a filter's action to an email"""
+	uid = int(uid)
+	flags_to_add = []
+
+	# Additional flags
+	if filter_doc.mark_as_read:
+		flags_to_add.append(b"\\Seen")
+
+	if filter_doc.mark_as_starred:
+		flags_to_add.append(b"\\Flagged")
+
+	if flags_to_add:
+		client.add_flags([uid], flags_to_add)
+
+	# Main action
+	if filter_doc.action_type == "move":
+		if filter_doc.target_folder and filter_doc.target_folder != current_folder:
+			client.copy([uid], filter_doc.target_folder)
+			client.add_flags([uid], [b"\\Deleted"])
+			client.expunge()
+			return True
+
+	elif filter_doc.action_type == "delete":
+		client.add_flags([uid], [b"\\Deleted"])
+		client.expunge()
+		return True
+
+	elif filter_doc.action_type == "mark_read":
+		if b"\\Seen" not in flags_to_add:
+			client.add_flags([uid], [b"\\Seen"])
+		return True
+
+	elif filter_doc.action_type == "mark_starred":
+		if b"\\Flagged" not in flags_to_add:
+			client.add_flags([uid], [b"\\Flagged"])
+		return True
+
+	return bool(flags_to_add)
+
+
+@frappe.whitelist()
+def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
+	"""Apply all filters to emails in a folder"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	# Get all enabled filters
+	filters = frappe.get_all(
+		"Email Filter",
+		filters={
+			"user": frappe.session.user,
+			"account": account_name,
+			"enabled": 1,
+		},
+		fields=["name"],
+	)
+
+	if not filters:
+		return {"success": True, "processed": 0, "applied": 0}
+
+	filter_docs = [frappe.get_doc("Email Filter", f.name) for f in filters]
+
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		# Get recent unread messages
+		messages = client.search(["UNSEEN"])
+		messages = list(reversed(messages))[:limit]
+
+		if not messages:
+			return {"success": True, "processed": 0, "applied": 0}
+
+		data = client.fetch(messages, ["ENVELOPE", "BODYSTRUCTURE"])
+
+		applied_count = 0
+
+		for uid in messages:
+			if uid not in data:
+				continue
+
+			msg_data = data[uid]
+			env = msg_data[b"ENVELOPE"]
+
+			email_info = {
+				"uid": uid,
+				"from_email": format_address(env.from_[0]) if env.from_ else "",
+				"from_name": decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else "",
+				"to": ", ".join([format_address(a) for a in (env.to or [])]),
+				"subject": decode_mime_header(env.subject),
+				"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
+			}
+
+			for filter_doc in filter_docs:
+				if filter_doc.matches_email(email_info):
+					result = apply_filter_action(client, account, filter_doc, uid, folder)
+					if result:
+						filter_doc.increment_applied()
+						applied_count += 1
+					break  # Only apply first matching filter
+
+		return {"success": True, "processed": len(messages), "applied": applied_count}
+
+
+# ============================================
 # HELPERS
 # ============================================
 
