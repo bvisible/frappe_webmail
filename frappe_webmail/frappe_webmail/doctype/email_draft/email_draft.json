@@ -1,0 +1,151 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "account",
+  "to_recipients",
+  "cc_recipients",
+  "bcc_recipients",
+  "subject",
+  "html_content",
+  "text_content",
+  "reply_to_message_id",
+  "reply_to_uid",
+  "reply_to_folder",
+  "forward_uid",
+  "forward_folder",
+  "attachments_json",
+  "last_saved"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Account",
+   "options": "Webmail Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_recipients",
+   "fieldtype": "Small Text",
+   "label": "To"
+  },
+  {
+   "fieldname": "cc_recipients",
+   "fieldtype": "Small Text",
+   "label": "Cc"
+  },
+  {
+   "fieldname": "bcc_recipients",
+   "fieldtype": "Small Text",
+   "label": "Bcc"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Subject"
+  },
+  {
+   "fieldname": "html_content",
+   "fieldtype": "Long Text",
+   "label": "HTML Content"
+  },
+  {
+   "fieldname": "text_content",
+   "fieldtype": "Long Text",
+   "label": "Text Content"
+  },
+  {
+   "fieldname": "reply_to_message_id",
+   "fieldtype": "Data",
+   "label": "Reply To Message ID"
+  },
+  {
+   "fieldname": "reply_to_uid",
+   "fieldtype": "Int",
+   "label": "Reply To UID"
+  },
+  {
+   "fieldname": "reply_to_folder",
+   "fieldtype": "Data",
+   "label": "Reply To Folder"
+  },
+  {
+   "fieldname": "forward_uid",
+   "fieldtype": "Int",
+   "label": "Forward UID"
+  },
+  {
+   "fieldname": "forward_folder",
+   "fieldtype": "Data",
+   "label": "Forward Folder"
+  },
+  {
+   "fieldname": "attachments_json",
+   "fieldtype": "Long Text",
+   "label": "Attachments JSON"
+  },
+  {
+   "fieldname": "last_saved",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Saved",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Webmail",
+ "name": "Email Draft",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "System Manager",
+   "select": 1,
+   "share": 0,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "All",
+   "select": 1,
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "last_saved",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

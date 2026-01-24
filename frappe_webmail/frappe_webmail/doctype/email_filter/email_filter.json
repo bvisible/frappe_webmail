@@ -1,0 +1,183 @@
+{
+  "actions": [],
+  "autoname": "hash",
+  "creation": "2024-01-01 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "enabled",
+    "user",
+    "account",
+    "filter_name",
+    "sb_conditions",
+    "match_type",
+    "cb_conditions",
+    "from_contains",
+    "to_contains",
+    "subject_contains",
+    "has_attachment",
+    "sb_actions",
+    "action_type",
+    "cb_actions",
+    "target_folder",
+    "mark_as_read",
+    "mark_as_starred",
+    "sb_stats",
+    "times_applied",
+    "last_applied"
+  ],
+  "fields": [
+    {
+      "default": "1",
+      "fieldname": "enabled",
+      "fieldtype": "Check",
+      "in_list_view": 1,
+      "label": "Enabled"
+    },
+    {
+      "default": "__user",
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "label": "User",
+      "options": "User",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "account",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Account",
+      "options": "Webmail Account",
+      "reqd": 1
+    },
+    {
+      "fieldname": "filter_name",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Filter Name",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sb_conditions",
+      "fieldtype": "Section Break",
+      "label": "Conditions"
+    },
+    {
+      "default": "any",
+      "fieldname": "match_type",
+      "fieldtype": "Select",
+      "label": "Match Type",
+      "options": "any\nall",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cb_conditions",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "from_contains",
+      "fieldtype": "Data",
+      "label": "From Contains"
+    },
+    {
+      "fieldname": "to_contains",
+      "fieldtype": "Data",
+      "label": "To Contains"
+    },
+    {
+      "fieldname": "subject_contains",
+      "fieldtype": "Data",
+      "label": "Subject Contains"
+    },
+    {
+      "default": "0",
+      "fieldname": "has_attachment",
+      "fieldtype": "Check",
+      "label": "Has Attachment"
+    },
+    {
+      "fieldname": "sb_actions",
+      "fieldtype": "Section Break",
+      "label": "Actions"
+    },
+    {
+      "default": "move",
+      "fieldname": "action_type",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Action",
+      "options": "move\ndelete\nmark_read\nmark_starred",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cb_actions",
+      "fieldtype": "Column Break"
+    },
+    {
+      "depends_on": "eval:doc.action_type=='move'",
+      "fieldname": "target_folder",
+      "fieldtype": "Data",
+      "label": "Target Folder"
+    },
+    {
+      "default": "0",
+      "fieldname": "mark_as_read",
+      "fieldtype": "Check",
+      "label": "Also Mark as Read"
+    },
+    {
+      "default": "0",
+      "fieldname": "mark_as_starred",
+      "fieldtype": "Check",
+      "label": "Also Mark as Starred"
+    },
+    {
+      "fieldname": "sb_stats",
+      "fieldtype": "Section Break",
+      "label": "Statistics"
+    },
+    {
+      "default": "0",
+      "fieldname": "times_applied",
+      "fieldtype": "Int",
+      "label": "Times Applied",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_applied",
+      "fieldtype": "Datetime",
+      "label": "Last Applied",
+      "read_only": 1
+    }
+  ],
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2024-01-01 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe Webmail",
+  "name": "Email Filter",
+  "naming_rule": "Random",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "read": 1,
+      "role": "System Manager",
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "if_owner": 1,
+      "read": 1,
+      "role": "All",
+      "write": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 0
+}

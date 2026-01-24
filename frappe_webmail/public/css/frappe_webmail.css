@@ -1,0 +1,232 @@
+/**
+ * Frappe Webmail Styles
+ *
+ * Base styles for the webmail application.
+ * These are included in desk.html via hooks.py
+ */
+
+/* CSS Variables for theming */
+:root {
+  --webmail-primary-color: #2490ef;
+  --webmail-primary-light: #e3f2fd;
+  --webmail-border-color: #e5e5e5;
+  --webmail-bg-color: #f5f5f5;
+  --webmail-bg-light-gray: #f5f5f5;
+  --webmail-bg-gray: #eee;
+  --webmail-text-color: #333;
+  --webmail-text-muted: #8d99a6;
+  --webmail-success-color: #28a745;
+  --webmail-danger-color: #e74c3c;
+  --webmail-warning-color: #ffc107;
+}
+
+/* Webmail container */
+.webmail-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--webmail-text-color);
+}
+
+/* Button styles */
+.webmail-container .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.webmail-container .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.webmail-container .btn-primary {
+  background-color: var(--webmail-primary-color);
+  border-color: var(--webmail-primary-color);
+  color: white;
+}
+
+.webmail-container .btn-primary:hover:not(:disabled) {
+  background-color: #1a7fd4;
+  border-color: #1a7fd4;
+}
+
+.webmail-container .btn-secondary {
+  background-color: white;
+  border-color: var(--webmail-border-color);
+  color: var(--webmail-text-color);
+}
+
+.webmail-container .btn-secondary:hover:not(:disabled) {
+  background-color: var(--webmail-bg-light-gray);
+}
+
+.webmail-container .btn-danger {
+  background-color: var(--webmail-danger-color);
+  border-color: var(--webmail-danger-color);
+  color: white;
+}
+
+.webmail-container .btn-danger:hover:not(:disabled) {
+  background-color: #c0392b;
+  border-color: #c0392b;
+}
+
+.webmail-container .btn-sm {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+/* Input styles */
+.webmail-container input[type="text"],
+.webmail-container input[type="email"],
+.webmail-container input[type="password"],
+.webmail-container select,
+.webmail-container textarea {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--webmail-border-color);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.webmail-container input:focus,
+.webmail-container select:focus,
+.webmail-container textarea:focus {
+  border-color: var(--webmail-primary-color);
+}
+
+/* Scrollbar styles */
+.webmail-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.webmail-container ::-webkit-scrollbar-track {
+  background: var(--webmail-bg-light-gray);
+}
+
+.webmail-container ::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.webmail-container ::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}
+
+/* TipTap editor styles */
+.webmail-container .ProseMirror {
+  outline: none;
+}
+
+.webmail-container .ProseMirror p {
+  margin: 0 0 1em 0;
+}
+
+.webmail-container .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.webmail-container .ProseMirror ul,
+.webmail-container .ProseMirror ol {
+  padding-left: 1.5em;
+  margin: 0 0 1em 0;
+}
+
+.webmail-container .ProseMirror blockquote {
+  border-left: 3px solid var(--webmail-border-color);
+  margin: 1em 0;
+  padding-left: 1em;
+  color: var(--webmail-text-muted);
+}
+
+.webmail-container .ProseMirror a {
+  color: var(--webmail-primary-color);
+  text-decoration: underline;
+}
+
+.webmail-container .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Placeholder styles */
+.webmail-container .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--webmail-text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Virtual scroller override */
+.webmail-container .vue-recycle-scroller {
+  height: 100%;
+}
+
+.webmail-container .vue-recycle-scroller__item-view {
+  width: 100%;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.webmail-container .fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .webmail-container .email-list-panel {
+    width: 300px;
+  }
+}
+
+@media (max-width: 992px) {
+  .webmail-container .sidebar {
+    width: 180px;
+  }
+
+  .webmail-container .email-list-panel {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .webmail-container .webmail-main {
+    flex-direction: column;
+  }
+
+  .webmail-container .sidebar,
+  .webmail-container .email-list-panel,
+  .webmail-container .email-viewer-panel {
+    width: 100%;
+    height: auto;
+  }
+
+  .webmail-container .email-list-panel {
+    max-height: 40vh;
+  }
+
+  .webmail-container .email-viewer-panel {
+    flex: 1;
+    min-height: 300px;
+  }
+}
