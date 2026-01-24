@@ -8,9 +8,12 @@
         placeholder="Rechercher..."
         @keyup.enter="search"
       />
-      <button @click="refresh" :disabled="loading" class="refresh-btn">
+      <button @click="refresh" :disabled="loading" class="refresh-btn" title="Actualiser">
         <span :class="{ rotating: loading }">&#x21bb;</span>
       </button>
+      <div class="polling-status" v-if="pollingEnabled" title="Actualisation automatique active">
+        <span class="polling-indicator"></span>
+      </div>
     </div>
 
     <!-- List -->
@@ -70,10 +73,12 @@ export default {
   props: {
     account: { type: String, required: true },
     folder: { type: String, default: 'INBOX' },
-    selectedUid: { type: Number, default: null }
+    selectedUid: { type: Number, default: null },
+    pollingEnabled: { type: Boolean, default: true },
+    pollingInterval: { type: Number, default: 60000 } // 60 seconds
   },
 
-  emits: ['select', 'update:total'],
+  emits: ['select', 'update:total', 'new-emails'],
 
   data() {
     return {
@@ -81,17 +86,34 @@ export default {
       total: 0,
       loading: false,
       hasMore: true,
-      searchQuery: ''
+      searchQuery: '',
+      pollingTimer: null,
+      lastCheckTime: null,
+      newEmailCount: 0
     }
   },
 
   watch: {
-    account: 'refresh',
-    folder: 'refresh'
+    account: 'onAccountOrFolderChange',
+    folder: 'onAccountOrFolderChange',
+    pollingEnabled(enabled) {
+      if (enabled) {
+        this.startPolling()
+      } else {
+        this.stopPolling()
+      }
+    }
   },
 
   mounted() {
     this.loadEmails()
+    if (this.pollingEnabled) {
+      this.startPolling()
+    }
+  },
+
+  beforeUnmount() {
+    this.stopPolling()
   },
 
   methods: {
@@ -198,6 +220,119 @@ export default {
     markAsRead(uid) {
       const email = this.emails.find((e) => e.uid === uid)
       if (email) email.seen = true
+    },
+
+    onAccountOrFolderChange() {
+      this.stopPolling()
+      this.refresh()
+      if (this.pollingEnabled) {
+        this.startPolling()
+      }
+    },
+
+    startPolling() {
+      this.stopPolling() // Clear any existing timer
+      this.pollingTimer = setInterval(() => {
+        this.checkForNewEmails()
+      }, this.pollingInterval)
+    },
+
+    stopPolling() {
+      if (this.pollingTimer) {
+        clearInterval(this.pollingTimer)
+        this.pollingTimer = null
+      }
+    },
+
+    async checkForNewEmails() {
+      // Don't check while loading or if no emails loaded yet
+      if (this.loading || this.emails.length === 0) return
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_emails',
+          args: {
+            account_name: this.account,
+            folder: this.folder,
+            limit: 10,
+            offset: 0,
+            search: null
+          }
+        })
+
+        const data = response.message
+        const newTotal = data.total
+
+        // Check if there are new emails
+        if (newTotal > this.total) {
+          const newCount = newTotal - this.total
+          this.newEmailCount = newCount
+
+          // Find truly new emails (UIDs we don't have)
+          const existingUids = new Set(this.emails.map(e => e.uid))
+          const newEmails = data.emails.filter(e => !existingUids.has(e.uid))
+
+          if (newEmails.length > 0) {
+            // Prepend new emails to the list
+            this.emails.unshift(...newEmails)
+            this.total = newTotal
+
+            this.$emit('update:total', this.total)
+            this.$emit('new-emails', {
+              count: newEmails.length,
+              emails: newEmails
+            })
+
+            // Show notification
+            this.showNewEmailNotification(newEmails)
+          }
+        } else if (newTotal < this.total) {
+          // Emails were deleted, refresh the list
+          this.total = newTotal
+          this.$emit('update:total', this.total)
+        }
+      } catch (error) {
+        console.error('Polling error:', error)
+      }
+    },
+
+    showNewEmailNotification(newEmails) {
+      if (newEmails.length === 1) {
+        const email = newEmails[0]
+        frappe.toast({
+          message: `Nouveau message de ${email.from_name || email.from_email}`,
+          indicator: 'blue'
+        })
+      } else {
+        frappe.toast({
+          message: `${newEmails.length} nouveaux messages`,
+          indicator: 'blue'
+        })
+      }
+
+      // Play notification sound if available
+      this.playNotificationSound()
+    },
+
+    playNotificationSound() {
+      try {
+        // Create a simple notification sound using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+
+        oscillator.frequency.value = 800
+        oscillator.type = 'sine'
+        gainNode.gain.value = 0.1
+
+        oscillator.start()
+        oscillator.stop(audioContext.currentTime + 0.1)
+      } catch (e) {
+        // Audio not supported or blocked
+      }
     }
   }
 }
@@ -345,5 +480,28 @@ export default {
   justify-content: center;
   padding: 40px;
   color: var(--text-muted, #8d99a6);
+}
+
+.polling-status {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.polling-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #28a745;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 </style>

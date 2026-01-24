@@ -11,6 +11,9 @@
         </select>
       </div>
       <div class="header-right">
+        <button @click="showSearch = true" class="btn btn-secondary">
+          🔍 Recherche
+        </button>
         <button @click="compose" class="btn btn-primary">
           ✉️ Nouveau message
         </button>
@@ -33,6 +36,34 @@
           :selected-folder="currentFolder"
           @select="onFolderSelect"
         />
+
+        <!-- Drafts Section -->
+        <div class="drafts-section">
+          <div
+            class="drafts-header"
+            @click="toggleDrafts"
+            :class="{ active: showDrafts }"
+          >
+            <span>📝 Brouillons</span>
+            <span class="draft-count" v-if="drafts.length">({{ drafts.length }})</span>
+          </div>
+          <div class="drafts-list" v-if="showDrafts && drafts.length">
+            <div
+              v-for="draft in drafts"
+              :key="draft.name"
+              class="draft-item"
+              :class="{ selected: currentDraftId === draft.name }"
+              @click="openDraft(draft)"
+            >
+              <div class="draft-to">{{ draft.to_recipients || '(sans destinataire)' }}</div>
+              <div class="draft-subject">{{ draft.subject || '(sans objet)' }}</div>
+              <div class="draft-date">{{ formatDraftDate(draft.last_saved) }}</div>
+            </div>
+          </div>
+          <div class="drafts-empty" v-else-if="showDrafts">
+            Aucun brouillon
+          </div>
+        </div>
       </div>
 
       <!-- Email List -->
@@ -42,8 +73,11 @@
           :account="currentAccount"
           :folder="currentFolder"
           :selected-uid="selectedEmail?.uid"
+          :polling-enabled="pollingEnabled"
+          :polling-interval="pollingInterval"
           @select="onEmailSelect"
           @update:total="totalEmails = $event"
+          @new-emails="onNewEmails"
         />
       </div>
 
@@ -66,8 +100,11 @@
           :reply-to="replyToEmail"
           :forward-email="forwardingEmail"
           :signature="defaultSignature"
+          :draft-id="currentDraftId"
+          :folder="currentFolder"
           @sent="onEmailSent"
           @close="closeComposer"
+          @draft-saved="onDraftSaved"
         />
       </div>
     </div>
@@ -98,6 +135,19 @@
         />
       </div>
     </div>
+
+    <!-- Advanced Search Modal -->
+    <div class="modal-overlay" v-if="showSearch" @click.self="showSearch = false">
+      <div class="modal-content search-modal">
+        <AdvancedSearch
+          :account="currentAccount"
+          :folders="folders"
+          :initial-folder="currentFolder"
+          @close="showSearch = false"
+          @select="onSearchSelect"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -107,6 +157,7 @@ import EmailList from '../components/EmailList.vue'
 import EmailViewer from '../components/EmailViewer.vue'
 import EmailComposer from '../components/EmailComposer.vue'
 import SignatureEditor from '../components/SignatureEditor.vue'
+import AdvancedSearch from '../components/AdvancedSearch.vue'
 
 export default {
   name: 'Webmail',
@@ -116,7 +167,8 @@ export default {
     EmailList,
     EmailViewer,
     EmailComposer,
-    SignatureEditor
+    SignatureEditor,
+    AdvancedSearch
   },
 
   data() {
@@ -132,7 +184,15 @@ export default {
       replyToEmail: null,
       forwardingEmail: null,
       defaultSignature: '',
-      showSignatures: false
+      showSignatures: false,
+      drafts: [],
+      currentDraftId: null,
+      showDrafts: false,
+      pollingEnabled: true,
+      pollingInterval: 60000, // 60 seconds
+      unreadCount: 0,
+      showSearch: false,
+      folders: []
     }
   },
 
@@ -171,9 +231,25 @@ export default {
 
         if (this.accounts.length && !this.currentAccount) {
           this.currentAccount = this.accounts[0].name
+          // Load folders for search
+          this.loadFolders()
         }
       } catch (error) {
         frappe.toast({ message: 'Erreur de chargement des comptes', indicator: 'red' })
+      }
+    },
+
+    async loadFolders() {
+      if (!this.currentAccount) return
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_folders',
+          args: { account_name: this.currentAccount }
+        })
+        this.folders = (response.message || []).filter(f => f.selectable)
+      } catch (error) {
+        console.error('Error loading folders:', error)
       }
     },
 
@@ -192,6 +268,12 @@ export default {
       this.currentFolder = 'INBOX'
       this.selectedEmail = null
       this.selectedEmailContent = null
+      this.drafts = []
+      this.currentDraftId = null
+      this.loadFolders()
+      if (this.showDrafts) {
+        this.loadDrafts()
+      }
     },
 
     onFolderSelect(folder) {
@@ -231,6 +313,7 @@ export default {
       this.showComposer = true
       this.replyToEmail = null
       this.forwardingEmail = null
+      this.currentDraftId = null
     },
 
     replyTo(email) {
@@ -249,6 +332,11 @@ export default {
       this.showComposer = false
       this.replyToEmail = null
       this.forwardingEmail = null
+      this.currentDraftId = null
+      // Refresh drafts list
+      if (this.showDrafts) {
+        this.loadDrafts()
+      }
     },
 
     onEmailSent() {
@@ -297,6 +385,117 @@ export default {
     openSettings() {
       // Open Webmail Account list
       frappe.set_route('List', 'Webmail Account')
+    },
+
+    // Draft methods
+    async loadDrafts() {
+      if (!this.currentAccount) return
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_drafts',
+          args: { account_name: this.currentAccount }
+        })
+        this.drafts = response.message || []
+      } catch (error) {
+        console.error('Error loading drafts:', error)
+      }
+    },
+
+    toggleDrafts() {
+      this.showDrafts = !this.showDrafts
+      if (this.showDrafts) {
+        this.loadDrafts()
+      }
+    },
+
+    openDraft(draft) {
+      this.currentDraftId = draft.name
+      this.showComposer = true
+      this.replyToEmail = null
+      this.forwardingEmail = null
+      this.selectedEmail = null
+      this.selectedEmailContent = null
+    },
+
+    onDraftSaved(draftId) {
+      this.currentDraftId = draftId
+      // Refresh drafts list if visible
+      if (this.showDrafts) {
+        this.loadDrafts()
+      }
+    },
+
+    formatDraftDate(dateStr) {
+      if (!dateStr) return ''
+      const date = new Date(dateStr)
+      const now = new Date()
+      const isToday = date.toDateString() === now.toDateString()
+
+      if (isToday) {
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      }
+      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    },
+
+    onNewEmails({ count, emails }) {
+      // Update document title with unread count
+      this.unreadCount += count
+      this.updateDocumentTitle()
+
+      // Could also trigger browser notification if permission granted
+      this.requestNotificationPermission()
+    },
+
+    updateDocumentTitle() {
+      const baseTitle = 'Webmail'
+      if (this.unreadCount > 0) {
+        document.title = `(${this.unreadCount}) ${baseTitle}`
+      } else {
+        document.title = baseTitle
+      }
+    },
+
+    async requestNotificationPermission() {
+      if (!('Notification' in window)) return
+
+      if (Notification.permission === 'default') {
+        await Notification.requestPermission()
+      }
+    },
+
+    togglePolling() {
+      this.pollingEnabled = !this.pollingEnabled
+    },
+
+    async onSearchSelect({ email, folder }) {
+      // Switch to the folder if different
+      if (folder !== this.currentFolder) {
+        this.currentFolder = folder
+      }
+
+      // Close search modal
+      this.showSearch = false
+
+      // Load the email content
+      this.selectedEmail = email
+      this.showComposer = false
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_email_content',
+          args: {
+            account_name: this.currentAccount,
+            uid: email.uid,
+            folder: folder,
+            mark_read: true
+          }
+        })
+
+        this.selectedEmailContent = response.message
+      } catch (error) {
+        frappe.toast({ message: 'Erreur de chargement', indicator: 'red' })
+      }
     }
   }
 }
@@ -480,5 +679,92 @@ export default {
   height: 600px;
   max-width: 90vw;
   max-height: 80vh;
+}
+
+/* Drafts Section */
+.drafts-section {
+  border-top: 1px solid var(--border-color, #e5e5e5);
+  margin-top: 8px;
+}
+
+.drafts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-color, #333);
+}
+
+.drafts-header:hover {
+  background: var(--bg-light-gray, #f5f5f5);
+}
+
+.drafts-header.active {
+  background: var(--primary-light, #e3f2fd);
+}
+
+.draft-count {
+  font-size: 12px;
+  color: var(--text-muted, #8d99a6);
+  font-weight: normal;
+}
+
+.drafts-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.draft-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color, #e5e5e5);
+}
+
+.draft-item:hover {
+  background: var(--bg-light-gray, #f5f5f5);
+}
+
+.draft-item.selected {
+  background: var(--primary-light, #e3f2fd);
+}
+
+.draft-to {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.draft-subject {
+  font-size: 12px;
+  color: var(--text-muted, #8d99a6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.draft-date {
+  font-size: 11px;
+  color: var(--text-muted, #8d99a6);
+  margin-top: 2px;
+}
+
+.drafts-empty {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-muted, #8d99a6);
+  text-align: center;
+}
+
+.search-modal {
+  width: 600px;
+  height: 80vh;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
 }
 </style>

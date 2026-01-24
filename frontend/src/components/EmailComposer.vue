@@ -87,23 +87,34 @@
 
     <!-- Actions -->
     <div class="composer-actions">
-      <input
-        type="file"
-        ref="fileInput"
-        multiple
-        @change="handleFiles"
-        style="display: none"
-      />
-      <button class="btn btn-secondary" @click="$refs.fileInput.click()">
-        📎 Joindre
-      </button>
-      <button class="btn btn-secondary" @click="saveDraft">
-        💾 Brouillon
-      </button>
-      <button class="btn btn-primary" @click="send" :disabled="sending">
-        {{ sending ? 'Envoi...' : '📤 Envoyer' }}
-      </button>
-      <button class="btn btn-light" @click="$emit('close')">Annuler</button>
+      <div class="draft-status" v-if="lastSaved || isSavingDraft">
+        <span v-if="isSavingDraft" class="saving">Sauvegarde...</span>
+        <span v-else-if="lastSaved" class="saved">
+          Sauvegarde a {{ formatLastSaved() }}
+        </span>
+      </div>
+      <div class="action-buttons">
+        <input
+          type="file"
+          ref="fileInput"
+          multiple
+          @change="handleFiles"
+          style="display: none"
+        />
+        <button class="btn btn-secondary" @click="$refs.fileInput.click()">
+          📎 Joindre
+        </button>
+        <button class="btn btn-secondary" @click="saveDraft" :disabled="isSavingDraft">
+          💾 Brouillon
+        </button>
+        <button class="btn btn-primary" @click="send" :disabled="sending">
+          {{ sending ? 'Envoi...' : '📤 Envoyer' }}
+        </button>
+        <button class="btn btn-danger-light" @click="discardDraft" v-if="currentDraftId">
+          🗑️ Supprimer
+        </button>
+        <button class="btn btn-light" @click="$emit('close')">Annuler</button>
+      </div>
     </div>
   </div>
 </template>
@@ -124,10 +135,12 @@ export default {
     account: { type: String, required: true },
     replyTo: { type: Object, default: null },
     forwardEmail: { type: Object, default: null },
-    signature: { type: String, default: '' }
+    signature: { type: String, default: '' },
+    draftId: { type: String, default: null },
+    folder: { type: String, default: 'INBOX' }
   },
 
-  emits: ['sent', 'close'],
+  emits: ['sent', 'close', 'draft-saved'],
 
   data() {
     return {
@@ -135,17 +148,27 @@ export default {
       emailData: {
         to: '',
         cc: '',
+        bcc: '',
         subject: ''
       },
       attachments: [],
-      sending: false
+      sending: false,
+      currentDraftId: null,
+      lastSaved: null,
+      autoSaveTimer: null,
+      autoSaveDelay: 3000, // 3 seconds debounce
+      isDirty: false,
+      isSavingDraft: false
     }
   },
 
   mounted() {
+    this.currentDraftId = this.draftId
     this.initEditor()
 
-    if (this.replyTo) {
+    if (this.draftId) {
+      this.loadDraft()
+    } else if (this.replyTo) {
       this.setupReply()
     } else if (this.forwardEmail) {
       this.setupForward()
@@ -153,8 +176,33 @@ export default {
   },
 
   beforeUnmount() {
+    // Clear auto-save timer
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer)
+    }
+
+    // Save draft before closing if dirty
+    if (this.isDirty && !this.sending) {
+      this.saveDraftNow()
+    }
+
     if (this.editor) {
       this.editor.destroy()
+    }
+  },
+
+  watch: {
+    'emailData.to'() {
+      this.scheduleAutoSave()
+    },
+    'emailData.cc'() {
+      this.scheduleAutoSave()
+    },
+    'emailData.bcc'() {
+      this.scheduleAutoSave()
+    },
+    'emailData.subject'() {
+      this.scheduleAutoSave()
     }
   },
 
@@ -176,8 +224,97 @@ export default {
           Placeholder.configure({
             placeholder: 'Ecrivez votre message...'
           })
-        ]
+        ],
+        onUpdate: () => {
+          this.scheduleAutoSave()
+        }
       })
+    },
+
+    async loadDraft() {
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_draft',
+          args: { draft_id: this.draftId }
+        })
+
+        const draft = response.message
+        this.emailData.to = draft.to || ''
+        this.emailData.cc = draft.cc || ''
+        this.emailData.bcc = draft.bcc || ''
+        this.emailData.subject = draft.subject || ''
+
+        if (draft.html_content) {
+          this.editor.commands.setContent(draft.html_content)
+        }
+
+        if (draft.attachments_json) {
+          // Note: We can't restore File objects, but we store metadata
+          // User will need to re-attach files
+        }
+
+        this.lastSaved = draft.last_saved
+        this.isDirty = false
+      } catch (error) {
+        console.error('Failed to load draft:', error)
+      }
+    },
+
+    scheduleAutoSave() {
+      this.isDirty = true
+
+      // Clear existing timer
+      if (this.autoSaveTimer) {
+        clearTimeout(this.autoSaveTimer)
+      }
+
+      // Schedule new save
+      this.autoSaveTimer = setTimeout(() => {
+        this.saveDraftNow()
+      }, this.autoSaveDelay)
+    },
+
+    async saveDraftNow() {
+      if (this.isSavingDraft || this.sending) return
+
+      // Don't save empty drafts
+      const hasContent =
+        this.emailData.to ||
+        this.emailData.subject ||
+        (this.editor && this.editor.getText().trim())
+
+      if (!hasContent) return
+
+      this.isSavingDraft = true
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.save_draft',
+          args: {
+            account_name: this.account,
+            to: this.emailData.to,
+            cc: this.emailData.cc,
+            bcc: this.emailData.bcc,
+            subject: this.emailData.subject,
+            html_content: this.editor ? this.editor.getHTML() : '',
+            reply_to_message_id: this.replyTo?.message_id || null,
+            reply_to_uid: this.replyTo?.uid || null,
+            reply_to_folder: this.replyTo ? this.folder : null,
+            forward_uid: this.forwardEmail?.uid || null,
+            forward_folder: this.forwardEmail ? this.folder : null,
+            draft_id: this.currentDraftId
+          }
+        })
+
+        this.currentDraftId = response.message.draft_id
+        this.lastSaved = response.message.last_saved
+        this.isDirty = false
+        this.$emit('draft-saved', this.currentDraftId)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      } finally {
+        this.isSavingDraft = false
+      }
     },
 
     setupReply() {
@@ -325,7 +462,20 @@ export default {
           }
         })
 
+        // Delete draft after successful send
+        if (this.currentDraftId) {
+          try {
+            await frappe.call({
+              method: 'frappe_webmail.api.delete_draft',
+              args: { draft_id: this.currentDraftId }
+            })
+          } catch (e) {
+            console.warn('Failed to delete draft:', e)
+          }
+        }
+
         frappe.toast({ message: 'Email envoye !', indicator: 'green' })
+        this.isDirty = false // Prevent save on unmount
         this.$emit('sent')
         this.$emit('close')
       } catch (error) {
@@ -338,9 +488,36 @@ export default {
       }
     },
 
-    saveDraft() {
-      // TODO: Implement draft saving
-      frappe.toast({ message: 'Brouillon sauvegarde', indicator: 'blue' })
+    async saveDraft() {
+      await this.saveDraftNow()
+      if (this.lastSaved) {
+        const time = new Date(this.lastSaved).toLocaleTimeString('fr-FR')
+        frappe.toast({
+          message: `Brouillon sauvegarde a ${time}`,
+          indicator: 'blue'
+        })
+      }
+    },
+
+    async discardDraft() {
+      if (this.currentDraftId) {
+        try {
+          await frappe.call({
+            method: 'frappe_webmail.api.delete_draft',
+            args: { draft_id: this.currentDraftId }
+          })
+          frappe.toast({ message: 'Brouillon supprime', indicator: 'gray' })
+        } catch (error) {
+          console.error('Failed to delete draft:', error)
+        }
+      }
+      this.isDirty = false
+      this.$emit('close')
+    },
+
+    formatLastSaved() {
+      if (!this.lastSaved) return ''
+      return new Date(this.lastSaved).toLocaleTimeString('fr-FR')
     }
   }
 }
@@ -465,10 +642,29 @@ export default {
 
 .composer-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--border-color, #e5e5e5);
+}
+
+.draft-status {
+  font-size: 12px;
+  color: var(--text-muted, #8d99a6);
+}
+
+.draft-status .saving {
+  color: var(--primary-color, #2490ef);
+}
+
+.draft-status .saved {
+  color: var(--success-color, #28a745);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .composer-actions .btn {
@@ -509,5 +705,16 @@ export default {
 
 .composer-actions .btn-light:hover {
   background: var(--bg-light-gray, #f5f5f5);
+}
+
+.composer-actions .btn-danger-light {
+  background: white;
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.composer-actions .btn-danger-light:hover {
+  background: #dc3545;
+  color: white;
 }
 </style>

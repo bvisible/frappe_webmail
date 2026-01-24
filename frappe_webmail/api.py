@@ -575,6 +575,287 @@ def get_attachment(account_name, uid, folder, attachment_id):
 # ============================================
 
 
+# ============================================
+# SEARCH
+# ============================================
+
+
+@frappe.whitelist()
+def search_emails(
+	account_name,
+	folder="INBOX",
+	query=None,
+	from_filter=None,
+	to_filter=None,
+	subject_filter=None,
+	date_from=None,
+	date_to=None,
+	has_attachment=None,
+	is_unread=None,
+	is_flagged=None,
+	limit=50,
+	offset=0,
+):
+	"""Advanced email search with multiple criteria"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+	limit = min(int(limit), 100)
+	offset = int(offset)
+
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		client.login(account.email, account.get_password("imap_password"))
+		client.select_folder(folder)
+
+		# Build search criteria
+		criteria = []
+
+		# Simple text search across common fields
+		if query:
+			criteria.append(
+				["OR", ["OR", ["SUBJECT", query], ["FROM", query]], ["TO", query]]
+			)
+
+		# Specific field searches
+		if from_filter:
+			criteria.append(["FROM", from_filter])
+
+		if to_filter:
+			criteria.append(["TO", to_filter])
+
+		if subject_filter:
+			criteria.append(["SUBJECT", subject_filter])
+
+		# Date range
+		if date_from:
+			# IMAP date format: DD-Mon-YYYY
+			from datetime import datetime
+
+			try:
+				dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+				criteria.append(["SINCE", dt.strftime("%d-%b-%Y")])
+			except ValueError:
+				pass
+
+		if date_to:
+			from datetime import datetime
+
+			try:
+				dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+				criteria.append(["BEFORE", dt.strftime("%d-%b-%Y")])
+			except ValueError:
+				pass
+
+		# Flags
+		if is_unread:
+			criteria.append(["UNSEEN"])
+
+		if is_flagged:
+			criteria.append(["FLAGGED"])
+
+		# Default: not deleted
+		if not criteria:
+			criteria.append(["NOT", "DELETED"])
+
+		# Flatten criteria for IMAP
+		if len(criteria) == 1:
+			search_criteria = criteria[0]
+		else:
+			# AND all criteria together
+			search_criteria = criteria[0]
+			for c in criteria[1:]:
+				search_criteria = search_criteria + c
+
+		messages = client.search(search_criteria)
+		total = len(messages)
+
+		# Pagination (newest first)
+		messages = list(reversed(messages))
+		page = messages[offset : offset + limit]
+
+		if not page:
+			return {"emails": [], "total": total, "has_more": False}
+
+		# Fetch envelope data
+		data = client.fetch(page, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
+
+		emails = []
+		for uid in page:
+			if uid not in data:
+				continue
+			msg_data = data[uid]
+			env = msg_data[b"ENVELOPE"]
+			flags = msg_data[b"FLAGS"]
+			body_structure = msg_data.get(b"BODYSTRUCTURE")
+
+			# Filter by attachment if requested
+			email_has_attachments = has_attachments(body_structure)
+			if has_attachment is not None:
+				if has_attachment and not email_has_attachments:
+					continue
+				if not has_attachment and email_has_attachments:
+					continue
+
+			emails.append(
+				{
+					"uid": uid,
+					"subject": decode_mime_header(env.subject),
+					"from_email": format_address(env.from_[0]) if env.from_ else "",
+					"from_name": (
+						decode_mime_header(env.from_[0].name)
+						if env.from_ and env.from_[0].name
+						else ""
+					),
+					"to": format_address(env.to[0]) if env.to else "",
+					"date": env.date.isoformat() if env.date else None,
+					"seen": b"\\Seen" in flags,
+					"flagged": b"\\Flagged" in flags,
+					"answered": b"\\Answered" in flags,
+					"has_attachments": email_has_attachments,
+					"size": msg_data.get(b"RFC822.SIZE", 0),
+				}
+			)
+
+		return {"emails": emails, "total": total, "has_more": offset + limit < total}
+
+
+# ============================================
+# DRAFTS
+# ============================================
+
+
+@frappe.whitelist()
+def save_draft(
+	account_name,
+	to=None,
+	cc=None,
+	bcc=None,
+	subject=None,
+	html_content=None,
+	reply_to_message_id=None,
+	reply_to_uid=None,
+	reply_to_folder=None,
+	forward_uid=None,
+	forward_folder=None,
+	attachments_json=None,
+	draft_id=None,
+):
+	"""Save or update a draft"""
+	# Validate account access
+	get_account(account_name)
+
+	if draft_id and frappe.db.exists("Email Draft", draft_id):
+		# Update existing draft
+		draft = frappe.get_doc("Email Draft", draft_id)
+		if draft.user != frappe.session.user:
+			frappe.throw(_("Access denied"))
+	else:
+		# Create new draft
+		draft = frappe.new_doc("Email Draft")
+		draft.account = account_name
+
+	draft.to_recipients = to or ""
+	draft.cc_recipients = cc or ""
+	draft.bcc_recipients = bcc or ""
+	draft.subject = subject or ""
+	draft.html_content = html_content or ""
+	draft.reply_to_message_id = reply_to_message_id
+	draft.reply_to_uid = int(reply_to_uid) if reply_to_uid else None
+	draft.reply_to_folder = reply_to_folder
+	draft.forward_uid = int(forward_uid) if forward_uid else None
+	draft.forward_folder = forward_folder
+	draft.attachments_json = attachments_json
+
+	draft.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"success": True,
+		"draft_id": draft.name,
+		"last_saved": draft.last_saved.isoformat() if draft.last_saved else None,
+	}
+
+
+@frappe.whitelist()
+def get_drafts(account_name=None):
+	"""Get all drafts for current user, optionally filtered by account"""
+	filters = {"user": frappe.session.user}
+	if account_name:
+		# Validate account access
+		get_account(account_name)
+		filters["account"] = account_name
+
+	drafts = frappe.get_all(
+		"Email Draft",
+		filters=filters,
+		fields=[
+			"name",
+			"account",
+			"to_recipients",
+			"subject",
+			"last_saved",
+			"reply_to_message_id",
+		],
+		order_by="last_saved desc",
+	)
+
+	return drafts
+
+
+@frappe.whitelist()
+def get_draft(draft_id):
+	"""Get a specific draft"""
+	if not frappe.db.exists("Email Draft", draft_id):
+		frappe.throw(_("Draft not found"))
+
+	draft = frappe.get_doc("Email Draft", draft_id)
+
+	if draft.user != frappe.session.user:
+		frappe.throw(_("Access denied"))
+
+	return {
+		"name": draft.name,
+		"account": draft.account,
+		"to": draft.to_recipients,
+		"cc": draft.cc_recipients,
+		"bcc": draft.bcc_recipients,
+		"subject": draft.subject,
+		"html_content": draft.html_content,
+		"reply_to_message_id": draft.reply_to_message_id,
+		"reply_to_uid": draft.reply_to_uid,
+		"reply_to_folder": draft.reply_to_folder,
+		"forward_uid": draft.forward_uid,
+		"forward_folder": draft.forward_folder,
+		"attachments_json": draft.attachments_json,
+		"last_saved": draft.last_saved.isoformat() if draft.last_saved else None,
+	}
+
+
+@frappe.whitelist()
+def delete_draft(draft_id):
+	"""Delete a draft"""
+	if not frappe.db.exists("Email Draft", draft_id):
+		frappe.throw(_("Draft not found"))
+
+	draft = frappe.get_doc("Email Draft", draft_id)
+
+	if draft.user != frappe.session.user:
+		frappe.throw(_("Access denied"))
+
+	draft.delete(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+# ============================================
+# SIGNATURES
+# ============================================
+
+
 @frappe.whitelist()
 def get_signatures():
 	"""Get all signatures for current user"""
