@@ -5,8 +5,25 @@
       <div class="email-subject">{{ email.subject || '(Sans objet)' }}</div>
       <div class="email-meta">
         <div class="from">
-          <strong>{{ email.from_name || email.from_email }}</strong>
-          <span class="email-address">&lt;{{ email.from_email }}&gt;</span>
+          <div class="from-info">
+            <strong>{{ email.from_name || email.from_email }}</strong>
+            <span class="email-address">&lt;{{ email.from_email }}&gt;</span>
+            <span
+              v-if="senderContact"
+              class="contact-badge"
+              :title="'Contact: ' + senderContact.full_name"
+            >
+              👤
+            </span>
+            <button
+              v-else
+              @click="saveAsContact(email.from_email, email.from_name)"
+              class="add-contact-btn"
+              title="Ajouter aux contacts"
+            >
+              + 👤
+            </button>
+          </div>
         </div>
         <div class="to">A: {{ email.to }}</div>
         <div v-if="email.cc" class="cc">Cc: {{ email.cc }}</div>
@@ -84,7 +101,21 @@ export default {
   data() {
     return {
       showExternalImages: false,
-      hasBlockedImages: false
+      hasBlockedImages: false,
+      senderContact: null
+    }
+  },
+
+  watch: {
+    'email.from_email': {
+      immediate: true,
+      handler(email) {
+        if (email) {
+          this.loadSenderContact(email)
+        } else {
+          this.senderContact = null
+        }
+      }
     }
   },
 
@@ -300,6 +331,49 @@ export default {
       } catch (error) {
         frappe.toast({ message: 'Erreur de telechargement', indicator: 'red' })
       }
+    },
+
+    async loadSenderContact(email) {
+      if (!email) {
+        this.senderContact = null
+        return
+      }
+
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.get_contact_by_email',
+          args: { email }
+        })
+        this.senderContact = response.message
+      } catch (error) {
+        this.senderContact = null
+      }
+    },
+
+    async saveAsContact(email, name) {
+      try {
+        const response = await frappe.call({
+          method: 'frappe_webmail.api.create_contact_from_email',
+          args: { email, name }
+        })
+
+        if (response.message.success) {
+          frappe.toast({
+            message: `Contact cree: ${response.message.full_name}`,
+            indicator: 'green'
+          })
+          this.loadSenderContact(email)
+        } else {
+          frappe.toast({
+            message: response.message.message,
+            indicator: 'orange'
+          })
+          // Load existing contact
+          this.loadSenderContact(email)
+        }
+      } catch (error) {
+        frappe.toast({ message: 'Erreur lors de la creation du contact', indicator: 'red' })
+      }
     }
   }
 }
@@ -432,5 +506,40 @@ export default {
 
 .attachment-item .size {
   color: var(--text-muted, #8d99a6);
+}
+
+.from-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.contact-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: var(--primary-light, #e3f2fd);
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: help;
+}
+
+.add-contact-btn {
+  background: none;
+  border: 1px dashed var(--border-color, #ccc);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text-muted, #8d99a6);
+  transition: all 0.2s;
+}
+
+.add-contact-btn:hover {
+  background: var(--primary-light, #e3f2fd);
+  border-color: var(--primary-color, #2490ef);
+  color: var(--primary-color, #2490ef);
 }
 </style>

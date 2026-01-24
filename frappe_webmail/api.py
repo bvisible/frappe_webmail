@@ -1102,6 +1102,309 @@ def get_default_signature():
 
 
 # ============================================
+# CONTACTS (ERPNext Integration)
+# ============================================
+
+
+@frappe.whitelist()
+def search_contacts(query, limit=10):
+	"""Search contacts by name or email for autocomplete"""
+	if not query or len(query) < 2:
+		return []
+
+	limit = min(int(limit), 50)
+
+	# Search in Contact DocType (ERPNext standard)
+	contacts = []
+
+	# Search by name
+	name_results = frappe.get_all(
+		"Contact",
+		filters=[
+			["Contact", "full_name", "like", f"%{query}%"],
+		],
+		fields=["name", "first_name", "last_name", "full_name", "email_id", "image"],
+		limit=limit,
+	)
+
+	# Search by email in Contact Email child table
+	email_results = frappe.db.sql(
+		"""
+		SELECT DISTINCT
+			c.name, c.first_name, c.last_name, c.full_name, c.email_id, c.image
+		FROM `tabContact` c
+		INNER JOIN `tabContact Email` ce ON ce.parent = c.name
+		WHERE ce.email_id LIKE %(query)s
+		LIMIT %(limit)s
+		""",
+		{"query": f"%{query}%", "limit": limit},
+		as_dict=True,
+	)
+
+	# Combine and deduplicate
+	seen = set()
+	for contact in name_results + email_results:
+		if contact.name not in seen:
+			seen.add(contact.name)
+			# Get all email addresses for this contact
+			emails = frappe.get_all(
+				"Contact Email",
+				filters={"parent": contact.name},
+				fields=["email_id", "is_primary"],
+				order_by="is_primary desc",
+			)
+
+			contacts.append(
+				{
+					"name": contact.name,
+					"full_name": contact.full_name or f"{contact.first_name or ''} {contact.last_name or ''}".strip(),
+					"email": contact.email_id or (emails[0].email_id if emails else ""),
+					"emails": [e.email_id for e in emails],
+					"image": contact.image,
+				}
+			)
+
+	return contacts[:limit]
+
+
+@frappe.whitelist()
+def get_contact_by_email(email):
+	"""Get contact details by email address"""
+	if not email:
+		return None
+
+	# Search in Contact Email child table
+	contact_email = frappe.db.get_value(
+		"Contact Email",
+		{"email_id": email},
+		["parent", "is_primary"],
+		as_dict=True,
+	)
+
+	if not contact_email:
+		return None
+
+	contact = frappe.get_doc("Contact", contact_email.parent)
+
+	# Get all emails
+	emails = [e.email_id for e in contact.email_ids]
+
+	# Get linked documents
+	links = []
+	for link in contact.links:
+		links.append(
+			{
+				"link_doctype": link.link_doctype,
+				"link_name": link.link_name,
+				"link_title": link.link_title,
+			}
+		)
+
+	return {
+		"name": contact.name,
+		"first_name": contact.first_name,
+		"last_name": contact.last_name,
+		"full_name": contact.full_name,
+		"emails": emails,
+		"primary_email": contact.email_id,
+		"phone": contact.phone,
+		"mobile_no": contact.mobile_no,
+		"image": contact.image,
+		"company_name": contact.company_name,
+		"links": links,
+	}
+
+
+@frappe.whitelist()
+def create_contact_from_email(email, name=None):
+	"""Create a new contact from an email address"""
+	if not email:
+		frappe.throw(_("Email address is required"))
+
+	# Check if contact with this email already exists
+	existing = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
+	if existing:
+		return {"success": False, "message": _("Contact with this email already exists"), "contact": existing}
+
+	# Parse name from email if not provided
+	if not name:
+		# Try to extract name from email (e.g., john.doe@example.com -> John Doe)
+		local_part = email.split("@")[0]
+		name_parts = local_part.replace(".", " ").replace("_", " ").replace("-", " ").split()
+		name = " ".join(word.capitalize() for word in name_parts)
+
+	# Split name into first and last
+	name_parts = name.split(" ", 1)
+	first_name = name_parts[0] if name_parts else ""
+	last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+	# Create contact
+	contact = frappe.get_doc(
+		{
+			"doctype": "Contact",
+			"first_name": first_name,
+			"last_name": last_name,
+			"email_ids": [{"email_id": email, "is_primary": 1}],
+		}
+	)
+
+	contact.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"success": True,
+		"contact": contact.name,
+		"full_name": contact.full_name,
+	}
+
+
+@frappe.whitelist()
+def extract_contacts_from_email(account_name, uid, folder="INBOX"):
+	"""Extract and optionally save contacts from an email"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+	uid = int(uid)
+
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		data = client.fetch([uid], ["ENVELOPE"])
+
+		if uid not in data:
+			frappe.throw(_("Email not found"))
+
+		env = data[uid][b"ENVELOPE"]
+
+		contacts = []
+
+		# Extract from From field
+		if env.from_:
+			for addr in env.from_:
+				email_addr = format_address(addr)
+				name = decode_mime_header(addr.name) if addr.name else None
+				if email_addr:
+					contacts.append({"email": email_addr, "name": name, "type": "from"})
+
+		# Extract from To field
+		if env.to:
+			for addr in env.to:
+				email_addr = format_address(addr)
+				name = decode_mime_header(addr.name) if addr.name else None
+				if email_addr:
+					contacts.append({"email": email_addr, "name": name, "type": "to"})
+
+		# Extract from CC field
+		if env.cc:
+			for addr in env.cc:
+				email_addr = format_address(addr)
+				name = decode_mime_header(addr.name) if addr.name else None
+				if email_addr:
+					contacts.append({"email": email_addr, "name": name, "type": "cc"})
+
+		# Check which contacts already exist
+		for contact in contacts:
+			existing = frappe.db.get_value("Contact Email", {"email_id": contact["email"]}, "parent")
+			contact["exists"] = bool(existing)
+			contact["contact_name"] = existing
+
+		return contacts
+
+
+@frappe.whitelist()
+def bulk_create_contacts(contacts_json):
+	"""Create multiple contacts from a list"""
+	contacts = frappe.parse_json(contacts_json)
+
+	created = []
+	skipped = []
+
+	for contact_data in contacts:
+		email = contact_data.get("email")
+		name = contact_data.get("name")
+
+		if not email:
+			continue
+
+		# Check if already exists
+		existing = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
+		if existing:
+			skipped.append({"email": email, "contact": existing})
+			continue
+
+		# Create contact
+		result = create_contact_from_email(email, name)
+		if result.get("success"):
+			created.append({"email": email, "contact": result["contact"]})
+		else:
+			skipped.append({"email": email, "reason": result.get("message")})
+
+	return {
+		"created": created,
+		"skipped": skipped,
+		"created_count": len(created),
+		"skipped_count": len(skipped),
+	}
+
+
+@frappe.whitelist()
+def get_recent_contacts(limit=20):
+	"""Get recently used contacts for quick access"""
+	limit = min(int(limit), 50)
+
+	# Get contacts ordered by modification date
+	contacts = frappe.get_all(
+		"Contact",
+		filters={"email_id": ["is", "set"]},
+		fields=["name", "full_name", "email_id", "image"],
+		order_by="modified desc",
+		limit=limit,
+	)
+
+	return [
+		{
+			"name": c.name,
+			"full_name": c.full_name,
+			"email": c.email_id,
+			"image": c.image,
+		}
+		for c in contacts
+	]
+
+
+@frappe.whitelist()
+def link_contact_to_document(contact_name, link_doctype, link_name):
+	"""Link a contact to a document (Customer, Supplier, etc.)"""
+	if not frappe.db.exists("Contact", contact_name):
+		frappe.throw(_("Contact not found"))
+
+	contact = frappe.get_doc("Contact", contact_name)
+
+	# Check if link already exists
+	for link in contact.links:
+		if link.link_doctype == link_doctype and link.link_name == link_name:
+			return {"success": True, "message": _("Link already exists")}
+
+	# Add new link
+	contact.append(
+		"links",
+		{
+			"link_doctype": link_doctype,
+			"link_name": link_name,
+		},
+	)
+
+	contact.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+# ============================================
 # HELPERS
 # ============================================
 

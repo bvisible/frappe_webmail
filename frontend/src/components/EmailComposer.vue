@@ -3,15 +3,17 @@
     <!-- Recipients -->
     <div class="composer-field">
       <label>A:</label>
-      <input
+      <ContactAutocomplete
         v-model="emailData.to"
-        type="text"
-        placeholder="destinataire@example.com"
+        placeholder="Ajouter des destinataires..."
       />
     </div>
     <div class="composer-field">
       <label>Cc:</label>
-      <input v-model="emailData.cc" type="text" placeholder="Copie carbone" />
+      <ContactAutocomplete
+        v-model="emailData.cc"
+        placeholder="Copie carbone..."
+      />
     </div>
     <div class="composer-field">
       <label>Objet:</label>
@@ -126,10 +128,11 @@ import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
+import ContactAutocomplete from './ContactAutocomplete.vue'
 
 export default {
   name: 'EmailComposer',
-  components: { EditorContent },
+  components: { EditorContent, ContactAutocomplete },
 
   props: {
     account: { type: String, required: true },
