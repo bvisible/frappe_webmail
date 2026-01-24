@@ -51,7 +51,7 @@ function destroyWebmail() {
   }
 }
 
-// Export for Frappe integration
+// Export for Frappe integration - use init/destroy names
 window.FrappeWebmail = {
   init: initWebmail,
   destroy: destroyWebmail
@@ -83,4 +83,7 @@ if (typeof frappe !== 'undefined') {
   }
 }
 
-export { initWebmail, destroyWebmail }
+// Export with matching names so IIFE doesn't override window.FrappeWebmail
+const init = initWebmail
+const destroy = destroyWebmail
+export { init, destroy }
