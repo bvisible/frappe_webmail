@@ -32,7 +32,10 @@
     "oauth_refresh_token",
     "oauth_token_expiry",
     "sb_signature",
-    "default_signature"
+    "default_signature",
+    "sb_ui_preferences",
+    "sidebar_width",
+    "email_list_width"
   ],
   "fields": [
     {
@@ -209,6 +212,24 @@
       "fieldtype": "Link",
       "label": "Default Signature",
       "options": "Email Signature"
+    },
+    {
+      "collapsible": 1,
+      "fieldname": "sb_ui_preferences",
+      "fieldtype": "Section Break",
+      "label": "UI Preferences"
+    },
+    {
+      "default": "220",
+      "fieldname": "sidebar_width",
+      "fieldtype": "Int",
+      "label": "Sidebar Width"
+    },
+    {
+      "default": "350",
+      "fieldname": "email_list_width",
+      "fieldtype": "Int",
+      "label": "Email List Width"
     }
   ],
   "index_web_pages_for_search": 1,

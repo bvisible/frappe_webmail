@@ -1279,6 +1279,21 @@ msgstr "Utiliser SSL"
 msgid "Use STARTTLS"
 msgstr "Utiliser STARTTLS"
 
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#. Label of a Section Break field in DocType 'Webmail Account'
+msgid "UI Preferences"
+msgstr "Préférences d'interface"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#. Label of a Int field in DocType 'Webmail Account'
+msgid "Sidebar Width"
+msgstr "Largeur de la barre latérale"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#. Label of a Int field in DocType 'Webmail Account'
+msgid "Email List Width"
+msgstr "Largeur de la liste d'emails"
+
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json

@@ -34,9 +34,9 @@
 		</div>
 
 		<!-- Main Content -->
-		<div class="webmail-main" v-if="accounts.length">
+		<div class="webmail-main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
 			<!-- Folder Sidebar -->
-			<div class="sidebar">
+			<div class="sidebar" :style="{ width: sidebarWidth + 'px' }">
 				<FolderTree
 					:account="currentAccount"
 					:account-email="currentAccountEmail"
@@ -45,8 +45,13 @@
 				/>
 			</div>
 
+			<!-- Resizer 1: Sidebar / Email List -->
+			<div class="column-resizer" @mousedown="startResize('sidebar', $event)">
+				<div class="resizer-handle"></div>
+			</div>
+
 			<!-- Email List -->
-			<div class="email-list-panel">
+			<div class="email-list-panel" :style="{ width: emailListWidth + 'px' }">
 				<EmailList
 					ref="emailList"
 					:account="currentAccount"
@@ -58,6 +63,11 @@
 					@update:total="totalEmails = $event"
 					@new-emails="onNewEmails"
 				/>
+			</div>
+
+			<!-- Resizer 2: Email List / Email Viewer -->
+			<div class="column-resizer" @mousedown="startResize('emailList', $event)">
+				<div class="resizer-handle"></div>
 			</div>
 
 			<!-- Email Viewer -->
@@ -182,6 +192,14 @@ export default {
 			showSearch: false,
 			showFilters: false,
 			folders: [],
+			// Column resize state
+			sidebarWidth: 220,
+			emailListWidth: 350,
+			isResizing: false,
+			resizeTarget: null,
+			resizeStartX: 0,
+			resizeStartWidth: 0,
+			savePreferencesTimeout: null,
 		};
 	},
 
@@ -203,6 +221,7 @@ export default {
 			try {
 				await this.loadAccounts();
 				await this.loadDefaultSignature();
+				await this.loadUIPreferences();
 			} catch (error) {
 				console.error("Initialization error:", error);
 			} finally {
@@ -258,6 +277,7 @@ export default {
 			this.selectedEmail = null;
 			this.selectedEmailContent = null;
 			this.loadFolders();
+			this.loadUIPreferences();
 		},
 
 		onFolderSelect(folder) {
@@ -443,6 +463,99 @@ export default {
 			this.pollingEnabled = !this.pollingEnabled;
 		},
 
+		// Column resize methods
+		async loadUIPreferences() {
+			if (!this.currentAccount) return;
+
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.webmail_api.get_ui_preferences",
+					args: { account_name: this.currentAccount },
+				});
+
+				if (response.message) {
+					this.sidebarWidth = response.message.sidebar_width || 220;
+					this.emailListWidth = response.message.email_list_width || 350;
+				}
+			} catch (error) {
+				console.error("Error loading UI preferences:", error);
+			}
+		},
+
+		saveUIPreferences() {
+			// Debounce the save to avoid too many API calls
+			if (this.savePreferencesTimeout) {
+				clearTimeout(this.savePreferencesTimeout);
+			}
+
+			this.savePreferencesTimeout = setTimeout(async () => {
+				if (!this.currentAccount) return;
+
+				try {
+					await frappe.call({
+						method: "frappe_webmail.webmail_api.save_ui_preferences",
+						args: {
+							account_name: this.currentAccount,
+							sidebar_width: this.sidebarWidth,
+							email_list_width: this.emailListWidth,
+						},
+					});
+				} catch (error) {
+					console.error("Error saving UI preferences:", error);
+				}
+			}, 500);
+		},
+
+		startResize(target, event) {
+			event.preventDefault();
+			this.isResizing = true;
+			this.resizeTarget = target;
+			this.resizeStartX = event.clientX;
+
+			if (target === "sidebar") {
+				this.resizeStartWidth = this.sidebarWidth;
+			} else if (target === "emailList") {
+				this.resizeStartWidth = this.emailListWidth;
+			}
+
+			document.addEventListener("mousemove", this.onResize);
+			document.addEventListener("mouseup", this.stopResize);
+			document.body.style.cursor = "col-resize";
+			document.body.style.userSelect = "none";
+		},
+
+		onResize(event) {
+			if (!this.isResizing) return;
+
+			const deltaX = event.clientX - this.resizeStartX;
+			let newWidth = this.resizeStartWidth + deltaX;
+
+			if (this.resizeTarget === "sidebar") {
+				// Sidebar: min 150px, max 400px
+				newWidth = Math.max(150, Math.min(400, newWidth));
+				this.sidebarWidth = newWidth;
+			} else if (this.resizeTarget === "emailList") {
+				// Email list: min 250px, max 600px
+				newWidth = Math.max(250, Math.min(600, newWidth));
+				this.emailListWidth = newWidth;
+			}
+		},
+
+		stopResize() {
+			if (!this.isResizing) return;
+
+			this.isResizing = false;
+			this.resizeTarget = null;
+
+			document.removeEventListener("mousemove", this.onResize);
+			document.removeEventListener("mouseup", this.stopResize);
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+
+			// Save preferences after resize
+			this.saveUIPreferences();
+		},
+
 		async onSearchSelect({ email, folder }) {
 			// Switch to the folder if different
 			if (folder !== this.currentFolder) {
@@ -548,21 +661,72 @@ export default {
 	overflow: hidden;
 }
 
+.webmail-main.is-resizing {
+	cursor: col-resize;
+}
+
+.webmail-main.is-resizing * {
+	pointer-events: none;
+}
+
 .sidebar {
-	width: 220px;
 	flex-shrink: 0;
 	background: white;
 	overflow-y: auto;
 	border-top: 1px solid var(--border-color, #e5e5e5);
+	min-width: 150px;
+	max-width: 400px;
+}
+
+.column-resizer {
+	width: 6px;
+	flex-shrink: 0;
+	cursor: col-resize;
+	background: transparent;
+	position: relative;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease;
+}
+
+.column-resizer:hover {
+	background: rgba(36, 144, 239, 0.1);
+}
+
+.column-resizer:active,
+.webmail-main.is-resizing .column-resizer {
+	background: rgba(36, 144, 239, 0.2);
+}
+
+.resizer-handle {
+	width: 2px;
+	height: 40px;
+	background: var(--border-color, #e5e5e5);
+	border-radius: 2px;
+	transition: background 0.15s ease, height 0.15s ease;
+}
+
+.column-resizer:hover .resizer-handle {
+	background: var(--primary-color, #2490ef);
+	height: 60px;
+}
+
+.column-resizer:active .resizer-handle,
+.webmail-main.is-resizing .column-resizer .resizer-handle {
+	background: var(--primary-color, #2490ef);
+	height: 80px;
 }
 
 .email-list-panel {
-	width: 350px;
 	flex-shrink: 0;
 	border-right: 1px solid var(--border-color, #e5e5e5);
 	border-top: 1px solid var(--border-color, #e5e5e5);
 	border-radius: 0 var(--border-radius-lg) 0 0;
 	overflow: hidden;
+	min-width: 250px;
+	max-width: 600px;
 }
 
 .email-viewer-panel {

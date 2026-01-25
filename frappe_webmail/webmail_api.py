@@ -2005,6 +2005,50 @@ def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 
 
 # ============================================
+# UI PREFERENCES
+# ============================================
+
+
+@frappe.whitelist()
+def get_ui_preferences(account_name):
+	"""Get UI preferences (column widths) for an account"""
+	account = get_account(account_name)
+
+	return {
+		"sidebar_width": account.sidebar_width or 220,
+		"email_list_width": account.email_list_width or 350,
+	}
+
+
+@frappe.whitelist()
+def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None):
+	"""Save UI preferences (column widths) for an account"""
+	account = get_account(account_name)
+
+	# Validate and constrain values
+	if sidebar_width is not None:
+		sidebar_width = int(sidebar_width)
+		# Enforce min/max limits
+		sidebar_width = max(150, min(400, sidebar_width))
+		account.sidebar_width = sidebar_width
+
+	if email_list_width is not None:
+		email_list_width = int(email_list_width)
+		# Enforce min/max limits
+		email_list_width = max(250, min(600, email_list_width))
+		account.email_list_width = email_list_width
+
+	account.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"success": True,
+		"sidebar_width": account.sidebar_width,
+		"email_list_width": account.email_list_width,
+	}
+
+
+# ============================================
 # HELPERS
 # ============================================
 
