@@ -47,4 +47,8 @@ def has_permission(doc, ptype="read", user=None):
 	if user == "Administrator":
 		return True
 
+	# For new documents (create), user field is set in before_insert
+	if not doc.user:
+		return True
+
 	return doc.user == user
