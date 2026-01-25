@@ -425,6 +425,7 @@ export default {
 
 .checkbox {
   flex-shrink: 0;
+  display: none;
 }
 
 .star {
@@ -440,7 +441,7 @@ export default {
 }
 
 .from {
-  width: 180px;
+  width: 150px;
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -466,12 +467,13 @@ export default {
 }
 
 .date {
-  min-width: 55px;
+  width: 45px;
   flex-shrink: 0;
   text-align: right;
   font-size: 12px;
   color: var(--text-muted, #8d99a6);
   white-space: nowrap;
+  overflow: visible;
 }
 
 .empty-state,
