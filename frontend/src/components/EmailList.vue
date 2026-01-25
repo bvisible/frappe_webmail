@@ -5,7 +5,7 @@
 			<input
 				v-model="searchQuery"
 				type="text"
-				placeholder="Rechercher..."
+				:placeholder="__('Search...')"
 				@keyup.enter="search"
 			/>
 			<button @click="refresh" :disabled="loading" class="refresh-btn" title="Actualiser">
@@ -51,7 +51,7 @@
 						<span class="date">{{ formatDate(item.date) }}</span>
 					</div>
 					<div class="email-bottom-line">
-						<span class="subject-text">{{ item.subject || "(Sans objet)" }}</span>
+						<span class="subject-text">{{ item.subject || __("(No subject)") }}</span>
 						<span v-if="item.has_attachments" class="attachment-icon">📎</span>
 					</div>
 				</div>
@@ -60,11 +60,11 @@
 
 		<!-- Empty state -->
 		<div v-else-if="!loading" class="empty-state">
-			<p>Aucun email dans ce dossier</p>
+			<p>{{ __("No emails in this folder") }}</p>
 		</div>
 
 		<!-- Loading -->
-		<div v-if="loading" class="loading-indicator">Chargement...</div>
+		<div v-if="loading" class="loading-indicator">{{ __("Loading...") }}</div>
 	</div>
 </template>
 
@@ -153,7 +153,7 @@ export default {
 				this.hasMore = data.has_more;
 				this.$emit("update:total", this.total);
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement", indicator: "red" });
+				frappe.toast({ message: __("Loading error"), indicator: "red" });
 			} finally {
 				this.loading = false;
 			}
@@ -191,7 +191,7 @@ export default {
 
 				email.flagged = !email.flagged;
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Error"), indicator: "red" });
 			}
 		},
 
@@ -306,12 +306,12 @@ export default {
 			if (newEmails.length === 1) {
 				const email = newEmails[0];
 				frappe.toast({
-					message: `Nouveau message de ${email.from_name || email.from_email}`,
+					message: __("New message from {0}", [email.from_name || email.from_email]),
 					indicator: "blue",
 				});
 			} else {
 				frappe.toast({
-					message: `${newEmails.length} nouveaux messages`,
+					message: __("{0} new messages", [newEmails.length]),
 					indicator: "blue",
 				});
 			}

@@ -1,7 +1,7 @@
 <template>
 	<div class="signature-editor">
 		<div class="signature-header">
-			<h3>Gerer les signatures</h3>
+			<h3>{{ __("Manage signatures") }}</h3>
 			<button @click="$emit('close')" class="close-btn">x</button>
 		</div>
 
@@ -9,8 +9,8 @@
 			<!-- Signature List -->
 			<div class="signature-list">
 				<div class="list-header">
-					<span>Mes signatures</span>
-					<button @click="createNew" class="add-btn">+ Nouvelle</button>
+					<span>{{ __("My signatures") }}</span>
+					<button @click="createNew" class="add-btn">+ {{ __("New") }}</button>
 				</div>
 
 				<div
@@ -21,23 +21,23 @@
 					@click="selectSignature(sig)"
 				>
 					<span class="sig-name">{{ sig.signature_name }}</span>
-					<span v-if="sig.is_default" class="default-badge">Par defaut</span>
+					<span v-if="sig.is_default" class="default-badge">{{ __("Default") }}</span>
 				</div>
 
-				<div v-if="!signatures.length" class="empty-state">Aucune signature</div>
+				<div v-if="!signatures.length" class="empty-state">{{ __("No signature") }}</div>
 			</div>
 
 			<!-- Signature Form -->
 			<div class="signature-form" v-if="editingSignature">
 				<div class="form-field">
-					<label>Nom de la signature</label>
+					<label>{{ __("Signature name") }}</label>
 					<input v-model="editingSignature.signature_name" type="text" />
 				</div>
 
 				<div class="form-field">
 					<label>
 						<input type="checkbox" v-model="editingSignature.is_default" />
-						Signature par defaut
+						{{ __("Default signature") }}
 					</label>
 				</div>
 
@@ -73,21 +73,21 @@
 				<!-- Actions -->
 				<div class="form-actions">
 					<button @click="saveSignature" class="btn btn-primary" :disabled="saving">
-						{{ saving ? "Enregistrement..." : "Enregistrer" }}
+						{{ saving ? __("Saving...") : __("Save") }}
 					</button>
 					<button
 						v-if="editingSignature.name"
 						@click="deleteSignature"
 						class="btn btn-danger"
 					>
-						Supprimer
+						{{ __("Delete") }}
 					</button>
-					<button @click="cancelEdit" class="btn btn-light">Annuler</button>
+					<button @click="cancelEdit" class="btn btn-light">{{ __("Cancel") }}</button>
 				</div>
 			</div>
 
 			<div v-else class="no-selection">
-				<p>Selectionnez une signature ou creez-en une nouvelle</p>
+				<p>{{ __("Select a signature or create a new one") }}</p>
 			</div>
 		</div>
 	</div>
@@ -134,7 +134,7 @@ export default {
 				});
 				this.signatures = response.message || [];
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement", indicator: "red" });
+				frappe.toast({ message: __("Loading error"), indicator: "red" });
 			}
 		},
 
@@ -171,14 +171,14 @@ export default {
 		},
 
 		insertLink() {
-			const url = prompt("URL du lien:");
+			const url = prompt(__("Link URL:"));
 			if (url) {
 				this.editor.chain().focus().setLink({ href: url }).run();
 			}
 		},
 
 		insertImage() {
-			const url = prompt("URL de l'image:");
+			const url = prompt(__("Image URL:"));
 			if (url) {
 				this.editor.chain().focus().setImage({ src: url }).run();
 			}
@@ -186,7 +186,7 @@ export default {
 
 		async saveSignature() {
 			if (!this.editingSignature.signature_name) {
-				frappe.toast({ message: "Veuillez saisir un nom", indicator: "red" });
+				frappe.toast({ message: __("Please enter a name"), indicator: "red" });
 				return;
 			}
 
@@ -224,12 +224,12 @@ export default {
 					});
 				}
 
-				frappe.toast({ message: "Signature enregistree", indicator: "green" });
+				frappe.toast({ message: __("Signature saved"), indicator: "green" });
 				await this.loadSignatures();
 				this.$emit("updated");
 				this.cancelEdit();
 			} catch (error) {
-				frappe.toast({ message: "Erreur d'enregistrement", indicator: "red" });
+				frappe.toast({ message: __("Save error"), indicator: "red" });
 			} finally {
 				this.saving = false;
 			}
@@ -238,7 +238,7 @@ export default {
 		async deleteSignature() {
 			if (!this.editingSignature.name) return;
 
-			if (!confirm("Voulez-vous vraiment supprimer cette signature ?")) return;
+			if (!confirm(__("Are you sure you want to delete this signature?"))) return;
 
 			try {
 				await frappe.call({
@@ -249,12 +249,12 @@ export default {
 					},
 				});
 
-				frappe.toast({ message: "Signature supprimee", indicator: "green" });
+				frappe.toast({ message: __("Signature deleted"), indicator: "green" });
 				await this.loadSignatures();
 				this.$emit("updated");
 				this.cancelEdit();
 			} catch (error) {
-				frappe.toast({ message: "Erreur de suppression", indicator: "red" });
+				frappe.toast({ message: __("Delete error"), indicator: "red" });
 			}
 		},
 

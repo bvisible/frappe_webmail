@@ -15,13 +15,21 @@
 				</select>
 			</div>
 			<div class="header-right">
-				<button @click="showSearch = true" class="btn btn-secondary">🔍 Recherche</button>
-				<button @click="compose" class="btn btn-primary">✉️ Nouveau message</button>
-				<button @click="showFilters = true" class="btn btn-secondary">🗂️ Filtres</button>
-				<button @click="showSignatures = true" class="btn btn-secondary">
-					✍️ Signatures
+				<button @click="showSearch = true" class="btn btn-secondary">
+					🔍 {{ __("Search") }}
 				</button>
-				<button @click="openSettings" class="btn btn-secondary">⚙️ Parametres</button>
+				<button @click="compose" class="btn btn-primary">
+					✉️ {{ __("New Message") }}
+				</button>
+				<button @click="showFilters = true" class="btn btn-secondary">
+					🗂️ {{ __("Filters") }}
+				</button>
+				<button @click="showSignatures = true" class="btn btn-secondary">
+					✍️ {{ __("Signatures") }}
+				</button>
+				<button @click="openSettings" class="btn btn-secondary">
+					⚙️ {{ __("Settings") }}
+				</button>
 			</div>
 		</div>
 
@@ -84,16 +92,18 @@
 		<!-- No Accounts State -->
 		<div class="no-accounts" v-else-if="!loading">
 			<div class="no-accounts-content">
-				<h2>Bienvenue dans Webmail</h2>
-				<p>Vous n'avez pas encore configure de compte email.</p>
-				<button @click="openSettings" class="btn btn-primary">Configurer un compte</button>
+				<h2>{{ __("Welcome to Webmail") }}</h2>
+				<p>{{ __("You haven't configured any email account yet.") }}</p>
+				<button @click="openSettings" class="btn btn-primary">
+					{{ __("Configure an account") }}
+				</button>
 			</div>
 		</div>
 
 		<!-- Loading -->
 		<div class="loading-overlay" v-if="loading">
 			<div class="spinner"></div>
-			<p>Chargement...</p>
+			<p>{{ __("Loading...") }}</p>
 		</div>
 
 		<!-- Signature Editor Modal -->
@@ -214,7 +224,7 @@ export default {
 					this.loadFolders();
 				}
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement des comptes", indicator: "red" });
+				frappe.toast({ message: __("Error loading accounts"), indicator: "red" });
 			}
 		},
 
@@ -291,7 +301,7 @@ export default {
 					}
 				}
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement de l'email", indicator: "red" });
+				frappe.toast({ message: __("Error loading email"), indicator: "red" });
 			}
 		},
 
@@ -349,7 +359,7 @@ export default {
 		},
 
 		deleteEmail(email) {
-			frappe.confirm("Voulez-vous vraiment supprimer cet email ?", async () => {
+			frappe.confirm(__("Are you sure you want to delete this email?"), async () => {
 				try {
 					const response = await frappe.call({
 						method: "frappe_webmail.api.delete_emails",
@@ -362,7 +372,7 @@ export default {
 					});
 
 					console.log("Delete response:", response);
-					frappe.toast({ message: "Email supprime", indicator: "green" });
+					frappe.toast({ message: __("Email deleted"), indicator: "green" });
 
 					// Refresh list
 					if (this.$refs.emailList) {
@@ -373,7 +383,7 @@ export default {
 					this.selectedEmailContent = null;
 				} catch (error) {
 					console.error("Delete error:", error);
-					frappe.toast({ message: "Erreur de suppression", indicator: "red" });
+					frappe.toast({ message: __("Delete error"), indicator: "red" });
 				}
 			});
 		},
@@ -459,7 +469,7 @@ export default {
 
 				this.selectedEmailContent = response.message;
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement", indicator: "red" });
+				frappe.toast({ message: __("Loading error"), indicator: "red" });
 			}
 		},
 	},

@@ -1,6 +1,6 @@
 <template>
 	<div class="folder-tree">
-		<div v-if="loading" class="loading">Chargement...</div>
+		<div v-if="loading" class="loading">{{ __("Loading...") }}</div>
 
 		<div v-else class="folder-list">
 			<div
@@ -90,7 +90,7 @@ export default {
 
 				this.folders = response.message || [];
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement des dossiers", indicator: "red" });
+				frappe.toast({ message: __("Error loading folders"), indicator: "red" });
 			} finally {
 				this.loading = false;
 			}
@@ -137,19 +137,19 @@ export default {
 
 			// Translate common folder names
 			const translations = {
-				INBOX: "Boite de reception",
-				Sent: "Envoyes",
-				"Sent Items": "Envoyes",
-				"Sent Mail": "Envoyes",
-				Drafts: "Brouillons",
-				Trash: "Corbeille",
-				"Deleted Items": "Corbeille",
-				Spam: "Spam",
-				Junk: "Spam",
-				"Junk E-mail": "Spam",
-				Archive: "Archives",
-				Starred: "Suivis",
-				Important: "Important",
+				INBOX: __("Inbox"),
+				Sent: __("Sent"),
+				"Sent Items": __("Sent"),
+				"Sent Mail": __("Sent"),
+				Drafts: __("Drafts"),
+				Trash: __("Trash"),
+				"Deleted Items": __("Trash"),
+				Spam: __("Spam"),
+				Junk: __("Spam"),
+				"Junk E-mail": __("Spam"),
+				Archive: __("Archive"),
+				Starred: __("Starred"),
+				Important: __("Important"),
 			};
 
 			return translations[name] || name;

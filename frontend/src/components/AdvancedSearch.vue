@@ -1,56 +1,60 @@
 <template>
 	<div class="advanced-search">
 		<div class="search-header">
-			<h3>Recherche avancee</h3>
+			<h3>{{ __("Advanced search") }}</h3>
 			<button @click="$emit('close')" class="close-btn">&times;</button>
 		</div>
 
 		<div class="search-form">
 			<!-- Quick search -->
 			<div class="form-group">
-				<label>Recherche generale</label>
+				<label>{{ __("General search") }}</label>
 				<input
 					v-model="filters.query"
 					type="text"
-					placeholder="Rechercher dans tous les champs..."
+					:placeholder="__('Search in all fields...')"
 					@keyup.enter="search"
 				/>
 			</div>
 
 			<!-- From -->
 			<div class="form-group">
-				<label>De</label>
+				<label>{{ __("From") }}</label>
 				<input
 					v-model="filters.from"
 					type="text"
-					placeholder="Adresse email de l'expediteur"
+					:placeholder="__('Sender email address')"
 				/>
 			</div>
 
 			<!-- To -->
 			<div class="form-group">
-				<label>A</label>
+				<label>{{ __("To") }}</label>
 				<input
 					v-model="filters.to"
 					type="text"
-					placeholder="Adresse email du destinataire"
+					:placeholder="__('Recipient email address')"
 				/>
 			</div>
 
 			<!-- Subject -->
 			<div class="form-group">
-				<label>Objet</label>
-				<input v-model="filters.subject" type="text" placeholder="Mots dans l'objet" />
+				<label>{{ __("Subject") }}</label>
+				<input
+					v-model="filters.subject"
+					type="text"
+					:placeholder="__('Words in subject')"
+				/>
 			</div>
 
 			<!-- Date range -->
 			<div class="form-row">
 				<div class="form-group">
-					<label>Date debut</label>
+					<label>{{ __("Start date") }}</label>
 					<input v-model="filters.dateFrom" type="date" />
 				</div>
 				<div class="form-group">
-					<label>Date fin</label>
+					<label>{{ __("End date") }}</label>
 					<input v-model="filters.dateTo" type="date" />
 				</div>
 			</div>
@@ -59,21 +63,21 @@
 			<div class="form-row checkboxes">
 				<label class="checkbox-label">
 					<input type="checkbox" v-model="filters.hasAttachment" />
-					Avec pieces jointes
+					{{ __("With attachments") }}
 				</label>
 				<label class="checkbox-label">
 					<input type="checkbox" v-model="filters.isUnread" />
-					Non lus uniquement
+					{{ __("Unread only") }}
 				</label>
 				<label class="checkbox-label">
 					<input type="checkbox" v-model="filters.isFlagged" />
-					Marques uniquement
+					{{ __("Flagged only") }}
 				</label>
 			</div>
 
 			<!-- Folder selection -->
 			<div class="form-group">
-				<label>Dossier</label>
+				<label>{{ __("Folder") }}</label>
 				<select v-model="filters.folder">
 					<option v-for="folder in folders" :key="folder.name" :value="folder.name">
 						{{ folder.name }}
@@ -83,17 +87,19 @@
 		</div>
 
 		<div class="search-actions">
-			<button @click="clearFilters" class="btn btn-secondary">Effacer</button>
+			<button @click="clearFilters" class="btn btn-secondary">{{ __("Clear") }}</button>
 			<button @click="search" class="btn btn-primary" :disabled="searching">
-				{{ searching ? "Recherche..." : "Rechercher" }}
+				{{ searching ? __("Searching...") : __("Search") }}
 			</button>
 		</div>
 
 		<!-- Results -->
 		<div class="search-results" v-if="hasSearched">
 			<div class="results-header">
-				<span>{{ results.length }} resultat(s) sur {{ total }}</span>
-				<button v-if="hasMore" @click="loadMore" class="btn btn-link">Charger plus</button>
+				<span>{{ __("{0} result(s) out of {1}", [results.length, total]) }}</span>
+				<button v-if="hasMore" @click="loadMore" class="btn btn-link">
+					{{ __("Load more") }}
+				</button>
 			</div>
 
 			<div class="results-list" v-if="results.length">
@@ -105,12 +111,12 @@
 					@click="selectEmail(email)"
 				>
 					<div class="result-from">{{ email.from_name || email.from_email }}</div>
-					<div class="result-subject">{{ email.subject || "(Sans objet)" }}</div>
+					<div class="result-subject">{{ email.subject || __("(No subject)") }}</div>
 					<div class="result-date">{{ formatDate(email.date) }}</div>
 				</div>
 			</div>
 
-			<div class="no-results" v-else>Aucun resultat trouve</div>
+			<div class="no-results" v-else>{{ __("No results found") }}</div>
 		</div>
 	</div>
 </template>
@@ -180,7 +186,7 @@ export default {
 				this.total = data.total;
 				this.hasMore = data.has_more;
 			} catch (error) {
-				frappe.toast({ message: "Erreur de recherche", indicator: "red" });
+				frappe.toast({ message: __("Search error"), indicator: "red" });
 			} finally {
 				this.searching = false;
 			}
@@ -215,7 +221,7 @@ export default {
 				this.results.push(...data.emails);
 				this.hasMore = data.has_more;
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Error"), indicator: "red" });
 			} finally {
 				this.searching = false;
 			}

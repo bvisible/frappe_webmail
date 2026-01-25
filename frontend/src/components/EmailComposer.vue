@@ -3,14 +3,16 @@
 		<!-- Header with Send button -->
 		<div class="composer-header">
 			<div class="header-left">
-				<button class="btn btn-light" @click="$emit('close')" title="Fermer">✕</button>
-				<span class="composer-title">Nouveau message</span>
+				<button class="btn btn-light" @click="$emit('close')" :title="__('Close')">
+					✕
+				</button>
+				<span class="composer-title">{{ __("New message") }}</span>
 			</div>
 			<div class="header-right">
 				<button
 					class="btn btn-secondary"
 					@click="$refs.fileInput.click()"
-					title="Joindre un fichier"
+					:title="__('Attach a file')"
 				>
 					📎
 				</button>
@@ -18,7 +20,7 @@
 					class="btn btn-secondary"
 					@click="saveDraft"
 					:disabled="isSavingDraft"
-					title="Sauvegarder"
+					:title="__('Save')"
 				>
 					💾
 				</button>
@@ -26,12 +28,12 @@
 					v-if="draftUid"
 					class="btn btn-danger-light"
 					@click="deleteDraft"
-					title="Supprimer le brouillon"
+					:title="__('Delete draft')"
 				>
 					🗑️
 				</button>
 				<button class="btn btn-primary btn-send" @click="send" :disabled="sending">
-					{{ sending ? "Envoi..." : "📤 Envoyer" }}
+					{{ sending ? __("Sending...") : "📤 " + __("Send") }}
 				</button>
 			</div>
 			<input
@@ -45,19 +47,16 @@
 
 		<!-- Recipients -->
 		<div class="composer-field">
-			<label>A:</label>
-			<ContactAutocomplete
-				v-model="emailData.to"
-				placeholder="Ajouter des destinataires..."
-			/>
+			<label>{{ __("To:") }}</label>
+			<ContactAutocomplete v-model="emailData.to" :placeholder="__('Add recipients...')" />
 		</div>
 		<div class="composer-field">
-			<label>Cc:</label>
-			<ContactAutocomplete v-model="emailData.cc" placeholder="Copie carbone..." />
+			<label>{{ __("Cc:") }}</label>
+			<ContactAutocomplete v-model="emailData.cc" :placeholder="__('Carbon copy...')" />
 		</div>
 		<div class="composer-field">
-			<label>Objet:</label>
-			<input v-model="emailData.subject" type="text" placeholder="Objet du message" />
+			<label>{{ __("Subject:") }}</label>
+			<input v-model="emailData.subject" type="text" :placeholder="__('Message subject')" />
 		</div>
 
 		<!-- Toolbar -->
@@ -65,21 +64,21 @@
 			<button
 				@click="editor.chain().focus().toggleBold().run()"
 				:class="{ active: editor.isActive('bold') }"
-				title="Gras"
+				:title="__('Bold')"
 			>
 				<strong>B</strong>
 			</button>
 			<button
 				@click="editor.chain().focus().toggleItalic().run()"
 				:class="{ active: editor.isActive('italic') }"
-				title="Italique"
+				:title="__('Italic')"
 			>
 				<em>I</em>
 			</button>
 			<button
 				@click="editor.chain().focus().toggleUnderline().run()"
 				:class="{ active: editor.isActive('underline') }"
-				title="Souligne"
+				:title="__('Underline')"
 			>
 				<u>U</u>
 			</button>
@@ -87,22 +86,22 @@
 			<button
 				@click="editor.chain().focus().toggleBulletList().run()"
 				:class="{ active: editor.isActive('bulletList') }"
-				title="Liste a puces"
+				:title="__('Bullet list')"
 			>
 				•
 			</button>
 			<button
 				@click="editor.chain().focus().toggleOrderedList().run()"
 				:class="{ active: editor.isActive('orderedList') }"
-				title="Liste numerotee"
+				:title="__('Numbered list')"
 			>
 				1.
 			</button>
 			<span class="separator"></span>
-			<button @click="insertLink" title="Lien">🔗</button>
-			<button @click="insertImage" title="Image">🖼️</button>
+			<button @click="insertLink" :title="__('Link')">🔗</button>
+			<button @click="insertImage" :title="__('Image')">🖼️</button>
 			<span class="separator"></span>
-			<button @click="insertSignature" title="Signature">✍️</button>
+			<button @click="insertSignature" :title="__('Signature')">✍️</button>
 		</div>
 
 		<!-- Editor -->
@@ -122,9 +121,9 @@
 		<!-- Footer with status -->
 		<div class="composer-footer">
 			<div class="draft-status" v-if="lastSaved || isSavingDraft">
-				<span v-if="isSavingDraft" class="saving">Sauvegarde...</span>
+				<span v-if="isSavingDraft" class="saving">{{ __("Saving...") }}</span>
 				<span v-else-if="lastSaved" class="saved">
-					✓ Sauvegarde a {{ formatLastSaved() }}
+					✓ {{ __("Saved at {0}", [formatLastSaved()]) }}
 				</span>
 			</div>
 		</div>
@@ -206,7 +205,7 @@ export default {
 					Link.configure({ openOnClick: false }),
 					Image.configure({ inline: true }),
 					Placeholder.configure({
-						placeholder: "Ecrivez votre message...",
+						placeholder: __("Write your message..."),
 					}),
 				],
 			});
@@ -243,7 +242,7 @@ export default {
 				this.draftFolder = null;
 			} catch (error) {
 				console.error("Save draft failed:", error);
-				frappe.toast({ message: "Erreur de sauvegarde du brouillon", indicator: "red" });
+				frappe.toast({ message: __("Error saving draft"), indicator: "red" });
 			} finally {
 				this.isSavingDraft = false;
 			}
@@ -256,10 +255,10 @@ export default {
 				? reply.subject
 				: `Re: ${reply.subject}`;
 
-			const date = new Date(reply.date).toLocaleString("fr-FR");
+			const date = new Date(reply.date).toLocaleString();
 			const quoteContent = `
         <br><br>
-        <p>Le ${date}, ${reply.from_name || reply.from_email} a ecrit :</p>
+        <p>${__("On {0}, {1} wrote:", [date, reply.from_name || reply.from_email])}</p>
         <blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 0; color: #666;">
           ${reply.html || reply.text || ""}
         </blockquote>
@@ -281,14 +280,14 @@ export default {
 				? fwd.subject
 				: `Fwd: ${fwd.subject}`;
 
-			const date = new Date(fwd.date).toLocaleString("fr-FR");
+			const date = new Date(fwd.date).toLocaleString();
 			const forwardContent = `
         <br><br>
-        <p>---------- Message transfere ----------</p>
-        <p>De: ${fwd.from_name || fwd.from_email} &lt;${fwd.from_email}&gt;</p>
-        <p>Date: ${date}</p>
-        <p>Objet: ${fwd.subject}</p>
-        <p>A: ${fwd.to}</p>
+        <p>---------- ${__("Forwarded message")} ----------</p>
+        <p>${__("From:")} ${fwd.from_name || fwd.from_email} &lt;${fwd.from_email}&gt;</p>
+        <p>${__("Date:")} ${date}</p>
+        <p>${__("Subject:")} ${fwd.subject}</p>
+        <p>${__("To:")} ${fwd.to}</p>
         <br>
         ${fwd.html || fwd.text || ""}
       `;
@@ -328,14 +327,14 @@ export default {
 		},
 
 		insertLink() {
-			const url = prompt("URL du lien:");
+			const url = prompt(__("Link URL:"));
 			if (url) {
 				this.editor.chain().focus().setLink({ href: url }).run();
 			}
 		},
 
 		insertImage() {
-			const url = prompt("URL de l'image:");
+			const url = prompt(__("Image URL:"));
 			if (url) {
 				this.editor.chain().focus().setImage({ src: url }).run();
 			}
@@ -385,9 +384,9 @@ export default {
 			// Validate recipient
 			if (!this.emailData.to || !this.emailData.to.trim()) {
 				frappe.msgprint({
-					title: __("Destinataire requis"),
+					title: __("Recipient required"),
 					indicator: "red",
-					message: __("Veuillez saisir au moins un destinataire."),
+					message: __("Please enter at least one recipient."),
 				});
 				return;
 			}
@@ -396,9 +395,9 @@ export default {
 			const bodyText = this.editor ? this.editor.getText().trim() : "";
 			if (!bodyText) {
 				frappe.msgprint({
-					title: __("Message vide"),
+					title: __("Empty message"),
 					indicator: "red",
-					message: __("Veuillez saisir un message avant d'envoyer."),
+					message: __("Please enter a message before sending."),
 				});
 				return;
 			}
@@ -407,7 +406,7 @@ export default {
 			if (!this.emailData.subject || !this.emailData.subject.trim()) {
 				const confirmed = await new Promise((resolve) => {
 					frappe.confirm(
-						__("Vous n'avez pas saisi d'objet. Voulez-vous envoyer quand meme ?"),
+						__("You have not entered a subject. Do you want to send anyway?"),
 						() => resolve(true),
 						() => resolve(false)
 					);
@@ -445,13 +444,13 @@ export default {
 					}
 				}
 
-				frappe.toast({ message: "Email envoye !", indicator: "green" });
+				frappe.toast({ message: __("Email sent!"), indicator: "green" });
 				this.isDirty = false; // Prevent save on unmount
 				this.$emit("sent");
 				this.$emit("close");
 			} catch (error) {
 				frappe.toast({
-					message: error.message || "Erreur d'envoi",
+					message: error.message || __("Send error"),
 					indicator: "red",
 				});
 			} finally {
@@ -462,7 +461,7 @@ export default {
 		async saveDraft() {
 			await this.saveDraftNow();
 			frappe.toast({
-				message: "Brouillon sauvegarde",
+				message: __("Draft saved"),
 				indicator: "blue",
 			});
 			// Close the composer after manual save
@@ -472,7 +471,7 @@ export default {
 		deleteDraft() {
 			if (!this.draftUid || !this.draftFolder) return;
 
-			frappe.confirm("Voulez-vous vraiment supprimer ce brouillon ?", async () => {
+			frappe.confirm(__("Are you sure you want to delete this draft?"), async () => {
 				try {
 					await frappe.call({
 						method: "frappe_webmail.api.delete_emails",
@@ -483,12 +482,12 @@ export default {
 							permanent: false,
 						},
 					});
-					frappe.toast({ message: "Brouillon supprime", indicator: "green" });
+					frappe.toast({ message: __("Draft deleted"), indicator: "green" });
 					this.$emit("draft-deleted");
 					this.$emit("close");
 				} catch (error) {
 					console.error("Delete draft failed:", error);
-					frappe.toast({ message: "Erreur de suppression", indicator: "red" });
+					frappe.toast({ message: __("Delete error"), indicator: "red" });
 				}
 			});
 		},

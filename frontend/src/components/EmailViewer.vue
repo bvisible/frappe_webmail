@@ -2,7 +2,7 @@
 	<div class="email-viewer" v-if="email">
 		<!-- Header -->
 		<div class="email-header">
-			<div class="email-subject">{{ email.subject || "(Sans objet)" }}</div>
+			<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
 			<div class="email-meta">
 				<div class="from">
 					<div class="from-info">
@@ -19,24 +19,26 @@
 							v-else
 							@click="saveAsContact(email.from_email, email.from_name)"
 							class="add-contact-btn"
-							title="Ajouter aux contacts"
+							:title="__('Add to contacts')"
 						>
 							+ 👤
 						</button>
 					</div>
 				</div>
-				<div class="to">A: {{ email.to }}</div>
-				<div v-if="email.cc" class="cc">Cc: {{ email.cc }}</div>
+				<div class="to">{{ __("To:") }} {{ email.to }}</div>
+				<div v-if="email.cc" class="cc">{{ __("Cc:") }} {{ email.cc }}</div>
 				<div class="date">{{ formatDate(email.date) }}</div>
 			</div>
 		</div>
 
 		<!-- Actions -->
 		<div class="email-actions">
-			<button @click="$emit('reply', email)" class="btn btn-sm">↩️ Repondre</button>
-			<button @click="$emit('forward', email)" class="btn btn-sm">↪️ Transferer</button>
-			<button @click="markAsUnread" class="btn btn-sm" title="Marquer comme non lu">
-				✉️ Non lu
+			<button @click="$emit('reply', email)" class="btn btn-sm">↩️ {{ __("Reply") }}</button>
+			<button @click="$emit('forward', email)" class="btn btn-sm">
+				↪️ {{ __("Forward") }}
+			</button>
+			<button @click="markAsUnread" class="btn btn-sm" :title="__('Mark as unread')">
+				✉️ {{ __("Unread") }}
 			</button>
 			<button @click="toggleStar" class="btn btn-sm">
 				{{ email.flagged ? "★" : "☆" }}
@@ -46,8 +48,8 @@
 
 		<!-- External images warning -->
 		<div v-if="hasBlockedImages" class="blocked-images-notice">
-			⚠️ Les images externes ont ete bloquees pour votre securite.
-			<button @click="showExternalImages = true">Afficher les images</button>
+			⚠️ {{ __("External images have been blocked for your security.") }}
+			<button @click="showExternalImages = true">{{ __("Show images") }}</button>
 		</div>
 
 		<!-- Body (sandboxed iframe) -->
@@ -61,7 +63,7 @@
 
 		<!-- Attachments -->
 		<div v-if="email.attachments?.length" class="email-attachments">
-			<h4>📎 Pieces jointes ({{ email.attachments.length }})</h4>
+			<h4>📎 {{ __("Attachments") }} ({{ email.attachments.length }})</h4>
 			<div class="attachment-list">
 				<div
 					v-for="att in email.attachments"
@@ -77,7 +79,7 @@
 		</div>
 	</div>
 	<div v-else class="no-email-selected">
-		<p>Selectionnez un email pour le lire</p>
+		<p>{{ __("Select an email to read") }}</p>
 	</div>
 </template>
 
@@ -162,10 +164,10 @@ export default {
 						node.setAttribute("data-blocked-src", src);
 						node.setAttribute(
 							"src",
-							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[Image bloquee]</text></svg>'
+							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[Blocked image]</text></svg>'
 						);
 						node.style.cursor = "pointer";
-						node.title = "Image externe bloquee";
+						node.title = "External image blocked";
 						self.hasBlockedImages = true;
 					}
 				}
@@ -288,7 +290,7 @@ export default {
 				this.email.flagged = !this.email.flagged;
 				this.$emit("flag-changed", this.email);
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Error"), indicator: "red" });
 			}
 		},
 
@@ -306,9 +308,9 @@ export default {
 
 				this.email.seen = false;
 				this.$emit("mark-unread", this.email);
-				frappe.toast({ message: "Marque comme non lu", indicator: "green" });
+				frappe.toast({ message: __("Marked as unread"), indicator: "green" });
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Error"), indicator: "red" });
 			}
 		},
 
@@ -342,7 +344,7 @@ export default {
 				document.body.removeChild(a);
 				URL.revokeObjectURL(url);
 			} catch (error) {
-				frappe.toast({ message: "Erreur de telechargement", indicator: "red" });
+				frappe.toast({ message: __("Download error"), indicator: "red" });
 			}
 		},
 
@@ -372,7 +374,7 @@ export default {
 
 				if (response.message.success) {
 					frappe.toast({
-						message: `Contact cree: ${response.message.full_name}`,
+						message: __("Contact created: {0}", [response.message.full_name]),
 						indicator: "green",
 					});
 					this.loadSenderContact(email);
@@ -386,7 +388,7 @@ export default {
 				}
 			} catch (error) {
 				frappe.toast({
-					message: "Erreur lors de la creation du contact",
+					message: __("Error creating contact"),
 					indicator: "red",
 				});
 			}

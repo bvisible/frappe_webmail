@@ -36,7 +36,7 @@
 		>
 			<!-- Search results -->
 			<div v-if="inputValue && suggestions.length" class="suggestions-section">
-				<div class="section-header">Resultats</div>
+				<div class="section-header">{{ __("Results") }}</div>
 				<div
 					v-for="(contact, idx) in suggestions"
 					:key="'s-' + contact.name"
@@ -58,7 +58,7 @@
 
 			<!-- Recent contacts -->
 			<div v-if="!inputValue && recentContacts.length" class="suggestions-section">
-				<div class="section-header">Contacts recents</div>
+				<div class="section-header">{{ __("Recent contacts") }}</div>
 				<div
 					v-for="(contact, idx) in recentContacts"
 					:key="'r-' + contact.name"
@@ -80,11 +80,11 @@
 
 			<!-- No results -->
 			<div v-if="inputValue && !suggestions.length && !loading" class="no-results">
-				Aucun contact trouve. Appuyez sur Entree pour ajouter.
+				{{ __("No contact found. Press Enter to add.") }}
 			</div>
 
 			<!-- Loading -->
-			<div v-if="loading" class="loading">Recherche...</div>
+			<div v-if="loading" class="loading">{{ __("Searching...") }}</div>
 		</div>
 	</div>
 </template>
@@ -95,7 +95,7 @@ export default {
 
 	props: {
 		modelValue: { type: String, default: "" },
-		placeholder: { type: String, default: "Ajouter des destinataires..." },
+		placeholder: { type: String, default: "" },
 	},
 
 	emits: ["update:modelValue"],

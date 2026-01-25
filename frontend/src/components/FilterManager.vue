@@ -1,7 +1,7 @@
 <template>
 	<div class="filter-manager">
 		<div class="manager-header">
-			<h3>Filtres email</h3>
+			<h3>{{ __("Email filters") }}</h3>
 			<button @click="$emit('close')" class="close-btn">&times;</button>
 		</div>
 
@@ -9,9 +9,9 @@
 			<!-- Filter List -->
 			<div class="filter-list" v-if="!showForm">
 				<div class="list-header">
-					<span>{{ filters.length }} filtre(s)</span>
+					<span>{{ __("{0} filter(s)", [filters.length]) }}</span>
 					<button @click="showCreateForm" class="btn btn-primary btn-sm">
-						+ Nouveau filtre
+						+ {{ __("New filter") }}
 					</button>
 				</div>
 
@@ -26,39 +26,47 @@
 							<div class="filter-name">
 								{{ filter.filter_name }}
 								<span v-if="!filter.enabled" class="badge disabled"
-									>(desactive)</span
+									>({{ __("disabled") }})</span
 								>
 							</div>
 							<div class="filter-conditions">
 								<span v-if="filter.from_contains"
-									>De: {{ filter.from_contains }}</span
+									>{{ __("From:") }} {{ filter.from_contains }}</span
 								>
-								<span v-if="filter.to_contains">A: {{ filter.to_contains }}</span>
+								<span v-if="filter.to_contains"
+									>{{ __("To:") }} {{ filter.to_contains }}</span
+								>
 								<span v-if="filter.subject_contains"
-									>Objet: {{ filter.subject_contains }}</span
+									>{{ __("Subject:") }} {{ filter.subject_contains }}</span
 								>
-								<span v-if="filter.has_attachment">Avec PJ</span>
+								<span v-if="filter.has_attachment">{{
+									__("With attachment")
+								}}</span>
 							</div>
 							<div class="filter-action">→ {{ getActionLabel(filter) }}</div>
 							<div class="filter-stats" v-if="filter.times_applied">
-								Applique {{ filter.times_applied }} fois
+								{{ __("Applied {0} times", [filter.times_applied]) }}
 							</div>
 						</div>
 						<div class="filter-actions">
 							<button
 								@click="toggleFilter(filter)"
 								class="btn-icon"
-								:title="filter.enabled ? 'Desactiver' : 'Activer'"
+								:title="filter.enabled ? __('Disable') : __('Enable')"
 							>
 								{{ filter.enabled ? "✓" : "○" }}
 							</button>
-							<button @click="editFilter(filter)" class="btn-icon" title="Modifier">
+							<button
+								@click="editFilter(filter)"
+								class="btn-icon"
+								:title="__('Edit')"
+							>
 								✏️
 							</button>
 							<button
 								@click="deleteFilter(filter)"
 								class="btn-icon"
-								title="Supprimer"
+								:title="__('Delete')"
 							>
 								🗑️
 							</button>
@@ -67,8 +75,8 @@
 				</div>
 
 				<div v-else class="empty-state">
-					<p>Aucun filtre configure.</p>
-					<p>Les filtres permettent de trier automatiquement vos emails.</p>
+					<p>{{ __("No filters configured.") }}</p>
+					<p>{{ __("Filters allow you to automatically sort your emails.") }}</p>
 				</div>
 
 				<div class="list-footer">
@@ -77,7 +85,7 @@
 						class="btn btn-secondary"
 						:disabled="!filters.length || applying"
 					>
-						{{ applying ? "Application..." : "Appliquer maintenant" }}
+						{{ applying ? __("Applying...") : __("Apply now") }}
 					</button>
 				</div>
 			</div>
@@ -85,80 +93,82 @@
 			<!-- Filter Form -->
 			<div class="filter-form" v-else>
 				<div class="form-header">
-					<h4>{{ editingFilter ? "Modifier le filtre" : "Nouveau filtre" }}</h4>
+					<h4>{{ editingFilter ? __("Edit filter") : __("New filter") }}</h4>
 				</div>
 
 				<div class="form-body">
 					<div class="form-group">
-						<label>Nom du filtre *</label>
+						<label>{{ __("Filter name") }} *</label>
 						<input
 							v-model="formData.filter_name"
 							type="text"
-							placeholder="Ex: Newsletters"
+							:placeholder="__('Ex: Newsletters')"
 						/>
 					</div>
 
 					<div class="form-section">
-						<h5>Conditions</h5>
+						<h5>{{ __("Conditions") }}</h5>
 						<div class="form-group">
-							<label>Correspondance</label>
+							<label>{{ __("Match") }}</label>
 							<select v-model="formData.match_type">
-								<option value="any">Au moins une condition (OU)</option>
-								<option value="all">Toutes les conditions (ET)</option>
+								<option value="any">
+									{{ __("At least one condition (OR)") }}
+								</option>
+								<option value="all">{{ __("All conditions (AND)") }}</option>
 							</select>
 						</div>
 
 						<div class="form-group">
-							<label>De contient</label>
+							<label>{{ __("From contains") }}</label>
 							<input
 								v-model="formData.from_contains"
 								type="text"
-								placeholder="Ex: newsletter@"
+								:placeholder="__('Ex: newsletter@')"
 							/>
 						</div>
 
 						<div class="form-group">
-							<label>A contient</label>
+							<label>{{ __("To contains") }}</label>
 							<input
 								v-model="formData.to_contains"
 								type="text"
-								placeholder="Ex: moi@example.com"
+								:placeholder="__('Ex: me@example.com')"
 							/>
 						</div>
 
 						<div class="form-group">
-							<label>Objet contient</label>
+							<label>{{ __("Subject contains") }}</label>
 							<input
 								v-model="formData.subject_contains"
 								type="text"
-								placeholder="Ex: [SPAM]"
+								:placeholder="__('Ex: [SPAM]')"
 							/>
 						</div>
 
 						<div class="form-group checkbox">
 							<label>
 								<input type="checkbox" v-model="formData.has_attachment" />
-								A des pieces jointes
+								{{ __("Has attachments") }}
 							</label>
 						</div>
 					</div>
 
 					<div class="form-section">
-						<h5>Actions</h5>
+						<h5>{{ __("Actions") }}</h5>
 						<div class="form-group">
-							<label>Action principale *</label>
+							<label>{{ __("Main action") }} *</label>
 							<select v-model="formData.action_type">
-								<option value="move">Deplacer vers un dossier</option>
-								<option value="delete">Supprimer</option>
-								<option value="mark_read">Marquer comme lu</option>
-								<option value="mark_starred">Marquer comme important</option>
+								<option value="move">{{ __("Move to folder") }}</option>
+								<option value="delete">{{ __("Delete") }}</option>
+								<option value="mark_read">{{ __("Mark as read") }}</option>
+								<option value="mark_starred">{{ __("Mark as important") }}</option>
 							</select>
 						</div>
 
 						<div class="form-group" v-if="formData.action_type === 'move'">
-							<label>Dossier de destination *</label>
+							<label>{{ __("Destination folder") }} *</label>
 							<select v-model="formData.target_folder">
-								<option value="">Selectionner...</option>
+								<option value="">{{ __("Select...") }}</option>
 								<option
 									v-for="folder in folders"
 									:key="folder.name"
@@ -172,23 +182,25 @@
 						<div class="form-group checkbox">
 							<label>
 								<input type="checkbox" v-model="formData.mark_as_read" />
-								Marquer aussi comme lu
+								{{ __("Also mark as read") }}
 							</label>
 						</div>
 
 						<div class="form-group checkbox">
 							<label>
 								<input type="checkbox" v-model="formData.mark_as_starred" />
-								Marquer aussi comme important
+								{{ __("Also mark as important") }}
 							</label>
 						</div>
 					</div>
 				</div>
 
 				<div class="form-footer">
-					<button @click="cancelForm" class="btn btn-secondary">Annuler</button>
+					<button @click="cancelForm" class="btn btn-secondary">
+						{{ __("Cancel") }}
+					</button>
 					<button @click="saveFilter" class="btn btn-primary" :disabled="saving">
-						{{ saving ? "Enregistrement..." : "Enregistrer" }}
+						{{ saving ? __("Saving...") : __("Save") }}
 					</button>
 				</div>
 			</div>
@@ -248,7 +260,7 @@ export default {
 				});
 				this.filters = response.message || [];
 			} catch (error) {
-				frappe.toast({ message: "Erreur de chargement des filtres", indicator: "red" });
+				frappe.toast({ message: __("Error loading filters"), indicator: "red" });
 			} finally {
 				this.loading = false;
 			}
@@ -286,7 +298,7 @@ export default {
 		async saveFilter() {
 			// Validation
 			if (!this.formData.filter_name) {
-				frappe.toast({ message: "Le nom du filtre est requis", indicator: "orange" });
+				frappe.toast({ message: __("Filter name is required"), indicator: "orange" });
 				return;
 			}
 
@@ -298,7 +310,7 @@ export default {
 
 			if (!hasCondition) {
 				frappe.toast({
-					message: "Au moins une condition est requise",
+					message: __("At least one condition is required"),
 					indicator: "orange",
 				});
 				return;
@@ -306,7 +318,7 @@ export default {
 
 			if (this.formData.action_type === "move" && !this.formData.target_folder) {
 				frappe.toast({
-					message: "Le dossier de destination est requis",
+					message: __("Destination folder is required"),
 					indicator: "orange",
 				});
 				return;
@@ -323,7 +335,7 @@ export default {
 							...this.formData,
 						},
 					});
-					frappe.toast({ message: "Filtre modifie", indicator: "green" });
+					frappe.toast({ message: __("Filter updated"), indicator: "green" });
 				} else {
 					await frappe.call({
 						method: "frappe_webmail.api.create_filter",
@@ -332,13 +344,13 @@ export default {
 							...this.formData,
 						},
 					});
-					frappe.toast({ message: "Filtre cree", indicator: "green" });
+					frappe.toast({ message: __("Filter created"), indicator: "green" });
 				}
 
 				this.cancelForm();
 				this.loadFilters();
 			} catch (error) {
-				frappe.toast({ message: "Erreur lors de l'enregistrement", indicator: "red" });
+				frappe.toast({ message: __("Error saving"), indicator: "red" });
 			} finally {
 				this.saving = false;
 			}
@@ -355,22 +367,22 @@ export default {
 				});
 				filter.enabled = !filter.enabled;
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Error"), indicator: "red" });
 			}
 		},
 
 		async deleteFilter(filter) {
-			if (!confirm(`Supprimer le filtre "${filter.filter_name}" ?`)) return;
+			if (!confirm(__('Delete filter "{0}"?', [filter.filter_name]))) return;
 
 			try {
 				await frappe.call({
 					method: "frappe_webmail.api.delete_filter",
 					args: { filter_name: filter.name },
 				});
-				frappe.toast({ message: "Filtre supprime", indicator: "green" });
+				frappe.toast({ message: __("Filter deleted"), indicator: "green" });
 				this.loadFilters();
 			} catch (error) {
-				frappe.toast({ message: "Erreur lors de la suppression", indicator: "red" });
+				frappe.toast({ message: __("Error deleting"), indicator: "red" });
 			}
 		},
 
@@ -389,13 +401,16 @@ export default {
 
 				const result = response.message;
 				frappe.toast({
-					message: `${result.applied} filtre(s) applique(s) sur ${result.processed} emails`,
+					message: __("{0} filter(s) applied to {1} emails", [
+						result.applied,
+						result.processed,
+					]),
 					indicator: "green",
 				});
 
 				this.loadFilters(); // Refresh stats
 			} catch (error) {
-				frappe.toast({ message: "Erreur lors de l'application", indicator: "red" });
+				frappe.toast({ message: __("Error applying filters"), indicator: "red" });
 			} finally {
 				this.applying = false;
 			}
@@ -403,10 +418,10 @@ export default {
 
 		getActionLabel(filter) {
 			const actions = {
-				move: `Deplacer vers ${filter.target_folder || "?"}`,
-				delete: "Supprimer",
-				mark_read: "Marquer comme lu",
-				mark_starred: "Marquer comme important",
+				move: __("Move to {0}", [filter.target_folder || "?"]),
+				delete: __("Delete"),
+				mark_read: __("Mark as read"),
+				mark_starred: __("Mark as important"),
 			};
 			return actions[filter.action_type] || filter.action_type;
 		},
