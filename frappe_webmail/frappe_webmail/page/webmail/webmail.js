@@ -30,7 +30,7 @@ frappe.pages['webmail'].on_page_load = function(wrapper) {
 	const container = document.createElement('div');
 	container.id = 'webmail-app';
 	container.className = 'webmail-container';
-	container.style.cssText = 'height: calc(100vh - 60px); overflow: hidden;';
+	container.style.cssText = 'height: calc(100vh - 60px); overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);';
 
 	page.main.html('').append(container);
 
