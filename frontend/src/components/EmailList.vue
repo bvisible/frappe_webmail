@@ -21,7 +21,7 @@
       v-if="emails.length"
       class="email-list"
       :items="emails"
-      :item-size="64"
+      :item-size="56"
       key-field="uid"
       v-slot="{ item }"
       @scroll-end="loadMore"
@@ -41,12 +41,16 @@
         <div class="star" @click.stop="toggleStar(item)">
           {{ item.flagged ? '★' : '☆' }}
         </div>
-        <div class="from">{{ item.from_name || item.from_email }}</div>
-        <div class="subject">
-          <span class="subject-text">{{ item.subject || '(Sans objet)' }}</span>
-          <span v-if="item.has_attachments" class="attachment-icon">📎</span>
+        <div class="email-content">
+          <div class="email-top-line">
+            <span class="from">{{ item.from_name || item.from_email }}</span>
+            <span class="date">{{ formatDate(item.date) }}</span>
+          </div>
+          <div class="email-bottom-line">
+            <span class="subject-text">{{ item.subject || '(Sans objet)' }}</span>
+            <span v-if="item.has_attachments" class="attachment-icon">📎</span>
+          </div>
         </div>
-        <div class="date">{{ formatDate(item.date) }}</div>
       </div>
     </RecycleScroller>
 
@@ -399,11 +403,11 @@ export default {
 
 .email-row {
   display: flex;
-  align-items: center;
-  padding: 12px 16px;
+  align-items: flex-start;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border-color, #e5e5e5);
   cursor: pointer;
-  gap: 12px;
+  gap: 10px;
 }
 
 .email-row:hover {
@@ -411,8 +415,16 @@ export default {
 }
 
 .email-row.unread {
-  font-weight: 600;
   background: #f0f7ff;
+}
+
+.email-row.unread .from {
+  font-weight: 600;
+}
+
+.email-row.unread .subject-text {
+  font-weight: 500;
+  color: var(--text-color, #333);
 }
 
 .email-row.selected {
@@ -426,6 +438,7 @@ export default {
 .checkbox {
   flex-shrink: 0;
   display: none;
+  padding-top: 2px;
 }
 
 .star {
@@ -434,46 +447,61 @@ export default {
   font-size: 16px;
   width: 20px;
   color: #999;
+  padding-top: 2px;
 }
 
 .star:hover {
   color: #f5a623;
 }
 
+.email-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.email-top-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .from {
-  width: 150px;
-  flex-shrink: 0;
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 14px;
 }
 
-.subject {
-  flex: 1;
+.date {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted, #8d99a6);
+  white-space: nowrap;
+}
+
+.email-bottom-line {
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow: hidden;
 }
 
 .subject-text {
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--text-muted, #8d99a6);
 }
 
 .attachment-icon {
   flex-shrink: 0;
-}
-
-.date {
-  width: 45px;
-  flex-shrink: 0;
-  text-align: right;
   font-size: 12px;
-  color: var(--text-muted, #8d99a6);
-  white-space: nowrap;
-  overflow: visible;
 }
 
 .empty-state,
@@ -511,22 +539,20 @@ export default {
 /* Responsive Design */
 @media (max-width: 768px) {
   .email-row {
-    padding: 10px 12px;
+    padding: 8px 12px;
     gap: 8px;
   }
 
   .from {
-    width: 120px;
     font-size: 13px;
   }
 
-  .subject {
-    font-size: 13px;
+  .subject-text {
+    font-size: 12px;
   }
 
   .date {
     font-size: 11px;
-    min-width: 50px;
   }
 
   .checkbox {
@@ -536,42 +562,24 @@ export default {
 
 @media (max-width: 480px) {
   .email-row {
-    flex-wrap: wrap;
-    padding: 10px;
-    gap: 4px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .star {
-    order: 1;
     font-size: 14px;
   }
 
   .from {
-    order: 2;
-    width: auto;
-    flex: 1;
     font-size: 13px;
-    font-weight: 600;
+  }
+
+  .subject-text {
+    font-size: 12px;
   }
 
   .date {
-    order: 3;
-    font-size: 11px;
-    min-width: auto;
-  }
-
-  .subject {
-    order: 4;
-    width: 100%;
-    flex-basis: 100%;
-    font-size: 12px;
-    color: var(--text-muted, #8d99a6);
-    padding-left: 22px;
-    margin-top: 2px;
-  }
-
-  .email-row.unread .subject {
-    color: var(--text-color, #333);
+    font-size: 10px;
   }
 
   .checkbox {

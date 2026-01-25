@@ -95,6 +95,7 @@
           @forward="forwardEmail"
           @delete="deleteEmail"
           @flag-changed="onFlagChanged"
+          @mark-unread="onMarkUnread"
         />
 
         <EmailComposer
@@ -395,6 +396,16 @@ export default {
         const listEmail = this.$refs.emailList.emails.find((e) => e.uid === email.uid)
         if (listEmail) {
           listEmail.flagged = email.flagged
+        }
+      }
+    },
+
+    onMarkUnread(email) {
+      // Update in list to show as unread
+      if (this.$refs.emailList) {
+        const listEmail = this.$refs.emailList.emails.find((e) => e.uid === email.uid)
+        if (listEmail) {
+          listEmail.seen = false
         }
       }
     },

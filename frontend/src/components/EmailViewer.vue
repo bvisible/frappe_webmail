@@ -39,6 +39,9 @@
       <button @click="$emit('forward', email)" class="btn btn-sm">
         ↪️ Transferer
       </button>
+      <button @click="markAsUnread" class="btn btn-sm" title="Marquer comme non lu">
+        ✉️ Non lu
+      </button>
       <button @click="toggleStar" class="btn btn-sm">
         {{ email.flagged ? '★' : '☆' }}
       </button>
@@ -96,7 +99,7 @@ export default {
     folder: { type: String, default: 'INBOX' }
   },
 
-  emits: ['reply', 'forward', 'delete', 'flag-changed'],
+  emits: ['reply', 'forward', 'delete', 'flag-changed', 'mark-unread'],
 
   data() {
     return {
@@ -294,6 +297,26 @@ export default {
 
         this.email.flagged = !this.email.flagged
         this.$emit('flag-changed', this.email)
+      } catch (error) {
+        frappe.toast({ message: 'Erreur', indicator: 'red' })
+      }
+    },
+
+    async markAsUnread() {
+      try {
+        await frappe.call({
+          method: 'frappe_webmail.api.set_flags',
+          args: {
+            account_name: this.account,
+            uids: JSON.stringify([this.email.uid]),
+            folder: this.folder,
+            remove_flags: JSON.stringify(['\\Seen'])
+          }
+        })
+
+        this.email.seen = false
+        this.$emit('mark-unread', this.email)
+        frappe.toast({ message: 'Marque comme non lu', indicator: 'green' })
       } catch (error) {
         frappe.toast({ message: 'Erreur', indicator: 'red' })
       }
