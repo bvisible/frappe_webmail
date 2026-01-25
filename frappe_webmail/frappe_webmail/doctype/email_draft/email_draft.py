@@ -25,6 +25,9 @@ class EmailDraft(Document):
 
 	def has_permission(self, permtype="read"):
 		"""User can only access their own drafts"""
+		# For new documents, user field is not yet set
+		if not self.user:
+			return True
 		return self.user == frappe.session.user
 
 
