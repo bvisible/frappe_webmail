@@ -240,7 +240,16 @@ Content-Type: text/html
 		# Simulated bodystructure with attachment
 		bodystructure = (
 			(b"TEXT", b"PLAIN", (b"CHARSET", b"UTF-8"), None, None, b"7BIT", 100, 10),
-			(b"APPLICATION", b"PDF", None, None, None, b"BASE64", 5000, (b"attachment", (b"filename", b"doc.pdf"))),
+			(
+				b"APPLICATION",
+				b"PDF",
+				None,
+				None,
+				None,
+				b"BASE64",
+				5000,
+				(b"attachment", (b"filename", b"doc.pdf")),
+			),
 			b"MIXED",
 		)
 
@@ -333,7 +342,7 @@ class TestIMAPClient(unittest.TestCase):
 		mock_account.get_password.return_value = "password"
 
 		with WebmailIMAPClient(mock_account) as client:
-			result = client.select_folder("INBOX")
+			client.select_folder("INBOX")
 
 		mock_client.select_folder.assert_called_with("INBOX", readonly=False)
 

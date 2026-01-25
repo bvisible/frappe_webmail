@@ -4,4 +4,4 @@
 from frappe_webmail.utils.email_parser import EmailParser
 from frappe_webmail.utils.imap_client import WebmailIMAPClient
 
-__all__ = ["WebmailIMAPClient", "EmailParser"]
+__all__ = ["EmailParser", "WebmailIMAPClient"]

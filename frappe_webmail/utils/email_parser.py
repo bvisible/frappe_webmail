@@ -12,6 +12,7 @@ import base64
 import email
 import re
 from email.header import decode_header
+from typing import ClassVar
 
 import frappe
 from frappe import _
@@ -31,7 +32,7 @@ class EmailParser:
 	"""
 
 	# Safe HTML tags for email display
-	SAFE_TAGS = [
+	SAFE_TAGS: ClassVar[list[str]] = [
 		"a",
 		"abbr",
 		"acronym",
@@ -66,7 +67,7 @@ class EmailParser:
 		"ul",
 	]
 
-	SAFE_ATTRIBUTES = {
+	SAFE_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
 		"*": ["class", "style"],
 		"a": ["href", "title", "target", "rel"],
 		"img": ["src", "alt", "width", "height"],
@@ -146,8 +147,7 @@ class EmailParser:
 		self._attachments.append(
 			{
 				"id": content_id or str(len(self._attachments)),
-				"filename": self.decode_header(part.get_filename())
-				or f"attachment_{len(self._attachments)}",
+				"filename": self.decode_header(part.get_filename()) or f"attachment_{len(self._attachments)}",
 				"content_type": part.get_content_type(),
 				"size": len(payload) if payload else 0,
 				"data": payload,
@@ -218,9 +218,7 @@ class EmailParser:
 
 		# Sanitize with bleach if available
 		if bleach:
-			content = bleach.clean(
-				content, tags=self.SAFE_TAGS, attributes=self.SAFE_ATTRIBUTES, strip=True
-			)
+			content = bleach.clean(content, tags=self.SAFE_TAGS, attributes=self.SAFE_ATTRIBUTES, strip=True)
 		else:
 			# Basic sanitization without bleach
 			content = self._basic_sanitize(content)
@@ -326,11 +324,7 @@ class EmailParser:
 				if len(part) >= 2:
 					for item in part:
 						if isinstance(item, tuple) and len(item) >= 2:
-							if (
-								item[0]
-								and isinstance(item[0], bytes)
-								and item[0].lower() == b"attachment"
-							):
+							if item[0] and isinstance(item[0], bytes) and item[0].lower() == b"attachment":
 								return True
 						if isinstance(item, tuple):
 							if check_part(item):

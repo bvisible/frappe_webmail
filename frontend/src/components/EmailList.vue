@@ -1,589 +1,592 @@
 <template>
-  <div class="email-list-container">
-    <!-- Toolbar -->
-    <div class="list-toolbar">
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Rechercher..."
-        @keyup.enter="search"
-      />
-      <button @click="refresh" :disabled="loading" class="refresh-btn" title="Actualiser">
-        <span :class="{ rotating: loading }">&#x21bb;</span>
-      </button>
-      <div class="polling-status" v-if="pollingEnabled" title="Actualisation automatique active">
-        <span class="polling-indicator"></span>
-      </div>
-    </div>
+	<div class="email-list-container">
+		<!-- Toolbar -->
+		<div class="list-toolbar">
+			<input
+				v-model="searchQuery"
+				type="text"
+				placeholder="Rechercher..."
+				@keyup.enter="search"
+			/>
+			<button @click="refresh" :disabled="loading" class="refresh-btn" title="Actualiser">
+				<span :class="{ rotating: loading }">&#x21bb;</span>
+			</button>
+			<div
+				class="polling-status"
+				v-if="pollingEnabled"
+				title="Actualisation automatique active"
+			>
+				<span class="polling-indicator"></span>
+			</div>
+		</div>
 
-    <!-- List -->
-    <RecycleScroller
-      v-if="emails.length"
-      class="email-list"
-      :items="emails"
-      :item-size="56"
-      key-field="uid"
-      v-slot="{ item }"
-      @scroll-end="loadMore"
-    >
-      <div
-        class="email-row"
-        :class="{
-          unread: !item.seen,
-          selected: item.uid === selectedUid,
-          flagged: item.flagged
-        }"
-        @click="$emit('select', item)"
-      >
-        <div class="checkbox" @click.stop>
-          <input type="checkbox" v-model="item.checked" />
-        </div>
-        <div class="star" @click.stop="toggleStar(item)">
-          {{ item.flagged ? '★' : '☆' }}
-        </div>
-        <div class="email-content">
-          <div class="email-top-line">
-            <span class="from">{{ item.from_name || item.from_email }}</span>
-            <span class="date">{{ formatDate(item.date) }}</span>
-          </div>
-          <div class="email-bottom-line">
-            <span class="subject-text">{{ item.subject || '(Sans objet)' }}</span>
-            <span v-if="item.has_attachments" class="attachment-icon">📎</span>
-          </div>
-        </div>
-      </div>
-    </RecycleScroller>
+		<!-- List -->
+		<RecycleScroller
+			v-if="emails.length"
+			class="email-list"
+			:items="emails"
+			:item-size="56"
+			key-field="uid"
+			v-slot="{ item }"
+			@scroll-end="loadMore"
+		>
+			<div
+				class="email-row"
+				:class="{
+					unread: !item.seen,
+					selected: item.uid === selectedUid,
+					flagged: item.flagged,
+				}"
+				@click="$emit('select', item)"
+			>
+				<div class="checkbox" @click.stop>
+					<input type="checkbox" v-model="item.checked" />
+				</div>
+				<div class="star" @click.stop="toggleStar(item)">
+					{{ item.flagged ? "★" : "☆" }}
+				</div>
+				<div class="email-content">
+					<div class="email-top-line">
+						<span class="from">{{ item.from_name || item.from_email }}</span>
+						<span class="date">{{ formatDate(item.date) }}</span>
+					</div>
+					<div class="email-bottom-line">
+						<span class="subject-text">{{ item.subject || "(Sans objet)" }}</span>
+						<span v-if="item.has_attachments" class="attachment-icon">📎</span>
+					</div>
+				</div>
+			</div>
+		</RecycleScroller>
 
-    <!-- Empty state -->
-    <div v-else-if="!loading" class="empty-state">
-      <p>Aucun email dans ce dossier</p>
-    </div>
+		<!-- Empty state -->
+		<div v-else-if="!loading" class="empty-state">
+			<p>Aucun email dans ce dossier</p>
+		</div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="loading-indicator">
-      Chargement...
-    </div>
-  </div>
+		<!-- Loading -->
+		<div v-if="loading" class="loading-indicator">Chargement...</div>
+	</div>
 </template>
 
 <script>
-import { RecycleScroller } from 'vue-virtual-scroller'
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import { RecycleScroller } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
 export default {
-  name: 'EmailList',
-  components: { RecycleScroller },
+	name: "EmailList",
+	components: { RecycleScroller },
 
-  props: {
-    account: { type: String, required: true },
-    folder: { type: String, default: 'INBOX' },
-    selectedUid: { type: Number, default: null },
-    pollingEnabled: { type: Boolean, default: true },
-    pollingInterval: { type: Number, default: 60000 } // 60 seconds
-  },
+	props: {
+		account: { type: String, required: true },
+		folder: { type: String, default: "INBOX" },
+		selectedUid: { type: Number, default: null },
+		pollingEnabled: { type: Boolean, default: true },
+		pollingInterval: { type: Number, default: 60000 }, // 60 seconds
+	},
 
-  emits: ['select', 'update:total', 'new-emails'],
+	emits: ["select", "update:total", "new-emails"],
 
-  data() {
-    return {
-      emails: [],
-      total: 0,
-      loading: false,
-      hasMore: true,
-      searchQuery: '',
-      pollingTimer: null,
-      lastCheckTime: null,
-      newEmailCount: 0
-    }
-  },
+	data() {
+		return {
+			emails: [],
+			total: 0,
+			loading: false,
+			hasMore: true,
+			searchQuery: "",
+			pollingTimer: null,
+			lastCheckTime: null,
+			newEmailCount: 0,
+		};
+	},
 
-  watch: {
-    account: 'onAccountOrFolderChange',
-    folder: 'onAccountOrFolderChange',
-    pollingEnabled(enabled) {
-      if (enabled) {
-        this.startPolling()
-      } else {
-        this.stopPolling()
-      }
-    }
-  },
+	watch: {
+		account: "onAccountOrFolderChange",
+		folder: "onAccountOrFolderChange",
+		pollingEnabled(enabled) {
+			if (enabled) {
+				this.startPolling();
+			} else {
+				this.stopPolling();
+			}
+		},
+	},
 
-  mounted() {
-    this.loadEmails()
-    if (this.pollingEnabled) {
-      this.startPolling()
-    }
-  },
+	mounted() {
+		this.loadEmails();
+		if (this.pollingEnabled) {
+			this.startPolling();
+		}
+	},
 
-  beforeUnmount() {
-    this.stopPolling()
-  },
+	beforeUnmount() {
+		this.stopPolling();
+	},
 
-  methods: {
-    async loadEmails(append = false) {
-      if (this.loading) return
-      if (append && !this.hasMore) return
+	methods: {
+		async loadEmails(append = false) {
+			if (this.loading) return;
+			if (append && !this.hasMore) return;
 
-      this.loading = true
+			this.loading = true;
 
-      try {
-        const response = await frappe.call({
-          method: 'frappe_webmail.api.get_emails',
-          args: {
-            account_name: this.account,
-            folder: this.folder,
-            limit: 50,
-            offset: append ? this.emails.length : 0,
-            search: this.searchQuery || null
-          }
-        })
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_emails",
+					args: {
+						account_name: this.account,
+						folder: this.folder,
+						limit: 50,
+						offset: append ? this.emails.length : 0,
+						search: this.searchQuery || null,
+					},
+				});
 
-        const data = response.message
+				const data = response.message;
 
-        if (append) {
-          this.emails.push(...data.emails)
-        } else {
-          this.emails = data.emails
-        }
+				if (append) {
+					this.emails.push(...data.emails);
+				} else {
+					this.emails = data.emails;
+				}
 
-        this.total = data.total
-        this.hasMore = data.has_more
-        this.$emit('update:total', this.total)
-      } catch (error) {
-        frappe.toast({ message: 'Erreur de chargement', indicator: 'red' })
-      } finally {
-        this.loading = false
-      }
-    },
+				this.total = data.total;
+				this.hasMore = data.has_more;
+				this.$emit("update:total", this.total);
+			} catch (error) {
+				frappe.toast({ message: "Erreur de chargement", indicator: "red" });
+			} finally {
+				this.loading = false;
+			}
+		},
 
-    refresh() {
-      this.emails = []
-      this.hasMore = true
-      this.loadEmails()
-    },
+		refresh() {
+			this.emails = [];
+			this.hasMore = true;
+			this.loadEmails();
+		},
 
-    search() {
-      this.refresh()
-    },
+		search() {
+			this.refresh();
+		},
 
-    loadMore() {
-      if (this.hasMore && !this.loading) {
-        this.loadEmails(true)
-      }
-    },
+		loadMore() {
+			if (this.hasMore && !this.loading) {
+				this.loadEmails(true);
+			}
+		},
 
-    async toggleStar(email) {
-      const action = email.flagged ? 'remove_flags' : 'add_flags'
+		async toggleStar(email) {
+			const action = email.flagged ? "remove_flags" : "add_flags";
 
-      try {
-        await frappe.call({
-          method: 'frappe_webmail.api.set_flags',
-          args: {
-            account_name: this.account,
-            uids: JSON.stringify([email.uid]),
-            folder: this.folder,
-            [action]: JSON.stringify(['\\Flagged'])
-          }
-        })
+			try {
+				await frappe.call({
+					method: "frappe_webmail.api.set_flags",
+					args: {
+						account_name: this.account,
+						uids: JSON.stringify([email.uid]),
+						folder: this.folder,
+						[action]: JSON.stringify(["\\Flagged"]),
+					},
+				});
 
-        email.flagged = !email.flagged
-      } catch (error) {
-        frappe.toast({ message: 'Erreur', indicator: 'red' })
-      }
-    },
+				email.flagged = !email.flagged;
+			} catch (error) {
+				frappe.toast({ message: "Erreur", indicator: "red" });
+			}
+		},
 
-    formatDate(dateStr) {
-      if (!dateStr) return ''
-      const date = new Date(dateStr)
-      const now = new Date()
-      const isToday = date.toDateString() === now.toDateString()
+		formatDate(dateStr) {
+			if (!dateStr) return "";
+			const date = new Date(dateStr);
+			const now = new Date();
+			const isToday = date.toDateString() === now.toDateString();
 
-      if (isToday) {
-        return date.toLocaleTimeString('fr-FR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      }
+			if (isToday) {
+				return date.toLocaleTimeString("fr-FR", {
+					hour: "2-digit",
+					minute: "2-digit",
+				});
+			}
 
-      const isThisYear = date.getFullYear() === now.getFullYear()
-      if (isThisYear) {
-        return date.toLocaleDateString('fr-FR', {
-          day: 'numeric',
-          month: 'short'
-        })
-      }
+			const isThisYear = date.getFullYear() === now.getFullYear();
+			if (isThisYear) {
+				return date.toLocaleDateString("fr-FR", {
+					day: "numeric",
+					month: "short",
+				});
+			}
 
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: '2-digit'
-      })
-    },
+			return date.toLocaleDateString("fr-FR", {
+				day: "numeric",
+				month: "short",
+				year: "2-digit",
+			});
+		},
 
-    markAsRead(uid) {
-      const email = this.emails.find((e) => e.uid === uid)
-      if (email) email.seen = true
-    },
+		markAsRead(uid) {
+			const email = this.emails.find((e) => e.uid === uid);
+			if (email) email.seen = true;
+		},
 
-    onAccountOrFolderChange() {
-      this.stopPolling()
-      this.refresh()
-      if (this.pollingEnabled) {
-        this.startPolling()
-      }
-    },
+		onAccountOrFolderChange() {
+			this.stopPolling();
+			this.refresh();
+			if (this.pollingEnabled) {
+				this.startPolling();
+			}
+		},
 
-    startPolling() {
-      this.stopPolling() // Clear any existing timer
-      this.pollingTimer = setInterval(() => {
-        this.checkForNewEmails()
-      }, this.pollingInterval)
-    },
+		startPolling() {
+			this.stopPolling(); // Clear any existing timer
+			this.pollingTimer = setInterval(() => {
+				this.checkForNewEmails();
+			}, this.pollingInterval);
+		},
 
-    stopPolling() {
-      if (this.pollingTimer) {
-        clearInterval(this.pollingTimer)
-        this.pollingTimer = null
-      }
-    },
+		stopPolling() {
+			if (this.pollingTimer) {
+				clearInterval(this.pollingTimer);
+				this.pollingTimer = null;
+			}
+		},
 
-    async checkForNewEmails() {
-      // Don't check while loading or if no emails loaded yet
-      if (this.loading || this.emails.length === 0) return
+		async checkForNewEmails() {
+			// Don't check while loading or if no emails loaded yet
+			if (this.loading || this.emails.length === 0) return;
 
-      try {
-        const response = await frappe.call({
-          method: 'frappe_webmail.api.get_emails',
-          args: {
-            account_name: this.account,
-            folder: this.folder,
-            limit: 10,
-            offset: 0,
-            search: null
-          }
-        })
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_emails",
+					args: {
+						account_name: this.account,
+						folder: this.folder,
+						limit: 10,
+						offset: 0,
+						search: null,
+					},
+				});
 
-        const data = response.message
-        const newTotal = data.total
+				const data = response.message;
+				const newTotal = data.total;
 
-        // Check if there are new emails
-        if (newTotal > this.total) {
-          const newCount = newTotal - this.total
-          this.newEmailCount = newCount
+				// Check if there are new emails
+				if (newTotal > this.total) {
+					const newCount = newTotal - this.total;
+					this.newEmailCount = newCount;
 
-          // Find truly new emails (UIDs we don't have)
-          const existingUids = new Set(this.emails.map(e => e.uid))
-          const newEmails = data.emails.filter(e => !existingUids.has(e.uid))
+					// Find truly new emails (UIDs we don't have)
+					const existingUids = new Set(this.emails.map((e) => e.uid));
+					const newEmails = data.emails.filter((e) => !existingUids.has(e.uid));
 
-          if (newEmails.length > 0) {
-            // Prepend new emails to the list
-            this.emails.unshift(...newEmails)
-            this.total = newTotal
+					if (newEmails.length > 0) {
+						// Prepend new emails to the list
+						this.emails.unshift(...newEmails);
+						this.total = newTotal;
 
-            this.$emit('update:total', this.total)
-            this.$emit('new-emails', {
-              count: newEmails.length,
-              emails: newEmails
-            })
+						this.$emit("update:total", this.total);
+						this.$emit("new-emails", {
+							count: newEmails.length,
+							emails: newEmails,
+						});
 
-            // Show notification
-            this.showNewEmailNotification(newEmails)
-          }
-        } else if (newTotal < this.total) {
-          // Emails were deleted, refresh the list
-          this.total = newTotal
-          this.$emit('update:total', this.total)
-        }
-      } catch (error) {
-        console.error('Polling error:', error)
-      }
-    },
+						// Show notification
+						this.showNewEmailNotification(newEmails);
+					}
+				} else if (newTotal < this.total) {
+					// Emails were deleted, refresh the list
+					this.total = newTotal;
+					this.$emit("update:total", this.total);
+				}
+			} catch (error) {
+				console.error("Polling error:", error);
+			}
+		},
 
-    showNewEmailNotification(newEmails) {
-      if (newEmails.length === 1) {
-        const email = newEmails[0]
-        frappe.toast({
-          message: `Nouveau message de ${email.from_name || email.from_email}`,
-          indicator: 'blue'
-        })
-      } else {
-        frappe.toast({
-          message: `${newEmails.length} nouveaux messages`,
-          indicator: 'blue'
-        })
-      }
+		showNewEmailNotification(newEmails) {
+			if (newEmails.length === 1) {
+				const email = newEmails[0];
+				frappe.toast({
+					message: `Nouveau message de ${email.from_name || email.from_email}`,
+					indicator: "blue",
+				});
+			} else {
+				frappe.toast({
+					message: `${newEmails.length} nouveaux messages`,
+					indicator: "blue",
+				});
+			}
 
-      // Play notification sound if available
-      this.playNotificationSound()
-    },
+			// Play notification sound if available
+			this.playNotificationSound();
+		},
 
-    playNotificationSound() {
-      try {
-        // Create a simple notification sound using Web Audio API
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-        const oscillator = audioContext.createOscillator()
-        const gainNode = audioContext.createGain()
+		playNotificationSound() {
+			try {
+				// Create a simple notification sound using Web Audio API
+				const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+				const oscillator = audioContext.createOscillator();
+				const gainNode = audioContext.createGain();
 
-        oscillator.connect(gainNode)
-        gainNode.connect(audioContext.destination)
+				oscillator.connect(gainNode);
+				gainNode.connect(audioContext.destination);
 
-        oscillator.frequency.value = 800
-        oscillator.type = 'sine'
-        gainNode.gain.value = 0.1
+				oscillator.frequency.value = 800;
+				oscillator.type = "sine";
+				gainNode.gain.value = 0.1;
 
-        oscillator.start()
-        oscillator.stop(audioContext.currentTime + 0.1)
-      } catch (e) {
-        // Audio not supported or blocked
-      }
-    }
-  }
-}
+				oscillator.start();
+				oscillator.stop(audioContext.currentTime + 0.1);
+			} catch (e) {
+				// Audio not supported or blocked
+			}
+		},
+	},
+};
 </script>
 
 <style scoped>
 .email-list-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: white;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: white;
 }
 
 .list-toolbar {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border-color, #e5e5e5);
+	display: flex;
+	gap: 8px;
+	padding: 8px;
+	border-bottom: 1px solid var(--border-color, #e5e5e5);
 }
 
 .list-toolbar input {
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 4px;
-  outline: none;
+	flex: 1;
+	padding: 6px 10px;
+	border: 1px solid var(--border-color, #e5e5e5);
+	border-radius: 4px;
+	outline: none;
 }
 
 .list-toolbar input:focus {
-  border-color: var(--primary-color, #2490ef);
+	border-color: var(--primary-color, #2490ef);
 }
 
 .refresh-btn {
-  padding: 6px 10px;
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-  font-size: 16px;
+	padding: 6px 10px;
+	border: 1px solid var(--border-color, #e5e5e5);
+	border-radius: 4px;
+	background: white;
+	cursor: pointer;
+	font-size: 16px;
 }
 
 .refresh-btn:hover {
-  background: var(--bg-light-gray, #f5f5f5);
+	background: var(--bg-light-gray, #f5f5f5);
 }
 
 .refresh-btn .rotating {
-  display: inline-block;
-  animation: rotate 1s linear infinite;
+	display: inline-block;
+	animation: rotate 1s linear infinite;
 }
 
 @keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .email-list {
-  flex: 1;
-  overflow-y: auto;
+	flex: 1;
+	overflow-y: auto;
 }
 
 .email-row {
-  display: flex;
-  align-items: flex-start;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color, #e5e5e5);
-  cursor: pointer;
-  gap: 10px;
+	display: flex;
+	align-items: flex-start;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--border-color, #e5e5e5);
+	cursor: pointer;
+	gap: 10px;
 }
 
 .email-row:hover {
-  background: var(--bg-light-gray, #f5f5f5);
+	background: var(--bg-light-gray, #f5f5f5);
 }
 
 .email-row.unread {
-  background: #f0f7ff;
+	background: #f0f7ff;
 }
 
 .email-row.unread .from {
-  font-weight: 600;
+	font-weight: 600;
 }
 
 .email-row.unread .subject-text {
-  font-weight: 500;
-  color: var(--text-color, #333);
+	font-weight: 500;
+	color: var(--text-color, #333);
 }
 
 .email-row.selected {
-  background: var(--primary-light, #e3f2fd);
+	background: var(--primary-light, #e3f2fd);
 }
 
 .email-row.flagged .star {
-  color: #f5a623;
+	color: #f5a623;
 }
 
 .checkbox {
-  flex-shrink: 0;
-  display: none;
-  padding-top: 2px;
+	flex-shrink: 0;
+	display: none;
+	padding-top: 2px;
 }
 
 .star {
-  flex-shrink: 0;
-  cursor: pointer;
-  font-size: 16px;
-  width: 20px;
-  color: #999;
-  padding-top: 2px;
+	flex-shrink: 0;
+	cursor: pointer;
+	font-size: 16px;
+	width: 20px;
+	color: #999;
+	padding-top: 2px;
 }
 
 .star:hover {
-  color: #f5a623;
+	color: #f5a623;
 }
 
 .email-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 }
 
 .email-top-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
 }
 
 .from {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 14px;
 }
 
 .date {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-muted, #8d99a6);
-  white-space: nowrap;
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-muted, #8d99a6);
+	white-space: nowrap;
 }
 
 .email-bottom-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .subject-text {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 13px;
-  color: var(--text-muted, #8d99a6);
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 13px;
+	color: var(--text-muted, #8d99a6);
 }
 
 .attachment-icon {
-  flex-shrink: 0;
-  font-size: 12px;
+	flex-shrink: 0;
+	font-size: 12px;
 }
 
 .empty-state,
 .loading-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  color: var(--text-muted, #8d99a6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px;
+	color: var(--text-muted, #8d99a6);
 }
 
 .polling-status {
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
 }
 
 .polling-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #28a745;
-  animation: pulse 2s infinite;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #28a745;
+	animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .email-row {
-    padding: 8px 12px;
-    gap: 8px;
-  }
+	.email-row {
+		padding: 8px 12px;
+		gap: 8px;
+	}
 
-  .from {
-    font-size: 13px;
-  }
+	.from {
+		font-size: 13px;
+	}
 
-  .subject-text {
-    font-size: 12px;
-  }
+	.subject-text {
+		font-size: 12px;
+	}
 
-  .date {
-    font-size: 11px;
-  }
+	.date {
+		font-size: 11px;
+	}
 
-  .checkbox {
-    display: none;
-  }
+	.checkbox {
+		display: none;
+	}
 }
 
 @media (max-width: 480px) {
-  .email-row {
-    padding: 8px 10px;
-    gap: 6px;
-  }
+	.email-row {
+		padding: 8px 10px;
+		gap: 6px;
+	}
 
-  .star {
-    font-size: 14px;
-  }
+	.star {
+		font-size: 14px;
+	}
 
-  .from {
-    font-size: 13px;
-  }
+	.from {
+		font-size: 13px;
+	}
 
-  .subject-text {
-    font-size: 12px;
-  }
+	.subject-text {
+		font-size: 12px;
+	}
 
-  .date {
-    font-size: 10px;
-  }
+	.date {
+		font-size: 10px;
+	}
 
-  .checkbox {
-    display: none;
-  }
+	.checkbox {
+		display: none;
+	}
 }
 </style>

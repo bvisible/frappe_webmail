@@ -185,9 +185,7 @@ class TestWebmailAccount(FrappeTestCase):
 		self.assertEqual(decrypted, "secret_password")
 
 		# Raw value should be encrypted (not equal to plaintext)
-		raw_value = frappe.db.get_value(
-			"Webmail Account", account.name, "imap_password", as_dict=False
-		)
+		raw_value = frappe.db.get_value("Webmail Account", account.name, "imap_password", as_dict=False)
 		self.assertNotEqual(raw_value, "secret_password")
 
 		# Cleanup

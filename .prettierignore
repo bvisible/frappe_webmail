@@ -1,0 +1,4 @@
+# Generated files
+**/*.bundle.iife.js
+**/dist/**
+**/node_modules/**

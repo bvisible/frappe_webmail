@@ -24,12 +24,7 @@ class EmailFilter(Document):
 
 	def validate_conditions(self):
 		"""Ensure at least one condition is set"""
-		has_condition = (
-			self.from_contains
-			or self.to_contains
-			or self.subject_contains
-			or self.has_attachment
-		)
+		has_condition = self.from_contains or self.to_contains or self.subject_contains or self.has_attachment
 		if not has_condition:
 			frappe.throw(_("At least one filter condition must be specified"))
 
@@ -44,7 +39,9 @@ class EmailFilter(Document):
 
 		if self.from_contains:
 			from_match = self.from_contains.lower() in (email.get("from_email", "") or "").lower()
-			from_match = from_match or self.from_contains.lower() in (email.get("from_name", "") or "").lower()
+			from_match = (
+				from_match or self.from_contains.lower() in (email.get("from_name", "") or "").lower()
+			)
 			conditions_met.append(from_match)
 
 		if self.to_contains:

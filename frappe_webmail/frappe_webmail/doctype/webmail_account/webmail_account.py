@@ -4,8 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime, get_datetime
-
+from frappe.utils import get_datetime, now_datetime
 
 # OAuth2 provider settings
 OAUTH_PROVIDERS = {
@@ -129,9 +128,7 @@ class WebmailAccount(Document):
 		# Get OAuth credentials from site config
 		oauth_config = get_oauth_config(self.oauth_provider)
 		if not oauth_config:
-			frappe.throw(
-				_("OAuth credentials not configured for {0}").format(self.oauth_provider)
-			)
+			frappe.throw(_("OAuth credentials not configured for {0}").format(self.oauth_provider))
 
 		try:
 			response = requests.post(
@@ -146,9 +143,7 @@ class WebmailAccount(Document):
 			)
 
 			if response.status_code != 200:
-				frappe.log_error(
-					f"OAuth refresh failed: {response.text}", "Webmail OAuth Error"
-				)
+				frappe.log_error(f"OAuth refresh failed: {response.text}", "Webmail OAuth Error")
 				frappe.throw(_("Failed to refresh OAuth token"))
 
 			data = response.json()
@@ -160,9 +155,7 @@ class WebmailAccount(Document):
 
 			# Calculate expiry
 			expires_in = data.get("expires_in", 3600)
-			self.oauth_token_expiry = frappe.utils.add_to_date(
-				now_datetime(), seconds=expires_in
-			)
+			self.oauth_token_expiry = frappe.utils.add_to_date(now_datetime(), seconds=expires_in)
 
 			self.save(ignore_permissions=True)
 			frappe.db.commit()
@@ -170,8 +163,8 @@ class WebmailAccount(Document):
 			return data["access_token"]
 
 		except requests.RequestException as e:
-			frappe.log_error(f"OAuth refresh error: {str(e)}", "Webmail OAuth Error")
-			frappe.throw(_("Failed to refresh OAuth token: {0}").format(str(e)))
+			frappe.log_error(f"OAuth refresh error: {e!s}", "Webmail OAuth Error")
+			frappe.throw(_("Failed to refresh OAuth token: {0}").format(e))
 
 
 def get_oauth_config(provider):

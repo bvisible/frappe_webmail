@@ -188,9 +188,7 @@ def oauth_callback(code=None, state=None, error=None):
 			account.oauth_refresh_token = data["refresh_token"]
 
 		expires_in = data.get("expires_in", 3600)
-		account.oauth_token_expiry = frappe.utils.add_to_date(
-			frappe.utils.now_datetime(), seconds=expires_in
-		)
+		account.oauth_token_expiry = frappe.utils.add_to_date(frappe.utils.now_datetime(), seconds=expires_in)
 		account.oauth_status = "Connected"
 
 		account.save(ignore_permissions=True)
@@ -201,7 +199,7 @@ def oauth_callback(code=None, state=None, error=None):
 		frappe.local.response["location"] = f"/app/webmail-account/{account_name}?oauth=success"
 
 	except requests.RequestException as e:
-		frappe.log_error(f"OAuth error: {str(e)}", "Webmail OAuth")
+		frappe.log_error(f"OAuth error: {e!s}", "Webmail OAuth")
 		frappe.throw(_("OAuth authentication failed"))
 
 
@@ -415,16 +413,24 @@ def _format_connection_error(protocol, exception, account):
 	if "connection refused" in error_lower:
 		host = account.imap_host if protocol == "IMAP" else account.smtp_host
 		port = account.imap_port if protocol == "IMAP" else account.smtp_port
-		return _("{0}: Connection refused to {1}:{2}. Check that the server address and port are correct.").format(
-			protocol, host, port
-		)
+		return _(
+			"{0}: Connection refused to {1}:{2}. Check that the server address and port are correct."
+		).format(protocol, host, port)
 
 	if "timed out" in error_lower or "timeout" in error_lower:
-		return _("{0}: Connection timeout. The server is not responding. Check your network and server settings.").format(protocol)
+		return _(
+			"{0}: Connection timeout. The server is not responding. Check your network and server settings."
+		).format(protocol)
 
-	if "hostname" in error_lower or "getaddrinfo" in error_lower or "name or service not known" in error_lower:
+	if (
+		"hostname" in error_lower
+		or "getaddrinfo" in error_lower
+		or "name or service not known" in error_lower
+	):
 		host = account.imap_host if protocol == "IMAP" else account.smtp_host
-		return _("{0}: Cannot resolve server address '{1}'. Check the server hostname.").format(protocol, host)
+		return _("{0}: Cannot resolve server address '{1}'. Check the server hostname.").format(
+			protocol, host
+		)
 
 	if "authentication" in error_lower or "login" in error_lower or "authenticationfailed" in error_lower:
 		return _("{0}: Authentication failed. Check your email address and password.").format(protocol)
@@ -432,7 +438,9 @@ def _format_connection_error(protocol, exception, account):
 	if "ssl" in error_lower or "certificate" in error_lower:
 		ssl_enabled = account.imap_ssl if protocol == "IMAP" else account.smtp_ssl
 		if ssl_enabled:
-			return _("{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration.").format(protocol)
+			return _("{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration.").format(
+				protocol
+			)
 		else:
 			return _("{0}: SSL/TLS error. This server may require SSL. Try enabling SSL.").format(protocol)
 
@@ -443,7 +451,9 @@ def _format_connection_error(protocol, exception, account):
 		return _("{0}: Connection was reset by the server. Check SSL/TLS settings.").format(protocol)
 
 	if "eof" in error_lower or "unexpected eof" in error_lower:
-		return _("{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled.").format(protocol)
+		return _(
+			"{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled."
+		).format(protocol)
 
 	# Default: show the original error
 	return _("{0}: {1}").format(protocol, error_str)
@@ -462,9 +472,7 @@ def get_folders(account_name):
 
 	account = get_account(account_name)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		folders = client.list_folders()
 
@@ -497,9 +505,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 	limit = min(int(limit), 100)  # Max 100 per request
 	offset = int(offset)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -536,9 +542,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 					"subject": decode_mime_header(env.subject),
 					"from_email": format_address(env.from_[0]) if env.from_ else "",
 					"from_name": (
-						decode_mime_header(env.from_[0].name)
-						if env.from_ and env.from_[0].name
-						else ""
+						decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""
 					),
 					"to": format_address(env.to[0]) if env.to else "",
 					"date": env.date.isoformat() if env.date else None,
@@ -568,9 +572,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 	uid = int(uid)
 	mark_read = to_bool(mark_read, default=True)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -639,9 +641,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			"message_id": msg.get("Message-ID", ""),
 			"subject": decode_mime_header(env.subject),
 			"from_email": format_address(env.from_[0]) if env.from_ else "",
-			"from_name": (
-				decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""
-			),
+			"from_name": (decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""),
 			"to": ", ".join([format_address(a) for a in (env.to or [])]),
 			"cc": ", ".join([format_address(a) for a in (env.cc or [])]),
 			"reply_to": format_address(env.reply_to[0]) if env.reply_to else "",
@@ -724,11 +724,7 @@ def send_email(
 
 	# Build message
 	msg = MIMEMultipart("mixed")
-	msg["From"] = (
-		f'"{account.sender_name}" <{account.email}>'
-		if account.sender_name
-		else account.email
-	)
+	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
 	msg["To"] = to
 	msg["Subject"] = subject
 
@@ -792,13 +788,13 @@ def send_email(
 			_copy_to_sent_folder(account, msg)
 		except Exception as e:
 			# Log but don't fail - email was already sent
-			frappe.log_error("Copy to Sent folder", f"Failed to copy to Sent folder: {str(e)}")
+			frappe.log_error("Copy to Sent folder", f"Failed to copy to Sent folder: {e!s}")
 
 		return {"success": True, "message": _("Email sent successfully")}
 
 	except Exception as e:
-		frappe.log_error("Email send error", str(e))
-		frappe.throw(_("Failed to send email: {0}").format(str(e)))
+		frappe.log_error("Email send error", f"{e!s}")
+		frappe.throw(_("Failed to send email: {0}").format(e))
 
 
 def _copy_to_sent_folder(account, msg):
@@ -809,16 +805,14 @@ def _copy_to_sent_folder(account, msg):
 	# Common sent folder names
 	sent_folder_names = ["Sent", "Sent Items", "Sent Mail", "INBOX.Sent", "Envoyés"]
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 
 		# Find the Sent folder
 		folders = client.list_folders()
 		sent_folder = None
 
-		for flags, delimiter, name in folders:
+		for flags, _delimiter, name in folders:
 			# Check for \Sent flag first
 			if b"\\Sent" in flags:
 				sent_folder = name
@@ -830,6 +824,7 @@ def _copy_to_sent_folder(account, msg):
 		if sent_folder:
 			# Append message with \Seen flag
 			import datetime
+
 			client.append(sent_folder, msg.as_bytes(), flags=[b"\\Seen"], msg_time=datetime.datetime.now())
 
 
@@ -851,11 +846,7 @@ def save_draft_imap(
 
 	# Build draft message
 	msg = MIMEMultipart("mixed")
-	msg["From"] = (
-		f'"{account.sender_name}" <{account.email}>'
-		if account.sender_name
-		else account.email
-	)
+	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
 	if to:
 		msg["To"] = to
 	if cc:
@@ -870,6 +861,7 @@ def save_draft_imap(
 			text_content = bleach.clean(html_content, tags=[], strip=True)
 		else:
 			import re
+
 			text_content = re.sub(r"<[^>]+>", "", html_content)
 		body.attach(MIMEText(text_content, "plain", "utf-8"))
 		body.attach(MIMEText(html_content, "html", "utf-8"))
@@ -878,16 +870,14 @@ def save_draft_imap(
 	# Common drafts folder names
 	drafts_folder_names = ["Drafts", "Draft", "INBOX.Drafts", "Brouillons"]
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 
 		# Find the Drafts folder
 		folders = client.list_folders()
 		drafts_folder = None
 
-		for flags, delimiter, name in folders:
+		for flags, _delimiter, name in folders:
 			# Check for \Drafts flag first
 			if b"\\Drafts" in flags:
 				drafts_folder = name
@@ -911,7 +901,10 @@ def save_draft_imap(
 
 		# Append message to Drafts folder with \Draft flag
 		import datetime
-		client.append(drafts_folder, msg.as_bytes(), flags=[b"\\Draft", b"\\Seen"], msg_time=datetime.datetime.now())
+
+		client.append(
+			drafts_folder, msg.as_bytes(), flags=[b"\\Draft", b"\\Seen"], msg_time=datetime.datetime.now()
+		)
 
 	return {"success": True, "message": _("Draft saved")}
 
@@ -930,22 +923,16 @@ def set_flags(account_name, uids, folder, add_flags=None, remove_flags=None):
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
 		if add_flags:
-			flags = [
-				f.encode() if isinstance(f, str) else f for f in frappe.parse_json(add_flags)
-			]
+			flags = [f.encode() if isinstance(f, str) else f for f in frappe.parse_json(add_flags)]
 			client.add_flags(uids, flags)
 
 		if remove_flags:
-			flags = [
-				f.encode() if isinstance(f, str) else f for f in frappe.parse_json(remove_flags)
-			]
+			flags = [f.encode() if isinstance(f, str) else f for f in frappe.parse_json(remove_flags)]
 			client.remove_flags(uids, flags)
 
 		return {"success": True}
@@ -960,9 +947,7 @@ def move_emails(account_name, uids, from_folder, to_folder):
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(from_folder)
 
@@ -984,9 +969,7 @@ def delete_emails(account_name, uids, folder, permanent=False):
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 	permanent = to_bool(permanent)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -1001,11 +984,17 @@ def delete_emails(account_name, uids, folder, permanent=False):
 
 			# Common trash folder names
 			trash_names = [
-				"trash", "corbeille", "deleted", "deleted items",
-				"deleted messages", "bin", "papierkorb", "cestino"
+				"trash",
+				"corbeille",
+				"deleted",
+				"deleted items",
+				"deleted messages",
+				"bin",
+				"papierkorb",
+				"cestino",
 			]
 
-			for flags, _, name in folders:
+			for flags, _delimiter, name in folders:
 				# Normalize folder name to string
 				folder_name = name if isinstance(name, str) else name.decode()
 				folder_name_lower = folder_name.lower()
@@ -1017,11 +1006,21 @@ def delete_emails(account_name, uids, folder, permanent=False):
 				if has_trash_flag and not trash_folder:
 					trash_folder = folder_name
 				# Check folder name as fallback
-				if not trash_folder and (folder_name_lower in trash_names or folder_name_lower.endswith("/trash") or folder_name_lower.endswith("/corbeille")):
+				if not trash_folder and (
+					folder_name_lower in trash_names
+					or folder_name_lower.endswith("/trash")
+					or folder_name_lower.endswith("/corbeille")
+				):
 					trash_folder = folder_name
 
 			# Normalize current folder for comparison
-			current_folder = folder if isinstance(folder, str) else folder.decode() if isinstance(folder, bytes) else str(folder)
+			current_folder = (
+				folder
+				if isinstance(folder, str)
+				else folder.decode()
+				if isinstance(folder, bytes)
+				else str(folder)
+			)
 
 			if trash_folder and current_folder.lower() != trash_folder.lower():
 				# Move to trash (copy then delete from source)
@@ -1033,7 +1032,11 @@ def delete_emails(account_name, uids, folder, permanent=False):
 				# No trash folder found or already in trash - mark as deleted
 				client.add_flags(uids, [b"\\Deleted"])
 				client.expunge()
-				return {"success": True, "action": "deleted", "reason": "no_trash_folder" if not trash_folder else "already_in_trash"}
+				return {
+					"success": True,
+					"action": "deleted",
+					"reason": "no_trash_folder" if not trash_folder else "already_in_trash",
+				}
 
 
 @frappe.whitelist()
@@ -1045,9 +1048,7 @@ def get_attachment(account_name, uid, folder, attachment_id):
 	account = get_account(account_name)
 	uid = int(uid)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -1122,9 +1123,7 @@ def search_emails(
 	is_unread = to_bool(is_unread) if is_unread is not None else None
 	is_flagged = to_bool(is_flagged) if is_flagged is not None else None
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -1133,9 +1132,7 @@ def search_emails(
 
 		# Simple text search across common fields
 		if query:
-			criteria.append(
-				["OR", ["OR", ["SUBJECT", query], ["FROM", query]], ["TO", query]]
-			)
+			criteria.append(["OR", ["OR", ["SUBJECT", query], ["FROM", query]], ["TO", query]])
 
 		# Specific field searches
 		if from_filter:
@@ -1223,9 +1220,7 @@ def search_emails(
 					"subject": decode_mime_header(env.subject),
 					"from_email": format_address(env.from_[0]) if env.from_ else "",
 					"from_name": (
-						decode_mime_header(env.from_[0].name)
-						if env.from_ and env.from_[0].name
-						else ""
+						decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""
 					),
 					"to": format_address(env.to[0]) if env.to else "",
 					"date": env.date.isoformat() if env.date else None,
@@ -1388,9 +1383,7 @@ def get_signatures():
 @frappe.whitelist()
 def get_default_signature():
 	"""Get default signature content"""
-	sig = frappe.db.get_value(
-		"Email Signature", {"user": frappe.session.user, "is_default": 1}, "content"
-	)
+	sig = frappe.db.get_value("Email Signature", {"user": frappe.session.user, "is_default": 1}, "content")
 	return sig or ""
 
 
@@ -1450,7 +1443,8 @@ def search_contacts(query, limit=10):
 			contacts.append(
 				{
 					"name": contact.name,
-					"full_name": contact.full_name or f"{contact.first_name or ''} {contact.last_name or ''}".strip(),
+					"full_name": contact.full_name
+					or f"{contact.first_name or ''} {contact.last_name or ''}".strip(),
 					"email": contact.email_id or (emails[0].email_id if emails else ""),
 					"emails": [e.email_id for e in emails],
 					"image": contact.image,
@@ -1560,9 +1554,7 @@ def extract_contacts_from_email(account_name, uid, folder="INBOX"):
 	account = get_account(account_name)
 	uid = int(uid)
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -1863,9 +1855,7 @@ def apply_filters_to_email(account_name, uid, folder="INBOX"):
 		return {"success": True, "applied": []}
 
 	# Fetch email data
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -1972,9 +1962,7 @@ def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 
 	filter_docs = [frappe.get_doc("Email Filter", f.name) for f in filters]
 
-	with IMAPClient(
-		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
-	) as client:
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
 		client.select_folder(folder)
 
@@ -2080,11 +2068,7 @@ def has_attachments(bodystructure):
 				# Check for attachment disposition
 				for item in part:
 					if isinstance(item, tuple) and len(item) >= 2:
-						if (
-							item[0]
-							and isinstance(item[0], bytes)
-							and item[0].lower() == b"attachment"
-						):
+						if item[0] and isinstance(item[0], bytes) and item[0].lower() == b"attachment":
 							return True
 					if isinstance(item, tuple):
 						if check_part(item):

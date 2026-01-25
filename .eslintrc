@@ -7,6 +7,11 @@
 	"parserOptions": {
 		"sourceType": "module"
 	},
+	"ignorePatterns": [
+		"**/*.bundle.iife.js",
+		"**/dist/**",
+		"**/node_modules/**"
+	],
 	"extends": "eslint:recommended",
 	"rules": {
 		"indent": "off",
@@ -115,8 +120,10 @@
 		"expect": true,
 		"context": true,
 		"before": true,
+		"beforeAll": true,
 		"beforeEach": true,
 		"after": true,
+		"afterAll": true,
 		"qz": true,
 		"localforage": true,
 		"extend_cscript": true

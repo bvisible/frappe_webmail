@@ -64,8 +64,8 @@ class WebmailIMAPClient:
 			self.client.login(self.account.email, self.account.get_password("imap_password"))
 			self._connected = True
 		except Exception as e:
-			frappe.log_error(f"IMAP connection error: {str(e)}", "Frappe Webmail")
-			frappe.throw(_("Failed to connect to IMAP server: {0}").format(str(e)))
+			frappe.log_error(f"IMAP connection error: {e!s}", "Frappe Webmail")
+			frappe.throw(_("Failed to connect to IMAP server: {0}").format(e))
 
 	def disconnect(self):
 		"""Close IMAP connection"""
