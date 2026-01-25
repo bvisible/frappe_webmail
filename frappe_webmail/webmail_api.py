@@ -31,6 +31,17 @@ except ImportError:
 	IMAPClient = None
 
 
+def to_bool(value, default=False):
+	"""Convert a value to boolean, handling string 'true'/'false' from JS"""
+	if value is None:
+		return default
+	if isinstance(value, bool):
+		return value
+	if isinstance(value, str):
+		return value.lower() in ("true", "1", "yes")
+	return bool(value)
+
+
 # ============================================
 # ACCOUNT MANAGEMENT
 # ============================================
@@ -304,11 +315,11 @@ def test_connection_live(
 	account.email = email
 	account.imap_host = imap_host
 	account.imap_port = int(imap_port)
-	account.imap_ssl = int(imap_ssl)
+	account.imap_ssl = 1 if to_bool(imap_ssl) else 0
 	account.smtp_host = smtp_host
 	account.smtp_port = int(smtp_port)
-	account.smtp_ssl = int(smtp_ssl)
-	account.smtp_starttls = int(smtp_starttls)
+	account.smtp_ssl = 1 if to_bool(smtp_ssl) else 0
+	account.smtp_starttls = 1 if to_bool(smtp_starttls) else 0
 	account.auth_type = auth_type
 	account.oauth_provider = oauth_provider
 	account.oauth_access_token = oauth_access_token
@@ -555,6 +566,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 
 	account = get_account(account_name)
 	uid = int(uid)
+	mark_read = to_bool(mark_read, default=True)
 
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
@@ -970,6 +982,7 @@ def delete_emails(account_name, uids, folder, permanent=False):
 
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
+	permanent = to_bool(permanent)
 
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
@@ -992,15 +1005,12 @@ def delete_emails(account_name, uids, folder, permanent=False):
 				"deleted messages", "bin", "papierkorb", "cestino"
 			]
 
-			# Debug: log all folders
-			folder_debug = []
 			for flags, _, name in folders:
 				# Normalize folder name to string
 				folder_name = name if isinstance(name, str) else name.decode()
 				folder_name_lower = folder_name.lower()
 				# Normalize flags to strings for comparison
 				flags_str = [f.decode() if isinstance(f, bytes) else f for f in flags]
-				folder_debug.append({"name": folder_name, "flags": flags_str})
 
 				# Check for \Trash flag (handle both bytes and string)
 				has_trash_flag = b"\\Trash" in flags or "\\Trash" in flags_str
@@ -1012,12 +1022,6 @@ def delete_emails(account_name, uids, folder, permanent=False):
 
 			# Normalize current folder for comparison
 			current_folder = folder if isinstance(folder, str) else folder.decode() if isinstance(folder, bytes) else str(folder)
-
-			# Log debug info
-			frappe.log_error(
-				"Delete email debug",
-				f"Current folder: {current_folder}\nTrash folder found: {trash_folder}\nAll folders: {folder_debug}"
-			)
 
 			if trash_folder and current_folder.lower() != trash_folder.lower():
 				# Move to trash (copy then delete from source)
@@ -1112,6 +1116,11 @@ def search_emails(
 	account = get_account(account_name)
 	limit = min(int(limit), 100)
 	offset = int(offset)
+
+	# Convert boolean parameters (handles string "true"/"false" from JS)
+	has_attachment = to_bool(has_attachment) if has_attachment is not None else None
+	is_unread = to_bool(is_unread) if is_unread is not None else None
+	is_flagged = to_bool(is_flagged) if is_flagged is not None else None
 
 	with IMAPClient(
 		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
@@ -1743,6 +1752,11 @@ def create_filter(
 	"""Create a new email filter"""
 	get_account(account_name)  # Validate access
 
+	# Convert boolean parameters (handles string "true"/"false" from JS)
+	has_attachment = to_bool(has_attachment)
+	mark_as_read = to_bool(mark_as_read)
+	mark_as_starred = to_bool(mark_as_starred)
+
 	filter_doc = frappe.get_doc(
 		{
 			"doctype": "Email Filter",
@@ -1793,9 +1807,15 @@ def update_filter(filter_name, **kwargs):
 		"mark_as_starred",
 	]
 
+	# Boolean fields that need conversion from JS strings
+	bool_fields = ["enabled", "has_attachment", "mark_as_read", "mark_as_starred"]
+
 	for field in allowed_fields:
 		if field in kwargs:
-			setattr(filter_doc, field, kwargs[field])
+			value = kwargs[field]
+			if field in bool_fields:
+				value = to_bool(value)
+			setattr(filter_doc, field, value)
 
 	filter_doc.save(ignore_permissions=True)
 	frappe.db.commit()
