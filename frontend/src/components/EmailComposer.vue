@@ -645,14 +645,17 @@ export default {
 .composer-field {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border-color, #e5e5e5);
+  min-height: 44px;
 }
 
 .composer-field label {
   width: 50px;
+  flex-shrink: 0;
   color: var(--text-muted, #8d99a6);
   font-size: 13px;
+  margin-bottom: 0;
 }
 
 .composer-field input {
@@ -660,6 +663,17 @@ export default {
   border: none;
   outline: none;
   font-size: 14px;
+  padding: 0;
+  background: transparent;
+}
+
+.composer-field :deep(.contact-autocomplete) {
+  flex: 1;
+}
+
+.composer-field :deep(.tags input) {
+  font-size: 14px;
+  padding: 0;
 }
 
 .editor-toolbar {

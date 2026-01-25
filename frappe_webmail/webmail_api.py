@@ -775,11 +775,50 @@ def send_email(
 		server.sendmail(account.email, recipients, msg.as_string())
 		server.quit()
 
+		# Copy sent message to Sent folder via IMAP
+		try:
+			_copy_to_sent_folder(account, msg)
+		except Exception as e:
+			# Log but don't fail - email was already sent
+			frappe.log_error("Copy to Sent folder", f"Failed to copy to Sent folder: {str(e)}")
+
 		return {"success": True, "message": _("Email sent successfully")}
 
 	except Exception as e:
-		frappe.log_error(f"Email send error: {str(e)}", "Frappe Webmail")
+		frappe.log_error("Email send error", str(e))
 		frappe.throw(_("Failed to send email: {0}").format(str(e)))
+
+
+def _copy_to_sent_folder(account, msg):
+	"""Copy sent message to the Sent folder via IMAP"""
+	if not IMAPClient:
+		return
+
+	# Common sent folder names
+	sent_folder_names = ["Sent", "Sent Items", "Sent Mail", "INBOX.Sent", "Envoyés"]
+
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		imap_login(client, account)
+
+		# Find the Sent folder
+		folders = client.list_folders()
+		sent_folder = None
+
+		for flags, delimiter, name in folders:
+			# Check for \Sent flag first
+			if b"\\Sent" in flags:
+				sent_folder = name
+				break
+			# Fallback to common names
+			if name in sent_folder_names:
+				sent_folder = name
+
+		if sent_folder:
+			# Append message with \Seen flag
+			import datetime
+			client.append(sent_folder, msg.as_bytes(), flags=[b"\\Seen"], msg_time=datetime.datetime.now())
 
 
 # ============================================

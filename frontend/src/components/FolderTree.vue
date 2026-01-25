@@ -1,9 +1,5 @@
 <template>
   <div class="folder-tree">
-    <div class="folder-header">
-      <span class="account-email">{{ accountEmail }}</span>
-    </div>
-
     <div v-if="loading" class="loading">Chargement...</div>
 
     <div v-else class="folder-list">
@@ -182,24 +178,10 @@ export default {
 .folder-tree {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   background: white;
   border-right: 1px solid var(--border-color, #e5e5e5);
-}
-
-.folder-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color, #e5e5e5);
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--text-muted, #8d99a6);
-}
-
-.account-email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
+  padding: 0;
 }
 
 .loading {
@@ -209,17 +191,19 @@ export default {
 }
 
 .folder-list {
-  flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 8px 0;
 }
 
 .folder-item {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 10px 16px;
   cursor: pointer;
-  gap: 8px;
+  gap: 10px;
+  transition: background 0.15s ease;
+  margin: 0;
 }
 
 .folder-item:hover {
@@ -229,6 +213,8 @@ export default {
 .folder-item.selected {
   background: var(--primary-light, #e3f2fd);
   font-weight: 600;
+  border-left: 3px solid var(--primary-color, #2490ef);
+  padding-left: 13px;
 }
 
 .folder-item.disabled {
@@ -237,24 +223,29 @@ export default {
 }
 
 .folder-icon {
-  font-size: 14px;
+  font-size: 16px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
 }
 
 .folder-name {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-color, #333);
 }
 
 .unread-count {
   background: var(--primary-color, #2490ef);
   color: white;
   font-size: 11px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 10px;
   min-width: 20px;
   text-align: center;
+  font-weight: 500;
 }
 </style>

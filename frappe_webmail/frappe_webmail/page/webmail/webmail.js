@@ -20,17 +20,31 @@ frappe.pages['webmail'].on_page_load = function(wrapper) {
 		pageHead.style.display = 'none';
 	}
 
-	// Reduce padding on page body container
+	// Prevent scroll on page - apply to html and body
+	document.documentElement.style.overflow = 'hidden';
+	document.body.style.overflow = 'hidden';
+
+	// Get the navbar height dynamically
+	const navbar = document.querySelector('.navbar');
+	const navbarHeight = navbar ? navbar.offsetHeight : 48;
+
+	// Reduce padding on page body container and prevent scroll
 	const pageBody = document.querySelector('.container.page-body');
 	if (pageBody) {
 		pageBody.style.padding = '15px';
+		pageBody.style.overflow = 'hidden';
+		pageBody.style.height = `calc(100vh - ${navbarHeight}px)`;
 	}
+
+	// Calculate available height: viewport - navbar - padding (top + bottom)
+	const paddingTotal = 30; // 15px top + 15px bottom
+	const availableHeight = `calc(100vh - ${navbarHeight}px - ${paddingTotal}px)`;
 
 	// Create container for Vue app
 	const container = document.createElement('div');
 	container.id = 'webmail-app';
 	container.className = 'webmail-container';
-	container.style.cssText = 'height: calc(100vh - 90px); overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);';
+	container.style.cssText = `height: ${availableHeight}; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);`;
 
 	page.main.html('').append(container);
 
@@ -56,6 +70,16 @@ frappe.pages['webmail'].on_page_load = function(wrapper) {
 };
 
 frappe.pages['webmail'].on_page_hide = function(wrapper) {
+	// Restore scroll on page when leaving
+	document.documentElement.style.overflow = '';
+	document.body.style.overflow = '';
+
+	const pageBody = document.querySelector('.container.page-body');
+	if (pageBody) {
+		pageBody.style.overflow = '';
+		pageBody.style.height = '';
+	}
+
 	// Clean up when navigating away
 	if (frappe.webmail) {
 		frappe.webmail.destroy();

@@ -333,21 +333,16 @@ export default {
 }
 
 .input-wrapper {
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 4px;
-  padding: 4px 8px;
-  min-height: 36px;
-  background: white;
-}
-
-.input-wrapper:focus-within {
-  border-color: var(--primary-color, #2490ef);
+  border: none;
+  padding: 0;
+  min-height: 28px;
+  background: transparent;
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -355,11 +350,11 @@ export default {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
-  background: var(--bg-light-gray, #f5f5f5);
-  border-radius: 4px;
+  padding: 3px 8px;
+  background: var(--bg-light-gray, #f0f0f0);
+  border-radius: 12px;
   font-size: 13px;
-  max-width: 200px;
+  max-width: 250px;
 }
 
 .tag.invalid {
@@ -396,11 +391,12 @@ export default {
 
 .tags input {
   flex: 1;
-  min-width: 100px;
+  min-width: 120px;
   border: none;
   outline: none;
   font-size: 14px;
-  padding: 4px 0;
+  padding: 0;
+  background: transparent;
 }
 
 .suggestions-dropdown {

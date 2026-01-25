@@ -543,7 +543,6 @@ export default {
   align-items: center;
   padding: 12px 20px;
   background: white;
-  border-bottom: 1px solid var(--border-color, #e5e5e5);
   flex-shrink: 0;
 }
 
@@ -607,12 +606,15 @@ export default {
   flex-shrink: 0;
   background: white;
   overflow-y: auto;
+  border-top: 1px solid var(--border-color, #e5e5e5);
 }
 
 .email-list-panel {
   width: 350px;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color, #e5e5e5);
+  border-top: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 0 var(--border-radius-lg) 0 0;
   overflow: hidden;
 }
 
@@ -620,6 +622,9 @@ export default {
   flex: 1;
   overflow: hidden;
   background: white;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  margin: 0 10px;
 }
 
 .no-accounts {
