@@ -821,6 +821,77 @@ def _copy_to_sent_folder(account, msg):
 			client.append(sent_folder, msg.as_bytes(), flags=[b"\\Seen"], msg_time=datetime.datetime.now())
 
 
+@frappe.whitelist()
+def save_draft_imap(
+	account_name,
+	to=None,
+	cc=None,
+	subject=None,
+	html_content=None,
+):
+	"""Save a draft to the IMAP Drafts folder"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	# Build draft message
+	msg = MIMEMultipart("mixed")
+	msg["From"] = (
+		f'"{account.sender_name}" <{account.email}>'
+		if account.sender_name
+		else account.email
+	)
+	if to:
+		msg["To"] = to
+	if cc:
+		msg["Cc"] = cc
+	if subject:
+		msg["Subject"] = subject
+
+	# Body
+	body = MIMEMultipart("alternative")
+	if html_content:
+		if bleach:
+			text_content = bleach.clean(html_content, tags=[], strip=True)
+		else:
+			import re
+			text_content = re.sub(r"<[^>]+>", "", html_content)
+		body.attach(MIMEText(text_content, "plain", "utf-8"))
+		body.attach(MIMEText(html_content, "html", "utf-8"))
+	msg.attach(body)
+
+	# Common drafts folder names
+	drafts_folder_names = ["Drafts", "Draft", "INBOX.Drafts", "Brouillons"]
+
+	with IMAPClient(
+		host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+	) as client:
+		imap_login(client, account)
+
+		# Find the Drafts folder
+		folders = client.list_folders()
+		drafts_folder = None
+
+		for flags, delimiter, name in folders:
+			# Check for \Drafts flag first
+			if b"\\Drafts" in flags:
+				drafts_folder = name
+				break
+			# Fallback to common names
+			if name in drafts_folder_names:
+				drafts_folder = name
+
+		if not drafts_folder:
+			frappe.throw(_("Drafts folder not found"))
+
+		# Append message to Drafts folder with \Draft flag
+		import datetime
+		client.append(drafts_folder, msg.as_bytes(), flags=[b"\\Draft", b"\\Seen"], msg_time=datetime.datetime.now())
+
+	return {"success": True, "message": _("Draft saved")}
+
+
 # ============================================
 # EMAILS - ACTIONS
 # ============================================

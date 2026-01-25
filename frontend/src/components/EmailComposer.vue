@@ -123,11 +123,6 @@
           ✓ Sauvegarde a {{ formatLastSaved() }}
         </span>
       </div>
-      <div class="footer-actions" v-if="currentDraftId">
-        <button class="btn btn-danger-light btn-sm" @click="discardDraft">
-          🗑️ Supprimer le brouillon
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -150,11 +145,10 @@ export default {
     replyTo: { type: Object, default: null },
     forwardEmail: { type: Object, default: null },
     signature: { type: String, default: '' },
-    draftId: { type: String, default: null },
     folder: { type: String, default: 'INBOX' }
   },
 
-  emits: ['sent', 'close', 'draft-saved'],
+  emits: ['sent', 'close'],
 
   data() {
     return {
@@ -167,22 +161,14 @@ export default {
       },
       attachments: [],
       sending: false,
-      currentDraftId: null,
-      lastSaved: null,
-      autoSaveTimer: null,
-      autoSaveDelay: 3000, // 3 seconds debounce
-      isDirty: false,
       isSavingDraft: false
     }
   },
 
   mounted() {
-    this.currentDraftId = this.draftId
     this.initEditor()
 
-    if (this.draftId) {
-      this.loadDraft()
-    } else if (this.replyTo) {
+    if (this.replyTo) {
       this.setupReply()
     } else if (this.forwardEmail) {
       this.setupForward()
@@ -190,33 +176,8 @@ export default {
   },
 
   beforeUnmount() {
-    // Clear auto-save timer
-    if (this.autoSaveTimer) {
-      clearTimeout(this.autoSaveTimer)
-    }
-
-    // Save draft before closing if dirty
-    if (this.isDirty && !this.sending) {
-      this.saveDraftNow()
-    }
-
     if (this.editor) {
       this.editor.destroy()
-    }
-  },
-
-  watch: {
-    'emailData.to'() {
-      this.scheduleAutoSave()
-    },
-    'emailData.cc'() {
-      this.scheduleAutoSave()
-    },
-    'emailData.bcc'() {
-      this.scheduleAutoSave()
-    },
-    'emailData.subject'() {
-      this.scheduleAutoSave()
     }
   },
 
@@ -238,54 +199,8 @@ export default {
           Placeholder.configure({
             placeholder: 'Ecrivez votre message...'
           })
-        ],
-        onUpdate: () => {
-          this.scheduleAutoSave()
-        }
+        ]
       })
-    },
-
-    async loadDraft() {
-      try {
-        const response = await frappe.call({
-          method: 'frappe_webmail.api.get_draft',
-          args: { draft_id: this.draftId }
-        })
-
-        const draft = response.message
-        this.emailData.to = draft.to || ''
-        this.emailData.cc = draft.cc || ''
-        this.emailData.bcc = draft.bcc || ''
-        this.emailData.subject = draft.subject || ''
-
-        if (draft.html_content) {
-          this.editor.commands.setContent(draft.html_content)
-        }
-
-        if (draft.attachments_json) {
-          // Note: We can't restore File objects, but we store metadata
-          // User will need to re-attach files
-        }
-
-        this.lastSaved = draft.last_saved
-        this.isDirty = false
-      } catch (error) {
-        console.error('Failed to load draft:', error)
-      }
-    },
-
-    scheduleAutoSave() {
-      this.isDirty = true
-
-      // Clear existing timer
-      if (this.autoSaveTimer) {
-        clearTimeout(this.autoSaveTimer)
-      }
-
-      // Schedule new save
-      this.autoSaveTimer = setTimeout(() => {
-        this.saveDraftNow()
-      }, this.autoSaveDelay)
     },
 
     async saveDraftNow() {
@@ -302,30 +217,19 @@ export default {
       this.isSavingDraft = true
 
       try {
-        const response = await frappe.call({
-          method: 'frappe_webmail.api.save_draft',
+        await frappe.call({
+          method: 'frappe_webmail.api.save_draft_imap',
           args: {
             account_name: this.account,
             to: this.emailData.to,
             cc: this.emailData.cc,
-            bcc: this.emailData.bcc,
             subject: this.emailData.subject,
-            html_content: this.editor ? this.editor.getHTML() : '',
-            reply_to_message_id: this.replyTo?.message_id || null,
-            reply_to_uid: this.replyTo?.uid || null,
-            reply_to_folder: this.replyTo ? this.folder : null,
-            forward_uid: this.forwardEmail?.uid || null,
-            forward_folder: this.forwardEmail ? this.folder : null,
-            draft_id: this.currentDraftId
+            html_content: this.editor ? this.editor.getHTML() : ''
           }
         })
-
-        this.currentDraftId = response.message.draft_id
-        this.lastSaved = response.message.last_saved
-        this.isDirty = false
-        this.$emit('draft-saved', this.currentDraftId)
       } catch (error) {
-        console.error('Auto-save failed:', error)
+        console.error('Save draft failed:', error)
+        frappe.toast({ message: 'Erreur de sauvegarde du brouillon', indicator: 'red' })
       } finally {
         this.isSavingDraft = false
       }
@@ -529,28 +433,11 @@ export default {
 
     async saveDraft() {
       await this.saveDraftNow()
-      if (this.lastSaved) {
-        const time = new Date(this.lastSaved).toLocaleTimeString('fr-FR')
-        frappe.toast({
-          message: `Brouillon sauvegarde a ${time}`,
-          indicator: 'blue'
-        })
-      }
-    },
-
-    async discardDraft() {
-      if (this.currentDraftId) {
-        try {
-          await frappe.call({
-            method: 'frappe_webmail.api.delete_draft',
-            args: { draft_id: this.currentDraftId }
-          })
-          frappe.toast({ message: 'Brouillon supprime', indicator: 'gray' })
-        } catch (error) {
-          console.error('Failed to delete draft:', error)
-        }
-      }
-      this.isDirty = false
+      frappe.toast({
+        message: 'Brouillon sauvegarde',
+        indicator: 'blue'
+      })
+      // Close the composer after manual save
       this.$emit('close')
     },
 

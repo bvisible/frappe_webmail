@@ -39,34 +39,6 @@
           :selected-folder="currentFolder"
           @select="onFolderSelect"
         />
-
-        <!-- Drafts Section -->
-        <div class="drafts-section">
-          <div
-            class="drafts-header"
-            @click="toggleDrafts"
-            :class="{ active: showDrafts }"
-          >
-            <span>📝 Brouillons</span>
-            <span class="draft-count" v-if="drafts.length">({{ drafts.length }})</span>
-          </div>
-          <div class="drafts-list" v-if="showDrafts && drafts.length">
-            <div
-              v-for="draft in drafts"
-              :key="draft.name"
-              class="draft-item"
-              :class="{ selected: currentDraftId === draft.name }"
-              @click="openDraft(draft)"
-            >
-              <div class="draft-to">{{ draft.to_recipients || '(sans destinataire)' }}</div>
-              <div class="draft-subject">{{ draft.subject || '(sans objet)' }}</div>
-              <div class="draft-date">{{ formatDraftDate(draft.last_saved) }}</div>
-            </div>
-          </div>
-          <div class="drafts-empty" v-else-if="showDrafts">
-            Aucun brouillon
-          </div>
-        </div>
       </div>
 
       <!-- Email List -->
@@ -104,11 +76,9 @@
           :reply-to="replyToEmail"
           :forward-email="forwardingEmail"
           :signature="defaultSignature"
-          :draft-id="currentDraftId"
           :folder="currentFolder"
           @sent="onEmailSent"
           @close="closeComposer"
-          @draft-saved="onDraftSaved"
         />
       </div>
     </div>
@@ -202,9 +172,6 @@ export default {
       forwardingEmail: null,
       defaultSignature: '',
       showSignatures: false,
-      drafts: [],
-      currentDraftId: null,
-      showDrafts: false,
       pollingEnabled: true,
       pollingInterval: 60000, // 60 seconds
       unreadCount: 0,
@@ -286,12 +253,7 @@ export default {
       this.currentFolder = 'INBOX'
       this.selectedEmail = null
       this.selectedEmailContent = null
-      this.drafts = []
-      this.currentDraftId = null
       this.loadFolders()
-      if (this.showDrafts) {
-        this.loadDrafts()
-      }
     },
 
     onFolderSelect(folder) {
@@ -331,7 +293,6 @@ export default {
       this.showComposer = true
       this.replyToEmail = null
       this.forwardingEmail = null
-      this.currentDraftId = null
     },
 
     replyTo(email) {
@@ -350,11 +311,6 @@ export default {
       this.showComposer = false
       this.replyToEmail = null
       this.forwardingEmail = null
-      this.currentDraftId = null
-      // Refresh drafts list
-      if (this.showDrafts) {
-        this.loadDrafts()
-      }
     },
 
     onEmailSent() {
@@ -413,57 +369,6 @@ export default {
     openSettings() {
       // Open Webmail Account list
       frappe.set_route('List', 'Webmail Account')
-    },
-
-    // Draft methods
-    async loadDrafts() {
-      if (!this.currentAccount) return
-
-      try {
-        const response = await frappe.call({
-          method: 'frappe_webmail.api.get_drafts',
-          args: { account_name: this.currentAccount }
-        })
-        this.drafts = response.message || []
-      } catch (error) {
-        console.error('Error loading drafts:', error)
-      }
-    },
-
-    toggleDrafts() {
-      this.showDrafts = !this.showDrafts
-      if (this.showDrafts) {
-        this.loadDrafts()
-      }
-    },
-
-    openDraft(draft) {
-      this.currentDraftId = draft.name
-      this.showComposer = true
-      this.replyToEmail = null
-      this.forwardingEmail = null
-      this.selectedEmail = null
-      this.selectedEmailContent = null
-    },
-
-    onDraftSaved(draftId) {
-      this.currentDraftId = draftId
-      // Refresh drafts list if visible
-      if (this.showDrafts) {
-        this.loadDrafts()
-      }
-    },
-
-    formatDraftDate(dateStr) {
-      if (!dateStr) return ''
-      const date = new Date(dateStr)
-      const now = new Date()
-      const isToday = date.toDateString() === now.toDateString()
-
-      if (isToday) {
-        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      }
-      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
     },
 
     onNewEmails({ count, emails }) {
@@ -714,84 +619,6 @@ export default {
   max-height: 80vh;
 }
 
-/* Drafts Section */
-.drafts-section {
-  border-top: 1px solid var(--border-color, #e5e5e5);
-  margin-top: 8px;
-}
-
-.drafts-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--text-color, #333);
-}
-
-.drafts-header:hover {
-  background: var(--bg-light-gray, #f5f5f5);
-}
-
-.drafts-header.active {
-  background: var(--primary-light, #e3f2fd);
-}
-
-.draft-count {
-  font-size: 12px;
-  color: var(--text-muted, #8d99a6);
-  font-weight: normal;
-}
-
-.drafts-list {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.draft-item {
-  padding: 8px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-color, #e5e5e5);
-}
-
-.draft-item:hover {
-  background: var(--bg-light-gray, #f5f5f5);
-}
-
-.draft-item.selected {
-  background: var(--primary-light, #e3f2fd);
-}
-
-.draft-to {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.draft-subject {
-  font-size: 12px;
-  color: var(--text-muted, #8d99a6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.draft-date {
-  font-size: 11px;
-  color: var(--text-muted, #8d99a6);
-  margin-top: 2px;
-}
-
-.drafts-empty {
-  padding: 12px 16px;
-  font-size: 12px;
-  color: var(--text-muted, #8d99a6);
-  text-align: center;
-}
 
 .search-modal {
   width: 600px;
