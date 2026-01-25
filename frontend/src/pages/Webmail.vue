@@ -75,10 +75,12 @@
           :account="currentAccount"
           :reply-to="replyToEmail"
           :forward-email="forwardingEmail"
+          :edit-draft="editingDraft"
           :signature="defaultSignature"
           :folder="currentFolder"
           @sent="onEmailSent"
           @close="closeComposer"
+          @draft-deleted="onDraftDeleted"
         />
       </div>
     </div>
@@ -170,6 +172,7 @@ export default {
       showComposer: false,
       replyToEmail: null,
       forwardingEmail: null,
+      editingDraft: null,
       defaultSignature: '',
       showSignatures: false,
       pollingEnabled: true,
@@ -264,12 +267,6 @@ export default {
 
     async onEmailSelect(email) {
       this.selectedEmail = email
-      this.showComposer = false
-
-      // Mark as read in list
-      if (this.$refs.emailList) {
-        this.$refs.emailList.markAsRead(email.uid)
-      }
 
       // Load full content
       try {
@@ -283,34 +280,67 @@ export default {
           }
         })
 
-        this.selectedEmailContent = response.message
+        const emailContent = response.message
+
+        // Check if this is a Drafts folder - open in composer mode
+        if (this.isDraftsFolder(this.currentFolder)) {
+          this.editingDraft = { ...emailContent, folder: this.currentFolder }
+          this.replyToEmail = null
+          this.forwardingEmail = null
+          this.showComposer = true
+          this.selectedEmailContent = null
+        } else {
+          // Normal email - open in viewer mode
+          this.showComposer = false
+          this.selectedEmailContent = emailContent
+
+          // Mark as read in list
+          if (this.$refs.emailList) {
+            this.$refs.emailList.markAsRead(email.uid)
+          }
+        }
       } catch (error) {
         frappe.toast({ message: 'Erreur de chargement de l\'email', indicator: 'red' })
       }
+    },
+
+    isDraftsFolder(folderName) {
+      const name = folderName.toLowerCase()
+      return name === 'drafts' ||
+             name === 'draft' ||
+             name === 'brouillons' ||
+             name.endsWith('/drafts') ||
+             name.endsWith('/draft') ||
+             name.includes('drafts') ||
+             name === 'inbox.drafts'
     },
 
     compose() {
       this.showComposer = true
       this.replyToEmail = null
       this.forwardingEmail = null
+      this.editingDraft = null
     },
 
     replyTo(email) {
       this.showComposer = true
       this.replyToEmail = email
       this.forwardingEmail = null
+      this.editingDraft = null
     },
 
     forwardEmail(email) {
       this.showComposer = true
       this.forwardingEmail = email
       this.replyToEmail = null
+      this.editingDraft = null
     },
 
     closeComposer() {
       this.showComposer = false
       this.replyToEmail = null
       this.forwardingEmail = null
+      this.editingDraft = null
     },
 
     onEmailSent() {
@@ -318,32 +348,44 @@ export default {
       // Optionally refresh sent folder
     },
 
-    async deleteEmail(email) {
-      if (!confirm('Voulez-vous vraiment supprimer cet email ?')) return
-
-      try {
-        await frappe.call({
-          method: 'frappe_webmail.api.delete_emails',
-          args: {
-            account_name: this.currentAccount,
-            uids: JSON.stringify([email.uid]),
-            folder: this.currentFolder,
-            permanent: false
-          }
-        })
-
-        frappe.toast({ message: 'Email supprime', indicator: 'green' })
-
-        // Refresh list
-        if (this.$refs.emailList) {
-          this.$refs.emailList.refresh()
-        }
-
-        this.selectedEmail = null
-        this.selectedEmailContent = null
-      } catch (error) {
-        frappe.toast({ message: 'Erreur de suppression', indicator: 'red' })
+    onDraftDeleted() {
+      // Refresh the email list to remove the deleted draft
+      if (this.$refs.emailList) {
+        this.$refs.emailList.refresh()
       }
+    },
+
+    deleteEmail(email) {
+      frappe.confirm(
+        'Voulez-vous vraiment supprimer cet email ?',
+        async () => {
+          try {
+            const response = await frappe.call({
+              method: 'frappe_webmail.api.delete_emails',
+              args: {
+                account_name: this.currentAccount,
+                uids: JSON.stringify([email.uid]),
+                folder: this.currentFolder,
+                permanent: false
+              }
+            })
+
+            console.log('Delete response:', response)
+            frappe.toast({ message: 'Email supprime', indicator: 'green' })
+
+            // Refresh list
+            if (this.$refs.emailList) {
+              this.$refs.emailList.refresh()
+            }
+
+            this.selectedEmail = null
+            this.selectedEmailContent = null
+          } catch (error) {
+            console.error('Delete error:', error)
+            frappe.toast({ message: 'Erreur de suppression', indicator: 'red' })
+          }
+        }
+      )
     },
 
     onFlagChanged(email) {

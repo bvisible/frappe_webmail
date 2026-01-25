@@ -15,6 +15,9 @@
         <button class="btn btn-secondary" @click="saveDraft" :disabled="isSavingDraft" title="Sauvegarder">
           💾
         </button>
+        <button v-if="draftUid" class="btn btn-danger-light" @click="deleteDraft" title="Supprimer le brouillon">
+          🗑️
+        </button>
         <button class="btn btn-primary btn-send" @click="send" :disabled="sending">
           {{ sending ? 'Envoi...' : '📤 Envoyer' }}
         </button>
@@ -144,11 +147,12 @@ export default {
     account: { type: String, required: true },
     replyTo: { type: Object, default: null },
     forwardEmail: { type: Object, default: null },
+    editDraft: { type: Object, default: null },
     signature: { type: String, default: '' },
     folder: { type: String, default: 'INBOX' }
   },
 
-  emits: ['sent', 'close'],
+  emits: ['sent', 'close', 'draft-deleted'],
 
   data() {
     return {
@@ -161,7 +165,9 @@ export default {
       },
       attachments: [],
       sending: false,
-      isSavingDraft: false
+      isSavingDraft: false,
+      draftUid: null,
+      draftFolder: null
     }
   },
 
@@ -172,6 +178,8 @@ export default {
       this.setupReply()
     } else if (this.forwardEmail) {
       this.setupForward()
+    } else if (this.editDraft) {
+      this.setupDraftEdit()
     }
   },
 
@@ -224,9 +232,14 @@ export default {
             to: this.emailData.to,
             cc: this.emailData.cc,
             subject: this.emailData.subject,
-            html_content: this.editor ? this.editor.getHTML() : ''
+            html_content: this.editor ? this.editor.getHTML() : '',
+            draft_uid: this.draftUid,
+            draft_folder: this.draftFolder
           }
         })
+        // Clear draft UID after saving (new draft created)
+        this.draftUid = null
+        this.draftFolder = null
       } catch (error) {
         console.error('Save draft failed:', error)
         frappe.toast({ message: 'Erreur de sauvegarde du brouillon', indicator: 'red' })
@@ -287,6 +300,24 @@ export default {
 
       this.editor.commands.setContent(content)
       this.editor.commands.focus('start')
+    },
+
+    setupDraftEdit() {
+      const draft = this.editDraft
+
+      // Store the draft UID and folder for updating
+      this.draftUid = draft.uid || null
+      this.draftFolder = draft.folder || this.folder
+
+      // Fill in the fields
+      this.emailData.to = draft.to || ''
+      this.emailData.cc = draft.cc || ''
+      this.emailData.subject = draft.subject || ''
+
+      // Set the body content
+      const content = draft.html || draft.text || ''
+      this.editor.commands.setContent(content)
+      this.editor.commands.focus('end')
     },
 
     insertSignature() {
@@ -441,6 +472,33 @@ export default {
       this.$emit('close')
     },
 
+    deleteDraft() {
+      if (!this.draftUid || !this.draftFolder) return
+
+      frappe.confirm(
+        'Voulez-vous vraiment supprimer ce brouillon ?',
+        async () => {
+          try {
+            await frappe.call({
+              method: 'frappe_webmail.api.delete_emails',
+              args: {
+                account_name: this.account,
+                uids: JSON.stringify([this.draftUid]),
+                folder: this.draftFolder,
+                permanent: false
+              }
+            })
+            frappe.toast({ message: 'Brouillon supprime', indicator: 'green' })
+            this.$emit('draft-deleted')
+            this.$emit('close')
+          } catch (error) {
+            console.error('Delete draft failed:', error)
+            frappe.toast({ message: 'Erreur de suppression', indicator: 'red' })
+          }
+        }
+      )
+    },
+
     formatLastSaved() {
       if (!this.lastSaved) return ''
       return new Date(this.lastSaved).toLocaleTimeString('fr-FR')
@@ -527,6 +585,16 @@ export default {
 .header-right .btn-send:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.header-right .btn-danger-light {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.header-right .btn-danger-light:hover {
+  background: #dc3545;
+  color: white;
 }
 
 .composer-field {

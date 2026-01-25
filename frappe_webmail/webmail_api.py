@@ -828,8 +828,10 @@ def save_draft_imap(
 	cc=None,
 	subject=None,
 	html_content=None,
+	draft_uid=None,
+	draft_folder=None,
 ):
-	"""Save a draft to the IMAP Drafts folder"""
+	"""Save a draft to the IMAP Drafts folder. If draft_uid is provided, delete the old draft."""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -884,6 +886,16 @@ def save_draft_imap(
 
 		if not drafts_folder:
 			frappe.throw(_("Drafts folder not found"))
+
+		# If updating an existing draft, delete the old one first
+		if draft_uid and draft_folder:
+			try:
+				client.select_folder(draft_folder)
+				client.delete_messages([int(draft_uid)])
+				client.expunge()
+			except Exception:
+				# Ignore errors when deleting old draft
+				pass
 
 		# Append message to Drafts folder with \Draft flag
 		import datetime
@@ -968,27 +980,54 @@ def delete_emails(account_name, uids, folder, permanent=False):
 		if permanent:
 			client.add_flags(uids, [b"\\Deleted"])
 			client.expunge()
+			return {"success": True, "action": "permanent_delete"}
 		else:
 			# Try to find trash folder
 			folders = client.list_folders()
 			trash_folder = None
+
+			# Common trash folder names
+			trash_names = [
+				"trash", "corbeille", "deleted", "deleted items",
+				"deleted messages", "bin", "papierkorb", "cestino"
+			]
+
+			# Debug: log all folders
+			folder_debug = []
 			for flags, _, name in folders:
-				if b"\\Trash" in flags or name.lower() in [
-					"trash",
-					"corbeille",
-					"deleted",
-					"deleted items",
-				]:
-					trash_folder = name
+				# Normalize folder name to string
+				folder_name = name if isinstance(name, str) else name.decode()
+				folder_name_lower = folder_name.lower()
+				folder_debug.append({"name": folder_name, "flags": [f.decode() if isinstance(f, bytes) else f for f in flags]})
+
+				# Check for \Trash flag first
+				if b"\\Trash" in flags:
+					trash_folder = folder_name
 					break
+				# Check folder name
+				if folder_name_lower in trash_names or folder_name_lower.endswith("/trash") or folder_name_lower.endswith("/corbeille"):
+					trash_folder = folder_name
 
-			if trash_folder and folder != trash_folder:
+			# Normalize current folder for comparison
+			current_folder = folder if isinstance(folder, str) else folder.decode() if isinstance(folder, bytes) else str(folder)
+
+			# Log debug info
+			frappe.log_error(
+				"Delete email debug",
+				f"Current folder: {current_folder}\nTrash folder found: {trash_folder}\nAll folders: {folder_debug}"
+			)
+
+			if trash_folder and current_folder.lower() != trash_folder.lower():
+				# Move to trash (copy then delete from source)
 				client.copy(uids, trash_folder)
-
-			client.add_flags(uids, [b"\\Deleted"])
-			client.expunge()
-
-		return {"success": True}
+				client.add_flags(uids, [b"\\Deleted"])
+				client.expunge()
+				return {"success": True, "action": "moved_to_trash", "trash_folder": trash_folder}
+			else:
+				# No trash folder found or already in trash - mark as deleted
+				client.add_flags(uids, [b"\\Deleted"])
+				client.expunge()
+				return {"success": True, "action": "deleted", "reason": "no_trash_folder" if not trash_folder else "already_in_trash"}
 
 
 @frappe.whitelist()
