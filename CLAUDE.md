@@ -107,6 +107,39 @@ npm test:run
 npm test:coverage
 ```
 
+## Git Workflow - Règles de Commit
+
+### Workflow obligatoire
+
+1. **EXPLORER** le code localement
+2. **MODIFIER** les fichiers localement
+3. **TESTER** sur l'instance cible via SSH (osiris)
+4. **VÉRIFIER** que le fix fonctionne à 100%
+5. **DEMANDER** la permission à l'utilisateur avant de commit/push
+
+### Règles strictes
+
+- **JAMAIS** commit du code non testé
+- **JAMAIS** modifier les fichiers directement sur les serveurs distants
+- **TOUJOURS** tester via SSH avant de commit
+- **TOUJOURS** demander confirmation avant push
+
+### Déploiement après fix
+
+```bash
+# Sur l'instance cible (osiris)
+cd /home/neoffice/frappe-bench/apps/frappe_webmail && git pull upstream develop
+cd /home/neoffice/frappe-bench && bench restart
+```
+
+### Serveur de test
+
+| Instance | URL | Serveur SSH |
+|----------|-----|-------------|
+| Osiris | `https://osiris.neoffice.me` | `osiris` |
+
+---
+
 ## Tâches courantes
 
 ### Ajouter une nouvelle méthode API
