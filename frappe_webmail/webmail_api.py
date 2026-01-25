@@ -998,14 +998,16 @@ def delete_emails(account_name, uids, folder, permanent=False):
 				# Normalize folder name to string
 				folder_name = name if isinstance(name, str) else name.decode()
 				folder_name_lower = folder_name.lower()
-				folder_debug.append({"name": folder_name, "flags": [f.decode() if isinstance(f, bytes) else f for f in flags]})
+				# Normalize flags to strings for comparison
+				flags_str = [f.decode() if isinstance(f, bytes) else f for f in flags]
+				folder_debug.append({"name": folder_name, "flags": flags_str})
 
-				# Check for \Trash flag first
-				if b"\\Trash" in flags:
+				# Check for \Trash flag (handle both bytes and string)
+				has_trash_flag = b"\\Trash" in flags or "\\Trash" in flags_str
+				if has_trash_flag and not trash_folder:
 					trash_folder = folder_name
-					break
-				# Check folder name
-				if folder_name_lower in trash_names or folder_name_lower.endswith("/trash") or folder_name_lower.endswith("/corbeille"):
+				# Check folder name as fallback
+				if not trash_folder and (folder_name_lower in trash_names or folder_name_lower.endswith("/trash") or folder_name_lower.endswith("/corbeille")):
 					trash_folder = folder_name
 
 			# Normalize current folder for comparison
