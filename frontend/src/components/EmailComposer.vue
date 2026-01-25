@@ -1,5 +1,33 @@
 <template>
   <div class="email-composer">
+    <!-- Header with Send button -->
+    <div class="composer-header">
+      <div class="header-left">
+        <button class="btn btn-light" @click="$emit('close')" title="Fermer">
+          ✕
+        </button>
+        <span class="composer-title">Nouveau message</span>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" @click="$refs.fileInput.click()" title="Joindre un fichier">
+          📎
+        </button>
+        <button class="btn btn-secondary" @click="saveDraft" :disabled="isSavingDraft" title="Sauvegarder">
+          💾
+        </button>
+        <button class="btn btn-primary btn-send" @click="send" :disabled="sending">
+          {{ sending ? 'Envoi...' : '📤 Envoyer' }}
+        </button>
+      </div>
+      <input
+        type="file"
+        ref="fileInput"
+        multiple
+        @change="handleFiles"
+        style="display: none"
+      />
+    </div>
+
     <!-- Recipients -->
     <div class="composer-field">
       <label>A:</label>
@@ -87,35 +115,18 @@
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="composer-actions">
+    <!-- Footer with status -->
+    <div class="composer-footer">
       <div class="draft-status" v-if="lastSaved || isSavingDraft">
         <span v-if="isSavingDraft" class="saving">Sauvegarde...</span>
         <span v-else-if="lastSaved" class="saved">
-          Sauvegarde a {{ formatLastSaved() }}
+          ✓ Sauvegarde a {{ formatLastSaved() }}
         </span>
       </div>
-      <div class="action-buttons">
-        <input
-          type="file"
-          ref="fileInput"
-          multiple
-          @change="handleFiles"
-          style="display: none"
-        />
-        <button class="btn btn-secondary" @click="$refs.fileInput.click()">
-          📎 Joindre
+      <div class="footer-actions" v-if="currentDraftId">
+        <button class="btn btn-danger-light btn-sm" @click="discardDraft">
+          🗑️ Supprimer le brouillon
         </button>
-        <button class="btn btn-secondary" @click="saveDraft" :disabled="isSavingDraft">
-          💾 Brouillon
-        </button>
-        <button class="btn btn-primary" @click="send" :disabled="sending">
-          {{ sending ? 'Envoi...' : '📤 Envoyer' }}
-        </button>
-        <button class="btn btn-danger-light" @click="discardDraft" v-if="currentDraftId">
-          🗑️ Supprimer
-        </button>
-        <button class="btn btn-light" @click="$emit('close')">Annuler</button>
       </div>
     </div>
   </div>
@@ -439,12 +450,37 @@ export default {
     },
 
     async send() {
-      if (!this.emailData.to) {
-        frappe.toast({
-          message: 'Veuillez saisir un destinataire',
-          indicator: 'red'
+      // Validate recipient
+      if (!this.emailData.to || !this.emailData.to.trim()) {
+        frappe.msgprint({
+          title: __('Destinataire requis'),
+          indicator: 'red',
+          message: __('Veuillez saisir au moins un destinataire.')
         })
         return
+      }
+
+      // Validate body content
+      const bodyText = this.editor ? this.editor.getText().trim() : ''
+      if (!bodyText) {
+        frappe.msgprint({
+          title: __('Message vide'),
+          indicator: 'red',
+          message: __('Veuillez saisir un message avant d\'envoyer.')
+        })
+        return
+      }
+
+      // Warn if no subject
+      if (!this.emailData.subject || !this.emailData.subject.trim()) {
+        const confirmed = await new Promise((resolve) => {
+          frappe.confirm(
+            __('Vous n\'avez pas saisi d\'objet. Voulez-vous envoyer quand meme ?'),
+            () => resolve(true),
+            () => resolve(false)
+          )
+        })
+        if (!confirmed) return
       }
 
       this.sending = true
@@ -533,6 +569,77 @@ export default {
   height: 100%;
   background: white;
   border-radius: 8px;
+}
+
+.composer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-light-gray, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 8px 8px 0 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-left .btn-light {
+  padding: 4px 8px;
+  font-size: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #8d99a6);
+}
+
+.header-left .btn-light:hover {
+  color: var(--text-color, #333);
+}
+
+.composer-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-color, #333);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-right .btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  background: white;
+}
+
+.header-right .btn:hover {
+  background: var(--bg-gray, #eee);
+}
+
+.header-right .btn-send {
+  background: var(--primary-color, #2490ef);
+  color: white;
+  border-color: var(--primary-color, #2490ef);
+  padding: 8px 20px;
+  font-weight: 500;
+}
+
+.header-right .btn-send:hover {
+  background: #1a7fd4;
+}
+
+.header-right .btn-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .composer-field {
@@ -643,13 +750,14 @@ export default {
   color: #e74c3c;
 }
 
-.composer-actions {
+.composer-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  padding: 8px 16px;
   border-top: 1px solid var(--border-color, #e5e5e5);
+  background: var(--bg-light-gray, #f8f9fa);
+  min-height: 40px;
 }
 
 .draft-status {
@@ -665,58 +773,25 @@ export default {
   color: var(--success-color, #28a745);
 }
 
-.action-buttons {
+.footer-actions {
   display: flex;
   gap: 8px;
 }
 
-.composer-actions .btn {
-  padding: 8px 16px;
-  border: 1px solid var(--border-color, #e5e5e5);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
-.composer-actions .btn-primary {
-  background: var(--primary-color, #2490ef);
-  color: white;
-  border-color: var(--primary-color, #2490ef);
-}
-
-.composer-actions .btn-primary:hover {
-  background: #1a7fd4;
-}
-
-.composer-actions .btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.composer-actions .btn-secondary {
-  background: white;
-}
-
-.composer-actions .btn-secondary:hover {
-  background: var(--bg-light-gray, #f5f5f5);
-}
-
-.composer-actions .btn-light {
-  background: white;
-  color: var(--text-muted, #8d99a6);
-}
-
-.composer-actions .btn-light:hover {
-  background: var(--bg-light-gray, #f5f5f5);
-}
-
-.composer-actions .btn-danger-light {
+.btn-danger-light {
   background: white;
   color: #dc3545;
-  border-color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.composer-actions .btn-danger-light:hover {
+.btn-danger-light:hover {
   background: #dc3545;
   color: white;
 }
