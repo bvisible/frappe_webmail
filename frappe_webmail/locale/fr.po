@@ -150,6 +150,8 @@ msgid ""
 "Are you sure you want to disconnect OAuth? You will need to reconnect to "
 "use this account."
 msgstr ""
+"Êtes-vous sûr de vouloir déconnecter OAuth ? Vous devrez vous reconnecter "
+"pour utiliser ce compte."
 
 #: frontend/src/components/FilterManager.vue:106
 msgid "At least one condition (OR)"
@@ -161,7 +163,7 @@ msgstr "Au moins une condition est requise"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.py:29
 msgid "At least one filter condition must be specified"
-msgstr ""
+msgstr "Au moins une condition de filtre doit être spécifiée"
 
 #: frontend/src/components/EmailComposer.vue:13
 msgid "Attach a file"
@@ -178,7 +180,7 @@ msgstr "Pièces jointes"
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
 msgid "Attachments JSON"
-msgstr ""
+msgstr "JSON des pièces jointes"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
@@ -188,12 +190,12 @@ msgstr "Authentification"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Select field in DocType 'Webmail Account'
 msgid "Authentication Type"
-msgstr ""
+msgstr "Type d'authentification"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Small Text field in DocType 'Email Draft'
 msgid "Bcc"
-msgstr ""
+msgstr "Cci"
 
 #: frontend/src/components/EmailComposer.vue:68
 msgid "Bold"
@@ -215,7 +217,7 @@ msgstr "Copie carbone..."
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Small Text field in DocType 'Email Draft'
 msgid "Cc"
-msgstr ""
+msgstr "Cc"
 
 #: frontend/src/components/EmailComposer.vue:55
 #: frontend/src/components/EmailViewer.vue:29
@@ -243,23 +245,23 @@ msgstr "Configurer un compte"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Button field in DocType 'Webmail Account'
 msgid "Connect OAuth"
-msgstr ""
+msgstr "Connecter OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:148
 msgid "Connecting to servers..."
-msgstr ""
+msgstr "Connexion aux serveurs..."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:207
 msgid "Connection Test Results"
-msgstr ""
+msgstr "Résultats du test de connexion"
 
 #: frappe_webmail/webmail_api.py:403
 msgid "Connection successful"
-msgstr ""
+msgstr "Connexion réussie"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:176
 msgid "Connection successful! Both IMAP and SMTP are working."
-msgstr ""
+msgstr "Connexion réussie ! IMAP et SMTP fonctionnent."
 
 #: frontend/src/components/EmailViewer.vue:375
 msgid "Contact created: {0}"
@@ -267,11 +269,11 @@ msgstr "Contact créé : {0}"
 
 #: frappe_webmail/webmail_api.py:1668
 msgid "Contact not found"
-msgstr ""
+msgstr "Contact non trouvé"
 
 #: frappe_webmail/webmail_api.py:1514
 msgid "Contact with this email already exists"
-msgstr ""
+msgstr "Un contact avec cet email existe déjà"
 
 #: frontend/src/components/EmailComposer.vue:289
 msgid "Date:"
@@ -285,7 +287,7 @@ msgstr "Par défaut"
 #. Label of a Section Break field in DocType 'Webmail Account'
 #. Label of a Link field in DocType 'Webmail Account'
 msgid "Default Signature"
-msgstr ""
+msgstr "Signature par défaut"
 
 #: frontend/src/components/SignatureEditor.vue:40
 msgid "Default signature"
@@ -322,7 +324,7 @@ msgstr "Désactiver"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:102
 msgid "Disconnect OAuth"
-msgstr ""
+msgstr "Déconnecter OAuth"
 
 #: frontend/src/components/EmailViewer.vue:345
 msgid "Download error"
@@ -334,7 +336,7 @@ msgstr "Brouillon supprimé"
 
 #: frappe_webmail/webmail_api.py:1325 frappe_webmail/webmail_api.py:1354
 msgid "Draft not found"
-msgstr ""
+msgstr "Brouillon non trouvé"
 
 #: frappe_webmail/webmail_api.py:909
 #: frontend/src/components/EmailComposer.vue:465
@@ -347,7 +349,7 @@ msgstr "Brouillons"
 
 #: frappe_webmail/webmail_api.py:890
 msgid "Drafts folder not found"
-msgstr ""
+msgstr "Dossier Brouillons non trouvé"
 
 #: frontend/src/components/FilterManager.vue:55
 msgid "Edit"
@@ -360,26 +362,26 @@ msgstr "Modifier le filtre"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
 msgid "Email Address"
-msgstr ""
+msgstr "Adresse email"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Name of a DocType
 msgid "Email Draft"
-msgstr ""
+msgstr "Brouillon d'email"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Name of a DocType
 msgid "Email Filter"
-msgstr ""
+msgstr "Filtre d'email"
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Name of a DocType
 msgid "Email Signature"
-msgstr ""
+msgstr "Signature d'email"
 
 #: frappe_webmail/webmail_api.py:1509
 msgid "Email address is required"
-msgstr ""
+msgstr "L'adresse email est requise"
 
 #: frontend/src/pages/Webmail.vue:365
 msgid "Email deleted"
@@ -392,11 +394,11 @@ msgstr "Filtres email"
 #: frappe_webmail/webmail_api.py:587 frappe_webmail/webmail_api.py:1058
 #: frappe_webmail/webmail_api.py:1564 frappe_webmail/webmail_api.py:1865
 msgid "Email not found"
-msgstr ""
+msgstr "Email non trouvé"
 
 #: frappe_webmail/webmail_api.py:793
 msgid "Email sent successfully"
-msgstr ""
+msgstr "Email envoyé avec succès"
 
 #: frontend/src/components/EmailComposer.vue:448
 msgid "Email sent!"
@@ -468,23 +470,23 @@ msgstr "Erreur de sauvegarde du brouillon"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:198
 msgid "Errors:"
-msgstr ""
+msgstr "Erreurs :"
 
 #: frontend/src/components/FilterManager.vue:97
 msgid "Ex: Newsletters"
-msgstr ""
+msgstr "Ex : Newsletters"
 
 #: frontend/src/components/FilterManager.vue:134
 msgid "Ex: [SPAM]"
-msgstr ""
+msgstr "Ex : [SPAM]"
 
 #: frontend/src/components/FilterManager.vue:125
 msgid "Ex: me@example.com"
-msgstr ""
+msgstr "Ex : moi@exemple.com"
 
 #: frontend/src/components/FilterManager.vue:116
 msgid "Ex: newsletter@"
-msgstr ""
+msgstr "Ex : newsletter@"
 
 #: frontend/src/components/EmailViewer.vue:49
 msgid "External images have been blocked for your security."
@@ -492,32 +494,32 @@ msgstr "Les images externes ont été bloquées pour votre sécurité."
 
 #: frappe_webmail/utils/imap_client.py:68
 msgid "Failed to connect to IMAP server: {0}"
-msgstr ""
+msgstr "Échec de connexion au serveur IMAP : {0}"
 
 #: frappe_webmail/webmail_api.py:181
 msgid "Failed to get OAuth tokens"
-msgstr ""
+msgstr "Échec de récupération des jetons OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:147
 msgid "Failed to refresh OAuth token"
-msgstr ""
+msgstr "Échec du rafraîchissement du jeton OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:167
 msgid "Failed to refresh OAuth token: {0}"
-msgstr ""
+msgstr "Échec du rafraîchissement du jeton OAuth : {0}"
 
 #: frappe_webmail/webmail_api.py:797
 msgid "Failed to send email: {0}"
-msgstr ""
+msgstr "Échec de l'envoi de l'email : {0}"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:219
 msgid "Failed to test connection. Please check your settings."
-msgstr ""
+msgstr "Échec du test de connexion. Veuillez vérifier vos paramètres."
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
 msgid "Filter Name"
-msgstr ""
+msgstr "Nom du filtre"
 
 #: frontend/src/components/FilterManager.vue:335
 msgid "Filter created"
@@ -537,7 +539,7 @@ msgstr "Le nom du filtre est requis"
 
 #: frappe_webmail/webmail_api.py:1780 frappe_webmail/webmail_api.py:1822
 msgid "Filter not found"
-msgstr ""
+msgstr "Filtre non trouvé"
 
 #: frontend/src/components/FilterManager.vue:326
 msgid "Filter updated"
@@ -566,12 +568,12 @@ msgstr "Transférer"
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
 msgid "Forward Folder"
-msgstr ""
+msgstr "Dossier de transfert"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Int field in DocType 'Email Draft'
 msgid "Forward UID"
-msgstr ""
+msgstr "UID de transfert"
 
 #: frontend/src/components/EmailComposer.vue:287
 msgid "Forwarded message"
@@ -584,7 +586,7 @@ msgstr "De"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
 msgid "From Contains"
-msgstr ""
+msgstr "De contient"
 
 #: frontend/src/components/FilterManager.vue:112
 msgid "From contains"
@@ -602,17 +604,17 @@ msgstr "Recherche générale"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 msgid "Gmail"
-msgstr ""
+msgstr "Gmail"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
 msgid "HTML Content"
-msgstr ""
+msgstr "Contenu HTML"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Check field in DocType 'Email Filter'
 msgid "Has Attachment"
-msgstr ""
+msgstr "Contient une pièce jointe"
 
 #: frontend/src/components/FilterManager.vue:141
 msgid "Has attachments"
@@ -621,34 +623,34 @@ msgstr "A des pièces jointes"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
 msgid "IMAP Host"
-msgstr ""
+msgstr "Serveur IMAP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
 msgid "IMAP Password"
-msgstr ""
+msgstr "Mot de passe IMAP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:62
 msgid "IMAP Password is required for Password authentication"
-msgstr ""
+msgstr "Le mot de passe IMAP est requis pour l'authentification par mot de passe"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Int field in DocType 'Webmail Account'
 msgid "IMAP Port"
-msgstr ""
+msgstr "Port IMAP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
 msgid "IMAP Settings"
-msgstr ""
+msgstr "Paramètres IMAP"
 
 #: frappe_webmail/utils/imap_client.py:188
 msgid "IMAP client is not connected"
-msgstr ""
+msgstr "Le client IMAP n'est pas connecté"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:186
 msgid "IMAP: Connected successfully"
-msgstr ""
+msgstr "IMAP : Connexion réussie"
 
 #: frontend/src/components/EmailComposer.vue:103
 msgid "Image"
@@ -669,28 +671,28 @@ msgstr "Boîte de réception"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:54
 msgid "Invalid IMAP port number"
-msgstr ""
+msgstr "Numéro de port IMAP invalide"
 
 #: frappe_webmail/webmail_api.py:143
 msgid "Invalid OAuth callback"
-msgstr ""
+msgstr "Callback OAuth invalide"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:56
 msgid "Invalid SMTP port number"
-msgstr ""
+msgstr "Numéro de port SMTP invalide"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:49
 msgid "Invalid email address: {0}"
-msgstr ""
+msgstr "Adresse email invalide : {0}"
 
 #: frappe_webmail/webmail_api.py:148
 msgid "Invalid or expired OAuth state"
-msgstr ""
+msgstr "État OAuth invalide ou expiré"
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Check field in DocType 'Email Signature'
 msgid "Is Default"
-msgstr ""
+msgstr "Par défaut"
 
 #: frontend/src/components/EmailComposer.vue:75
 msgid "Italic"
@@ -699,12 +701,12 @@ msgstr "Italique"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Datetime field in DocType 'Email Filter'
 msgid "Last Applied"
-msgstr ""
+msgstr "Dernière application"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Datetime field in DocType 'Email Draft'
 msgid "Last Saved"
-msgstr ""
+msgstr "Dernière sauvegarde"
 
 #: frontend/src/components/EmailComposer.vue:102
 msgid "Link"
@@ -717,7 +719,7 @@ msgstr "URL du lien :"
 
 #: frappe_webmail/webmail_api.py:1675
 msgid "Link already exists"
-msgstr ""
+msgstr "Le lien existe déjà"
 
 #: frontend/src/components/AdvancedSearch.vue:96
 msgid "Load more"
@@ -767,7 +769,7 @@ msgstr "Correspondance"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Select field in DocType 'Email Filter'
 msgid "Match Type"
-msgstr ""
+msgstr "Type de correspondance"
 
 #: frontend/src/components/EmailComposer.vue:60
 msgid "Message subject"
@@ -832,64 +834,66 @@ msgstr "Liste numérotée"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:106
 msgid "OAuth"
-msgstr ""
+msgstr "OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Select field in DocType 'Webmail Account'
 msgid "OAuth Provider"
-msgstr ""
+msgstr "Fournisseur OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:67
 msgid "OAuth Provider is required for OAuth2 authentication"
-msgstr ""
+msgstr "Le fournisseur OAuth est requis pour l'authentification OAuth2"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
 msgid "OAuth Status"
-msgstr ""
+msgstr "Statut OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
 msgid "OAuth Tokens (Internal)"
-msgstr ""
+msgstr "Jetons OAuth (Interne)"
 
 #: frappe_webmail/webmail_api.py:203
 msgid "OAuth authentication failed"
-msgstr ""
+msgstr "Échec de l'authentification OAuth"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:131
 msgid "OAuth credentials not configured for {0}"
-msgstr ""
+msgstr "Identifiants OAuth non configurés pour {0}"
 
 #: frappe_webmail/webmail_api.py:97
 msgid "OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
 msgstr ""
+"Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à "
+"site_config.json"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:238
 msgid "OAuth disconnected successfully."
-msgstr ""
+msgstr "OAuth déconnecté avec succès."
 
 #: frappe_webmail/webmail_api.py:140
 msgid "OAuth error: {0}"
-msgstr ""
+msgstr "Erreur OAuth : {0}"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:118
 msgid "OAuth token expired. Please reconnect your account."
-msgstr ""
+msgstr "Jeton OAuth expiré. Veuillez reconnecter votre compte."
 
 #: frappe_webmail/webmail_api.py:246 frappe_webmail/webmail_api.py:260
 msgid "OAuth token not available. Please reconnect your account."
-msgstr ""
+msgstr "Jeton OAuth non disponible. Veuillez reconnecter votre compte."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
 msgid "OAuth2"
-msgstr ""
+msgstr "OAuth2"
 
 #: frappe_webmail/webmail_api.py:360
 msgid "OAuth2 not connected. Please authorize your account first."
-msgstr ""
+msgstr "OAuth2 non connecté. Veuillez d'abord autoriser votre compte."
 
 #: frontend/src/components/EmailComposer.vue:262
 msgid "On {0}, {1} wrote:"
@@ -898,13 +902,13 @@ msgstr "Le {0}, {1} a écrit :"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 msgid "Outlook"
-msgstr ""
+msgstr "Outlook"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
 msgid "Password"
-msgstr ""
+msgstr "Mot de passe"
 
 #: frontend/src/components/EmailComposer.vue:401
 msgid "Please enter a message before sending."
@@ -916,7 +920,7 @@ msgstr "Veuillez saisir un nom"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:119
 msgid "Please enter an email address."
-msgstr ""
+msgstr "Veuillez entrer une adresse email."
 
 #: frontend/src/components/EmailComposer.vue:390
 msgid "Please enter at least one recipient."
@@ -924,31 +928,31 @@ msgstr "Veuillez saisir au moins un destinataire."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:138
 msgid "Please enter the IMAP password."
-msgstr ""
+msgstr "Veuillez entrer le mot de passe IMAP."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:123
 msgid "Please enter the IMAP server address."
-msgstr ""
+msgstr "Veuillez entrer l'adresse du serveur IMAP."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:142
 msgid "Please enter the SMTP password."
-msgstr ""
+msgstr "Veuillez entrer le mot de passe SMTP."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:127
 msgid "Please enter the SMTP server address."
-msgstr ""
+msgstr "Veuillez entrer l'adresse du serveur SMTP."
 
 #: frappe_webmail/www/webmail.py:25
 msgid "Please login to access webmail"
-msgstr ""
+msgstr "Veuillez vous connecter pour accéder au webmail"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:34
 msgid "Please save the document first."
-msgstr ""
+msgstr "Veuillez d'abord enregistrer le document."
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:39
 msgid "Please select an OAuth provider."
-msgstr ""
+msgstr "Veuillez sélectionner un fournisseur OAuth."
 
 #: frontend/src/components/ContactAutocomplete.vue:61
 msgid "Recent contacts"
@@ -965,7 +969,7 @@ msgstr "Destinataire requis"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
 msgid "Refresh Token"
-msgstr ""
+msgstr "Jeton de rafraîchissement"
 
 #: frontend/src/components/EmailViewer.vue:36
 msgid "Reply"
@@ -974,17 +978,17 @@ msgstr "Répondre"
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
 msgid "Reply To Folder"
-msgstr ""
+msgstr "Dossier de réponse"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
 msgid "Reply To Message ID"
-msgstr ""
+msgstr "ID du message de réponse"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Int field in DocType 'Email Draft'
 msgid "Reply To UID"
-msgstr ""
+msgstr "UID de réponse"
 
 #: frontend/src/components/ContactAutocomplete.vue:39
 msgid "Results"
@@ -993,30 +997,30 @@ msgstr "Résultats"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
 msgid "SMTP Host"
-msgstr ""
+msgstr "Serveur SMTP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
 msgid "SMTP Password"
-msgstr ""
+msgstr "Mot de passe SMTP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:64
 msgid "SMTP Password is required for Password authentication"
-msgstr ""
+msgstr "Le mot de passe SMTP est requis pour l'authentification par mot de passe"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Int field in DocType 'Webmail Account'
 msgid "SMTP Port"
-msgstr ""
+msgstr "Port SMTP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
 msgid "SMTP Settings"
-msgstr ""
+msgstr "Paramètres SMTP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:192
 msgid "SMTP: Connected successfully"
-msgstr ""
+msgstr "SMTP : Connexion réussie"
 
 #: frontend/src/components/EmailComposer.vue:21
 #: frontend/src/components/FilterManager.vue:191
@@ -1083,7 +1087,7 @@ msgstr "Erreur d'envoi"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
 msgid "Sender Name"
-msgstr ""
+msgstr "Nom de l'expéditeur"
 
 #: frontend/src/components/AdvancedSearch.vue:26
 msgid "Sender email address"
@@ -1114,12 +1118,12 @@ msgstr "Signature"
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Text Editor field in DocType 'Email Signature'
 msgid "Signature Content"
-msgstr ""
+msgstr "Contenu de la signature"
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Data field in DocType 'Email Signature'
 msgid "Signature Name"
-msgstr ""
+msgstr "Nom de la signature"
 
 #: frontend/src/components/SignatureEditor.vue:252
 msgid "Signature deleted"
@@ -1154,7 +1158,7 @@ msgstr "Date de début"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Section Break field in DocType 'Email Filter'
 msgid "Statistics"
-msgstr ""
+msgstr "Statistiques"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frontend/src/components/AdvancedSearch.vue:42
@@ -1165,7 +1169,7 @@ msgstr "Objet"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
 msgid "Subject Contains"
-msgstr ""
+msgstr "Sujet contient"
 
 #: frontend/src/components/FilterManager.vue:130
 msgid "Subject contains"
@@ -1179,7 +1183,7 @@ msgstr "Objet :"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:174
 msgid "Success"
-msgstr ""
+msgstr "Succès"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
@@ -1187,34 +1191,34 @@ msgstr ""
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Name of a role
 msgid "System Manager"
-msgstr ""
+msgstr "Gestionnaire système"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
 msgid "Target Folder"
-msgstr ""
+msgstr "Dossier cible"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.py:34
 msgid "Target folder is required for move action"
-msgstr ""
+msgstr "Le dossier cible est requis pour l'action de déplacement"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:12
 msgid "Test Connection"
-msgstr ""
+msgstr "Tester la connexion"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:148
 msgid "Testing Connection"
-msgstr ""
+msgstr "Test de connexion"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
 msgid "Text Content"
-msgstr ""
+msgstr "Contenu texte"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Int field in DocType 'Email Filter'
 msgid "Times Applied"
-msgstr ""
+msgstr "Nombre d'applications"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frontend/src/components/AdvancedSearch.vue:32
@@ -1225,7 +1229,7 @@ msgstr "À"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
 msgid "To Contains"
-msgstr ""
+msgstr "À contient"
 
 #: frontend/src/components/FilterManager.vue:121
 msgid "To contains"
@@ -1241,7 +1245,7 @@ msgstr "À :"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Datetime field in DocType 'Webmail Account'
 msgid "Token Expiry"
-msgstr ""
+msgstr "Expiration du jeton"
 
 #: frontend/src/components/FolderTree.vue:145
 #: frontend/src/components/FolderTree.vue:146
@@ -1255,7 +1259,7 @@ msgstr "Souligné"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:126
 #: frappe_webmail/webmail_api.py:91
 msgid "Unknown OAuth provider"
-msgstr ""
+msgstr "Fournisseur OAuth inconnu"
 
 #: frontend/src/components/EmailViewer.vue:39
 msgid "Unread"
@@ -1268,12 +1272,12 @@ msgstr "Non lus uniquement"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Check field in DocType 'Webmail Account'
 msgid "Use SSL"
-msgstr ""
+msgstr "Utiliser SSL"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Check field in DocType 'Webmail Account'
 msgid "Use STARTTLS"
-msgstr ""
+msgstr "Utiliser STARTTLS"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
@@ -1284,12 +1288,12 @@ msgstr ""
 #. Label of a Link field in DocType 'Email Signature'
 #. Label of a Link field in DocType 'Webmail Account'
 msgid "User"
-msgstr ""
+msgstr "Utilisateur"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Name of a DocType
 msgid "Webmail Account"
-msgstr ""
+msgstr "Compte Webmail"
 
 #: frontend/src/pages/Webmail.vue:87
 msgid "Welcome to Webmail"
@@ -1322,17 +1326,17 @@ msgstr "Vous n'avez pas encore configuré de compte email."
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Match Type' (Select) field in DocType 'Email Filter'
 msgid "all"
-msgstr ""
+msgstr "tous"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Match Type' (Select) field in DocType 'Email Filter'
 msgid "any"
-msgstr ""
+msgstr "n'importe lequel"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 msgid "delete"
-msgstr ""
+msgstr "supprimer"
 
 #: frontend/src/components/FilterManager.vue:29
 msgid "disabled"
@@ -1346,26 +1350,26 @@ msgstr "désactivé"
 #: frappe_webmail/webmail_api.py:1115 frappe_webmail/webmail_api.py:1552
 #: frappe_webmail/webmail_api.py:1839 frappe_webmail/webmail_api.py:1945
 msgid "imapclient package is not installed"
-msgstr ""
+msgstr "Le paquet imapclient n'est pas installé"
 
 #: frappe_webmail/utils/imap_client.py:37
 msgid "imapclient package is not installed. Run: pip install imapclient"
-msgstr ""
+msgstr "Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 msgid "mark_read"
-msgstr ""
+msgstr "marquer comme lu"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 msgid "mark_starred"
-msgstr ""
+msgstr "marquer comme important"
 
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 msgid "move"
-msgstr ""
+msgstr "déplacer"
 
 #: frontend/src/components/FilterManager.vue:12
 msgid "{0} filter(s)"
@@ -1386,47 +1390,57 @@ msgstr "{0} résultat(s) sur {1}"
 #: frappe_webmail/webmail_api.py:436
 msgid "{0}: Authentication failed. Check your email address and password."
 msgstr ""
+"{0} : Échec d'authentification. Vérifiez votre adresse email et mot de "
+"passe."
 
 #: frappe_webmail/webmail_api.py:431
 msgid "{0}: Cannot resolve server address '{1}'. Check the server hostname."
 msgstr ""
+"{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom "
+"d'hôte."
 
 #: frappe_webmail/webmail_api.py:454
 msgid ""
 "{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL "
 "enabled."
-msgstr ""
+msgstr "{0} : Connexion fermée de manière inattendue. Vérifiez les paramètres SSL."
 
 #: frappe_webmail/webmail_api.py:416
 msgid ""
 "{0}: Connection refused to {1}:{2}. Check that the server address and port "
 "are correct."
-msgstr ""
+msgstr "{0} : Connexion refusée à {1}:{2}. Vérifiez l'adresse du serveur et le port."
 
 #: frappe_webmail/webmail_api.py:421
 msgid ""
 "{0}: Connection timeout. The server is not responding. Check your network "
 "and server settings."
 msgstr ""
+"{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre "
+"réseau."
 
 #: frappe_webmail/webmail_api.py:451
 msgid "{0}: Connection was reset by the server. Check SSL/TLS settings."
 msgstr ""
+"{0} : La connexion a été réinitialisée par le serveur. Vérifiez les "
+"paramètres SSL/TLS."
 
 #: frappe_webmail/webmail_api.py:445
 msgid "{0}: SSL/TLS error. This server may require SSL. Try enabling SSL."
-msgstr ""
+msgstr "{0} : Erreur SSL/TLS. Ce serveur peut nécessiter SSL. Essayez d'activer SSL."
 
 #: frappe_webmail/webmail_api.py:441
 msgid ""
 "{0}: SSL/TLS error. Try disabling SSL or check the server's SSL "
 "configuration."
 msgstr ""
+"{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la "
+"configuration SSL du serveur."
 
 #: frappe_webmail/webmail_api.py:448
 msgid "{0}: STARTTLS error. Try toggling the STARTTLS option."
-msgstr ""
+msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 
 #: frappe_webmail/webmail_api.py:459
 msgid "{0}: {1}"
-msgstr ""
+msgstr "{0} : {1}"
