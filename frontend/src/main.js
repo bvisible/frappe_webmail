@@ -1,7 +1,8 @@
 /**
  * Frappe Webmail Frontend Entry Point
  *
- * This module initializes the webmail application within Frappe Desk.
+ * This module provides the webmail Vue application.
+ * The page routing is handled by frappe_webmail/page/webmail/webmail.js
  */
 
 import { createApp, h } from 'vue'
@@ -51,36 +52,18 @@ function destroyWebmail() {
   }
 }
 
-// Export for Frappe integration
+// Register frappe.webmail namespace immediately when script loads
+if (typeof frappe !== 'undefined') {
+  frappe.provide('frappe.webmail')
+  frappe.webmail.init = initWebmail
+  frappe.webmail.destroy = destroyWebmail
+}
+
+// Also expose on window for fallback
 window.FrappeWebmail = {
   init: initWebmail,
   destroy: destroyWebmail
 }
 
-// Auto-initialize if container exists
-document.addEventListener('DOMContentLoaded', () => {
-  const container = document.getElementById('webmail-app')
-  if (container) {
-    initWebmail(container)
-  }
-})
-
-// Frappe page integration
-if (typeof frappe !== 'undefined') {
-  frappe.provide('frappe.webmail')
-
-  frappe.webmail = {
-    init: initWebmail,
-    destroy: destroyWebmail
-  }
-
-  // Register the webmail page
-  frappe.pages['webmail'] = {
-    refresh: function(wrapper) {
-      const container = wrapper.querySelector('#webmail-app') || wrapper
-      initWebmail(container)
-    }
-  }
-}
-
-export { initWebmail, destroyWebmail }
+// Export for module usage
+export { initWebmail as init, destroyWebmail as destroy }

@@ -26,8 +26,8 @@ add_to_apps_screen = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
-app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.js"
+app_include_css = "/assets/frappe_webmail/js/frappe_webmail.css"
+app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"

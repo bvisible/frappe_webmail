@@ -425,6 +425,7 @@ export default {
 
 .checkbox {
   flex-shrink: 0;
+  display: none;
 }
 
 .star {
@@ -440,7 +441,7 @@ export default {
 }
 
 .from {
-  width: 180px;
+  width: 150px;
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -466,11 +467,13 @@ export default {
 }
 
 .date {
-  width: 70px;
+  width: 45px;
   flex-shrink: 0;
   text-align: right;
   font-size: 12px;
   color: var(--text-muted, #8d99a6);
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .empty-state,
@@ -502,6 +505,77 @@ export default {
   }
   50% {
     opacity: 0.4;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .email-row {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .from {
+    width: 120px;
+    font-size: 13px;
+  }
+
+  .subject {
+    font-size: 13px;
+  }
+
+  .date {
+    font-size: 11px;
+    min-width: 50px;
+  }
+
+  .checkbox {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .email-row {
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 4px;
+  }
+
+  .star {
+    order: 1;
+    font-size: 14px;
+  }
+
+  .from {
+    order: 2;
+    width: auto;
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .date {
+    order: 3;
+    font-size: 11px;
+    min-width: auto;
+  }
+
+  .subject {
+    order: 4;
+    width: 100%;
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--text-muted, #8d99a6);
+    padding-left: 22px;
+    margin-top: 2px;
+  }
+
+  .email-row.unread .subject {
+    color: var(--text-color, #333);
+  }
+
+  .checkbox {
+    display: none;
   }
 }
 </style>

@@ -236,12 +236,11 @@ def imap_login(client, account):
 		if not access_token:
 			frappe.throw(_("OAuth token not available. Please reconnect your account."))
 
-		# Build XOAUTH2 authentication string
-		auth_string = f"user={account.email}\x01auth=Bearer {access_token}\x01\x01"
-
 		client.oauth2_login(account.email, access_token)
 	else:
-		imap_login(client, account)
+		# Password authentication
+		password = account.get_password("imap_password")
+		client.login(account.email, password)
 
 
 def smtp_login(server, account):
@@ -255,7 +254,9 @@ def smtp_login(server, account):
 		auth_string = build_xoauth2_string(account.email, access_token)
 		server.auth("XOAUTH2", lambda x: auth_string)
 	else:
-		smtp_login(server, account)
+		# Password authentication
+		password = account.get_password("smtp_password")
+		server.login(account.email, password)
 
 
 def build_xoauth2_string(user, access_token):

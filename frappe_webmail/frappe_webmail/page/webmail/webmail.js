@@ -14,11 +14,23 @@ frappe.pages['webmail'].on_page_load = function(wrapper) {
 	// Store references
 	wrapper.page = page;
 
+	// Hide the page header for full-screen webmail experience
+	const pageHead = wrapper.querySelector('.page-head');
+	if (pageHead) {
+		pageHead.style.display = 'none';
+	}
+
+	// Reduce padding on page body container
+	const pageBody = wrapper.closest('.container.page-body');
+	if (pageBody) {
+		pageBody.style.padding = '15px';
+	}
+
 	// Create container for Vue app
 	const container = document.createElement('div');
 	container.id = 'webmail-app';
 	container.className = 'webmail-container';
-	container.style.cssText = 'height: calc(100vh - 100px); overflow: hidden;';
+	container.style.cssText = 'height: calc(100vh - 60px); overflow: hidden;';
 
 	page.main.html('').append(container);
 

@@ -4,6 +4,9 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production')
+  },
   build: {
     outDir: '../frappe_webmail/public/js',
     emptyOutDir: false,
@@ -14,19 +17,11 @@ export default defineConfig({
       formats: ['iife']
     },
     rollupOptions: {
-      external: ['vue'],
       output: {
-        globals: {
-          vue: 'Vue'
-        },
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
-            return '../css/frappe_webmail.css'
-          }
-          return assetInfo.name
-        }
+        assetFileNames: 'frappe_webmail.[ext]'
       }
-    }
+    },
+    cssCodeSplit: false
   },
   resolve: {
     alias: {
