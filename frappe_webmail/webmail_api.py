@@ -267,43 +267,175 @@ def build_xoauth2_string(user, access_token):
 
 @frappe.whitelist()
 def test_connection(account_name):
-	"""Test IMAP/SMTP connection for an account"""
+	"""Test IMAP/SMTP connection for an existing account"""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
 	account = get_account(account_name)
 
+	return _test_connection_internal(account)
+
+
+@frappe.whitelist()
+def test_connection_live(
+	email,
+	imap_host,
+	imap_port,
+	imap_ssl,
+	smtp_host,
+	smtp_port,
+	smtp_ssl,
+	smtp_starttls,
+	auth_type="Password",
+	imap_password=None,
+	smtp_password=None,
+	oauth_provider=None,
+	oauth_access_token=None,
+):
+	"""Test IMAP/SMTP connection with provided values (before saving)"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	# Create a mock account object with the provided values
+	class MockAccount:
+		pass
+
+	account = MockAccount()
+	account.email = email
+	account.imap_host = imap_host
+	account.imap_port = int(imap_port)
+	account.imap_ssl = int(imap_ssl)
+	account.smtp_host = smtp_host
+	account.smtp_port = int(smtp_port)
+	account.smtp_ssl = int(smtp_ssl)
+	account.smtp_starttls = int(smtp_starttls)
+	account.auth_type = auth_type
+	account.oauth_provider = oauth_provider
+	account.oauth_access_token = oauth_access_token
+
+	# For password auth, we need to handle passwords specially
+	if auth_type == "Password":
+		# Store passwords as attributes
+		account._imap_password = imap_password
+		account._smtp_password = smtp_password
+
+		# Add get_password method
+		def get_password(field):
+			if field == "imap_password":
+				return account._imap_password
+			elif field == "smtp_password":
+				return account._smtp_password
+			return None
+
+		account.get_password = get_password
+	else:
+		# OAuth2
+		def get_oauth_access_token():
+			return oauth_access_token
+
+		account.get_oauth_access_token = get_oauth_access_token
+
+	return _test_connection_internal(account)
+
+
+def _test_connection_internal(account):
+	"""Internal function to test connection with an account object"""
 	# Check OAuth2 status
-	if account.auth_type == "OAuth2" and not account.oauth_access_token:
-		return {
-			"success": False,
-			"errors": ["OAuth2 not connected. Please authorize your account first."],
-		}
+	if account.auth_type == "OAuth2":
+		oauth_token = getattr(account, "oauth_access_token", None)
+		if not oauth_token:
+			return {
+				"success": False,
+				"imap_success": False,
+				"smtp_success": False,
+				"errors": [_("OAuth2 not connected. Please authorize your account first.")],
+			}
 
 	errors = []
+	imap_success = False
+	smtp_success = False
+	imap_error = None
+	smtp_error = None
 
 	# Test IMAP
 	try:
 		with IMAPClient(
-			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl
+			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=15
 		) as client:
 			imap_login(client, account)
+			imap_success = True
 	except Exception as e:
-		errors.append(f"IMAP: {str(e)}")
+		imap_error = _format_connection_error("IMAP", e, account)
+		errors.append(imap_error)
 
 	# Test SMTP
 	try:
 		smtp_class = smtplib.SMTP_SSL if account.smtp_ssl else smtplib.SMTP
-		with smtp_class(account.smtp_host, account.smtp_port, timeout=10) as server:
+		with smtp_class(account.smtp_host, account.smtp_port, timeout=15) as server:
 			if account.smtp_starttls and not account.smtp_ssl:
 				server.starttls()
 			smtp_login(server, account)
+			smtp_success = True
 	except Exception as e:
-		errors.append(f"SMTP: {str(e)}")
+		smtp_error = _format_connection_error("SMTP", e, account)
+		errors.append(smtp_error)
 
 	if errors:
-		return {"success": False, "errors": errors}
-	return {"success": True, "message": _("Connection successful")}
+		return {
+			"success": False,
+			"imap_success": imap_success,
+			"smtp_success": smtp_success,
+			"errors": errors,
+		}
+	return {
+		"success": True,
+		"imap_success": True,
+		"smtp_success": True,
+		"message": _("Connection successful"),
+	}
+
+
+def _format_connection_error(protocol, exception, account):
+	"""Format connection error with helpful messages"""
+	error_str = str(exception)
+	error_lower = error_str.lower()
+
+	# Common error patterns and user-friendly messages
+	if "connection refused" in error_lower:
+		host = account.imap_host if protocol == "IMAP" else account.smtp_host
+		port = account.imap_port if protocol == "IMAP" else account.smtp_port
+		return _("{0}: Connection refused to {1}:{2}. Check that the server address and port are correct.").format(
+			protocol, host, port
+		)
+
+	if "timed out" in error_lower or "timeout" in error_lower:
+		return _("{0}: Connection timeout. The server is not responding. Check your network and server settings.").format(protocol)
+
+	if "hostname" in error_lower or "getaddrinfo" in error_lower or "name or service not known" in error_lower:
+		host = account.imap_host if protocol == "IMAP" else account.smtp_host
+		return _("{0}: Cannot resolve server address '{1}'. Check the server hostname.").format(protocol, host)
+
+	if "authentication" in error_lower or "login" in error_lower or "authenticationfailed" in error_lower:
+		return _("{0}: Authentication failed. Check your email address and password.").format(protocol)
+
+	if "ssl" in error_lower or "certificate" in error_lower:
+		ssl_enabled = account.imap_ssl if protocol == "IMAP" else account.smtp_ssl
+		if ssl_enabled:
+			return _("{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration.").format(protocol)
+		else:
+			return _("{0}: SSL/TLS error. This server may require SSL. Try enabling SSL.").format(protocol)
+
+	if "starttls" in error_lower:
+		return _("{0}: STARTTLS error. Try toggling the STARTTLS option.").format(protocol)
+
+	if "connection reset" in error_lower:
+		return _("{0}: Connection was reset by the server. Check SSL/TLS settings.").format(protocol)
+
+	if "eof" in error_lower or "unexpected eof" in error_lower:
+		return _("{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled.").format(protocol)
+
+	# Default: show the original error
+	return _("{0}: {1}").format(protocol, error_str)
 
 
 # ============================================

@@ -110,32 +110,104 @@ function update_oauth_status(frm) {
 }
 
 function test_connection(frm) {
-	if (!frm.doc.name) {
-		frappe.msgprint(__('Please save the document first.'));
+	// Validate required fields
+	if (!frm.doc.email) {
+		frappe.msgprint(__('Please enter an email address.'));
+		return;
+	}
+	if (!frm.doc.imap_host) {
+		frappe.msgprint(__('Please enter the IMAP server address.'));
+		return;
+	}
+	if (!frm.doc.smtp_host) {
+		frappe.msgprint(__('Please enter the SMTP server address.'));
 		return;
 	}
 
+	// For password auth, check passwords
+	if (frm.doc.auth_type === 'Password') {
+		// Get passwords from form fields (they may be unsaved)
+		const imap_password = frm.doc.imap_password;
+		const smtp_password = frm.doc.smtp_password;
+
+		if (!imap_password) {
+			frappe.msgprint(__('Please enter the IMAP password.'));
+			return;
+		}
+		if (!smtp_password) {
+			frappe.msgprint(__('Please enter the SMTP password.'));
+			return;
+		}
+	}
+
+	// Show loading indicator
+	frappe.show_progress(__('Testing Connection'), 0, 100, __('Connecting to servers...'));
+
+	// Use live test with form values
 	frappe.call({
-		method: 'frappe_webmail.api.test_connection',
+		method: 'frappe_webmail.api.test_connection_live',
 		args: {
-			account_name: frm.doc.name
+			email: frm.doc.email,
+			imap_host: frm.doc.imap_host,
+			imap_port: frm.doc.imap_port || 993,
+			imap_ssl: frm.doc.imap_ssl ? 1 : 0,
+			smtp_host: frm.doc.smtp_host,
+			smtp_port: frm.doc.smtp_port || 587,
+			smtp_ssl: frm.doc.smtp_ssl ? 1 : 0,
+			smtp_starttls: frm.doc.smtp_starttls ? 1 : 0,
+			auth_type: frm.doc.auth_type || 'Password',
+			imap_password: frm.doc.imap_password || '',
+			smtp_password: frm.doc.smtp_password || '',
+			oauth_provider: frm.doc.oauth_provider || '',
+			oauth_access_token: frm.doc.oauth_access_token || ''
 		},
 		callback: function(r) {
+			frappe.hide_progress();
+
 			if (r.message) {
 				if (r.message.success) {
 					frappe.msgprint({
 						title: __('Success'),
 						indicator: 'green',
-						message: __('Connection successful!')
+						message: __('Connection successful! Both IMAP and SMTP are working.')
 					});
 				} else {
+					// Build detailed error message
+					let message = '';
+
+					// Show individual status
+					if (r.message.imap_success) {
+						message += '<p><span class="text-success">✓</span> ' + __('IMAP: Connected successfully') + '</p>';
+					}
+					if (r.message.smtp_success) {
+						message += '<p><span class="text-success">✓</span> ' + __('SMTP: Connected successfully') + '</p>';
+					}
+
+					// Show errors
+					if (r.message.errors && r.message.errors.length > 0) {
+						message += '<hr><p><strong>' + __('Errors:') + '</strong></p>';
+						message += '<ul>';
+						r.message.errors.forEach(function(err) {
+							message += '<li class="text-danger">' + err + '</li>';
+						});
+						message += '</ul>';
+					}
+
 					frappe.msgprint({
-						title: __('Connection Failed'),
+						title: __('Connection Test Results'),
 						indicator: 'red',
-						message: r.message.errors.join('<br>')
+						message: message
 					});
 				}
 			}
+		},
+		error: function(r) {
+			frappe.hide_progress();
+			frappe.msgprint({
+				title: __('Error'),
+				indicator: 'red',
+				message: __('Failed to test connection. Please check your settings.')
+			});
 		}
 	});
 }
