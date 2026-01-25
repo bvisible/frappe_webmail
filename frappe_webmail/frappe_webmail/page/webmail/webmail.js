@@ -20,6 +20,12 @@ frappe.pages['webmail'].on_page_load = function(wrapper) {
 		pageHead.style.display = 'none';
 	}
 
+	// Reduce padding on page body container
+	const pageBody = wrapper.closest('.container.page-body');
+	if (pageBody) {
+		pageBody.style.padding = '15px';
+	}
+
 	// Create container for Vue app
 	const container = document.createElement('div');
 	container.id = 'webmail-app';
