@@ -12,6 +12,8 @@ export default defineConfig({
 		emptyOutDir: false,
 		// Disable sourcemaps in production to reduce memory usage
 		sourcemap: false,
+		// Use modern JS target to speed up build (no polyfills)
+		target: "esnext",
 		lib: {
 			entry: path.resolve(__dirname, "src/main.js"),
 			name: "FrappeWebmail",
