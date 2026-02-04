@@ -1,93 +1,172 @@
 <template>
 	<div class="email-viewer" v-if="email">
-		<!-- Header -->
-		<div class="email-header">
-			<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
-			<div class="email-meta">
-				<div class="from">
-					<div class="from-info">
-						<strong>{{ email.from_name || email.from_email }}</strong>
-						<span class="email-address">&lt;{{ email.from_email }}&gt;</span>
-						<span
-							v-if="senderContact"
-							class="contact-badge"
-							:title="'Contact: ' + senderContact.full_name"
-						>
-							👤
-						</span>
-						<button
-							v-else
-							@click="saveAsContact(email.from_email, email.from_name)"
-							class="add-contact-btn"
-							:title="__('Add to contacts')"
-						>
-							+ 👤
-						</button>
+		<!-- Scrollable content area -->
+		<div class="email-content">
+			<!-- Header -->
+			<div class="email-header">
+				<div class="email-subject">{{ email.subject || "(Sans objet)" }}</div>
+				<div class="email-meta">
+					<div class="from">
+						<div class="from-info">
+							<strong>{{ email.from_name || email.from_email }}</strong>
+							<span class="email-address">&lt;{{ email.from_email }}&gt;</span>
+							<span
+								v-if="senderContact"
+								class="contact-badge"
+								:title="'Contact: ' + senderContact.full_name"
+							>
+								<User :size="14" />
+							</span>
+							<button
+								v-else
+								@click="saveAsContact(email.from_email, email.from_name)"
+								class="add-contact-btn"
+								title="Ajouter aux contacts"
+							>
+								<UserPlus :size="14" />
+							</button>
+						</div>
 					</div>
+					<div class="to">A: {{ email.to }}</div>
+					<div v-if="email.cc" class="cc">Cc: {{ email.cc }}</div>
+					<div class="date">{{ formatDate(email.date) }}</div>
 				</div>
-				<div class="to">{{ __("To:") }} {{ email.to }}</div>
-				<div v-if="email.cc" class="cc">{{ __("Cc:") }} {{ email.cc }}</div>
-				<div class="date">{{ formatDate(email.date) }}</div>
 			</div>
+
+			<!-- Actions -->
+			<div class="email-actions">
+				<button @click="$emit('reply', email)" class="btn btn-sm">
+					<Reply :size="16" />
+					<span>Repondre</span>
+				</button>
+				<button @click="$emit('forward', email)" class="btn btn-sm">
+					<Forward :size="16" />
+					<span>Transferer</span>
+				</button>
+				<button @click="markAsUnread" class="btn btn-sm" title="Marquer comme non lu">
+					<MailOpen :size="16" />
+					<span>Non lu</span>
+				</button>
+				<button @click="toggleStar" class="btn btn-sm" :class="{ starred: email.flagged }">
+					<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
+				</button>
+				<button @click="$emit('delete', email)" class="btn btn-sm btn-danger">
+					<Trash2 :size="16" />
+				</button>
+			</div>
+
+			<!-- External images warning -->
+			<div v-if="hasBlockedImages && !showExternalImages" class="blocked-images-notice">
+				<AlertTriangle :size="16" class="warning-icon" />
+				<span>Les images externes ont ete bloquees pour votre securite.</span>
+				<button @click="showExternalImages = true">Afficher les images</button>
+				<button @click="trustSender" class="trust-btn" :title="email.from_email">
+					Toujours pour cet expediteur
+				</button>
+				<button v-if="senderDomain" @click="trustDomain" class="trust-btn">
+					Toujours pour {{ senderDomain }}
+				</button>
+			</div>
+
+			<!-- Body (sandboxed iframe) -->
+			<iframe
+				ref="emailFrame"
+				class="email-body"
+				sandbox="allow-popups allow-popups-to-escape-sandbox"
+				referrerpolicy="no-referrer"
+				:srcdoc="sanitizedContent"
+			/>
 		</div>
 
-		<!-- Actions -->
-		<div class="email-actions">
-			<button @click="$emit('reply', email)" class="btn btn-sm">↩️ {{ __("Reply") }}</button>
-			<button @click="$emit('forward', email)" class="btn btn-sm">
-				↪️ {{ __("Forward") }}
-			</button>
-			<button @click="markAsUnread" class="btn btn-sm" :title="__('Mark as unread')">
-				✉️ {{ __("Unread") }}
-			</button>
-			<button @click="toggleStar" class="btn btn-sm">
-				{{ email.flagged ? "★" : "☆" }}
-			</button>
-			<button @click="$emit('delete', email)" class="btn btn-sm btn-danger">🗑️</button>
-		</div>
-
-		<!-- External images warning -->
-		<div v-if="hasBlockedImages" class="blocked-images-notice">
-			⚠️ {{ __("External images have been blocked for your security.") }}
-			<button @click="showExternalImages = true">{{ __("Show images") }}</button>
-		</div>
-
-		<!-- Body (sandboxed iframe) -->
-		<iframe
-			ref="emailFrame"
-			class="email-body"
-			sandbox="allow-popups allow-popups-to-escape-sandbox"
-			referrerpolicy="no-referrer"
-			:srcdoc="sanitizedContent"
-		/>
-
-		<!-- Attachments -->
+		<!-- Attachments Footer (sticky at bottom) -->
 		<div v-if="email.attachments?.length" class="email-attachments">
-			<h4>📎 {{ __("Attachments") }} ({{ email.attachments.length }})</h4>
-			<div class="attachment-list">
+			<div class="attachments-header" @click="toggleAttachments">
+				<div class="attachments-title">
+					<Paperclip :size="14" />
+					<span
+						>{{ email.attachments.length }}
+						{{
+							email.attachments.length > 1 ? "pieces jointes" : "piece jointe"
+						}}</span
+					>
+				</div>
+				<button v-if="email.attachments.length > 2" class="toggle-btn">
+					<ChevronUp v-if="showAllAttachments" :size="16" />
+					<ChevronDown v-else :size="16" />
+				</button>
+			</div>
+			<div class="attachment-list" :class="{ expanded: showAllAttachments }">
 				<div
-					v-for="att in email.attachments"
+					v-for="(att, index) in visibleAttachments"
 					:key="att.id"
 					class="attachment-item"
-					@click="downloadAttachment(att)"
+					@click.stop="downloadAttachment(att)"
 				>
-					<span class="icon">{{ getFileIcon(att.content_type) }}</span>
+					<component :is="getFileIcon(att.content_type)" :size="16" class="file-icon" />
 					<span class="name">{{ att.filename }}</span>
 					<span class="size">({{ formatSize(att.size) }})</span>
 				</div>
+				<button
+					v-if="!showAllAttachments && email.attachments.length > 2"
+					class="show-more-btn"
+					@click.stop="showAllAttachments = true"
+				>
+					+{{ email.attachments.length - 2 }} autres
+				</button>
 			</div>
 		</div>
 	</div>
 	<div v-else class="no-email-selected">
-		<p>{{ __("Select an email to read") }}</p>
+		<p>Selectionnez un email pour le lire</p>
 	</div>
 </template>
 
 <script>
 import DOMPurify from "dompurify";
+import {
+	User,
+	UserPlus,
+	Reply,
+	Forward,
+	MailOpen,
+	Star,
+	Trash2,
+	AlertTriangle,
+	Paperclip,
+	File,
+	FileText,
+	Image,
+	Film,
+	Music,
+	Archive,
+	FileSpreadsheet,
+	ChevronDown,
+	ChevronUp,
+} from "lucide-vue-next";
 
 export default {
 	name: "EmailViewer",
+
+	components: {
+		User,
+		UserPlus,
+		Reply,
+		Forward,
+		MailOpen,
+		Star,
+		Trash2,
+		AlertTriangle,
+		Paperclip,
+		File,
+		FileText,
+		Image,
+		Film,
+		Music,
+		Archive,
+		FileSpreadsheet,
+		ChevronDown,
+		ChevronUp,
+	},
 
 	props: {
 		email: { type: Object, default: null },
@@ -102,23 +181,23 @@ export default {
 			showExternalImages: false,
 			hasBlockedImages: false,
 			senderContact: null,
+			showAllAttachments: false,
 		};
 	},
 
-	watch: {
-		"email.from_email": {
-			immediate: true,
-			handler(email) {
-				if (email) {
-					this.loadSenderContact(email);
-				} else {
-					this.senderContact = null;
-				}
-			},
-		},
-	},
-
 	computed: {
+		senderDomain() {
+			if (!this.email?.from_email) return "";
+			const parts = this.email.from_email.split("@");
+			return parts.length > 1 ? parts[1] : "";
+		},
+
+		visibleAttachments() {
+			if (!this.email?.attachments) return [];
+			if (this.showAllAttachments) return this.email.attachments;
+			return this.email.attachments.slice(0, 2);
+		},
+
 		sanitizedContent() {
 			if (!this.email) return "";
 
@@ -164,10 +243,10 @@ export default {
 						node.setAttribute("data-blocked-src", src);
 						node.setAttribute(
 							"src",
-							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[Blocked image]</text></svg>'
+							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[Image bloquee]</text></svg>'
 						);
 						node.style.cursor = "pointer";
-						node.title = "External image blocked";
+						node.title = "Image externe bloquee";
 						self.hasBlockedImages = true;
 					}
 				}
@@ -217,8 +296,7 @@ export default {
               font-size: 13px;
             }
             pre { padding: 10px; overflow-x: auto; }
-            table { border-collapse: collapse; max-width: 100%; }
-            td, th { border: 1px solid #ddd; padding: 8px; }
+            table { max-width: 100%; }
           </style>
         </head>
         <body>${clean}</body>
@@ -228,13 +306,29 @@ export default {
 	},
 
 	watch: {
-		email() {
-			this.showExternalImages = false;
-			this.hasBlockedImages = false;
+		email: {
+			immediate: true,
+			handler(newEmail) {
+				this.showExternalImages = false;
+				this.hasBlockedImages = false;
+				this.showAllAttachments = false;
+				if (newEmail?.from_email) {
+					this.loadSenderContact(newEmail.from_email);
+					this.checkTrustedSender();
+				} else {
+					this.senderContact = null;
+				}
+			},
 		},
 	},
 
 	methods: {
+		toggleAttachments() {
+			if (this.email?.attachments?.length > 2) {
+				this.showAllAttachments = !this.showAllAttachments;
+			}
+		},
+
 		wrapPlainText(text) {
 			if (!text) return "";
 			const escaped = text
@@ -261,15 +355,16 @@ export default {
 		},
 
 		getFileIcon(contentType) {
-			if (!contentType) return "📄";
-			if (contentType.startsWith("image/")) return "🖼️";
-			if (contentType.startsWith("video/")) return "🎬";
-			if (contentType.startsWith("audio/")) return "🎵";
-			if (contentType.includes("pdf")) return "📕";
-			if (contentType.includes("word") || contentType.includes("document")) return "📘";
-			if (contentType.includes("sheet") || contentType.includes("excel")) return "📗";
-			if (contentType.includes("zip") || contentType.includes("archive")) return "📦";
-			return "📄";
+			if (!contentType) return File;
+			if (contentType.startsWith("image/")) return Image;
+			if (contentType.startsWith("video/")) return Film;
+			if (contentType.startsWith("audio/")) return Music;
+			if (contentType.includes("pdf")) return FileText;
+			if (contentType.includes("word") || contentType.includes("document")) return FileText;
+			if (contentType.includes("sheet") || contentType.includes("excel"))
+				return FileSpreadsheet;
+			if (contentType.includes("zip") || contentType.includes("archive")) return Archive;
+			return File;
 		},
 
 		async toggleStar() {
@@ -290,7 +385,7 @@ export default {
 				this.email.flagged = !this.email.flagged;
 				this.$emit("flag-changed", this.email);
 			} catch (error) {
-				frappe.toast({ message: __("Error"), indicator: "red" });
+				frappe.toast({ message: "Erreur", indicator: "red" });
 			}
 		},
 
@@ -308,9 +403,9 @@ export default {
 
 				this.email.seen = false;
 				this.$emit("mark-unread", this.email);
-				frappe.toast({ message: __("Marked as unread"), indicator: "green" });
+				frappe.toast({ message: "Marque comme non lu", indicator: "green" });
 			} catch (error) {
-				frappe.toast({ message: __("Error"), indicator: "red" });
+				frappe.toast({ message: "Erreur", indicator: "red" });
 			}
 		},
 
@@ -344,7 +439,7 @@ export default {
 				document.body.removeChild(a);
 				URL.revokeObjectURL(url);
 			} catch (error) {
-				frappe.toast({ message: __("Download error"), indicator: "red" });
+				frappe.toast({ message: "Erreur de telechargement", indicator: "red" });
 			}
 		},
 
@@ -374,7 +469,7 @@ export default {
 
 				if (response.message.success) {
 					frappe.toast({
-						message: __("Contact created: {0}", [response.message.full_name]),
+						message: `Contact cree: ${response.message.full_name}`,
 						indicator: "green",
 					});
 					this.loadSenderContact(email);
@@ -388,7 +483,79 @@ export default {
 				}
 			} catch (error) {
 				frappe.toast({
-					message: __("Error creating contact"),
+					message: "Erreur lors de la creation du contact",
+					indicator: "red",
+				});
+			}
+		},
+
+		async checkTrustedSender() {
+			if (!this.email?.from_email) return;
+
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.webmail_api.is_sender_trusted",
+					args: {
+						account_name: this.account,
+						from_email: this.email.from_email,
+					},
+				});
+
+				if (response.message) {
+					this.showExternalImages = true;
+				}
+			} catch (error) {
+				console.error("Error checking trusted sender:", error);
+			}
+		},
+
+		async trustSender() {
+			if (!this.email?.from_email) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.add_trusted_source",
+					args: {
+						account_name: this.account,
+						value: this.email.from_email,
+						source_type: "Sender",
+					},
+				});
+
+				this.showExternalImages = true;
+				frappe.toast({
+					message: "Expediteur ajoute a la liste de confiance",
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({
+					message: "Erreur",
+					indicator: "red",
+				});
+			}
+		},
+
+		async trustDomain() {
+			if (!this.senderDomain) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.add_trusted_source",
+					args: {
+						account_name: this.account,
+						value: this.senderDomain,
+						source_type: "Domain",
+					},
+				});
+
+				this.showExternalImages = true;
+				frappe.toast({
+					message: "Domaine ajoute a la liste de confiance",
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({
+					message: "Erreur",
 					indicator: "red",
 				});
 			}
@@ -402,7 +569,19 @@ export default {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	background: white;
+	background: var(--card-bg, white);
+	position: relative;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.email-content {
+	flex: 1 1 0;
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	overflow-x: hidden;
+	min-height: 0;
 }
 
 .no-email-selected {
@@ -416,12 +595,14 @@ export default {
 .email-header {
 	padding: 16px;
 	border-bottom: 1px solid var(--border-color, #e5e5e5);
+	flex: 0 0 auto;
 }
 
 .email-subject {
 	font-size: 18px;
 	font-weight: 600;
 	margin-bottom: 12px;
+	color: var(--text-color, #333);
 }
 
 .email-meta {
@@ -444,92 +625,194 @@ export default {
 	gap: 8px;
 	padding: 8px 16px;
 	border-bottom: 1px solid var(--border-color, #e5e5e5);
-	background: var(--bg-light-gray, #f5f5f5);
+	background: var(--subtle-bg, #f5f5f5);
+	flex: 0 0 auto;
 }
 
 .email-actions .btn {
-	padding: 4px 12px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
 	border: 1px solid var(--border-color, #e5e5e5);
 	border-radius: 4px;
-	background: white;
+	background: var(--card-bg, white);
 	cursor: pointer;
 	font-size: 13px;
+	color: var(--text-color, #333);
+	transition: all 0.15s ease;
 }
 
 .email-actions .btn:hover {
-	background: var(--bg-gray, #eee);
+	background: var(--hover-bg, #eee);
+}
+
+.email-actions .btn.starred {
+	color: var(--yellow-500, #eab308);
 }
 
 .email-actions .btn-danger:hover {
-	background: #fee;
-	border-color: #fcc;
+	background: var(--red-50, #fef2f2);
+	border-color: var(--red-200, #fecaca);
+	color: var(--red-600, #dc2626);
 }
 
 .blocked-images-notice {
-	padding: 8px 16px;
-	background: #fff3cd;
-	border-bottom: 1px solid #ffc107;
+	padding: 10px 16px;
+	background: var(--yellow-50, #fefce8);
+	border-bottom: 1px solid var(--yellow-300, #fcd34d);
 	font-size: 13px;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
+	flex-wrap: wrap;
+	color: var(--yellow-800, #854d0e);
+	flex: 0 0 auto;
+}
+
+.blocked-images-notice .warning-icon {
+	flex-shrink: 0;
 }
 
 .blocked-images-notice button {
 	background: none;
 	border: none;
-	color: #0066cc;
+	color: var(--primary-color, #2490ef);
 	cursor: pointer;
 	text-decoration: underline;
+	font-size: 13px;
+}
+
+.blocked-images-notice .trust-btn {
+	color: var(--text-muted, #666);
+	font-size: 12px;
+}
+
+.blocked-images-notice .trust-btn:hover {
+	color: var(--primary-color, #2490ef);
 }
 
 .email-body {
-	flex: 1;
+	flex: 1 1 0;
 	border: none;
 	width: 100%;
+	min-height: 100px;
 }
 
+/* Attachments Footer - always visible at bottom */
 .email-attachments {
-	padding: 12px 16px;
+	flex: 0 0 auto;
+	padding: 10px 16px;
 	border-top: 1px solid var(--border-color, #e5e5e5);
-	background: var(--bg-light-gray, #f5f5f5);
+	background: var(--subtle-bg, #f5f5f5);
+	max-height: 150px;
+	overflow-y: auto;
 }
 
-.email-attachments h4 {
-	margin: 0 0 8px 0;
+.attachments-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	margin-bottom: 8px;
+}
+
+.attachments-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-color, #333);
+}
+
+.toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--text-muted, #8d99a6);
+	cursor: pointer;
+	border-radius: 4px;
+	transition: all 0.15s ease;
+}
+
+.toggle-btn:hover {
+	background: rgba(0, 0, 0, 0.05);
+	color: var(--text-color, #333);
 }
 
 .attachment-list {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
+	align-items: center;
 }
 
 .attachment-item {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	padding: 6px 10px;
-	background: white;
+	background: var(--card-bg, white);
 	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
 	font-size: 12px;
+	transition: all 0.15s ease;
+	max-width: 200px;
 }
 
 .attachment-item:hover {
-	background: var(--bg-gray, #eee);
+	background: var(--hover-bg, #f5f5f5);
+	border-color: var(--primary-color, #2490ef);
+}
+
+.attachment-item .file-icon {
+	color: var(--text-muted, #8d99a6);
+	flex-shrink: 0;
+}
+
+.attachment-item .name {
+	color: var(--text-color, #333);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 120px;
 }
 
 .attachment-item .size {
 	color: var(--text-muted, #8d99a6);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.show-more-btn {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 12px;
+	background: var(--primary-color, #2490ef);
+	color: white;
+	border: none;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.show-more-btn:hover {
+	background: var(--primary-dark, #1a7fd4);
 }
 
 .from-info {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	flex-wrap: wrap;
 }
 
@@ -537,27 +820,30 @@ export default {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 12px;
-	background: var(--primary-light, #e3f2fd);
-	padding: 2px 6px;
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
+	padding: 4px 8px;
 	border-radius: 4px;
 	cursor: help;
+	color: var(--primary-color, #2490ef);
 }
 
 .add-contact-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	background: none;
 	border: 1px dashed var(--border-color, #ccc);
 	border-radius: 4px;
-	padding: 2px 6px;
-	font-size: 11px;
+	padding: 4px 8px;
 	cursor: pointer;
 	color: var(--text-muted, #8d99a6);
-	transition: all 0.2s;
+	transition: all 0.15s ease;
 }
 
 .add-contact-btn:hover {
-	background: var(--primary-light, #e3f2fd);
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
 	border-color: var(--primary-color, #2490ef);
+	border-style: solid;
 	color: var(--primary-color, #2490ef);
 }
 </style>

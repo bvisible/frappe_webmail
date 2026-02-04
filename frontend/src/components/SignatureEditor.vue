@@ -2,7 +2,9 @@
 	<div class="signature-editor">
 		<div class="signature-header">
 			<h3>{{ __("Manage signatures") }}</h3>
-			<button @click="$emit('close')" class="close-btn">x</button>
+			<button @click="$emit('close')" class="close-btn">
+				<X :size="18" />
+			</button>
 		</div>
 
 		<div class="signature-content">
@@ -10,7 +12,10 @@
 			<div class="signature-list">
 				<div class="list-header">
 					<span>{{ __("My signatures") }}</span>
-					<button @click="createNew" class="add-btn">+ {{ __("New") }}</button>
+					<button @click="createNew" class="add-btn">
+						<Plus :size="14" />
+						<span>{{ __("New") }}</span>
+					</button>
 				</div>
 
 				<div
@@ -46,23 +51,30 @@
 					<button
 						@click="editor.chain().focus().toggleBold().run()"
 						:class="{ active: editor.isActive('bold') }"
+						:title="__('Bold')"
 					>
-						<strong>B</strong>
+						<Bold :size="16" />
 					</button>
 					<button
 						@click="editor.chain().focus().toggleItalic().run()"
 						:class="{ active: editor.isActive('italic') }"
+						:title="__('Italic')"
 					>
-						<em>I</em>
+						<Italic :size="16" />
 					</button>
 					<button
 						@click="editor.chain().focus().toggleUnderline().run()"
 						:class="{ active: editor.isActive('underline') }"
+						:title="__('Underline')"
 					>
-						<u>U</u>
+						<UnderlineIcon :size="16" />
 					</button>
-					<button @click="insertLink">🔗</button>
-					<button @click="insertImage">🖼️</button>
+					<button @click="insertLink" :title="__('Link')">
+						<LinkIcon :size="16" />
+					</button>
+					<button @click="insertImage" :title="__('Image')">
+						<ImageIcon :size="16" />
+					</button>
 				</div>
 
 				<!-- Editor -->
@@ -99,10 +111,28 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import {
+	X,
+	Plus,
+	Bold,
+	Italic,
+	Underline as UnderlineIcon,
+	Link as LinkIcon,
+	Image as ImageIcon,
+} from "lucide-vue-next";
 
 export default {
 	name: "SignatureEditor",
-	components: { EditorContent },
+	components: {
+		EditorContent,
+		X,
+		Plus,
+		Bold,
+		Italic,
+		UnderlineIcon,
+		LinkIcon,
+		ImageIcon,
+	},
 
 	emits: ["close", "updated"],
 
@@ -134,7 +164,7 @@ export default {
 				});
 				this.signatures = response.message || [];
 			} catch (error) {
-				frappe.toast({ message: __("Loading error"), indicator: "red" });
+				frappe.toast({ message: this.__("Loading error"), indicator: "red" });
 			}
 		},
 
@@ -171,14 +201,14 @@ export default {
 		},
 
 		insertLink() {
-			const url = prompt(__("Link URL:"));
+			const url = prompt(this.__("Link URL:"));
 			if (url) {
 				this.editor.chain().focus().setLink({ href: url }).run();
 			}
 		},
 
 		insertImage() {
-			const url = prompt(__("Image URL:"));
+			const url = prompt(this.__("Image URL:"));
 			if (url) {
 				this.editor.chain().focus().setImage({ src: url }).run();
 			}
@@ -186,7 +216,7 @@ export default {
 
 		async saveSignature() {
 			if (!this.editingSignature.signature_name) {
-				frappe.toast({ message: __("Please enter a name"), indicator: "red" });
+				frappe.toast({ message: this.__("Please enter a name"), indicator: "red" });
 				return;
 			}
 
@@ -224,12 +254,12 @@ export default {
 					});
 				}
 
-				frappe.toast({ message: __("Signature saved"), indicator: "green" });
+				frappe.toast({ message: this.__("Signature saved"), indicator: "green" });
 				await this.loadSignatures();
 				this.$emit("updated");
 				this.cancelEdit();
 			} catch (error) {
-				frappe.toast({ message: __("Save error"), indicator: "red" });
+				frappe.toast({ message: this.__("Save error"), indicator: "red" });
 			} finally {
 				this.saving = false;
 			}
@@ -238,7 +268,7 @@ export default {
 		async deleteSignature() {
 			if (!this.editingSignature.name) return;
 
-			if (!confirm(__("Are you sure you want to delete this signature?"))) return;
+			if (!confirm(this.__("Are you sure you want to delete this signature?"))) return;
 
 			try {
 				await frappe.call({
@@ -249,12 +279,12 @@ export default {
 					},
 				});
 
-				frappe.toast({ message: __("Signature deleted"), indicator: "green" });
+				frappe.toast({ message: this.__("Signature deleted"), indicator: "green" });
 				await this.loadSignatures();
 				this.$emit("updated");
 				this.cancelEdit();
 			} catch (error) {
-				frappe.toast({ message: __("Delete error"), indicator: "red" });
+				frappe.toast({ message: this.__("Delete error"), indicator: "red" });
 			}
 		},
 
@@ -275,7 +305,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .signature-header {
@@ -346,7 +376,7 @@ export default {
 }
 
 .signature-item.selected {
-	background: var(--primary-light, #e3f2fd);
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
 }
 
 .sig-name {
@@ -416,7 +446,7 @@ export default {
 }
 
 .editor-toolbar button.active {
-	background: var(--primary-light, #e3f2fd);
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
 	border-color: var(--primary-color, #2490ef);
 }
 
@@ -455,13 +485,13 @@ export default {
 }
 
 .form-actions .btn-danger {
-	background: #e74c3c;
+	background: var(--red-500, #e74c3c);
 	color: white;
-	border-color: #e74c3c;
+	border-color: var(--red-500, #e74c3c);
 }
 
 .form-actions .btn-light {
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .no-selection {

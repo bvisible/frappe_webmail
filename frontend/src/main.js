@@ -26,6 +26,9 @@ function initWebmail(container) {
 		},
 	});
 
+	// Expose Frappe translation function to Vue components
+	app.config.globalProperties.__ = window.__;
+
 	// Add global error handler
 	app.config.errorHandler = (err, instance, info) => {
 		console.error("Webmail Error:", err);

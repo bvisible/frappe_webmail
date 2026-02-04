@@ -3,32 +3,53 @@
 		<!-- Header -->
 		<div class="webmail-header">
 			<div class="header-left">
-				<h1>📧 Webmail</h1>
-				<select
-					v-model="currentAccount"
-					class="account-selector"
-					@change="onAccountChange"
-				>
-					<option v-for="acc in accounts" :key="acc.name" :value="acc.name">
-						{{ acc.email }}
-					</option>
-				</select>
+				<h1>
+					<Mail :size="22" />
+					<span>Webmail</span>
+				</h1>
+				<div class="account-selector-wrapper">
+					<select
+						v-model="currentAccount"
+						class="account-selector"
+						@change="onAccountChange"
+					>
+						<option v-for="acc in accounts" :key="acc.name" :value="acc.name">
+							{{ acc.email }}{{ acc.is_shared ? ` (${__("shared")})` : "" }}
+						</option>
+					</select>
+					<div
+						v-if="currentAccountSharing"
+						class="sharing-indicator"
+						@mouseenter="showSharingTooltip = true"
+						@mouseleave="showSharingTooltip = false"
+					>
+						<Users :size="16" />
+						<div v-if="showSharingTooltip" class="sharing-tooltip">
+							{{ currentAccountSharing }}
+						</div>
+					</div>
+				</div>
 			</div>
 			<div class="header-right">
 				<button @click="showSearch = true" class="btn btn-secondary">
-					🔍 {{ __("Search") }}
+					<Search :size="16" />
+					<span>{{ __("Search") }}</span>
 				</button>
 				<button @click="compose" class="btn btn-primary">
-					✉️ {{ __("New Message") }}
+					<SquarePen :size="16" />
+					<span>{{ __("New Message") }}</span>
 				</button>
 				<button @click="showFilters = true" class="btn btn-secondary">
-					🗂️ {{ __("Filters") }}
+					<Filter :size="16" />
+					<span>{{ __("Filters") }}</span>
 				</button>
 				<button @click="showSignatures = true" class="btn btn-secondary">
-					✍️ {{ __("Signatures") }}
+					<PenLine :size="16" />
+					<span>{{ __("Signatures") }}</span>
 				</button>
 				<button @click="openSettings" class="btn btn-secondary">
-					⚙️ {{ __("Settings") }}
+					<Settings :size="16" />
+					<span>{{ __("Settings") }}</span>
 				</button>
 			</div>
 		</div>
@@ -38,10 +59,13 @@
 			<!-- Folder Sidebar -->
 			<div class="sidebar" :style="{ width: sidebarWidth + 'px' }">
 				<FolderTree
+					ref="folderTree"
 					:account="currentAccount"
 					:account-email="currentAccountEmail"
 					:selected-folder="currentFolder"
 					@select="onFolderSelect"
+					@drop-email="handleMoveEmail"
+					@folder-mapping-loaded="onFolderMappingLoaded"
 				/>
 			</div>
 
@@ -52,6 +76,23 @@
 
 			<!-- Email List -->
 			<div class="email-list-panel" :style="{ width: emailListWidth + 'px' }">
+				<!-- Bulk Action Bar -->
+				<BulkActionBar
+					:selected-count="selectedCount"
+					:folders="folders"
+					:current-folder="currentFolder"
+					:folder-mapping="folderMapping"
+					@clear="clearBulkSelection"
+					@archive="handleBulkArchive"
+					@delete="handleBulkDelete"
+					@mark-read="handleBulkMarkRead"
+					@mark-unread="handleBulkMarkUnread"
+					@move="handleBulkMove"
+					@toggle-star="handleBulkToggleStar"
+					@spam="handleBulkSpam"
+					@delete-permanent="handleBulkDeletePermanent"
+				/>
+
 				<EmailList
 					ref="emailList"
 					:account="currentAccount"
@@ -59,9 +100,13 @@
 					:selected-uid="selectedEmail?.uid"
 					:polling-enabled="pollingEnabled"
 					:polling-interval="pollingInterval"
+					:folders="folders"
+					:folder-mapping="folderMapping"
 					@select="onEmailSelect"
 					@update:total="totalEmails = $event"
 					@new-emails="onNewEmails"
+					@context-action="handleEmailContextAction"
+					@selection-change="onSelectionChange"
 				/>
 			</div>
 
@@ -157,6 +202,8 @@ import EmailComposer from "../components/EmailComposer.vue";
 import SignatureEditor from "../components/SignatureEditor.vue";
 import AdvancedSearch from "../components/AdvancedSearch.vue";
 import FilterManager from "../components/FilterManager.vue";
+import BulkActionBar from "../components/BulkActionBar.vue";
+import { Mail, Search, SquarePen, Filter, PenLine, Settings, Users } from "lucide-vue-next";
 
 export default {
 	name: "Webmail",
@@ -169,6 +216,14 @@ export default {
 		SignatureEditor,
 		AdvancedSearch,
 		FilterManager,
+		BulkActionBar,
+		Mail,
+		Search,
+		SquarePen,
+		Filter,
+		PenLine,
+		Settings,
+		Users,
 	},
 
 	data() {
@@ -191,7 +246,17 @@ export default {
 			unreadCount: 0,
 			showSearch: false,
 			showFilters: false,
+			showSharingTooltip: false,
 			folders: [],
+			// Folder mapping (from FolderTree)
+			folderMapping: {
+				inbox: "",
+				sent: "",
+				drafts: "",
+				trash: "",
+				spam: "",
+				archive: "",
+			},
 			// Column resize state
 			sidebarWidth: 220,
 			emailListWidth: 350,
@@ -200,6 +265,10 @@ export default {
 			resizeStartX: 0,
 			resizeStartWidth: 0,
 			savePreferencesTimeout: null,
+			// Bulk actions
+			selectedCount: 0,
+			selectedUids: [],
+			lastBulkAction: null,
 		};
 	},
 
@@ -207,6 +276,23 @@ export default {
 		currentAccountEmail() {
 			const acc = this.accounts.find((a) => a.name === this.currentAccount);
 			return acc?.email || "";
+		},
+
+		currentAccountSharing() {
+			const acc = this.accounts.find((a) => a.name === this.currentAccount);
+			if (!acc) return null;
+
+			// If this is a shared account (we are not the owner)
+			if (acc.is_shared) {
+				return this.__("Shared by {0}", [acc.user]);
+			}
+
+			// If we own this account and it's shared with others
+			if (acc.shared_with && acc.shared_with.length > 0) {
+				return this.__("Shared with {0}", [acc.shared_with.join(", ")]);
+			}
+
+			return null;
 		},
 	},
 
@@ -238,12 +324,19 @@ export default {
 				this.accounts = response.message || [];
 
 				if (this.accounts.length && !this.currentAccount) {
-					this.currentAccount = this.accounts[0].name;
+					// Try to restore last used account from localStorage
+					const lastAccount = localStorage.getItem("webmail_last_account");
+					const accountExists =
+						lastAccount && this.accounts.some((a) => a.name === lastAccount);
+
+					this.currentAccount = accountExists ? lastAccount : this.accounts[0].name;
+					// Save the selected account
+					localStorage.setItem("webmail_last_account", this.currentAccount);
 					// Load folders for search
 					this.loadFolders();
 				}
 			} catch (error) {
-				frappe.toast({ message: __("Error loading accounts"), indicator: "red" });
+				frappe.toast({ message: this.__("Error loading accounts"), indicator: "red" });
 			}
 		},
 
@@ -278,6 +371,8 @@ export default {
 			this.selectedEmailContent = null;
 			this.loadFolders();
 			this.loadUIPreferences();
+			// Save last used account to localStorage
+			localStorage.setItem("webmail_last_account", this.currentAccount);
 		},
 
 		onFolderSelect(folder) {
@@ -321,11 +416,17 @@ export default {
 					}
 				}
 			} catch (error) {
-				frappe.toast({ message: __("Error loading email"), indicator: "red" });
+				frappe.toast({ message: this.__("Error loading email"), indicator: "red" });
 			}
 		},
 
 		isDraftsFolder(folderName) {
+			// Check folder mapping first
+			if (this.folderMapping.drafts && folderName === this.folderMapping.drafts) {
+				return true;
+			}
+
+			// Fallback to name-based detection
 			const name = folderName.toLowerCase();
 			return (
 				name === "drafts" ||
@@ -336,6 +437,10 @@ export default {
 				name.includes("drafts") ||
 				name === "inbox.drafts"
 			);
+		},
+
+		onFolderMappingLoaded(mapping) {
+			this.folderMapping = mapping;
 		},
 
 		compose() {
@@ -379,7 +484,7 @@ export default {
 		},
 
 		deleteEmail(email) {
-			frappe.confirm(__("Are you sure you want to delete this email?"), async () => {
+			frappe.confirm(this.__("Are you sure you want to delete this email?"), async () => {
 				try {
 					const response = await frappe.call({
 						method: "frappe_webmail.api.delete_emails",
@@ -392,7 +497,7 @@ export default {
 					});
 
 					console.log("Delete response:", response);
-					frappe.toast({ message: __("Email deleted"), indicator: "green" });
+					frappe.toast({ message: this.__("Email deleted"), indicator: "green" });
 
 					// Refresh list
 					if (this.$refs.emailList) {
@@ -403,7 +508,7 @@ export default {
 					this.selectedEmailContent = null;
 				} catch (error) {
 					console.error("Delete error:", error);
-					frappe.toast({ message: __("Delete error"), indicator: "red" });
+					frappe.toast({ message: this.__("Delete error"), indicator: "red" });
 				}
 			});
 		},
@@ -582,7 +687,530 @@ export default {
 
 				this.selectedEmailContent = response.message;
 			} catch (error) {
-				frappe.toast({ message: __("Loading error"), indicator: "red" });
+				frappe.toast({ message: this.__("Loading error"), indicator: "red" });
+			}
+		},
+
+		async handleMoveEmail({ targetFolder, email }) {
+			// Don't move if same folder
+			if (email.folder === targetFolder) {
+				return;
+			}
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.move_emails",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify([email.uid]),
+						from_folder: email.folder,
+						to_folder: targetFolder,
+					},
+				});
+
+				frappe.toast({
+					message: this.__("Email moved to {0}", [targetFolder]),
+					indicator: "green",
+				});
+
+				// Refresh email list to remove the moved email
+				if (this.$refs.emailList) {
+					this.$refs.emailList.refresh();
+				}
+
+				// Clear selection if the moved email was selected
+				if (this.selectedEmail && this.selectedEmail.uid === email.uid) {
+					this.selectedEmail = null;
+					this.selectedEmailContent = null;
+				}
+			} catch (error) {
+				frappe.toast({
+					message: this.__("Error moving email"),
+					indicator: "red",
+				});
+			}
+		},
+
+		async handleEmailContextAction({ action, email, targetFolder, uids, isBulk }) {
+			// Handle bulk actions from context menu or keyboard shortcuts
+			if (isBulk && uids && uids.length > 1) {
+				this.selectedUids = uids;
+				this.selectedCount = uids.length;
+
+				switch (action) {
+					case "mark-read":
+						await this.handleBulkMarkRead();
+						break;
+					case "mark-unread":
+						await this.handleBulkMarkUnread();
+						break;
+					case "toggle-star":
+						await this.handleBulkToggleStar();
+						break;
+					case "move-to":
+						await this.handleBulkMove(targetFolder);
+						break;
+					case "copy-to":
+						await this.bulkCopyEmails(targetFolder);
+						break;
+					case "trash":
+						await this.handleBulkDelete();
+						break;
+					case "spam":
+						await this.handleBulkSpam();
+						break;
+					case "delete-permanent":
+						await this.handleBulkDeletePermanent();
+						break;
+					case "archive":
+						await this.handleBulkArchive();
+						break;
+				}
+				return;
+			}
+
+			// Single email actions
+			switch (action) {
+				case "reply":
+					await this.loadEmailAndReply(email, false);
+					break;
+
+				case "reply-all":
+					await this.loadEmailAndReply(email, true);
+					break;
+
+				case "forward":
+					await this.loadEmailAndForward(email);
+					break;
+
+				case "mark-read":
+					await this.markEmailReadUnread(email, true);
+					break;
+
+				case "mark-unread":
+					await this.markEmailReadUnread(email, false);
+					break;
+
+				case "toggle-star":
+					await this.toggleEmailStar(email);
+					break;
+
+				case "move-to":
+					await this.moveEmailToFolder(email, targetFolder);
+					break;
+
+				case "copy-to":
+					await this.copyEmailToFolder(email, targetFolder);
+					break;
+
+				case "trash":
+					await this.moveToTrash(email);
+					break;
+
+				case "spam":
+					await this.moveToSpam(email);
+					break;
+
+				case "delete-permanent":
+					await this.deleteEmailPermanently(email);
+					break;
+
+				case "archive":
+					const archiveFolder = this.folderMapping.archive || "Archive";
+					await this.moveEmailToFolder(email, archiveFolder);
+					break;
+			}
+		},
+
+		async loadEmailAndReply(email, replyAll) {
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_email_content",
+					args: {
+						account_name: this.currentAccount,
+						uid: email.uid,
+						folder: this.currentFolder,
+						mark_read: false,
+					},
+				});
+
+				const emailContent = response.message;
+				emailContent.reply_all = replyAll;
+				this.replyTo(emailContent);
+			} catch (error) {
+				frappe.toast({ message: this.__("Error loading email"), indicator: "red" });
+			}
+		},
+
+		async loadEmailAndForward(email) {
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_email_content",
+					args: {
+						account_name: this.currentAccount,
+						uid: email.uid,
+						folder: this.currentFolder,
+						mark_read: false,
+					},
+				});
+
+				this.forwardEmail(response.message);
+			} catch (error) {
+				frappe.toast({ message: this.__("Error loading email"), indicator: "red" });
+			}
+		},
+
+		async markEmailReadUnread(email, read) {
+			try {
+				const action = read ? "add_flags" : "remove_flags";
+				await frappe.call({
+					method: "frappe_webmail.api.set_flags",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify([email.uid]),
+						folder: this.currentFolder,
+						[action]: JSON.stringify(["\\Seen"]),
+					},
+				});
+
+				// Update email in list
+				if (this.$refs.emailList) {
+					this.$refs.emailList.updateEmailFlag(email.uid, "seen", read);
+				}
+			} catch (error) {
+				frappe.toast({ message: this.__("Error"), indicator: "red" });
+			}
+		},
+
+		async toggleEmailStar(email) {
+			try {
+				const action = email.flagged ? "remove_flags" : "add_flags";
+				await frappe.call({
+					method: "frappe_webmail.api.set_flags",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify([email.uid]),
+						folder: this.currentFolder,
+						[action]: JSON.stringify(["\\Flagged"]),
+					},
+				});
+
+				// Update email in list
+				if (this.$refs.emailList) {
+					this.$refs.emailList.updateEmailFlag(email.uid, "flagged", !email.flagged);
+				}
+			} catch (error) {
+				frappe.toast({ message: this.__("Error"), indicator: "red" });
+			}
+		},
+
+		async moveEmailToFolder(email, targetFolder) {
+			if (!targetFolder || targetFolder === this.currentFolder) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.move_emails",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify([email.uid]),
+						from_folder: this.currentFolder,
+						to_folder: targetFolder,
+					},
+				});
+
+				frappe.toast({
+					message: this.__("Email moved"),
+					indicator: "green",
+				});
+
+				// Remove from list
+				if (this.$refs.emailList) {
+					this.$refs.emailList.removeEmail(email.uid);
+				}
+
+				// Clear selection if moved email was selected
+				if (this.selectedEmail?.uid === email.uid) {
+					this.selectedEmail = null;
+					this.selectedEmailContent = null;
+				}
+			} catch (error) {
+				frappe.toast({ message: this.__("Error moving email"), indicator: "red" });
+			}
+		},
+
+		async copyEmailToFolder(email, targetFolder) {
+			if (!targetFolder || targetFolder === this.currentFolder) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.copy_emails",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify([email.uid]),
+						from_folder: this.currentFolder,
+						to_folder: targetFolder,
+					},
+				});
+
+				frappe.toast({
+					message: this.__("Email copied"),
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({ message: this.__("Error copying email"), indicator: "red" });
+			}
+		},
+
+		async moveToTrash(email) {
+			const trashFolder = this.folderMapping.trash || "Trash";
+			await this.moveEmailToFolder(email, trashFolder);
+		},
+
+		async moveToSpam(email) {
+			const spamFolder = this.folderMapping.spam || "Spam";
+			await this.moveEmailToFolder(email, spamFolder);
+		},
+
+		async deleteEmailPermanently(email) {
+			frappe.confirm(
+				this.__(
+					"Are you sure you want to permanently delete this email? This action cannot be undone."
+				),
+				async () => {
+					try {
+						await frappe.call({
+							method: "frappe_webmail.api.delete_emails",
+							args: {
+								account_name: this.currentAccount,
+								uids: JSON.stringify([email.uid]),
+								folder: this.currentFolder,
+								permanent: true,
+							},
+						});
+
+						frappe.toast({
+							message: this.__("Email deleted permanently"),
+							indicator: "green",
+						});
+
+						// Remove from list
+						if (this.$refs.emailList) {
+							this.$refs.emailList.removeEmail(email.uid);
+						}
+
+						// Clear selection if deleted email was selected
+						if (this.selectedEmail?.uid === email.uid) {
+							this.selectedEmail = null;
+							this.selectedEmailContent = null;
+						}
+					} catch (error) {
+						frappe.toast({
+							message: this.__("Error deleting email"),
+							indicator: "red",
+						});
+					}
+				}
+			);
+		},
+
+		// Bulk actions
+		onSelectionChange({ count, uids }) {
+			this.selectedCount = count;
+			this.selectedUids = uids;
+		},
+
+		clearBulkSelection() {
+			if (this.$refs.emailList) {
+				this.$refs.emailList.clearSelection();
+			}
+			this.selectedCount = 0;
+			this.selectedUids = [];
+		},
+
+		async handleBulkArchive() {
+			const archiveFolder = this.folderMapping.archive || "Archive";
+			await this.bulkMoveEmails(archiveFolder);
+		},
+
+		async handleBulkDelete() {
+			const trashFolder = this.folderMapping.trash || "Trash";
+			await this.bulkMoveEmails(trashFolder);
+		},
+
+		async handleBulkMarkRead() {
+			await this.bulkSetFlags(["\\Seen"], "add");
+		},
+
+		async handleBulkMarkUnread() {
+			await this.bulkSetFlags(["\\Seen"], "remove");
+		},
+
+		async handleBulkMove(targetFolder) {
+			await this.bulkMoveEmails(targetFolder);
+		},
+
+		async handleBulkToggleStar() {
+			// For bulk toggle, we add the flag (star all selected)
+			await this.bulkSetFlags(["\\Flagged"], "add");
+		},
+
+		async handleBulkSpam() {
+			const spamFolder = this.folderMapping.spam || "Spam";
+			await this.bulkMoveEmails(spamFolder);
+		},
+
+		async handleBulkDeletePermanent() {
+			const uids = this.selectedUids;
+			const count = uids.length;
+
+			frappe.confirm(
+				this.__("Permanently delete {0} emails? This action cannot be undone.", [count]),
+				async () => {
+					try {
+						await frappe.call({
+							method: "frappe_webmail.api.delete_emails",
+							args: {
+								account_name: this.currentAccount,
+								uids: JSON.stringify(uids),
+								folder: this.currentFolder,
+								permanent: true,
+							},
+						});
+
+						// Remove from list and selection
+						if (this.$refs.emailList) {
+							this.$refs.emailList.removeFromSelection(uids);
+							this.$refs.emailList.refresh();
+						}
+
+						// Clear selected email if it was in the deleted list
+						if (this.selectedEmail && uids.includes(this.selectedEmail.uid)) {
+							this.selectedEmail = null;
+							this.selectedEmailContent = null;
+						}
+
+						frappe.toast({
+							message: this.__("{0} emails deleted", [count]),
+							indicator: "green",
+						});
+					} catch (error) {
+						frappe.toast({
+							message: this.__("Error deleting emails"),
+							indicator: "red",
+						});
+					}
+				}
+			);
+		},
+
+		async bulkMoveEmails(targetFolder) {
+			const uids = this.selectedUids;
+			const count = uids.length;
+			const fromFolder = this.currentFolder;
+
+			if (!targetFolder || targetFolder === fromFolder) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.move_emails",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify(uids),
+						from_folder: fromFolder,
+						to_folder: targetFolder,
+					},
+				});
+
+				// Store for Undo
+				this.lastBulkAction = { type: "move", uids, fromFolder, toFolder: targetFolder };
+
+				// Remove from list and clear selection
+				if (this.$refs.emailList) {
+					this.$refs.emailList.removeFromSelection(uids);
+					this.$refs.emailList.refresh();
+				}
+
+				// Clear selected email if it was moved
+				if (this.selectedEmail && uids.includes(this.selectedEmail.uid)) {
+					this.selectedEmail = null;
+					this.selectedEmailContent = null;
+				}
+
+				frappe.toast({
+					message: this.__("{0} emails moved", [count]),
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({ message: this.__("Error moving emails"), indicator: "red" });
+			}
+		},
+
+		async bulkCopyEmails(targetFolder) {
+			const uids = this.selectedUids;
+			const count = uids.length;
+
+			if (!targetFolder || targetFolder === this.currentFolder) return;
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.webmail_api.copy_emails",
+					args: {
+						account_name: this.currentAccount,
+						uids: JSON.stringify(uids),
+						from_folder: this.currentFolder,
+						to_folder: targetFolder,
+					},
+				});
+
+				frappe.toast({
+					message: this.__("{0} emails copied", [count]),
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({ message: this.__("Error copying emails"), indicator: "red" });
+			}
+		},
+
+		async bulkSetFlags(flags, action) {
+			const uids = this.selectedUids;
+			const count = uids.length;
+
+			const args = {
+				account_name: this.currentAccount,
+				uids: JSON.stringify(uids),
+				folder: this.currentFolder,
+			};
+
+			if (action === "add") {
+				args.add_flags = JSON.stringify(flags);
+			} else {
+				args.remove_flags = JSON.stringify(flags);
+			}
+
+			try {
+				await frappe.call({
+					method: "frappe_webmail.api.set_flags",
+					args,
+				});
+
+				// Update emails in the list
+				if (this.$refs.emailList) {
+					uids.forEach((uid) => {
+						if (flags.includes("\\Seen")) {
+							this.$refs.emailList.updateEmailFlag(uid, "seen", action === "add");
+						}
+						if (flags.includes("\\Flagged")) {
+							this.$refs.emailList.updateEmailFlag(uid, "flagged", action === "add");
+						}
+					});
+				}
+
+				frappe.toast({
+					message: this.__("{0} emails updated", [count]),
+					indicator: "green",
+				});
+			} catch (error) {
+				frappe.toast({ message: this.__("Error updating emails"), indicator: "red" });
 			}
 		},
 	},
@@ -590,11 +1218,20 @@ export default {
 </script>
 
 <style scoped>
-.webmail-container {
+:global(.webmail-container) {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
 	background: var(--bg-color, #f5f5f5);
+	overflow: hidden;
+}
+
+/* Also target the nested Vue root container */
+:global(#webmail-app) {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
 }
 
 .webmail-header {
@@ -602,7 +1239,7 @@ export default {
 	justify-content: space-between;
 	align-items: center;
 	padding: 12px 20px;
-	background: white;
+	background: var(--card-bg, white);
 	flex-shrink: 0;
 }
 
@@ -616,15 +1253,70 @@ export default {
 	margin: 0;
 	font-size: 20px;
 	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--text-color, #333);
+}
+
+.account-selector-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .account-selector {
 	padding: 6px 12px;
 	border: 1px solid var(--border-color, #e5e5e5);
 	border-radius: 4px;
-	background: white;
+	background: var(--card-bg, white);
+	color: var(--text-color, #333);
 	font-size: 14px;
 	min-width: 200px;
+}
+
+.sharing-indicator {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 4px;
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
+	color: var(--primary-color, #2490ef);
+	cursor: help;
+}
+
+.sharing-indicator:hover {
+	background: var(--primary-color, #2490ef);
+	color: var(--card-bg, white);
+}
+
+.sharing-tooltip {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 8px 12px;
+	background: var(--tooltip-bg, #333);
+	color: var(--tooltip-text, white);
+	font-size: 12px;
+	border-radius: 6px;
+	white-space: nowrap;
+	z-index: 1000;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	pointer-events: none;
+}
+
+.sharing-tooltip::before {
+	content: "";
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border: 6px solid transparent;
+	border-bottom-color: var(--tooltip-bg, #333);
 }
 
 .header-right {
@@ -633,12 +1325,17 @@ export default {
 }
 
 .header-right .btn {
-	padding: 8px 16px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 14px;
 	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 4px;
+	border-radius: 6px;
 	cursor: pointer;
 	font-size: 13px;
-	background: white;
+	background: var(--card-bg, white);
+	color: var(--text-color, #333);
+	transition: all 0.15s ease;
 }
 
 .header-right .btn-primary {
@@ -648,7 +1345,7 @@ export default {
 }
 
 .header-right .btn-primary:hover {
-	background: #1a7fd4;
+	background: var(--primary-dark, #1a7fd4);
 }
 
 .header-right .btn-secondary:hover {
@@ -659,6 +1356,7 @@ export default {
 	display: flex;
 	flex: 1;
 	overflow: hidden;
+	min-height: 0;
 }
 
 .webmail-main.is-resizing {
@@ -671,9 +1369,10 @@ export default {
 
 .sidebar {
 	flex-shrink: 0;
-	background: white;
+	background: var(--card-bg, white);
 	overflow-y: auto;
 	border-top: 1px solid var(--border-color, #e5e5e5);
+	border-right: 1px solid var(--border-color, #e5e5e5);
 	min-width: 150px;
 	max-width: 400px;
 }
@@ -688,6 +1387,7 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	margin-left: -3px;
 	transition: background 0.15s ease;
 }
 
@@ -701,7 +1401,7 @@ export default {
 }
 
 .resizer-handle {
-	width: 2px;
+	width: 4px;
 	height: 40px;
 	background: var(--border-color, #e5e5e5);
 	border-radius: 2px;
@@ -732,10 +1432,11 @@ export default {
 .email-viewer-panel {
 	flex: 1;
 	overflow: hidden;
-	background: white;
+	background: var(--card-bg, white);
 	border-radius: var(--border-radius-lg);
-	border: 1px solid var(--border-color);
+	border: 1px solid var(--border-color, #e5e5e5);
 	margin: 0 10px;
+	min-height: 0;
 }
 
 .no-accounts {
@@ -775,7 +1476,7 @@ export default {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: rgba(255, 255, 255, 0.9);
+	background: var(--modal-overlay-bg, rgba(255, 255, 255, 0.9));
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -812,10 +1513,10 @@ export default {
 }
 
 .modal-content {
-	background: white;
+	background: var(--card-bg, white);
 	border-radius: 8px;
 	overflow: hidden;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+	box-shadow: var(--shadow-lg, 0 4px 20px rgba(0, 0, 0, 0.2));
 }
 
 .signature-modal {
@@ -831,6 +1532,8 @@ export default {
 	max-width: 90vw;
 	max-height: 80vh;
 	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 .filter-modal {

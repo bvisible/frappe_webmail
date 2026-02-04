@@ -2,7 +2,9 @@
 	<div class="filter-manager">
 		<div class="manager-header">
 			<h3>{{ __("Email filters") }}</h3>
-			<button @click="$emit('close')" class="close-btn">&times;</button>
+			<button @click="$emit('close')" class="close-btn">
+				<X :size="18" />
+			</button>
 		</div>
 
 		<div class="manager-content">
@@ -11,7 +13,8 @@
 				<div class="list-header">
 					<span>{{ __("{0} filter(s)", [filters.length]) }}</span>
 					<button @click="showCreateForm" class="btn btn-primary btn-sm">
-						+ {{ __("New filter") }}
+						<Plus :size="16" />
+						<span>{{ __("New filter") }}</span>
 					</button>
 				</div>
 
@@ -52,23 +55,25 @@
 							<button
 								@click="toggleFilter(filter)"
 								class="btn-icon"
+								:class="{ active: filter.enabled }"
 								:title="filter.enabled ? __('Disable') : __('Enable')"
 							>
-								{{ filter.enabled ? "✓" : "○" }}
+								<Check v-if="filter.enabled" :size="16" />
+								<Circle v-else :size="16" />
 							</button>
 							<button
 								@click="editFilter(filter)"
 								class="btn-icon"
 								:title="__('Edit')"
 							>
-								✏️
+								<Pencil :size="16" />
 							</button>
 							<button
 								@click="deleteFilter(filter)"
-								class="btn-icon"
+								class="btn-icon btn-danger"
 								:title="__('Delete')"
 							>
-								🗑️
+								<Trash2 :size="16" />
 							</button>
 						</div>
 					</div>
@@ -209,8 +214,19 @@
 </template>
 
 <script>
+import { X, Plus, Check, Circle, Pencil, Trash2 } from "lucide-vue-next";
+
 export default {
 	name: "FilterManager",
+
+	components: {
+		X,
+		Plus,
+		Check,
+		Circle,
+		Pencil,
+		Trash2,
+	},
 
 	props: {
 		account: { type: String, required: true },
@@ -260,7 +276,7 @@ export default {
 				});
 				this.filters = response.message || [];
 			} catch (error) {
-				frappe.toast({ message: __("Error loading filters"), indicator: "red" });
+				frappe.toast({ message: this.__("Error loading filters"), indicator: "red" });
 			} finally {
 				this.loading = false;
 			}
@@ -298,7 +314,7 @@ export default {
 		async saveFilter() {
 			// Validation
 			if (!this.formData.filter_name) {
-				frappe.toast({ message: __("Filter name is required"), indicator: "orange" });
+				frappe.toast({ message: this.__("Filter name is required"), indicator: "orange" });
 				return;
 			}
 
@@ -310,7 +326,7 @@ export default {
 
 			if (!hasCondition) {
 				frappe.toast({
-					message: __("At least one condition is required"),
+					message: this.__("At least one condition is required"),
 					indicator: "orange",
 				});
 				return;
@@ -318,7 +334,7 @@ export default {
 
 			if (this.formData.action_type === "move" && !this.formData.target_folder) {
 				frappe.toast({
-					message: __("Destination folder is required"),
+					message: this.__("Destination folder is required"),
 					indicator: "orange",
 				});
 				return;
@@ -335,7 +351,7 @@ export default {
 							...this.formData,
 						},
 					});
-					frappe.toast({ message: __("Filter updated"), indicator: "green" });
+					frappe.toast({ message: this.__("Filter updated"), indicator: "green" });
 				} else {
 					await frappe.call({
 						method: "frappe_webmail.api.create_filter",
@@ -344,13 +360,13 @@ export default {
 							...this.formData,
 						},
 					});
-					frappe.toast({ message: __("Filter created"), indicator: "green" });
+					frappe.toast({ message: this.__("Filter created"), indicator: "green" });
 				}
 
 				this.cancelForm();
 				this.loadFilters();
 			} catch (error) {
-				frappe.toast({ message: __("Error saving"), indicator: "red" });
+				frappe.toast({ message: this.__("Error saving"), indicator: "red" });
 			} finally {
 				this.saving = false;
 			}
@@ -367,22 +383,22 @@ export default {
 				});
 				filter.enabled = !filter.enabled;
 			} catch (error) {
-				frappe.toast({ message: __("Error"), indicator: "red" });
+				frappe.toast({ message: this.__("Error"), indicator: "red" });
 			}
 		},
 
 		async deleteFilter(filter) {
-			if (!confirm(__('Delete filter "{0}"?', [filter.filter_name]))) return;
+			if (!confirm(this.__('Delete filter "{0}"?', [filter.filter_name]))) return;
 
 			try {
 				await frappe.call({
 					method: "frappe_webmail.api.delete_filter",
 					args: { filter_name: filter.name },
 				});
-				frappe.toast({ message: __("Filter deleted"), indicator: "green" });
+				frappe.toast({ message: this.__("Filter deleted"), indicator: "green" });
 				this.loadFilters();
 			} catch (error) {
-				frappe.toast({ message: __("Error deleting"), indicator: "red" });
+				frappe.toast({ message: this.__("Error deleting"), indicator: "red" });
 			}
 		},
 
@@ -401,7 +417,7 @@ export default {
 
 				const result = response.message;
 				frappe.toast({
-					message: __("{0} filter(s) applied to {1} emails", [
+					message: this.__("{0} filter(s) applied to {1} emails", [
 						result.applied,
 						result.processed,
 					]),
@@ -410,7 +426,7 @@ export default {
 
 				this.loadFilters(); // Refresh stats
 			} catch (error) {
-				frappe.toast({ message: __("Error applying filters"), indicator: "red" });
+				frappe.toast({ message: this.__("Error applying filters"), indicator: "red" });
 			} finally {
 				this.applying = false;
 			}
@@ -418,10 +434,10 @@ export default {
 
 		getActionLabel(filter) {
 			const actions = {
-				move: __("Move to {0}", [filter.target_folder || "?"]),
-				delete: __("Delete"),
-				mark_read: __("Mark as read"),
-				mark_starred: __("Mark as important"),
+				move: this.__("Move to {0}", [filter.target_folder || "?"]),
+				delete: this.__("Delete"),
+				mark_read: this.__("Mark as read"),
+				mark_starred: this.__("Mark as important"),
 			};
 			return actions[filter.action_type] || filter.action_type;
 		},
@@ -482,7 +498,7 @@ export default {
 	padding: 12px;
 	border: 1px solid var(--border-color, #e5e5e5);
 	border-radius: 4px;
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .filter-item.disabled {
@@ -648,7 +664,7 @@ export default {
 }
 
 .btn-primary:hover {
-	background: #1a7fd4;
+	background: var(--primary-dark, #1a7fd4);
 }
 
 .btn-primary:disabled {
@@ -657,7 +673,7 @@ export default {
 }
 
 .btn-secondary {
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .btn-secondary:hover {

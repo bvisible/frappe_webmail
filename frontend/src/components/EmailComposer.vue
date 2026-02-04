@@ -3,56 +3,58 @@
 		<!-- Header with Send button -->
 		<div class="composer-header">
 			<div class="header-left">
-				<button class="btn btn-light" @click="$emit('close')" :title="__('Close')">
-					✕
+				<button class="btn btn-icon" @click="$emit('close')" :title="__('Close')">
+					<X :size="18" />
 				</button>
 				<span class="composer-title">{{ __("New message") }}</span>
 			</div>
 			<div class="header-right">
 				<button
-					class="btn btn-secondary"
-					@click="$refs.fileInput.click()"
-					:title="__('Attach a file')"
+					class="btn btn-icon"
+					@click="showAttachmentPicker = true"
+					:title="__('Attach files')"
 				>
-					📎
+					<Paperclip :size="18" />
 				</button>
 				<button
-					class="btn btn-secondary"
+					class="btn btn-icon"
 					@click="saveDraft"
 					:disabled="isSavingDraft"
 					:title="__('Save')"
 				>
-					💾
+					<Save :size="18" />
 				</button>
 				<button
 					v-if="draftUid"
-					class="btn btn-danger-light"
+					class="btn btn-icon btn-danger-light"
 					@click="deleteDraft"
 					:title="__('Delete draft')"
 				>
-					🗑️
+					<Trash2 :size="18" />
 				</button>
 				<button class="btn btn-primary btn-send" @click="send" :disabled="sending">
-					{{ sending ? __("Sending...") : "📤 " + __("Send") }}
+					<Send :size="16" />
+					<span>{{ sending ? __("Sending...") : __("Send") }}</span>
 				</button>
 			</div>
-			<input
-				type="file"
-				ref="fileInput"
-				multiple
-				@change="handleFiles"
-				style="display: none"
-			/>
 		</div>
 
 		<!-- Recipients -->
 		<div class="composer-field">
 			<label>{{ __("To:") }}</label>
-			<ContactAutocomplete v-model="emailData.to" :placeholder="__('Add recipients...')" />
+			<ContactAutocomplete
+				ref="toField"
+				v-model="emailData.to"
+				:placeholder="__('Add recipients...')"
+			/>
 		</div>
 		<div class="composer-field">
 			<label>{{ __("Cc:") }}</label>
-			<ContactAutocomplete v-model="emailData.cc" :placeholder="__('Carbon copy...')" />
+			<ContactAutocomplete
+				ref="ccField"
+				v-model="emailData.cc"
+				:placeholder="__('Carbon copy...')"
+			/>
 		</div>
 		<div class="composer-field">
 			<label>{{ __("Subject:") }}</label>
@@ -66,21 +68,21 @@
 				:class="{ active: editor.isActive('bold') }"
 				:title="__('Bold')"
 			>
-				<strong>B</strong>
+				<Bold :size="16" />
 			</button>
 			<button
 				@click="editor.chain().focus().toggleItalic().run()"
 				:class="{ active: editor.isActive('italic') }"
 				:title="__('Italic')"
 			>
-				<em>I</em>
+				<Italic :size="16" />
 			</button>
 			<button
 				@click="editor.chain().focus().toggleUnderline().run()"
 				:class="{ active: editor.isActive('underline') }"
 				:title="__('Underline')"
 			>
-				<u>U</u>
+				<UnderlineIcon :size="16" />
 			</button>
 			<span class="separator"></span>
 			<button
@@ -88,20 +90,26 @@
 				:class="{ active: editor.isActive('bulletList') }"
 				:title="__('Bullet list')"
 			>
-				•
+				<List :size="16" />
 			</button>
 			<button
 				@click="editor.chain().focus().toggleOrderedList().run()"
 				:class="{ active: editor.isActive('orderedList') }"
 				:title="__('Numbered list')"
 			>
-				1.
+				<ListOrdered :size="16" />
 			</button>
 			<span class="separator"></span>
-			<button @click="insertLink" :title="__('Link')">🔗</button>
-			<button @click="insertImage" :title="__('Image')">🖼️</button>
+			<button @click="insertLink" :title="__('Link')">
+				<LinkIcon :size="16" />
+			</button>
+			<button @click="insertImage" :title="__('Image')">
+				<ImageIcon :size="16" />
+			</button>
 			<span class="separator"></span>
-			<button @click="insertSignature" :title="__('Signature')">✍️</button>
+			<button @click="insertSignature" :title="__('Signature')">
+				<PenLine :size="16" />
+			</button>
 		</div>
 
 		<!-- Editor -->
@@ -110,20 +118,48 @@
 		</div>
 
 		<!-- Attachments -->
-		<div class="attachments-section" v-if="attachments.length">
-			<div v-for="(file, idx) in attachments" :key="idx" class="attachment-chip">
-				<span>{{ file.name }}</span>
+		<div class="attachments-section" v-if="attachments.length || remoteAttachments.length">
+			<!-- Local file attachments -->
+			<div v-for="(file, idx) in attachments" :key="'local-' + idx" class="attachment-chip">
+				<Paperclip :size="14" />
+				<span class="filename">{{ file.name }}</span>
 				<span class="size">({{ formatSize(file.size) }})</span>
-				<button @click="removeAttachment(idx)" class="remove">x</button>
+				<button @click="removeAttachment(idx)" class="remove">
+					<X :size="14" />
+				</button>
+			</div>
+			<!-- Remote attachments (Files, Drive, Document PDFs) -->
+			<div
+				v-for="(att, idx) in remoteAttachments"
+				:key="'remote-' + idx"
+				class="attachment-chip"
+				:class="att.source"
+			>
+				<component :is="getRemoteAttachmentIcon(att)" :size="14" />
+				<span class="filename">{{ att.filename }}</span>
+				<span class="size">({{ formatSize(att.size) }})</span>
+				<span v-if="att.source === 'document'" class="source-badge">PDF</span>
+				<button @click="removeRemoteAttachment(idx)" class="remove">
+					<X :size="14" />
+				</button>
 			</div>
 		</div>
+
+		<!-- Attachment Picker Modal -->
+		<AttachmentPicker
+			:show="showAttachmentPicker"
+			:account="account"
+			@close="showAttachmentPicker = false"
+			@select="handleRemoteAttachment"
+		/>
 
 		<!-- Footer with status -->
 		<div class="composer-footer">
 			<div class="draft-status" v-if="lastSaved || isSavingDraft">
 				<span v-if="isSavingDraft" class="saving">{{ __("Saving...") }}</span>
 				<span v-else-if="lastSaved" class="saved">
-					✓ {{ __("Saved at {0}", [formatLastSaved()]) }}
+					<Check :size="14" />
+					{{ __("Saved at {0}", [formatLastSaved()]) }}
 				</span>
 			</div>
 		</div>
@@ -138,10 +174,51 @@ import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import ContactAutocomplete from "./ContactAutocomplete.vue";
+import AttachmentPicker from "./AttachmentPicker.vue";
+import {
+	X,
+	Paperclip,
+	Save,
+	Trash2,
+	Send,
+	Bold,
+	Italic,
+	Underline as UnderlineIcon,
+	List,
+	ListOrdered,
+	Link as LinkIcon,
+	Image as ImageIcon,
+	PenLine,
+	Check,
+	FileText,
+	HardDrive,
+	File,
+} from "lucide-vue-next";
 
 export default {
 	name: "EmailComposer",
-	components: { EditorContent, ContactAutocomplete },
+	components: {
+		EditorContent,
+		ContactAutocomplete,
+		AttachmentPicker,
+		X,
+		Paperclip,
+		Save,
+		Trash2,
+		Send,
+		Bold,
+		Italic,
+		UnderlineIcon,
+		List,
+		ListOrdered,
+		LinkIcon,
+		ImageIcon,
+		PenLine,
+		Check,
+		FileText,
+		HardDrive,
+		File,
+	},
 
 	props: {
 		account: { type: String, required: true },
@@ -164,10 +241,15 @@ export default {
 				subject: "",
 			},
 			attachments: [],
+			remoteAttachments: [],
+			showAttachmentPicker: false,
 			sending: false,
 			isSavingDraft: false,
 			draftUid: null,
 			draftFolder: null,
+			// Reference document for Communication link
+			referenceDoctype: null,
+			referenceName: null,
 		};
 	},
 
@@ -242,7 +324,7 @@ export default {
 				this.draftFolder = null;
 			} catch (error) {
 				console.error("Save draft failed:", error);
-				frappe.toast({ message: __("Error saving draft"), indicator: "red" });
+				frappe.toast({ message: this.__("Error saving draft"), indicator: "red" });
 			} finally {
 				this.isSavingDraft = false;
 			}
@@ -258,7 +340,7 @@ export default {
 			const date = new Date(reply.date).toLocaleString();
 			const quoteContent = `
         <br><br>
-        <p>${__("On {0}, {1} wrote:", [date, reply.from_name || reply.from_email])}</p>
+        <p>${this.__("On {0}, {1} wrote:", [date, reply.from_name || reply.from_email])}</p>
         <blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 0; color: #666;">
           ${reply.html || reply.text || ""}
         </blockquote>
@@ -349,6 +431,45 @@ export default {
 			this.attachments.splice(index, 1);
 		},
 
+		handleRemoteAttachment(attachment) {
+			// Add remote attachment (from AttachmentPicker)
+			this.remoteAttachments.push(attachment);
+
+			// If it's a document PDF, store reference for Communication link
+			if (attachment.source === "document" && attachment.doctype && attachment.docname) {
+				this.referenceDoctype = attachment.doctype;
+				this.referenceName = attachment.docname;
+			}
+		},
+
+		removeRemoteAttachment(index) {
+			const removed = this.remoteAttachments[index];
+			this.remoteAttachments.splice(index, 1);
+
+			// Clear reference if it was the document attachment
+			if (
+				removed.source === "document" &&
+				removed.doctype === this.referenceDoctype &&
+				removed.docname === this.referenceName
+			) {
+				// Check if there's another document attachment
+				const anotherDoc = this.remoteAttachments.find((a) => a.source === "document");
+				if (anotherDoc) {
+					this.referenceDoctype = anotherDoc.doctype;
+					this.referenceName = anotherDoc.docname;
+				} else {
+					this.referenceDoctype = null;
+					this.referenceName = null;
+				}
+			}
+		},
+
+		getRemoteAttachmentIcon(attachment) {
+			if (attachment.source === "document") return "FileText";
+			if (attachment.source === "drive") return "HardDrive";
+			return "File";
+		},
+
 		formatSize(bytes) {
 			if (bytes < 1024) return bytes + " B";
 			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -368,6 +489,20 @@ export default {
 			return result;
 		},
 
+		async prepareAllAttachments() {
+			// Prepare local file attachments
+			const localAttachments = await this.prepareAttachments();
+
+			// Remote attachments are already in base64 format
+			const remoteFormatted = this.remoteAttachments.map((a) => ({
+				filename: a.filename,
+				content_type: a.content_type,
+				data: a.content,
+			}));
+
+			return [...localAttachments, ...remoteFormatted];
+		},
+
 		fileToBase64(file) {
 			return new Promise((resolve, reject) => {
 				const reader = new FileReader();
@@ -381,6 +516,14 @@ export default {
 		},
 
 		async send() {
+			// Flush any pending input in recipient fields
+			if (this.$refs.toField) {
+				this.$refs.toField.flush();
+			}
+			if (this.$refs.ccField) {
+				this.$refs.ccField.flush();
+			}
+
 			// Validate recipient
 			if (!this.emailData.to || !this.emailData.to.trim()) {
 				frappe.msgprint({
@@ -417,7 +560,7 @@ export default {
 			this.sending = true;
 
 			try {
-				const attachments = await this.prepareAttachments();
+				const attachments = await this.prepareAllAttachments();
 
 				await frappe.call({
 					method: "frappe_webmail.api.send_email",
@@ -429,6 +572,12 @@ export default {
 						html_content: this.editor.getHTML(),
 						reply_to_message_id: this.replyTo?.message_id || null,
 						attachments: attachments.length ? JSON.stringify(attachments) : null,
+						reply_to_uid: this.replyTo?.uid || null,
+						reply_to_folder: this.replyTo ? this.folder : null,
+						forward_uid: this.forwardEmail?.uid || null,
+						forward_folder: this.forwardEmail ? this.folder : null,
+						reference_doctype: this.referenceDoctype || null,
+						reference_name: this.referenceName || null,
 					},
 				});
 
@@ -444,13 +593,13 @@ export default {
 					}
 				}
 
-				frappe.toast({ message: __("Email sent!"), indicator: "green" });
+				frappe.toast({ message: this.__("Email sent!"), indicator: "green" });
 				this.isDirty = false; // Prevent save on unmount
 				this.$emit("sent");
 				this.$emit("close");
 			} catch (error) {
 				frappe.toast({
-					message: error.message || __("Send error"),
+					message: error.message || this.__("Send error"),
 					indicator: "red",
 				});
 			} finally {
@@ -461,7 +610,7 @@ export default {
 		async saveDraft() {
 			await this.saveDraftNow();
 			frappe.toast({
-				message: __("Draft saved"),
+				message: this.__("Draft saved"),
 				indicator: "blue",
 			});
 			// Close the composer after manual save
@@ -471,7 +620,7 @@ export default {
 		deleteDraft() {
 			if (!this.draftUid || !this.draftFolder) return;
 
-			frappe.confirm(__("Are you sure you want to delete this draft?"), async () => {
+			frappe.confirm(this.__("Are you sure you want to delete this draft?"), async () => {
 				try {
 					await frappe.call({
 						method: "frappe_webmail.api.delete_emails",
@@ -482,12 +631,12 @@ export default {
 							permanent: false,
 						},
 					});
-					frappe.toast({ message: __("Draft deleted"), indicator: "green" });
+					frappe.toast({ message: this.__("Draft deleted"), indicator: "green" });
 					this.$emit("draft-deleted");
 					this.$emit("close");
 				} catch (error) {
 					console.error("Delete draft failed:", error);
-					frappe.toast({ message: __("Delete error"), indicator: "red" });
+					frappe.toast({ message: this.__("Delete error"), indicator: "red" });
 				}
 			});
 		},
@@ -505,7 +654,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	background: white;
+	background: var(--card-bg, white);
 	border-radius: 8px;
 }
 
@@ -556,7 +705,7 @@ export default {
 	border-radius: 6px;
 	cursor: pointer;
 	font-size: 14px;
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .header-right .btn:hover {
@@ -572,7 +721,7 @@ export default {
 }
 
 .header-right .btn-send:hover {
-	background: #1a7fd4;
+	background: var(--primary-dark, #1a7fd4);
 }
 
 .header-right .btn-send:disabled {
@@ -581,12 +730,12 @@ export default {
 }
 
 .header-right .btn-danger-light {
-	color: #dc3545;
-	border-color: #dc3545;
+	color: var(--red-500, #dc3545);
+	border-color: var(--red-500, #dc3545);
 }
 
 .header-right .btn-danger-light:hover {
-	background: #dc3545;
+	background: var(--red-500, #dc3545);
 	color: white;
 }
 
@@ -604,6 +753,7 @@ export default {
 	color: var(--text-muted, #8d99a6);
 	font-size: 13px;
 	margin-bottom: 0;
+	margin-right: 15px;
 }
 
 .composer-field input {
@@ -647,7 +797,7 @@ export default {
 }
 
 .editor-toolbar button.active {
-	background: var(--primary-light, #e3f2fd);
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
 	border-color: var(--primary-color, #2490ef);
 }
 
@@ -709,7 +859,26 @@ export default {
 }
 
 .attachment-chip .remove:hover {
-	color: #e74c3c;
+	color: var(--red-500, #e74c3c);
+}
+
+.attachment-chip.document {
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.1));
+	border: 1px solid var(--primary-color, #2490ef);
+}
+
+.attachment-chip.drive {
+	background: rgba(255, 196, 0, 0.1);
+	border: 1px solid var(--yellow-500, #f0c000);
+}
+
+.attachment-chip .source-badge {
+	font-size: 10px;
+	padding: 2px 6px;
+	background: var(--primary-color, #2490ef);
+	color: white;
+	border-radius: 3px;
+	font-weight: 500;
 }
 
 .composer-footer {
@@ -746,15 +915,15 @@ export default {
 }
 
 .btn-danger-light {
-	background: white;
-	color: #dc3545;
-	border: 1px solid #dc3545;
+	background: var(--card-bg, white);
+	color: var(--red-500, #dc3545);
+	border: 1px solid var(--red-500, #dc3545);
 	border-radius: 4px;
 	cursor: pointer;
 }
 
 .btn-danger-light:hover {
-	background: #dc3545;
+	background: var(--red-500, #dc3545);
 	color: white;
 }
 </style>

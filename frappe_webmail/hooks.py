@@ -26,8 +26,8 @@ add_to_apps_screen = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/frappe_webmail/js/frappe_webmail.css?v=2.0"
-app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=2.0"
+app_include_css = "/assets/frappe_webmail/js/frappe_webmail.css?v=9.5"
+app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=9.5"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
@@ -118,13 +118,13 @@ app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=2.0"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.get_permission_query_conditions",
+}
+
+has_permission = {
+	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.has_permission",
+}
 
 # DocType Class
 # ---------------

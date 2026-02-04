@@ -10,6 +10,8 @@ export default defineConfig({
 	build: {
 		outDir: "../frappe_webmail/public/js",
 		emptyOutDir: false,
+		// Disable sourcemaps in production to reduce memory usage
+		sourcemap: false,
 		lib: {
 			entry: path.resolve(__dirname, "src/main.js"),
 			name: "FrappeWebmail",

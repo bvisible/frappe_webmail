@@ -42,6 +42,7 @@ class WebmailAccount(Document):
 		self.validate_ports()
 		self.validate_auth()
 		self.apply_oauth_provider_settings()
+		self.clean_allowed_users()
 
 	def validate_email(self):
 		"""Validate email format"""
@@ -79,6 +80,11 @@ class WebmailAccount(Document):
 				self.smtp_ssl = provider["smtp_ssl"]
 				self.smtp_starttls = provider["smtp_starttls"]
 
+	def clean_allowed_users(self):
+		"""Remove owner from allowed_users list to prevent duplicates"""
+		if self.allowed_users and self.user:
+			self.allowed_users = [row for row in self.allowed_users if row.user != self.user]
+
 	def before_insert(self):
 		"""Set default values before insert"""
 		if not self.user:
@@ -86,10 +92,19 @@ class WebmailAccount(Document):
 
 	def has_permission(self, permtype="read", doc=None):
 		"""Check if user has permission to access this account"""
-		if frappe.session.user == "Administrator":
+		user = frappe.session.user
+
+		if user == "Administrator":
 			return True
-		if self.user == frappe.session.user:
+		if self.user == user:
 			return True
+
+		# Check if user is in shared access list
+		if self.allowed_users:
+			for row in self.allowed_users:
+				if row.user == user:
+					return True
+
 		return False
 
 	def is_oauth_token_valid(self):
@@ -179,14 +194,25 @@ def get_oauth_config(provider):
 
 
 def get_permission_query_conditions(user):
-	"""Only show user's own accounts"""
+	"""Show user's own accounts and accounts shared with them"""
 	if not user:
 		user = frappe.session.user
 
 	if user == "Administrator":
 		return ""
 
-	return f"(`tabWebmail Account`.user = {frappe.db.escape(user)})"
+	escaped_user = frappe.db.escape(user)
+
+	# Get accounts shared with this user
+	shared_accounts = frappe.get_all(
+		"Webmail Account User", filters={"user": user, "parenttype": "Webmail Account"}, pluck="parent"
+	)
+
+	if shared_accounts:
+		shared_list = ", ".join([frappe.db.escape(a) for a in shared_accounts])
+		return f"(`tabWebmail Account`.user = {escaped_user} OR `tabWebmail Account`.name IN ({shared_list}))"
+
+	return f"(`tabWebmail Account`.user = {escaped_user})"
 
 
 def has_permission(doc, ptype="read", user=None):
@@ -197,4 +223,20 @@ def has_permission(doc, ptype="read", user=None):
 	if user == "Administrator":
 		return True
 
-	return doc.user == user
+	# Owner has permission
+	if doc.user == user:
+		return True
+
+	# Check shared access
+	if hasattr(doc, "allowed_users") and doc.allowed_users:
+		for row in doc.allowed_users:
+			if row.user == user:
+				return True
+
+	# Also check via database for cases where child table is not loaded
+	if frappe.db.exists(
+		"Webmail Account User", {"parent": doc.name, "user": user, "parenttype": "Webmail Account"}
+	):
+		return True
+
+	return False

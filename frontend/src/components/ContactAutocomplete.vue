@@ -301,6 +301,19 @@ export default {
 			this.highlightedIndex = -1;
 		},
 
+		// Force add any pending input as recipient (called before send)
+		flush() {
+			const email = this.inputValue.trim();
+			if (email) {
+				this.addRecipient({
+					email,
+					display: email,
+					image: null,
+				});
+				this.inputValue = "";
+			}
+		},
+
 		isValidEmail(email) {
 			const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 			return re.test(email);
@@ -335,6 +348,7 @@ export default {
 	flex-wrap: wrap;
 	gap: 6px;
 	align-items: center;
+	min-height: 28px;
 }
 
 .tag {
@@ -349,8 +363,8 @@ export default {
 }
 
 .tag.invalid {
-	background: #fee;
-	border: 1px solid #fcc;
+	background: var(--red-50, #fef2f2);
+	border: 1px solid var(--red-200, #fecaca);
 }
 
 .tag-avatar {
@@ -377,7 +391,7 @@ export default {
 }
 
 .tag-remove:hover {
-	color: #dc3545;
+	color: var(--red-500, #dc3545);
 }
 
 .tags input {

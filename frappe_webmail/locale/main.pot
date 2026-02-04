@@ -573,6 +573,10 @@ msgstr ""
 msgid "Forwarded message"
 msgstr ""
 
+#: frontend/src/components/EmailList.vue:57
+msgid "Forwarded"
+msgstr ""
+
 #: frontend/src/components/AdvancedSearch.vue:22
 msgid "From"
 msgstr ""
@@ -965,6 +969,10 @@ msgstr ""
 
 #: frontend/src/components/EmailViewer.vue:36
 msgid "Reply"
+msgstr ""
+
+#: frontend/src/components/EmailList.vue:56
+msgid "Replied"
 msgstr ""
 
 #. Label of a Data field in DocType 'Email Draft'

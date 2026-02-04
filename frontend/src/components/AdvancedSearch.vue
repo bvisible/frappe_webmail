@@ -186,7 +186,7 @@ export default {
 				this.total = data.total;
 				this.hasMore = data.has_more;
 			} catch (error) {
-				frappe.toast({ message: __("Search error"), indicator: "red" });
+				frappe.toast({ message: this.__("Search error"), indicator: "red" });
 			} finally {
 				this.searching = false;
 			}
@@ -221,7 +221,7 @@ export default {
 				this.results.push(...data.emails);
 				this.hasMore = data.has_more;
 			} catch (error) {
-				frappe.toast({ message: __("Error"), indicator: "red" });
+				frappe.toast({ message: this.__("Error"), indicator: "red" });
 			} finally {
 				this.searching = false;
 			}
@@ -270,6 +270,7 @@ export default {
 	flex-direction: column;
 	height: 100%;
 	padding: 16px;
+	overflow-y: auto;
 }
 
 .search-header {
@@ -300,6 +301,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+	flex-shrink: 0;
 }
 
 .form-group {
@@ -377,7 +379,7 @@ export default {
 }
 
 .btn-primary:hover {
-	background: #1a7fd4;
+	background: var(--primary-dark, #1a7fd4);
 }
 
 .btn-primary:disabled {
@@ -386,7 +388,7 @@ export default {
 }
 
 .btn-secondary {
-	background: white;
+	background: var(--card-bg, white);
 }
 
 .btn-secondary:hover {
@@ -405,9 +407,10 @@ export default {
 }
 
 .search-results {
-	flex: 1;
+	flex: 1 1 0;
+	min-height: 150px;
 	margin-top: 16px;
-	overflow: hidden;
+	overflow: auto;
 	display: flex;
 	flex-direction: column;
 }
@@ -444,7 +447,7 @@ export default {
 
 .result-item.unread {
 	font-weight: 600;
-	background: #f0f7ff;
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.08));
 }
 
 .result-from {

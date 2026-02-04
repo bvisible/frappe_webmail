@@ -579,6 +579,10 @@ msgstr "UID de transfert"
 msgid "Forwarded message"
 msgstr "Message transféré"
 
+#: frontend/src/components/EmailList.vue:57
+msgid "Forwarded"
+msgstr "Transféré"
+
 #: frontend/src/components/AdvancedSearch.vue:22
 msgid "From"
 msgstr "De"
@@ -974,6 +978,10 @@ msgstr "Jeton de rafraîchissement"
 #: frontend/src/components/EmailViewer.vue:36
 msgid "Reply"
 msgstr "Répondre"
+
+#: frontend/src/components/EmailList.vue:56
+msgid "Replied"
+msgstr "Répondu"
 
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
@@ -1459,3 +1467,75 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 #: frappe_webmail/webmail_api.py:459
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#. Label of a Section Break field in DocType 'Webmail Account'
+#. Label of a Table field in DocType 'Webmail Account'
+msgid "Trusted Sources"
+msgstr "Sources de confiance"
+
+#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#. Name of a DocType
+msgid "Trusted Email Source"
+msgstr "Source d'email de confiance"
+
+#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#. Label of a Select field in DocType 'Trusted Email Source'
+msgid "Type"
+msgstr "Type"
+
+#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#. Label of a Data field in DocType 'Trusted Email Source'
+msgid "Email or Domain"
+msgstr "Email ou domaine"
+
+#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#. Option for the 'Type' (Select) field in DocType 'Trusted Email Source'
+msgid "Sender"
+msgstr "Expéditeur"
+
+#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#. Option for the 'Type' (Select) field in DocType 'Trusted Email Source'
+msgid "Domain"
+msgstr "Domaine"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Always for this sender"
+msgstr "Toujours pour cet expéditeur"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Always for {0}"
+msgstr "Toujours pour {0}"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Sender added to trusted list"
+msgstr "Expéditeur ajouté à la liste de confiance"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Domain added to trusted list"
+msgstr "Domaine ajouté à la liste de confiance"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Error adding trusted sender"
+msgstr "Erreur lors de l'ajout de l'expéditeur de confiance"
+
+#: frontend/src/components/EmailViewer.vue
+msgid "Error adding trusted domain"
+msgstr "Erreur lors de l'ajout du domaine de confiance"
+
+#: frappe_webmail/webmail_api.py
+msgid "Invalid source type. Must be 'Sender' or 'Domain'"
+msgstr "Type de source invalide. Doit être 'Sender' ou 'Domain'"
+
+#: frappe_webmail/webmail_api.py
+msgid "Already in trusted list"
+msgstr "Déjà dans la liste de confiance"
+
+#: frappe_webmail/webmail_api.py
+msgid "Not found in trusted list"
+msgstr "Non trouvé dans la liste de confiance"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#. Description of a Table field in DocType 'Webmail Account'
+msgid "Emails from trusted senders or domains will automatically display external images"
+msgstr "Les emails provenant d'expéditeurs ou de domaines de confiance afficheront automatiquement les images externes"

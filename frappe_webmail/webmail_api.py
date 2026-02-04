@@ -49,12 +49,48 @@ def to_bool(value, default=False):
 
 @frappe.whitelist()
 def get_accounts():
-	"""Get all email accounts for current user"""
-	return frappe.get_all(
+	"""Get all email accounts for current user (owned or shared)"""
+	user = frappe.session.user
+
+	# Get accounts owned by user
+	owned = frappe.get_all(
 		"Webmail Account",
-		filters={"user": frappe.session.user, "enabled": 1},
-		fields=["name", "email", "sender_name", "default_signature", "auth_type", "oauth_provider"],
+		filters={"user": user, "enabled": 1},
+		fields=["name", "email", "sender_name", "default_signature", "auth_type", "oauth_provider", "user"],
 	)
+
+	# Get accounts shared with user
+	shared_account_names = frappe.get_all(
+		"Webmail Account User", filters={"user": user, "parenttype": "Webmail Account"}, pluck="parent"
+	)
+
+	shared = []
+	if shared_account_names:
+		shared = frappe.get_all(
+			"Webmail Account",
+			filters={"name": ["in", shared_account_names], "enabled": 1},
+			fields=[
+				"name",
+				"email",
+				"sender_name",
+				"default_signature",
+				"auth_type",
+				"oauth_provider",
+				"user",
+			],
+		)
+
+	# Mark shared accounts and add shared_with info for owned accounts
+	for acc in shared:
+		acc["is_shared"] = True
+
+	for acc in owned:
+		# Get list of users this account is shared with
+		shared_users = frappe.get_all("Webmail Account User", filters={"parent": acc["name"]}, pluck="user")
+		if shared_users:
+			acc["shared_with"] = shared_users
+
+	return owned + shared
 
 
 # ============================================
@@ -490,6 +526,95 @@ def get_folders(account_name):
 		return result
 
 
+@frappe.whitelist()
+def create_folder(account_name, folder_name, parent_folder=None):
+	"""Create a new IMAP folder.
+
+	Args:
+		account_name: Webmail Account name
+		folder_name: Name of the new folder
+		parent_folder: Parent folder path (optional, for nested folders)
+
+	Returns:
+		dict: success status and folder path
+	"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	if not folder_name or not folder_name.strip():
+		frappe.throw(_("Folder name is required"))
+
+	account = get_account(account_name)
+	folder_name = folder_name.strip()
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+
+		# Get folder delimiter from existing folders
+		folders = client.list_folders()
+		delimiter = "/"
+		for flags, delim, name in folders:
+			delimiter = delim.decode() if isinstance(delim, bytes) else delim
+			break
+
+		# Build full path with delimiter
+		if parent_folder:
+			full_path = f"{parent_folder}{delimiter}{folder_name}"
+		else:
+			full_path = folder_name
+
+		# Check if folder already exists
+		for flags, delim, name in folders:
+			if name == full_path:
+				frappe.throw(_("Folder already exists"))
+
+		client.create_folder(full_path)
+
+		return {"success": True, "folder": full_path}
+
+
+@frappe.whitelist()
+def delete_folder(account_name, folder_name):
+	"""Delete an IMAP folder.
+
+	Args:
+		account_name: Webmail Account name
+		folder_name: Full path of the folder to delete
+
+	Returns:
+		dict: success status
+	"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	if not folder_name:
+		frappe.throw(_("Folder name is required"))
+
+	account = get_account(account_name)
+
+	# Prevent deletion of standard folders
+	protected_folders = [
+		"inbox",
+		"sent",
+		"drafts",
+		"trash",
+		"spam",
+		"junk",
+		"archive",
+		"deleted items",
+		"sent items",
+		"sent mail",
+	]
+	if folder_name.lower() in protected_folders:
+		frappe.throw(_("Cannot delete standard folder"))
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+		client.delete_folder(folder_name)
+
+		return {"success": True}
+
+
 # ============================================
 # EMAILS - LIST
 # ============================================
@@ -549,6 +674,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 					"seen": b"\\Seen" in flags,
 					"flagged": b"\\Flagged" in flags,
 					"answered": b"\\Answered" in flags,
+					"forwarded": b"$Forwarded" in flags,
 					"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
 					"size": msg_data.get(b"RFC822.SIZE", 0),
 				}
@@ -599,16 +725,26 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 
 		for part in msg.walk():
 			content_type = part.get_content_type()
-			content_disposition = str(part.get("Content-Disposition", ""))
+			content_disposition = str(part.get("Content-Disposition") or "").lower()
 			content_id = part.get("Content-ID", "").strip("<>")
+			filename = part.get_filename()
 
-			if "attachment" in content_disposition:
+			# Check if this is an attachment (explicit attachment or has filename)
+			is_attachment = "attachment" in content_disposition or (
+				filename
+				and content_type
+				not in ["text/plain", "text/html", "multipart/alternative", "multipart/mixed"]
+			)
+
+			if is_attachment:
 				payload = part.get_payload(decode=True)
+				decoded_filename = (
+					decode_mime_header(filename) if filename else f"attachment_{len(attachments)}"
+				)
 				attachments.append(
 					{
 						"id": content_id or str(len(attachments)),
-						"filename": decode_mime_header(part.get_filename())
-						or f"attachment_{len(attachments)}",
+						"filename": decoded_filename,
 						"content_type": content_type,
 						"size": len(payload) if payload else 0,
 					}
@@ -651,6 +787,8 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			"attachments": attachments,
 			"seen": b"\\Seen" in flags,
 			"flagged": b"\\Flagged" in flags,
+			"answered": b"\\Answered" in flags,
+			"forwarded": b"$Forwarded" in flags,
 		}
 
 
@@ -669,6 +807,12 @@ def send_email(
 	bcc=None,
 	reply_to_message_id=None,
 	attachments=None,
+	reply_to_uid=None,
+	reply_to_folder=None,
+	forward_uid=None,
+	forward_folder=None,
+	reference_doctype=None,
+	reference_name=None,
 ):
 	"""Send an email"""
 	account = get_account(account_name)
@@ -790,7 +934,35 @@ def send_email(
 			# Log but don't fail - email was already sent
 			frappe.log_error("Copy to Sent folder", f"Failed to copy to Sent folder: {e!s}")
 
-		return {"success": True, "message": _("Email sent successfully")}
+		# Mark original email as answered or forwarded
+		try:
+			_mark_original_email(account, reply_to_uid, reply_to_folder, forward_uid, forward_folder)
+		except Exception as e:
+			# Log but don't fail - email was already sent
+			frappe.log_error("Mark original email", f"Failed to mark original email: {e!s}")
+
+		# Create Communication link if reference document is provided
+		communication_created = False
+		if reference_doctype and reference_name:
+			try:
+				result = create_communication_link(
+					account_name=account.email,
+					to=to,
+					subject=subject,
+					html_content=html_content,
+					reference_doctype=reference_doctype,
+					reference_name=reference_name,
+				)
+				communication_created = result.get("created", False)
+			except Exception as e:
+				# Log but don't fail - email was already sent
+				frappe.log_error("Communication link", f"Failed to create communication link: {e!s}")
+
+		return {
+			"success": True,
+			"message": _("Email sent successfully"),
+			"communication_created": communication_created,
+		}
 
 	except Exception as e:
 		frappe.log_error("Email send error", f"{e!s}")
@@ -826,6 +998,27 @@ def _copy_to_sent_folder(account, msg):
 			import datetime
 
 			client.append(sent_folder, msg.as_bytes(), flags=[b"\\Seen"], msg_time=datetime.datetime.now())
+
+
+def _mark_original_email(account, reply_to_uid, reply_to_folder, forward_uid, forward_folder):
+	"""Mark the original email as answered or forwarded"""
+	if not IMAPClient:
+		return
+
+	# Mark as answered if this is a reply
+	if reply_to_uid and reply_to_folder:
+		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+			imap_login(client, account)
+			client.select_folder(reply_to_folder)
+			client.add_flags([int(reply_to_uid)], [b"\\Answered"])
+
+	# Mark as forwarded if this is a forward
+	if forward_uid and forward_folder:
+		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+			imap_login(client, account)
+			client.select_folder(forward_folder)
+			# $Forwarded is a common keyword, not a standard flag
+			client.add_flags([int(forward_uid)], [b"$Forwarded"])
 
 
 @frappe.whitelist()
@@ -957,6 +1150,143 @@ def move_emails(account_name, uids, from_folder, to_folder):
 		client.expunge()
 
 		return {"success": True}
+
+
+@frappe.whitelist()
+def copy_emails(account_name, uids, from_folder, to_folder):
+	"""Copy emails to another folder (without deleting from source)"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+		client.select_folder(from_folder)
+
+		# Copy only, don't delete
+		client.copy(uids, to_folder)
+
+		return {"success": True, "copied": len(uids)}
+
+
+@frappe.whitelist()
+def rename_folder(account_name, old_name, new_name):
+	"""Rename an IMAP folder"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	# Protected folders that cannot be renamed
+	protected_folders = ["inbox", "sent", "drafts", "trash", "spam", "junk", "archive"]
+
+	old_name_lower = old_name.lower()
+	if old_name_lower in protected_folders or old_name_lower.split("/")[-1] in protected_folders:
+		frappe.throw(_("Cannot rename this folder"))
+
+	account = get_account(account_name)
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+
+		# Check if source folder exists
+		folders = [f[2] for f in client.list_folders()]
+		if old_name not in folders:
+			frappe.throw(_("Folder not found"))
+
+		# Check if target folder already exists
+		if new_name in folders:
+			frappe.throw(_("A folder with this name already exists"))
+
+		client.rename_folder(old_name, new_name)
+
+		return {"success": True, "old_name": old_name, "new_name": new_name}
+
+
+@frappe.whitelist()
+def mark_folder_read(account_name, folder):
+	"""Mark all emails in a folder as read"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		# Search for unread messages
+		uids = client.search(["UNSEEN"])
+
+		if uids:
+			# Mark all as read
+			client.add_flags(uids, [b"\\Seen"])
+
+		return {"success": True, "marked_count": len(uids)}
+
+
+@frappe.whitelist()
+def empty_folder(account_name, folder):
+	"""Empty a folder (delete all emails permanently). Only allowed for Trash/Spam folders."""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	# Only allow emptying Trash or Spam folders for safety
+	folder_lower = folder.lower()
+	is_trash = "trash" in folder_lower or "deleted" in folder_lower or "corbeille" in folder_lower
+	is_spam = "spam" in folder_lower or "junk" in folder_lower
+
+	if not is_trash and not is_spam:
+		frappe.throw(_("Only Trash and Spam folders can be emptied"))
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		# Search for all messages
+		uids = client.search(["ALL"])
+
+		if uids:
+			# Mark all as deleted and expunge
+			client.add_flags(uids, [b"\\Deleted"])
+			client.expunge()
+
+		return {"success": True, "deleted_count": len(uids)}
+
+
+@frappe.whitelist()
+def delete_folder(account_name, folder_name):
+	"""Delete an IMAP folder"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	# Protected folders that cannot be deleted
+	protected_folders = ["inbox", "sent", "drafts", "trash", "spam", "junk", "archive"]
+
+	folder_lower = folder_name.lower()
+	if folder_lower in protected_folders or folder_lower.split("/")[-1] in protected_folders:
+		frappe.throw(_("Cannot delete this folder"))
+
+	account = get_account(account_name)
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+
+		# Check if folder exists
+		folders = [f[2] for f in client.list_folders()]
+		if folder_name not in folders:
+			frappe.throw(_("Folder not found"))
+
+		# Check if folder has subfolders
+		has_children = any(f.startswith(folder_name + "/") for f in folders)
+		if has_children:
+			frappe.throw(_("Cannot delete folder with subfolders"))
+
+		client.delete_folder(folder_name)
+
+		return {"success": True, "deleted": folder_name}
 
 
 @frappe.whitelist()
@@ -1227,6 +1557,7 @@ def search_emails(
 					"seen": b"\\Seen" in flags,
 					"flagged": b"\\Flagged" in flags,
 					"answered": b"\\Answered" in flags,
+					"forwarded": b"$Forwarded" in flags,
 					"has_attachments": email_has_attachments,
 					"size": msg_data.get(b"RFC822.SIZE", 0),
 				}
@@ -2005,24 +2336,168 @@ def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 
 
 # ============================================
+# TRUSTED SOURCES
+# ============================================
+
+
+@frappe.whitelist()
+def add_trusted_source(account_name, value, source_type):
+	"""
+	Add a trusted sender or domain to the account.
+
+	Args:
+		account_name: The account email
+		value: Email address (for Sender) or domain (for Domain)
+		source_type: "Sender" or "Domain"
+	"""
+	account = get_account(account_name)
+
+	# Check if trusted_sources field exists on the account
+	if not hasattr(account, "trusted_sources"):
+		frappe.throw(
+			_("Trusted sources feature is not available. Please update the Webmail Account DocType.")
+		)
+
+	# Validate source_type
+	if source_type not in ("Sender", "Domain"):
+		frappe.throw(_("Invalid source type. Must be 'Sender' or 'Domain'"))
+
+	# Normalize value
+	value = value.strip().lower()
+
+	# Check if already exists
+	for row in account.trusted_sources or []:
+		if row.source_type == source_type and row.value.lower() == value:
+			return {"exists": True, "message": _("Already in trusted list")}
+
+	account.append("trusted_sources", {"source_type": source_type, "value": value})
+	account.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
+
+
+@frappe.whitelist()
+def remove_trusted_source(account_name, value, source_type):
+	"""
+	Remove a trusted sender or domain from the account.
+
+	Args:
+		account_name: The account email
+		value: Email address (for Sender) or domain (for Domain)
+		source_type: "Sender" or "Domain"
+	"""
+	account = get_account(account_name)
+
+	# Check if trusted_sources field exists on the account
+	if not hasattr(account, "trusted_sources") or not account.trusted_sources:
+		return {"success": False, "message": _("Not found in trusted list")}
+
+	# Normalize value
+	value = value.strip().lower()
+
+	# Find and remove
+	to_remove = None
+	for row in account.trusted_sources:
+		if row.source_type == source_type and row.value.lower() == value:
+			to_remove = row
+			break
+
+	if to_remove:
+		account.remove(to_remove)
+		account.save(ignore_permissions=True)
+		frappe.db.commit()
+		return {"success": True}
+
+	return {"success": False, "message": _("Not found in trusted list")}
+
+
+@frappe.whitelist()
+def is_sender_trusted(account_name, from_email):
+	"""
+	Check if a sender or their domain is trusted.
+
+	Args:
+		account_name: The account email
+		from_email: The sender's email address
+
+	Returns:
+		bool: True if the sender or their domain is trusted
+	"""
+	account = get_account(account_name)
+
+	if not from_email:
+		return False
+
+	# Check if trusted_sources field exists on the account
+	if not hasattr(account, "trusted_sources") or not account.trusted_sources:
+		return False
+
+	from_email = from_email.strip().lower()
+	domain = from_email.split("@")[1] if "@" in from_email else ""
+
+	for row in account.trusted_sources:
+		row_value = row.value.lower()
+		if row.source_type == "Sender" and row_value == from_email:
+			return True
+		if row.source_type == "Domain" and domain and row_value == domain:
+			return True
+
+	return False
+
+
+@frappe.whitelist()
+def get_trusted_sources(account_name):
+	"""
+	Get all trusted sources for an account.
+
+	Args:
+		account_name: The account email
+
+	Returns:
+		list: List of trusted sources with type and value
+	"""
+	account = get_account(account_name)
+
+	# Check if trusted_sources field exists on the account
+	if not hasattr(account, "trusted_sources") or not account.trusted_sources:
+		return []
+
+	return [{"source_type": row.source_type, "value": row.value} for row in account.trusted_sources]
+
+
+# ============================================
 # UI PREFERENCES
 # ============================================
 
 
 @frappe.whitelist()
 def get_ui_preferences(account_name):
-	"""Get UI preferences (column widths) for an account"""
+	"""Get UI preferences (column widths, collapsed folders) for an account"""
 	account = get_account(account_name)
+
+	# Parse collapsed_folders JSON
+	collapsed_folders = []
+	if account.collapsed_folders:
+		import json
+
+		try:
+			collapsed_folders = json.loads(account.collapsed_folders)
+		except (json.JSONDecodeError, TypeError):
+			collapsed_folders = []
 
 	return {
 		"sidebar_width": account.sidebar_width or 220,
 		"email_list_width": account.email_list_width or 350,
+		"collapsed_folders": collapsed_folders,
 	}
 
 
 @frappe.whitelist()
-def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None):
-	"""Save UI preferences (column widths) for an account"""
+def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None, collapsed_folders=None):
+	"""Save UI preferences (column widths, collapsed folders) for an account"""
+	import json
+
 	account = get_account(account_name)
 
 	# Validate and constrain values
@@ -2038,14 +2513,168 @@ def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None)
 		email_list_width = max(250, min(600, email_list_width))
 		account.email_list_width = email_list_width
 
+	if collapsed_folders is not None:
+		# Handle both string (from JS) and list
+		if isinstance(collapsed_folders, str):
+			try:
+				collapsed_folders = json.loads(collapsed_folders)
+			except (json.JSONDecodeError, TypeError):
+				collapsed_folders = []
+		# Store as JSON string
+		account.collapsed_folders = json.dumps(collapsed_folders)
+
 	account.save(ignore_permissions=True)
 	frappe.db.commit()
+
+	# Parse collapsed_folders for response
+	response_collapsed = []
+	if account.collapsed_folders:
+		try:
+			response_collapsed = json.loads(account.collapsed_folders)
+		except (json.JSONDecodeError, TypeError):
+			response_collapsed = []
 
 	return {
 		"success": True,
 		"sidebar_width": account.sidebar_width,
 		"email_list_width": account.email_list_width,
+		"collapsed_folders": response_collapsed,
 	}
+
+
+# ============================================
+# FOLDER MAPPING
+# ============================================
+
+
+@frappe.whitelist()
+def get_folder_mapping(account_name):
+	"""Get folder mapping for an account (configured or auto-detected)"""
+	account = get_account(account_name)
+
+	# Get configured folders (manual override)
+	configured = {
+		"inbox": account.inbox_folder or "",
+		"sent": account.sent_folder or "",
+		"drafts": account.drafts_folder or "",
+		"trash": account.trash_folder or "",
+		"spam": account.spam_folder or "",
+		"archive": account.archive_folder or "",
+	}
+
+	# Get auto-detected folders from IMAP
+	auto_detected = {}
+	try:
+		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+			imap_login(client, account)
+			folders = client.list_folders()
+
+			for flags, delimiter, name in folders:
+				# Decode folder name
+				if isinstance(name, bytes):
+					name = name.decode("utf-8")
+				if isinstance(delimiter, bytes):
+					delimiter = delimiter.decode("utf-8")
+
+				# Convert flags to strings
+				flags_str = [f.decode("utf-8") if isinstance(f, bytes) else f for f in flags]
+				name_lower = name.lower()
+
+				# Auto-detect based on IMAP flags first
+				if "\\Inbox" in flags_str or name_lower == "inbox":
+					if not auto_detected.get("inbox"):
+						auto_detected["inbox"] = name
+				if "\\Sent" in flags_str:
+					if not auto_detected.get("sent"):
+						auto_detected["sent"] = name
+				if "\\Drafts" in flags_str:
+					if not auto_detected.get("drafts"):
+						auto_detected["drafts"] = name
+				if "\\Trash" in flags_str:
+					if not auto_detected.get("trash"):
+						auto_detected["trash"] = name
+				if "\\Junk" in flags_str or "\\Spam" in flags_str:
+					if not auto_detected.get("spam"):
+						auto_detected["spam"] = name
+				if "\\Archive" in flags_str:
+					if not auto_detected.get("archive"):
+						auto_detected["archive"] = name
+
+				# Fallback to name-based detection
+				if not auto_detected.get("inbox") and name_lower == "inbox":
+					auto_detected["inbox"] = name
+				if not auto_detected.get("sent") and name_lower in [
+					"sent",
+					"sent items",
+					"sent mail",
+					"envoyés",
+				]:
+					auto_detected["sent"] = name
+				if not auto_detected.get("drafts") and name_lower in ["drafts", "brouillons"]:
+					auto_detected["drafts"] = name
+				if not auto_detected.get("trash") and name_lower in ["trash", "deleted items", "corbeille"]:
+					auto_detected["trash"] = name
+				if not auto_detected.get("spam") and name_lower in [
+					"spam",
+					"junk",
+					"junk e-mail",
+					"courrier indésirable",
+				]:
+					auto_detected["spam"] = name
+				if not auto_detected.get("archive") and name_lower in ["archive", "archives"]:
+					auto_detected["archive"] = name
+
+	except Exception as e:
+		frappe.log_error("Folder auto-detection failed", str(e))
+
+	# Merge: configured takes precedence over auto-detected
+	effective = {
+		"inbox": configured["inbox"] or auto_detected.get("inbox", "INBOX"),
+		"sent": configured["sent"] or auto_detected.get("sent", ""),
+		"drafts": configured["drafts"] or auto_detected.get("drafts", ""),
+		"trash": configured["trash"] or auto_detected.get("trash", ""),
+		"spam": configured["spam"] or auto_detected.get("spam", ""),
+		"archive": configured["archive"] or auto_detected.get("archive", ""),
+	}
+
+	return {
+		"configured": configured,
+		"auto_detected": auto_detected,
+		"effective": effective,
+	}
+
+
+@frappe.whitelist()
+def save_folder_mapping(
+	account_name,
+	inbox_folder=None,
+	sent_folder=None,
+	drafts_folder=None,
+	trash_folder=None,
+	spam_folder=None,
+	archive_folder=None,
+):
+	"""Save folder mapping for an account"""
+	account = get_account(account_name)
+
+	# Update only non-None values
+	if inbox_folder is not None:
+		account.inbox_folder = inbox_folder.strip() if inbox_folder else ""
+	if sent_folder is not None:
+		account.sent_folder = sent_folder.strip() if sent_folder else ""
+	if drafts_folder is not None:
+		account.drafts_folder = drafts_folder.strip() if drafts_folder else ""
+	if trash_folder is not None:
+		account.trash_folder = trash_folder.strip() if trash_folder else ""
+	if spam_folder is not None:
+		account.spam_folder = spam_folder.strip() if spam_folder else ""
+	if archive_folder is not None:
+		account.archive_folder = archive_folder.strip() if archive_folder else ""
+
+	account.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
 
 
 # ============================================
@@ -2054,13 +2683,24 @@ def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None)
 
 
 def get_account(account_name):
-	"""Get and validate email account"""
+	"""Get and validate email account (owner or shared user)"""
 	if not frappe.db.exists("Webmail Account", account_name):
 		frappe.throw(_("Account not found"))
 
 	account = frappe.get_doc("Webmail Account", account_name)
+	user = frappe.session.user
 
-	if account.user != frappe.session.user:
+	# Check if user is owner
+	is_owner = account.user == user
+
+	# Check if user has shared access
+	is_shared_user = False
+	if not is_owner:
+		is_shared_user = frappe.db.exists(
+			"Webmail Account User", {"parent": account_name, "user": user, "parenttype": "Webmail Account"}
+		)
+
+	if not is_owner and not is_shared_user:
 		frappe.throw(_("Access denied"))
 
 	if not account.enabled:
@@ -2106,17 +2746,520 @@ def has_attachments(bodystructure):
 	if not bodystructure:
 		return False
 
+	def normalize(val):
+		"""Convert bytes to lowercase string"""
+		if isinstance(val, bytes):
+			return val.decode("utf-8", errors="ignore").lower()
+		if isinstance(val, str):
+			return val.lower()
+		return ""
+
+	def is_attachment_type(main_type, sub_type):
+		"""Check if MIME type indicates an attachment"""
+		main_type = normalize(main_type)
+		sub_type = normalize(sub_type)
+		# Skip text/plain and text/html (body content)
+		if main_type == "text":
+			return False
+		# Skip multipart types
+		if main_type == "multipart":
+			return False
+		# Common attachment types - application/*, audio/*, video/*, image/*
+		attachment_types = ("application", "audio", "video", "image")
+		return main_type in attachment_types
+
 	def check_part(part):
-		if isinstance(part, tuple):
-			if len(part) >= 2:
-				# Check for attachment disposition
-				for item in part:
-					if isinstance(item, tuple) and len(item) >= 2:
-						if item[0] and isinstance(item[0], bytes) and item[0].lower() == b"attachment":
-							return True
-					if isinstance(item, tuple):
-						if check_part(item):
-							return True
+		"""Recursively check parts for attachments"""
+		if not isinstance(part, (tuple, list)) or len(part) < 2:
+			return False
+
+		first = part[0]
+
+		# Multipart: first element is a tuple/list (nested part)
+		if isinstance(first, (tuple, list)):
+			for item in part:
+				if isinstance(item, (tuple, list)):
+					if check_part(item):
+						return True
+			return False
+
+		# Single part: [type, subtype, params, id, desc, encoding, size, ...]
+		# Check if this is a MIME type we recognize as attachment
+		if is_attachment_type(first, part[1] if len(part) > 1 else ""):
+			return True
+
 		return False
 
 	return check_part(bodystructure)
+
+
+# ============================================
+# ATTACHMENT SOURCES
+# ============================================
+
+
+@frappe.whitelist()
+def get_file_manager_files(folder="Home", start=0, page_length=20, search=None):
+	"""
+	Get files from Frappe File Manager.
+
+	Args:
+		folder: Folder name to browse (default: "Home")
+		start: Pagination offset
+		page_length: Number of files per page
+		search: Search text to filter files
+
+	Returns:
+		dict: List of files and folders
+	"""
+	start = int(start)
+	page_length = min(int(page_length), 50)
+
+	filters = {"is_private": 0}  # Only public files for now
+
+	if folder and folder != "Home":
+		filters["folder"] = folder
+
+	if search:
+		filters["file_name"] = ["like", f"%{search}%"]
+
+	# Get folders first
+	folders = frappe.get_all(
+		"File",
+		filters={"is_folder": 1, "folder": folder or "Home"},
+		fields=["name", "file_name", "folder", "is_folder", "modified"],
+		order_by="file_name asc",
+	)
+
+	# Get files
+	files = frappe.get_all(
+		"File",
+		filters={**filters, "is_folder": 0},
+		fields=["name", "file_name", "file_url", "file_size", "file_type", "folder", "is_folder", "modified"],
+		order_by="modified desc",
+		start=start,
+		page_length=page_length,
+	)
+
+	# Count total files for pagination
+	total_files = frappe.db.count("File", {**filters, "is_folder": 0})
+
+	return {
+		"folders": folders,
+		"files": files,
+		"total": total_files,
+		"has_more": start + page_length < total_files,
+	}
+
+
+@frappe.whitelist()
+def get_file_content(file_url):
+	"""
+	Get content of a file from File Manager.
+
+	Args:
+		file_url: The file URL (e.g., "/files/example.pdf")
+
+	Returns:
+		dict: filename, content (base64), content_type
+	"""
+	if not file_url:
+		frappe.throw(_("File URL is required"))
+
+	# Get file doc by URL
+	file_doc = frappe.db.get_value(
+		"File",
+		{"file_url": file_url},
+		["name", "file_name", "file_type", "is_private"],
+		as_dict=True,
+	)
+
+	if not file_doc:
+		frappe.throw(_("File not found"))
+
+	# Load full doc to get content
+	file = frappe.get_doc("File", file_doc.name)
+
+	# Check permissions
+	if file.is_private:
+		# For private files, check if user has access
+		if not frappe.has_permission("File", "read", file.name):
+			frappe.throw(_("Access denied"))
+
+	try:
+		content = file.get_content()
+	except Exception as e:
+		frappe.log_error("File content error", f"Failed to read file {file_url}: {e!s}")
+		frappe.throw(_("Could not read file content"))
+
+	return {
+		"filename": file.file_name,
+		"content": base64.b64encode(content).decode(),
+		"content_type": file.file_type or "application/octet-stream",
+		"size": len(content),
+	}
+
+
+@frappe.whitelist()
+def get_drive_files(folder=None, search=None, limit=20):
+	"""
+	Get files from Frappe Drive.
+
+	Args:
+		folder: Drive folder entity name
+		search: Search text
+		limit: Max number of results
+
+	Returns:
+		dict: List of Drive files
+	"""
+	limit = min(int(limit), 50)
+
+	# Check if Drive is installed
+	if "drive" not in frappe.get_installed_apps():
+		return {"files": [], "message": _("Frappe Drive is not installed")}
+
+	try:
+		filters = {"owner": frappe.session.user}
+
+		if folder:
+			filters["parent_drive_entity"] = folder
+
+		if search:
+			filters["title"] = ["like", f"%{search}%"]
+
+		# Get Drive entities (files only, not folders)
+		files = frappe.get_all(
+			"Drive Entity",
+			filters={**filters, "is_group": 0},
+			fields=["name", "title", "file_size", "mime_type", "modified", "parent_drive_entity"],
+			order_by="modified desc",
+			limit=limit,
+		)
+
+		# Get folders for navigation
+		folders = frappe.get_all(
+			"Drive Entity",
+			filters={**filters, "is_group": 1},
+			fields=["name", "title", "modified", "parent_drive_entity"],
+			order_by="title asc",
+		)
+
+		return {"files": files, "folders": folders}
+
+	except Exception as e:
+		frappe.log_error("Drive files error", f"Failed to get Drive files: {e!s}")
+		return {"files": [], "folders": [], "error": str(e)}
+
+
+@frappe.whitelist()
+def get_drive_file_content(entity_name):
+	"""
+	Get content of a file from Frappe Drive.
+
+	Args:
+		entity_name: Drive Entity name
+
+	Returns:
+		dict: filename, content (base64), content_type
+	"""
+	# Check if Drive is installed
+	if "drive" not in frappe.get_installed_apps():
+		frappe.throw(_("Frappe Drive is not installed"))
+
+	if not entity_name:
+		frappe.throw(_("Entity name is required"))
+
+	try:
+		entity = frappe.get_doc("Drive Entity", entity_name)
+
+		# Check ownership/permissions
+		if entity.owner != frappe.session.user:
+			# Check if shared with user
+			is_shared = frappe.db.exists(
+				"Drive DocShare",
+				{"share_doctype": "Drive Entity", "share_name": entity_name, "user": frappe.session.user},
+			)
+			if not is_shared:
+				frappe.throw(_("Access denied"))
+
+		# Get file path and read content
+		file_path = entity.path
+		if not file_path:
+			frappe.throw(_("File path not found"))
+
+		import os
+
+		drive_path = frappe.get_site_path("private", "files", "drive")
+		full_path = os.path.join(drive_path, file_path)
+
+		if not os.path.exists(full_path):
+			frappe.throw(_("File not found on disk"))
+
+		with open(full_path, "rb") as f:
+			content = f.read()
+
+		return {
+			"filename": entity.title,
+			"content": base64.b64encode(content).decode(),
+			"content_type": entity.mime_type or "application/octet-stream",
+			"size": len(content),
+		}
+
+	except frappe.DoesNotExistError:
+		frappe.throw(_("Drive file not found"))
+	except Exception as e:
+		frappe.log_error("Drive file content error", f"Failed to read Drive file {entity_name}: {e!s}")
+		frappe.throw(_("Could not read Drive file content"))
+
+
+@frappe.whitelist()
+def get_printable_doctypes():
+	"""
+	Get list of DocTypes that have print formats.
+
+	Returns:
+		list: DocTypes with print support
+	"""
+	# Common DocTypes with print formats
+	common_doctypes = [
+		"Sales Invoice",
+		"Sales Order",
+		"Quotation",
+		"Purchase Invoice",
+		"Purchase Order",
+		"Delivery Note",
+		"Purchase Receipt",
+		"Stock Entry",
+		"Payment Entry",
+		"Journal Entry",
+		"Material Request",
+		"Request for Quotation",
+		"Supplier Quotation",
+		"Lead",
+		"Opportunity",
+	]
+
+	result = []
+	for doctype in common_doctypes:
+		if frappe.db.exists("DocType", doctype):
+			# Check if user has read permission
+			if frappe.has_permission(doctype, "read"):
+				result.append(
+					{
+						"doctype": doctype,
+						"label": _(doctype),
+					}
+				)
+
+	return result
+
+
+@frappe.whitelist()
+def search_documents(doctype, search_text, limit=10):
+	"""
+	Search for documents of a specific DocType.
+
+	Args:
+		doctype: DocType to search
+		search_text: Search query
+		limit: Max results
+
+	Returns:
+		list: Matching documents
+	"""
+	if not doctype:
+		frappe.throw(_("DocType is required"))
+
+	if not frappe.has_permission(doctype, "read"):
+		frappe.throw(_("No permission to read {0}").format(doctype))
+
+	limit = min(int(limit), 20)
+
+	# Use Frappe's search_link method
+	return frappe.call(
+		"frappe.desk.search.search_link",
+		doctype=doctype,
+		txt=search_text or "",
+		page_length=limit,
+	)
+
+
+@frappe.whitelist()
+def get_recent_documents(doctype, limit=10):
+	"""
+	Get recent documents of a specific DocType.
+
+	Args:
+		doctype: DocType to fetch
+		limit: Max results (default 10)
+
+	Returns:
+		list: Recent documents with value and description
+	"""
+	if not doctype:
+		frappe.throw(_("DocType is required"))
+
+	if not frappe.has_permission(doctype, "read"):
+		frappe.throw(_("No permission to read {0}").format(doctype))
+
+	limit = min(int(limit), 20)
+
+	# Get the title field for the doctype
+	meta = frappe.get_meta(doctype)
+	title_field = meta.title_field or "name"
+
+	# Get recent documents ordered by modified date
+	docs = frappe.get_all(
+		doctype,
+		fields=["name", title_field] if title_field != "name" else ["name"],
+		order_by="modified desc",
+		limit=limit,
+	)
+
+	# Format results like search_link
+	results = []
+	for doc in docs:
+		results.append(
+			{
+				"value": doc.name,
+				"description": doc.get(title_field, "") if title_field != "name" else "",
+			}
+		)
+
+	return results
+
+
+@frappe.whitelist()
+def get_print_formats(doctype):
+	"""
+	Get available print formats for a DocType.
+
+	Args:
+		doctype: DocType name
+
+	Returns:
+		list: Available print formats
+	"""
+	if not doctype or not frappe.db.exists("DocType", doctype):
+		return []
+
+	formats = frappe.get_all(
+		"Print Format",
+		filters={"doc_type": doctype, "disabled": 0},
+		fields=["name", "default_print_language"],
+		order_by="name asc",
+	)
+
+	# Add "Standard" format
+	result = [{"name": "Standard", "label": _("Standard")}]
+	result.extend([{"name": f.name, "label": f.name} for f in formats])
+
+	return result
+
+
+@frappe.whitelist()
+def generate_document_pdf(doctype, docname, print_format=None):
+	"""
+	Generate a PDF for a Frappe document.
+
+	Args:
+		doctype: DocType of the document
+		docname: Name of the document
+		print_format: Print format to use (default: Standard)
+
+	Returns:
+		dict: filename, content (base64), content_type
+	"""
+	if not doctype or not docname:
+		frappe.throw(_("DocType and document name are required"))
+
+	if not frappe.db.exists(doctype, docname):
+		frappe.throw(_("Document not found"))
+
+	if not frappe.has_permission(doctype, "read", docname):
+		frappe.throw(_("Access denied"))
+
+	try:
+		# Generate PDF using Frappe's built-in method
+		from frappe.utils.pdf import get_pdf
+		from frappe.utils.print_format import download_pdf
+
+		# Get HTML content
+		html = frappe.get_print(
+			doctype,
+			docname,
+			print_format=print_format or "Standard",
+			as_pdf=False,
+		)
+
+		# Convert to PDF
+		pdf_content = get_pdf(html)
+
+		# Generate filename
+		filename = f"{doctype.replace(' ', '_')}_{docname}.pdf"
+
+		return {
+			"filename": filename,
+			"content": base64.b64encode(pdf_content).decode(),
+			"content_type": "application/pdf",
+			"size": len(pdf_content),
+			"doctype": doctype,
+			"docname": docname,
+		}
+
+	except Exception as e:
+		frappe.log_error("PDF generation error", f"Failed to generate PDF for {doctype}/{docname}: {e!s}")
+		frappe.throw(_("Failed to generate PDF: {0}").format(str(e)))
+
+
+@frappe.whitelist()
+def create_communication_link(
+	account_name,
+	to,
+	subject,
+	html_content,
+	reference_doctype=None,
+	reference_name=None,
+):
+	"""
+	Create a Communication record to link an email to a document's timeline.
+
+	Args:
+		account_name: Sender's email account
+		to: Recipients
+		subject: Email subject
+		html_content: Email HTML content
+		reference_doctype: DocType to link to
+		reference_name: Document name to link to
+
+	Returns:
+		dict: Communication name if created
+	"""
+	if not reference_doctype or not reference_name:
+		return {"created": False, "reason": "No reference document specified"}
+
+	if not frappe.db.exists(reference_doctype, reference_name):
+		return {"created": False, "reason": "Reference document not found"}
+
+	try:
+		comm = frappe.new_doc("Communication")
+		comm.communication_type = "Communication"
+		comm.communication_medium = "Email"
+		comm.sent_or_received = "Sent"
+		comm.subject = subject
+		comm.content = html_content
+		comm.sender = account_name
+		comm.recipients = to
+		comm.reference_doctype = reference_doctype
+		comm.reference_name = reference_name
+		comm.status = "Linked"
+
+		comm.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		return {"created": True, "communication": comm.name}
+
+	except Exception as e:
+		frappe.log_error("Communication link error", f"Failed to create communication link: {e!s}")
+		return {"created": False, "reason": str(e)}

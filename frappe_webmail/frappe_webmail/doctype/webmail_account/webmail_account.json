@@ -9,6 +9,8 @@
     "user",
     "email",
     "sender_name",
+    "sb_shared_access",
+    "allowed_users",
     "sb_auth",
     "auth_type",
     "oauth_provider",
@@ -35,7 +37,17 @@
     "default_signature",
     "sb_ui_preferences",
     "sidebar_width",
-    "email_list_width"
+    "email_list_width",
+    "collapsed_folders",
+    "sb_folder_mapping",
+    "inbox_folder",
+    "sent_folder",
+    "drafts_folder",
+    "trash_folder",
+    "spam_folder",
+    "archive_folder",
+    "sb_trusted_sources",
+    "trusted_sources"
   ],
   "fields": [
     {
@@ -50,7 +62,7 @@
       "fieldtype": "Link",
       "in_list_view": 1,
       "in_standard_filter": 1,
-      "label": "User",
+      "label": "Owner",
       "options": "User",
       "reqd": 1
     },
@@ -67,6 +79,18 @@
       "fieldname": "sender_name",
       "fieldtype": "Data",
       "label": "Sender Name"
+    },
+    {
+      "fieldname": "sb_shared_access",
+      "fieldtype": "Section Break",
+      "label": "Shared Access"
+    },
+    {
+      "description": "Additional users who can access this email account",
+      "fieldname": "allowed_users",
+      "fieldtype": "Table",
+      "label": "Shared With",
+      "options": "Webmail Account User"
     },
     {
       "fieldname": "sb_auth",
@@ -230,6 +254,71 @@
       "fieldname": "email_list_width",
       "fieldtype": "Int",
       "label": "Email List Width"
+    },
+    {
+      "default": "[]",
+      "description": "JSON array of collapsed folder names",
+      "fieldname": "collapsed_folders",
+      "fieldtype": "Code",
+      "hidden": 1,
+      "label": "Collapsed Folders",
+      "options": "JSON"
+    },
+    {
+      "collapsible": 1,
+      "fieldname": "sb_folder_mapping",
+      "fieldtype": "Section Break",
+      "label": "Folder Mapping",
+      "description": "Configure which IMAP folders to use for each category. Leave empty for auto-detection."
+    },
+    {
+      "fieldname": "inbox_folder",
+      "fieldtype": "Data",
+      "label": "Inbox Folder",
+      "description": "IMAP folder name for inbox (usually INBOX)"
+    },
+    {
+      "fieldname": "sent_folder",
+      "fieldtype": "Data",
+      "label": "Sent Folder",
+      "description": "IMAP folder name for sent emails (e.g., Sent, Sent Items, Sent Mail)"
+    },
+    {
+      "fieldname": "drafts_folder",
+      "fieldtype": "Data",
+      "label": "Drafts Folder",
+      "description": "IMAP folder name for drafts"
+    },
+    {
+      "fieldname": "trash_folder",
+      "fieldtype": "Data",
+      "label": "Trash Folder",
+      "description": "IMAP folder name for trash (e.g., Trash, Deleted Items)"
+    },
+    {
+      "fieldname": "spam_folder",
+      "fieldtype": "Data",
+      "label": "Spam Folder",
+      "description": "IMAP folder name for spam (e.g., Spam, Junk, Junk E-mail)"
+    },
+    {
+      "fieldname": "archive_folder",
+      "fieldtype": "Data",
+      "label": "Archive Folder",
+      "description": "IMAP folder name for archived emails"
+    },
+    {
+      "collapsible": 1,
+      "fieldname": "sb_trusted_sources",
+      "fieldtype": "Section Break",
+      "label": "Trusted Sources"
+    },
+    {
+      "description": "Emails from trusted senders or domains will automatically display external images",
+      "fieldname": "trusted_sources",
+      "fieldtype": "Table",
+      "label": "Trusted Sources",
+      "options": "Trusted Email Source"
     }
   ],
   "index_web_pages_for_search": 1,
@@ -251,7 +340,6 @@
     {
       "create": 1,
       "delete": 1,
-      "if_owner": 1,
       "read": 1,
       "role": "All",
       "write": 1
