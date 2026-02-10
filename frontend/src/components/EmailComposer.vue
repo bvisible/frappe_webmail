@@ -117,6 +117,36 @@
 			<editor-content :editor="editor" />
 		</div>
 
+		<!-- Nora AI Bar -->
+		<NoraBar
+			:editor="editor"
+			:loading="noraLoading"
+			:loading-text="noraLoadingText"
+			@proofread="handleNoraProofread"
+			@improve="handleNoraImprove"
+			@translate="handleNoraTranslate"
+			@open-chat="showNoraMiniChat = true"
+		/>
+
+		<!-- Nora Diff Panel -->
+		<NoraDiffPanel
+			:visible="showNoraDiff"
+			:original-text="noraDiffOriginal"
+			:modified-text="noraDiffModified"
+			:title="noraDiffTitle"
+			@accept="acceptNoraDiff"
+			@reject="rejectNoraDiff"
+		/>
+
+		<!-- Nora Mini Chat -->
+		<NoraMiniChat
+			v-if="showNoraMiniChat"
+			:account="account"
+			:reply-context="replyTo ? replyTo.html || replyTo.text : ''"
+			@close="showNoraMiniChat = false"
+			@insert-content="insertNoraContent"
+		/>
+
 		<!-- Attachments -->
 		<div class="attachments-section" v-if="attachments.length || remoteAttachments.length">
 			<!-- Local file attachments -->
@@ -175,6 +205,9 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import ContactAutocomplete from "./ContactAutocomplete.vue";
 import AttachmentPicker from "./AttachmentPicker.vue";
+import NoraBar from "./NoraBar.vue";
+import NoraDiffPanel from "./NoraDiffPanel.vue";
+import NoraMiniChat from "./NoraMiniChat.vue";
 import {
 	X,
 	Paperclip,
@@ -201,6 +234,9 @@ export default {
 		EditorContent,
 		ContactAutocomplete,
 		AttachmentPicker,
+		NoraBar,
+		NoraDiffPanel,
+		NoraMiniChat,
 		X,
 		Paperclip,
 		Save,
@@ -250,6 +286,15 @@ export default {
 			// Reference document for Communication link
 			referenceDoctype: null,
 			referenceName: null,
+			// Nora AI assistant state
+			noraLoading: false,
+			noraLoadingText: "",
+			showNoraDiff: false,
+			noraDiffOriginal: "",
+			noraDiffModified: "",
+			noraDiffTitle: "",
+			noraCorrectedHtml: "",
+			showNoraMiniChat: false,
 		};
 	},
 
@@ -346,7 +391,8 @@ export default {
         </blockquote>
       `;
 
-			let content = "<p></p>";
+			// Use Nora-generated draft if available (from Quick Reply)
+			let content = reply.noraDraftHtml || "<p></p>";
 			if (this.signature) {
 				content += `<br><p>--</p>${this.signature}`;
 			}
@@ -639,6 +685,117 @@ export default {
 					frappe.toast({ message: this.__("Delete error"), indicator: "red" });
 				}
 			});
+		},
+
+		// ── Nora AI methods ──
+
+		async handleNoraProofread() {
+			await this._callNoraAction(
+				"nora.api.nora_webmail.proofread",
+				{
+					html_content: this.editor.getHTML(),
+					account_name: this.account,
+				},
+				__("Proofreading..."),
+				__("Proofread")
+			);
+		},
+
+		async handleNoraImprove() {
+			await this._callNoraAction(
+				"nora.api.nora_webmail.improve",
+				{
+					html_content: this.editor.getHTML(),
+					account_name: this.account,
+				},
+				__("Improving..."),
+				__("Improve")
+			);
+		},
+
+		async handleNoraTranslate(lang) {
+			const langNames = { fr: __("French"), en: __("English"), de: __("German") };
+			await this._callNoraAction(
+				"nora.api.nora_webmail.translate",
+				{
+					html_content: this.editor.getHTML(),
+					target_language: lang,
+					account_name: this.account,
+				},
+				__("Translating to {0}...", [langNames[lang] || lang]),
+				__("Translation")
+			);
+		},
+
+		async _callNoraAction(method, args, loadingText, diffTitle) {
+			this.noraLoading = true;
+			this.noraLoadingText = loadingText;
+			this.showNoraDiff = false;
+
+			try {
+				const result = await frappe.call({ method, args });
+				const data = result.message || result;
+
+				if (!data.success) {
+					frappe.toast({
+						message: data.message || __("An error occurred"),
+						indicator: "red",
+					});
+					return;
+				}
+
+				if (data.has_changes === false) {
+					frappe.toast({
+						message: data.message || __("No changes needed"),
+						indicator: "blue",
+					});
+					return;
+				}
+
+				// Show diff panel
+				this.noraDiffOriginal = data.original_text || "";
+				this.noraDiffModified =
+					data.corrected_text || data.improved_text || data.translated_text || "";
+				this.noraCorrectedHtml =
+					data.corrected_html || data.improved_html || data.translated_html || "";
+				this.noraDiffTitle = diffTitle;
+				this.showNoraDiff = true;
+			} catch (error) {
+				console.error("Nora action failed:", error);
+				frappe.toast({
+					message: __("Nora encountered an error. Please try again."),
+					indicator: "red",
+				});
+			} finally {
+				this.noraLoading = false;
+				this.noraLoadingText = "";
+			}
+		},
+
+		acceptNoraDiff() {
+			if (this.noraCorrectedHtml && this.editor) {
+				this.editor.commands.setContent(this.noraCorrectedHtml);
+				frappe.toast({ message: __("Changes applied"), indicator: "green" });
+			}
+			this.showNoraDiff = false;
+			this.noraDiffOriginal = "";
+			this.noraDiffModified = "";
+			this.noraCorrectedHtml = "";
+		},
+
+		rejectNoraDiff() {
+			this.showNoraDiff = false;
+			this.noraDiffOriginal = "";
+			this.noraDiffModified = "";
+			this.noraCorrectedHtml = "";
+		},
+
+		insertNoraContent(htmlContent) {
+			if (htmlContent && this.editor) {
+				this.editor.commands.setContent(htmlContent);
+				this.showNoraMiniChat = false;
+				frappe.toast({ message: __("Content inserted"), indicator: "green" });
+			}
 		},
 
 		formatLastSaved() {

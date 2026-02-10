@@ -53,6 +53,17 @@
 				<button @click="$emit('delete', email)" class="btn btn-sm btn-danger">
 					<Trash2 :size="16" />
 				</button>
+				<span class="actions-separator"></span>
+				<button
+					@click="handleQuickReply"
+					class="btn btn-sm btn-nora"
+					:disabled="quickReplyLoading"
+					:title="__('Quick Reply with Nora')"
+				>
+					<Sparkles :size="16" />
+					<span>{{ quickReplyLoading ? __("Generating...") : __("Quick Reply") }}</span>
+					<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
+				</button>
 			</div>
 
 			<!-- External images warning -->
@@ -142,6 +153,7 @@ import {
 	FileSpreadsheet,
 	ChevronDown,
 	ChevronUp,
+	Sparkles,
 } from "lucide-vue-next";
 
 export default {
@@ -166,6 +178,7 @@ export default {
 		FileSpreadsheet,
 		ChevronDown,
 		ChevronUp,
+		Sparkles,
 	},
 
 	props: {
@@ -174,7 +187,7 @@ export default {
 		folder: { type: String, default: "INBOX" },
 	},
 
-	emits: ["reply", "forward", "delete", "flag-changed", "mark-unread"],
+	emits: ["reply", "forward", "delete", "flag-changed", "mark-unread", "quick-reply"],
 
 	data() {
 		return {
@@ -182,6 +195,7 @@ export default {
 			hasBlockedImages: false,
 			senderContact: null,
 			showAllAttachments: false,
+			quickReplyLoading: false,
 		};
 	},
 
@@ -323,6 +337,44 @@ export default {
 	},
 
 	methods: {
+		async handleQuickReply() {
+			if (this.quickReplyLoading || !this.email) return;
+			this.quickReplyLoading = true;
+
+			try {
+				const result = await frappe.call({
+					method: "nora.api.nora_webmail.quick_reply",
+					args: {
+						account_name: this.account,
+						email_uid: this.email.uid,
+						folder: this.folder,
+					},
+				});
+
+				const data = result.message || result;
+				if (data.success) {
+					this.$emit("quick-reply", {
+						draft_html: data.draft_html,
+						draft_text: data.draft_text,
+						original_email: this.email,
+					});
+				} else {
+					frappe.toast({
+						message: __("Failed to generate reply"),
+						indicator: "red",
+					});
+				}
+			} catch (error) {
+				console.error("Quick reply error:", error);
+				frappe.toast({
+					message: __("Nora encountered an error. Please try again."),
+					indicator: "red",
+				});
+			} finally {
+				this.quickReplyLoading = false;
+			}
+		},
+
 		toggleAttachments() {
 			if (this.email?.attachments?.length > 2) {
 				this.showAllAttachments = !this.showAllAttachments;
@@ -845,5 +897,42 @@ export default {
 	border-color: var(--primary-color, #2490ef);
 	border-style: solid;
 	color: var(--primary-color, #2490ef);
+}
+
+.actions-separator {
+	width: 1px;
+	height: 24px;
+	background: var(--border-color, #e5e5e5);
+	flex-shrink: 0;
+}
+
+.email-actions .btn-nora {
+	border-color: var(--primary-color, #2490ef);
+	color: var(--primary-color, #2490ef);
+	font-weight: 500;
+}
+
+.email-actions .btn-nora:hover {
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.1));
+}
+
+.email-actions .btn-nora:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+.nora-spinner-small {
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--border-color, #e5e5e5);
+	border-top: 2px solid var(--primary-color, #2490ef);
+	border-radius: 50%;
+	animation: nora-spin 0.8s linear infinite;
+}
+
+@keyframes nora-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 </style>

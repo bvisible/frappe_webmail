@@ -127,6 +127,7 @@
 					@delete="deleteEmail"
 					@flag-changed="onFlagChanged"
 					@mark-unread="onMarkUnread"
+					@quick-reply="handleQuickReply"
 				/>
 
 				<EmailComposer
@@ -461,6 +462,18 @@ export default {
 			this.showComposer = true;
 			this.forwardingEmail = email;
 			this.replyToEmail = null;
+			this.editingDraft = null;
+		},
+
+		handleQuickReply(data) {
+			// Open composer in reply mode with Nora-generated draft content
+			const email = data.original_email;
+			this.showComposer = true;
+			this.replyToEmail = {
+				...email,
+				noraDraftHtml: data.draft_html,
+			};
+			this.forwardingEmail = null;
 			this.editingDraft = null;
 		},
 
