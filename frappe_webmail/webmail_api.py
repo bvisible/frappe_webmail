@@ -31,6 +31,23 @@ except ImportError:
 	IMAPClient = None
 
 
+class WebmailAuthenticationError(frappe.ValidationError):
+	"""Raised when an IMAP/SMTP sign-in fails because the credentials are wrong.
+
+	Subclasses frappe.ValidationError so Frappe answers with HTTP 417 and a clean
+	error payload (exc_type set) instead of a 500 traceback. The frontend listens
+	for this exc_type to show a re-authentication dialog.
+	"""
+
+
+class WebmailConnectionError(frappe.ValidationError):
+	"""Raised when an IMAP/SMTP server cannot be reached (network, SSL, timeout).
+
+	Subclasses frappe.ValidationError for the same reason as
+	WebmailAuthenticationError: a clean HTTP 417 payload instead of a traceback.
+	"""
+
+
 def to_bool(value, default=False):
 	"""Convert a value to boolean, handling string 'true'/'false' from JS"""
 	if value is None:
@@ -274,12 +291,17 @@ def get_oauth_redirect_uri():
 	return frappe.utils.get_url("/api/method/frappe_webmail.api.oauth_callback")
 
 
-def imap_login(client, account):
-	"""Login to IMAP server using password or OAuth2"""
+def _imap_login_raw(client, account):
+	"""Perform the raw IMAP login. Raises low-level exceptions on failure.
+
+	Used directly by the connection tester, which wants the original exception.
+	Regular operations should call imap_login() instead, which translates
+	failures into typed, user-friendly webmail errors.
+	"""
 	if account.auth_type == "OAuth2":
 		access_token = account.get_oauth_access_token()
 		if not access_token:
-			frappe.throw(_("OAuth token not available. Please reconnect your account."))
+			raise WebmailAuthenticationError(_("OAuth token not available"))
 
 		client.oauth2_login(account.email, access_token)
 	else:
@@ -288,12 +310,29 @@ def imap_login(client, account):
 		client.login(account.email, password)
 
 
-def smtp_login(server, account):
-	"""Login to SMTP server using password or OAuth2"""
+def imap_login(client, account):
+	"""Login to the IMAP server, translating failures into typed webmail errors.
+
+	Any low-level error (bad credentials, network, SSL...) is converted into a
+	WebmailAuthenticationError or WebmailConnectionError so callers never leak a
+	raw traceback to the user.
+	"""
+	try:
+		_imap_login_raw(client, account)
+	except Exception as e:
+		_raise_webmail_login_error("IMAP", e, account)
+
+
+def _smtp_login_raw(server, account):
+	"""Perform the raw SMTP login. Raises low-level exceptions on failure.
+
+	Used directly by the connection tester; regular operations should call
+	smtp_login() instead.
+	"""
 	if account.auth_type == "OAuth2":
 		access_token = account.get_oauth_access_token()
 		if not access_token:
-			frappe.throw(_("OAuth token not available. Please reconnect your account."))
+			raise WebmailAuthenticationError(_("OAuth token not available"))
 
 		# Build XOAUTH2 authentication string
 		auth_string = build_xoauth2_string(account.email, access_token)
@@ -302,6 +341,14 @@ def smtp_login(server, account):
 		# Password authentication
 		password = account.get_password("smtp_password")
 		server.login(account.email, password)
+
+
+def smtp_login(server, account):
+	"""Login to the SMTP server, translating failures into typed webmail errors."""
+	try:
+		_smtp_login_raw(server, account)
+	except Exception as e:
+		_raise_webmail_login_error("SMTP", e, account)
 
 
 def build_xoauth2_string(user, access_token):
@@ -319,6 +366,43 @@ def test_connection(account_name):
 	account = get_account(account_name)
 
 	return _test_connection_internal(account)
+
+
+@frappe.whitelist()
+def update_account_password(account_name, imap_password=None, smtp_password=None):
+	"""Update the stored IMAP/SMTP password of a webmail account.
+
+	Used by the re-authentication dialog shown when a sign-in fails. Only the
+	account owner may change credentials (a shared user cannot).
+
+	Args:
+		account_name: Webmail Account name
+		imap_password: New IMAP password (optional)
+		smtp_password: New SMTP password (optional)
+
+	Returns:
+		dict: success status
+	"""
+	account = get_account(account_name)
+
+	if account.user != frappe.session.user:
+		frappe.throw(_("Only the account owner can change the password"), frappe.PermissionError)
+
+	if account.auth_type == "OAuth2":
+		frappe.throw(_("This account uses OAuth2. Please reconnect it instead of setting a password."))
+
+	if not imap_password and not smtp_password:
+		frappe.throw(_("A password is required"))
+
+	if imap_password:
+		account.imap_password = imap_password
+	if smtp_password:
+		account.smtp_password = smtp_password
+
+	account.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True}
 
 
 @frappe.whitelist()
@@ -407,7 +491,7 @@ def _test_connection_internal(account):
 		with IMAPClient(
 			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=15
 		) as client:
-			imap_login(client, account)
+			_imap_login_raw(client, account)
 			imap_success = True
 	except Exception as e:
 		imap_error = _format_connection_error("IMAP", e, account)
@@ -419,7 +503,7 @@ def _test_connection_internal(account):
 		with smtp_class(account.smtp_host, account.smtp_port, timeout=15) as server:
 			if account.smtp_starttls and not account.smtp_ssl:
 				server.starttls()
-			smtp_login(server, account)
+			_smtp_login_raw(server, account)
 			smtp_success = True
 	except Exception as e:
 		smtp_error = _format_connection_error("SMTP", e, account)
@@ -493,6 +577,75 @@ def _format_connection_error(protocol, exception, account):
 
 	# Default: show the original error
 	return _("{0}: {1}").format(protocol, error_str)
+
+
+def _raise_webmail_login_error(protocol, exception, account):
+	"""Translate a low-level IMAP/SMTP exception into a typed webmail error.
+
+	Raises WebmailAuthenticationError for bad credentials, WebmailConnectionError
+	otherwise. Both subclass frappe.ValidationError, so Frappe replies with a
+	clean HTTP 417 payload (exc_type set) instead of a 500 traceback. The extra
+	``webmail_error`` payload lets the frontend show a tailored re-auth dialog.
+	"""
+	error_text = str(exception).lower()
+
+	# Identify authentication failures by exception type or well-known markers.
+	is_auth_error = isinstance(exception, (WebmailAuthenticationError, smtplib.SMTPAuthenticationError))
+	if not is_auth_error:
+		try:
+			from imapclient.exceptions import LoginError as IMAPLoginError
+
+			is_auth_error = isinstance(exception, IMAPLoginError)
+		except ImportError:
+			pass
+	if not is_auth_error:
+		auth_markers = (
+			"invalid login",
+			"invalid credentials",
+			"authentication failed",
+			"authenticationfailed",
+			"auth failed",
+			"username and password not accepted",
+			"incorrect password",
+			"password is incorrect",
+			"login failed",
+			"login denied",
+			"logindenied",
+		)
+		is_auth_error = any(marker in error_text for marker in auth_markers)
+
+	account_email = getattr(account, "email", "") or ""
+	account_name = getattr(account, "name", None)
+	auth_type = getattr(account, "auth_type", "Password") or "Password"
+
+	if is_auth_error:
+		if auth_type == "OAuth2":
+			message = _(
+				"Could not sign in to {0} for {1}. The OAuth connection is no longer valid - please reconnect the account."
+			).format(protocol, account_email or _("this account"))
+		else:
+			message = _(
+				"Could not sign in to {0} for {1}. The email address or password is incorrect."
+			).format(protocol, account_email or _("this account"))
+		frappe.local.response["webmail_error"] = {
+			"type": "authentication",
+			"protocol": protocol,
+			"account": account_name,
+			"email": account_email,
+			"auth_type": auth_type,
+		}
+		frappe.throw(message, exc=WebmailAuthenticationError, title=_("Email Sign-in Failed"))
+
+	# Not an auth error: reuse the friendly connection-error formatter.
+	message = _format_connection_error(protocol, exception, account)
+	frappe.local.response["webmail_error"] = {
+		"type": "connection",
+		"protocol": protocol,
+		"account": account_name,
+		"email": account_email,
+		"auth_type": auth_type,
+	}
+	frappe.throw(message, exc=WebmailConnectionError, title=_("Email Connection Failed"))
 
 
 # ============================================
@@ -675,6 +828,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 					"flagged": b"\\Flagged" in flags,
 					"answered": b"\\Answered" in flags,
 					"forwarded": b"$Forwarded" in flags,
+					"nora_seen": b"$NoraSeen" in flags,
 					"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
 					"size": msg_data.get(b"RFC822.SIZE", 0),
 				}
@@ -790,6 +944,33 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			"answered": b"\\Answered" in flags,
 			"forwarded": b"$Forwarded" in flags,
 		}
+
+
+@frappe.whitelist()
+def mark_email_nora_seen(account_name, uid, seen=True, folder="INBOX"):
+	"""Mark/unmark an email with the NORA-specific IMAP flag $NoraSeen.
+
+	Independent of the standard \\Seen flag (the "read by user" indicator).
+	NORA uses $NoraSeen to track which emails it has already processed,
+	without touching the human-facing read state.
+	"""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+	uid = int(uid)
+	seen = to_bool(seen, default=True)
+
+	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		imap_login(client, account)
+		client.select_folder(folder)
+
+		if seen:
+			client.add_flags([uid], [b"$NoraSeen"])
+		else:
+			client.remove_flags([uid], [b"$NoraSeen"])
+
+		return {"success": True, "uid": uid, "nora_seen": seen}
 
 
 # ============================================
@@ -1437,6 +1618,7 @@ def search_emails(
 	has_attachment=None,
 	is_unread=None,
 	is_flagged=None,
+	is_nora_seen=None,
 	limit=50,
 	offset=0,
 ):
@@ -1452,6 +1634,7 @@ def search_emails(
 	has_attachment = to_bool(has_attachment) if has_attachment is not None else None
 	is_unread = to_bool(is_unread) if is_unread is not None else None
 	is_flagged = to_bool(is_flagged) if is_flagged is not None else None
+	is_nora_seen = to_bool(is_nora_seen) if is_nora_seen is not None else None
 
 	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
 		imap_login(client, account)
@@ -1500,6 +1683,11 @@ def search_emails(
 
 		if is_flagged:
 			criteria.append(["FLAGGED"])
+
+		if is_nora_seen is True:
+			criteria.append(["KEYWORD", "$NoraSeen"])
+		elif is_nora_seen is False:
+			criteria.append(["NOT", "KEYWORD", "$NoraSeen"])
 
 		# Default: not deleted
 		if not criteria:
@@ -1558,6 +1746,7 @@ def search_emails(
 					"flagged": b"\\Flagged" in flags,
 					"answered": b"\\Answered" in flags,
 					"forwarded": b"$Forwarded" in flags,
+					"nora_seen": b"$NoraSeen" in flags,
 					"has_attachments": email_has_attachments,
 					"size": msg_data.get(b"RFC822.SIZE", 0),
 				}
