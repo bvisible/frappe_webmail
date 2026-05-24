@@ -1552,7 +1552,14 @@ def delete_emails(account_name, uids, folder, permanent=False):
 
 @frappe.whitelist()
 def get_attachment(account_name, uid, folder, attachment_id):
-	"""Download an attachment"""
+	"""Download an attachment.
+
+	Attachment detection uses the SAME logic as get_email_content (an
+	explicit ``Content-Disposition: attachment`` OR any part with a filename
+	that is not text/plain, text/html, or a multipart container). Without
+	this alignment, parts that show up in get_email_content's "attachments"
+	list (e.g. inline images with a filename) cannot be downloaded.
+	"""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -1571,21 +1578,28 @@ def get_attachment(account_name, uid, folder, attachment_id):
 		raw = data[uid][b"RFC822"]
 		msg = email.message_from_bytes(raw)
 
-		# Find the attachment
+		# Find the attachment — same logic as get_email_content listing.
 		idx = 0
 		for part in msg.walk():
-			content_disposition = str(part.get("Content-Disposition", ""))
+			content_disposition = str(part.get("Content-Disposition", "")).lower()
 			content_id = part.get("Content-ID", "").strip("<>")
+			filename = part.get_filename()
+			content_type = part.get_content_type()
 
-			if "attachment" in content_disposition:
+			is_attachment = "attachment" in content_disposition or (
+				filename
+				and content_type
+				not in ["text/plain", "text/html", "multipart/alternative", "multipart/mixed"]
+			)
+
+			if is_attachment:
 				current_id = content_id or str(idx)
 				if current_id == attachment_id:
 					payload = part.get_payload(decode=True)
-					filename = decode_mime_header(part.get_filename()) or f"attachment_{idx}"
-					content_type = part.get_content_type()
+					decoded_filename = decode_mime_header(filename) if filename else f"attachment_{idx}"
 
 					return {
-						"filename": filename,
+						"filename": decoded_filename,
 						"content_type": content_type,
 						"data": base64.b64encode(payload).decode(),
 						"size": len(payload),
