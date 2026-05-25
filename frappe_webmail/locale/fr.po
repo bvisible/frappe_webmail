@@ -24,8 +24,8 @@ msgstr ""
 msgid "(No subject)"
 msgstr "(Sans objet)"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Access Token"
 msgstr "Jeton d'accès"
 
@@ -41,10 +41,10 @@ msgstr "Accès refusé"
 msgid "Access denied to this account"
 msgstr "Accès refusé à ce compte"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Link field in DocType 'Email Draft'
 #. Label of a Link field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Account"
 msgstr "Compte"
 
@@ -64,14 +64,14 @@ msgstr "Le compte n'utilise pas OAuth2"
 msgid "Account not found"
 msgstr "Compte introuvable"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Select field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Action"
 msgstr "Action"
 
+#. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:147
-#. Label of a Section Break field in DocType 'Email Filter'
 msgid "Actions"
 msgstr "Actions"
 
@@ -87,25 +87,25 @@ msgstr "Ajouter aux contacts"
 msgid "Advanced search"
 msgstr "Recherche avancée"
 
+#. Name of a role
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Name of a role
 msgid "All"
-msgstr "Tout"
+msgstr "Tous"
 
 #: frontend/src/components/FilterManager.vue:107
 msgid "All conditions (AND)"
 msgstr "Toutes les conditions (ET)"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Check field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Also Mark as Read"
 msgstr "Marquer aussi comme lu"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Check field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Also Mark as Starred"
 msgstr "Marquer aussi comme important"
 
@@ -146,12 +146,8 @@ msgid "Are you sure you want to delete this signature?"
 msgstr "Voulez-vous vraiment supprimer cette signature ?"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:227
-msgid ""
-"Are you sure you want to disconnect OAuth? You will need to reconnect to "
-"use this account."
-msgstr ""
-"Êtes-vous sûr de vouloir déconnecter OAuth ? Vous devrez vous reconnecter "
-"pour utiliser ce compte."
+msgid "Are you sure you want to disconnect OAuth? You will need to reconnect to use this account."
+msgstr "Êtes-vous sûr de vouloir déconnecter OAuth ? Vous devrez vous reconnecter pour utiliser ce compte."
 
 #: frontend/src/components/FilterManager.vue:106
 msgid "At least one condition (OR)"
@@ -177,23 +173,23 @@ msgstr "Pièce jointe introuvable"
 msgid "Attachments"
 msgstr "Pièces jointes"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Attachments JSON"
 msgstr "JSON des pièces jointes"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Authentication"
 msgstr "Authentification"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Select field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Authentication Type"
 msgstr "Type d'authentification"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Small Text field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Bcc"
 msgstr "Cci"
 
@@ -214,8 +210,8 @@ msgstr "Annuler"
 msgid "Carbon copy..."
 msgstr "Copie carbone..."
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Small Text field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Cc"
 msgstr "Cc"
 
@@ -232,9 +228,9 @@ msgstr "Effacer"
 msgid "Close"
 msgstr "Fermer"
 
+#. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:102
-#. Label of a Section Break field in DocType 'Email Filter'
 msgid "Conditions"
 msgstr "Conditions"
 
@@ -242,8 +238,8 @@ msgstr "Conditions"
 msgid "Configure an account"
 msgstr "Configurer un compte"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Button field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Connect OAuth"
 msgstr "Connecter OAuth"
 
@@ -283,9 +279,9 @@ msgstr "Date :"
 msgid "Default"
 msgstr "Par défaut"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
 #. Label of a Link field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Default Signature"
 msgstr "Signature par défaut"
 
@@ -359,23 +355,23 @@ msgstr "Modifier"
 msgid "Edit filter"
 msgstr "Modifier le filtre"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Email Address"
 msgstr "Adresse email"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Email Draft"
 msgstr "Brouillon d'email"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Email Filter"
 msgstr "Filtre d'email"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 msgid "Email Signature"
 msgstr "Signature d'email"
 
@@ -412,10 +408,10 @@ msgstr "Message vide"
 msgid "Enable"
 msgstr "Activer"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Check field in DocType 'Email Filter'
 #. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Enabled"
 msgstr "Activé"
 
@@ -516,8 +512,8 @@ msgstr "Échec de l'envoi de l'email : {0}"
 msgid "Failed to test connection. Please check your settings."
 msgstr "Échec du test de connexion. Veuillez vérifier vos paramètres."
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Filter Name"
 msgstr "Nom du filtre"
 
@@ -565,30 +561,30 @@ msgstr "Dossier"
 msgid "Forward"
 msgstr "Transférer"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Forward Folder"
 msgstr "Dossier de transfert"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Int field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Forward UID"
 msgstr "UID de transfert"
-
-#: frontend/src/components/EmailComposer.vue:287
-msgid "Forwarded message"
-msgstr "Message transféré"
 
 #: frontend/src/components/EmailList.vue:57
 msgid "Forwarded"
 msgstr "Transféré"
 
+#: frontend/src/components/EmailComposer.vue:287
+msgid "Forwarded message"
+msgstr "Message transféré"
+
 #: frontend/src/components/AdvancedSearch.vue:22
 msgid "From"
 msgstr "De"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "From Contains"
 msgstr "De contient"
 
@@ -605,18 +601,18 @@ msgstr "De :"
 msgid "General search"
 msgstr "Recherche générale"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Gmail"
 msgstr "Gmail"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "HTML Content"
 msgstr "Contenu HTML"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Check field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Has Attachment"
 msgstr "Contient une pièce jointe"
 
@@ -624,13 +620,13 @@ msgstr "Contient une pièce jointe"
 msgid "Has attachments"
 msgstr "A des pièces jointes"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "IMAP Host"
 msgstr "Serveur IMAP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "IMAP Password"
 msgstr "Mot de passe IMAP"
 
@@ -638,13 +634,13 @@ msgstr "Mot de passe IMAP"
 msgid "IMAP Password is required for Password authentication"
 msgstr "Le mot de passe IMAP est requis pour l'authentification par mot de passe"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Int field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "IMAP Port"
 msgstr "Port IMAP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "IMAP Settings"
 msgstr "Paramètres IMAP"
 
@@ -693,8 +689,8 @@ msgstr "Adresse email invalide : {0}"
 msgid "Invalid or expired OAuth state"
 msgstr "État OAuth invalide ou expiré"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Check field in DocType 'Email Signature'
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 msgid "Is Default"
 msgstr "Par défaut"
 
@@ -702,13 +698,13 @@ msgstr "Par défaut"
 msgid "Italic"
 msgstr "Italique"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Datetime field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Last Applied"
 msgstr "Dernière application"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Datetime field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Last Saved"
 msgstr "Dernière sauvegarde"
 
@@ -770,8 +766,8 @@ msgstr "Marqué comme non lu"
 msgid "Match"
 msgstr "Correspondance"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Select field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Match Type"
 msgstr "Type de correspondance"
 
@@ -840,8 +836,8 @@ msgstr "Liste numérotée"
 msgid "OAuth"
 msgstr "OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Select field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "OAuth Provider"
 msgstr "Fournisseur OAuth"
 
@@ -849,13 +845,13 @@ msgstr "Fournisseur OAuth"
 msgid "OAuth Provider is required for OAuth2 authentication"
 msgstr "Le fournisseur OAuth est requis pour l'authentification OAuth2"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "OAuth Status"
 msgstr "Statut OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "OAuth Tokens (Internal)"
 msgstr "Jetons OAuth (Interne)"
 
@@ -869,9 +865,7 @@ msgstr "Identifiants OAuth non configurés pour {0}"
 
 #: frappe_webmail/webmail_api.py:97
 msgid "OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
-msgstr ""
-"Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à "
-"site_config.json"
+msgstr "Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à site_config.json"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:238
 msgid "OAuth disconnected successfully."
@@ -889,9 +883,9 @@ msgstr "Jeton OAuth expiré. Veuillez reconnecter votre compte."
 msgid "OAuth token not available. Please reconnect your account."
 msgstr "Jeton OAuth non disponible. Veuillez reconnecter votre compte."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "OAuth2"
 msgstr "OAuth2"
 
@@ -903,14 +897,14 @@ msgstr "OAuth2 non connecté. Veuillez d'abord autoriser votre compte."
 msgid "On {0}, {1} wrote:"
 msgstr "Le {0}, {1} a écrit :"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Outlook"
 msgstr "Outlook"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Password"
 msgstr "Mot de passe"
 
@@ -970,31 +964,31 @@ msgstr "Adresse email du destinataire"
 msgid "Recipient required"
 msgstr "Destinataire requis"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Refresh Token"
 msgstr "Jeton de rafraîchissement"
-
-#: frontend/src/components/EmailViewer.vue:36
-msgid "Reply"
-msgstr "Répondre"
 
 #: frontend/src/components/EmailList.vue:56
 msgid "Replied"
 msgstr "Répondu"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+#: frontend/src/components/EmailViewer.vue:36
+msgid "Reply"
+msgstr "Répondre"
+
 #. Label of a Data field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Reply To Folder"
 msgstr "Dossier de réponse"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Data field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Reply To Message ID"
 msgstr "ID du message de réponse"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Int field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Reply To UID"
 msgstr "UID de réponse"
 
@@ -1002,13 +996,13 @@ msgstr "UID de réponse"
 msgid "Results"
 msgstr "Résultats"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "SMTP Host"
 msgstr "Serveur SMTP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Password field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "SMTP Password"
 msgstr "Mot de passe SMTP"
 
@@ -1016,13 +1010,13 @@ msgstr "Mot de passe SMTP"
 msgid "SMTP Password is required for Password authentication"
 msgstr "Le mot de passe SMTP est requis pour l'authentification par mot de passe"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Int field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "SMTP Port"
 msgstr "Port SMTP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Section Break field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "SMTP Settings"
 msgstr "Paramètres SMTP"
 
@@ -1092,8 +1086,8 @@ msgstr "Envoyer"
 msgid "Send error"
 msgstr "Erreur d'envoi"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Sender Name"
 msgstr "Nom de l'expéditeur"
 
@@ -1123,13 +1117,13 @@ msgstr "Afficher les images"
 msgid "Signature"
 msgstr "Signature"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Text Editor field in DocType 'Email Signature'
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 msgid "Signature Content"
 msgstr "Contenu de la signature"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #. Label of a Data field in DocType 'Email Signature'
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 msgid "Signature Name"
 msgstr "Nom de la signature"
 
@@ -1163,19 +1157,19 @@ msgstr "Suivis"
 msgid "Start date"
 msgstr "Date de début"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Section Break field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Statistics"
 msgstr "Statistiques"
 
+#. Label of a Data field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frontend/src/components/AdvancedSearch.vue:42
-#. Label of a Data field in DocType 'Email Draft'
 msgid "Subject"
 msgstr "Objet"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Subject Contains"
 msgstr "Sujet contient"
 
@@ -1193,16 +1187,16 @@ msgstr "Objet :"
 msgid "Success"
 msgstr "Succès"
 
+#. Name of a role
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Name of a role
 msgid "System Manager"
 msgstr "Gestionnaire système"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Target Folder"
 msgstr "Dossier cible"
 
@@ -1218,24 +1212,24 @@ msgstr "Tester la connexion"
 msgid "Testing Connection"
 msgstr "Test de connexion"
 
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #. Label of a Long Text field in DocType 'Email Draft'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Text Content"
 msgstr "Contenu texte"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Int field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Times Applied"
 msgstr "Nombre d'applications"
 
+#. Label of a Small Text field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frontend/src/components/AdvancedSearch.vue:32
-#. Label of a Small Text field in DocType 'Email Draft'
 msgid "To"
 msgstr "À"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Label of a Data field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "To Contains"
 msgstr "À contient"
 
@@ -1250,8 +1244,8 @@ msgstr "À contient"
 msgid "To:"
 msgstr "À :"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Datetime field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
@@ -1271,50 +1265,35 @@ msgstr "Fournisseur OAuth inconnu"
 
 #: frontend/src/components/EmailViewer.vue:39
 msgid "Unread"
-msgstr "Non lu"
+msgstr "Non lus"
 
 #: frontend/src/components/AdvancedSearch.vue:66
 msgid "Unread only"
 msgstr "Non lus uniquement"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Use SSL"
 msgstr "Utiliser SSL"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Use STARTTLS"
 msgstr "Utiliser STARTTLS"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Label of a Section Break field in DocType 'Webmail Account'
-msgid "UI Preferences"
-msgstr "Préférences d'interface"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Label of a Int field in DocType 'Webmail Account'
-msgid "Sidebar Width"
-msgstr "Largeur de la barre latérale"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Label of a Int field in DocType 'Webmail Account'
-msgid "Email List Width"
-msgstr "Largeur de la liste d'emails"
-
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Label of a Link field in DocType 'Email Draft'
 #. Label of a Link field in DocType 'Email Filter'
 #. Label of a Link field in DocType 'Email Signature'
 #. Label of a Link field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "User"
 msgstr "Utilisateur"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 #. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Webmail Account"
 msgstr "Compte Webmail"
 
@@ -1346,18 +1325,18 @@ msgstr "Vous n'avez pas saisi d'objet. Voulez-vous envoyer quand même ?"
 msgid "You haven't configured any email account yet."
 msgstr "Vous n'avez pas encore configuré de compte email."
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Match Type' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "all"
 msgstr "tous"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Match Type' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "any"
 msgstr "n'importe lequel"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "delete"
 msgstr "supprimer"
 
@@ -1379,18 +1358,18 @@ msgstr "Le paquet imapclient n'est pas installé"
 msgid "imapclient package is not installed. Run: pip install imapclient"
 msgstr "Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "mark_read"
 msgstr "marquer comme lu"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "mark_starred"
 msgstr "marquer comme important"
 
-#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
+#: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "move"
 msgstr "déplacer"
 
@@ -1412,53 +1391,35 @@ msgstr "{0} résultat(s) sur {1}"
 
 #: frappe_webmail/webmail_api.py:436
 msgid "{0}: Authentication failed. Check your email address and password."
-msgstr ""
-"{0} : Échec d'authentification. Vérifiez votre adresse email et mot de "
-"passe."
+msgstr "{0} : Échec d'authentification. Vérifiez votre adresse email et mot de passe."
 
 #: frappe_webmail/webmail_api.py:431
 msgid "{0}: Cannot resolve server address '{1}'. Check the server hostname."
-msgstr ""
-"{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom "
-"d'hôte."
+msgstr "{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom d'hôte."
 
 #: frappe_webmail/webmail_api.py:454
-msgid ""
-"{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL "
-"enabled."
+msgid "{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled."
 msgstr "{0} : Connexion fermée de manière inattendue. Vérifiez les paramètres SSL."
 
 #: frappe_webmail/webmail_api.py:416
-msgid ""
-"{0}: Connection refused to {1}:{2}. Check that the server address and port "
-"are correct."
+msgid "{0}: Connection refused to {1}:{2}. Check that the server address and port are correct."
 msgstr "{0} : Connexion refusée à {1}:{2}. Vérifiez l'adresse du serveur et le port."
 
 #: frappe_webmail/webmail_api.py:421
-msgid ""
-"{0}: Connection timeout. The server is not responding. Check your network "
-"and server settings."
-msgstr ""
-"{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre "
-"réseau."
+msgid "{0}: Connection timeout. The server is not responding. Check your network and server settings."
+msgstr "{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre réseau."
 
 #: frappe_webmail/webmail_api.py:451
 msgid "{0}: Connection was reset by the server. Check SSL/TLS settings."
-msgstr ""
-"{0} : La connexion a été réinitialisée par le serveur. Vérifiez les "
-"paramètres SSL/TLS."
+msgstr "{0} : La connexion a été réinitialisée par le serveur. Vérifiez les paramètres SSL/TLS."
 
 #: frappe_webmail/webmail_api.py:445
 msgid "{0}: SSL/TLS error. This server may require SSL. Try enabling SSL."
 msgstr "{0} : Erreur SSL/TLS. Ce serveur peut nécessiter SSL. Essayez d'activer SSL."
 
 #: frappe_webmail/webmail_api.py:441
-msgid ""
-"{0}: SSL/TLS error. Try disabling SSL or check the server's SSL "
-"configuration."
-msgstr ""
-"{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la "
-"configuration SSL du serveur."
+msgid "{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration."
+msgstr "{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la configuration SSL du serveur."
 
 #: frappe_webmail/webmail_api.py:448
 msgid "{0}: STARTTLS error. Try toggling the STARTTLS option."
@@ -1468,74 +1429,102 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Label of a Section Break field in DocType 'Webmail Account'
-#. Label of a Table field in DocType 'Webmail Account'
-msgid "Trusted Sources"
-msgstr "Sources de confiance"
+msgid "Labels"
+msgstr "Étiquettes"
 
-#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
-#. Name of a DocType
-msgid "Trusted Email Source"
-msgstr "Source d'email de confiance"
+msgid "CRM Clients"
+msgstr "Clients CRM"
 
-#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
-#. Label of a Select field in DocType 'Trusted Email Source'
-msgid "Type"
-msgstr "Type"
+msgid "Invoices to process"
+msgstr "Factures à traiter"
 
-#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
-#. Label of a Data field in DocType 'Trusted Email Source'
-msgid "Email or Domain"
-msgstr "Email ou domaine"
+msgid "Team"
+msgstr "Équipe"
 
-#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
-#. Option for the 'Type' (Select) field in DocType 'Trusted Email Source'
-msgid "Sender"
-msgstr "Expéditeur"
+msgid "Priority"
+msgstr "Prioritaires"
 
-#: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
-#. Option for the 'Type' (Select) field in DocType 'Trusted Email Source'
-msgid "Domain"
-msgstr "Domaine"
+msgid "Summaries"
+msgstr "Résumés"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Always for this sender"
-msgstr "Toujours pour cet expéditeur"
+msgid "Linked to CRM"
+msgstr "Liés au CRM"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Always for {0}"
-msgstr "Toujours pour {0}"
+msgid "Upgrade"
+msgstr "Mettre à jour"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Sender added to trusted list"
-msgstr "Expéditeur ajouté à la liste de confiance"
+msgid "Create label — coming soon"
+msgstr "Créer une étiquette — bientôt"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Domain added to trusted list"
-msgstr "Domaine ajouté à la liste de confiance"
+msgid "Labels — coming soon"
+msgstr "Étiquettes — bientôt"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Error adding trusted sender"
-msgstr "Erreur lors de l'ajout de l'expéditeur de confiance"
+msgid "Coming soon — Nora is refactoring"
+msgstr "Bientôt — Nora en refactoring"
 
-#: frontend/src/components/EmailViewer.vue
-msgid "Error adding trusted domain"
-msgstr "Erreur lors de l'ajout du domaine de confiance"
+msgid "Search in Webmail…"
+msgstr "Rechercher dans Webmail…"
 
-#: frappe_webmail/webmail_api.py
-msgid "Invalid source type. Must be 'Sender' or 'Domain'"
-msgstr "Type de source invalide. Doit être 'Sender' ou 'Domain'"
+msgid "Search in all fields…"
+msgstr "Rechercher dans tous les champs…"
 
-#: frappe_webmail/webmail_api.py
-msgid "Already in trusted list"
-msgstr "Déjà dans la liste de confiance"
+msgid "From — sender email"
+msgstr "De — adresse expéditeur"
 
-#: frappe_webmail/webmail_api.py
-msgid "Not found in trusted list"
-msgstr "Non trouvé dans la liste de confiance"
+msgid "To — recipient email"
+msgstr "À — adresse destinataire"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#. Description of a Table field in DocType 'Webmail Account'
-msgid "Emails from trusted senders or domains will automatically display external images"
-msgstr "Les emails provenant d'expéditeurs ou de domaines de confiance afficheront automatiquement les images externes"
+msgid "Subject contains…"
+msgstr "Sujet contient…"
+
+msgid "All folders"
+msgstr "Tous les dossiers"
+
+msgid "{0} unread"
+msgstr "{0} non lus"
+
+msgid "Recent searches"
+msgstr "Recherches récentes"
+
+msgid "Nothing yet"
+msgstr "Aucune pour le moment"
+
+msgid "Advanced search…"
+msgstr "Recherche avancée…"
+
+msgid "Searching…"
+msgstr "Recherche…"
+
+msgid "No match in {0}"
+msgstr "Aucun résultat dans {0}"
+
+msgid "Reply to {0}…"
+msgstr "Répondre à {0}…"
+
+msgid "Sending…"
+msgstr "Envoi en cours…"
+
+msgid "Reply sent"
+msgstr "Réponse envoyée"
+
+msgid "Error sending reply"
+msgstr "Erreur lors de l'envoi"
+
+msgid "Open full composer (formatting, attachments…)"
+msgstr "Ouvrir l'éditeur complet (mise en forme, pièces jointes…)"
+
+msgid "Live results search the {0} folder."
+msgstr "Les résultats en direct cherchent dans le dossier {0}."
+
+msgid "Press {0} for advanced search."
+msgstr "Appuyez sur {0} pour la recherche avancée."
+
+msgid "Press {0} to close."
+msgstr "Appuyez sur {0} pour fermer."
+
+msgid "Type words to search subject, body and sender."
+msgstr "Tapez des mots pour chercher dans le sujet, le corps et l'expéditeur."
+
+msgid "Tips"
+msgstr "Astuces"
+

@@ -7,6 +7,7 @@
 
 import { createApp, h } from "vue";
 import Webmail from "./pages/Webmail.vue";
+import { registerWebmailErrorHandlers } from "./utils/webmailErrors.js";
 
 // Store app instance for cleanup
 let app = null;
@@ -16,6 +17,10 @@ let app = null;
  * @param {HTMLElement} container - The container element to mount the app
  */
 function initWebmail(container) {
+	// Register global handlers so IMAP/SMTP errors show friendly dialogs
+	// instead of Frappe's raw "Server Error" traceback popup.
+	registerWebmailErrorHandlers();
+
 	if (app) {
 		app.unmount();
 	}

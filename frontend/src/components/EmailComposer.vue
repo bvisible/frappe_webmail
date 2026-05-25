@@ -854,6 +854,7 @@ export default {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	flex-shrink: 0;
 }
 
 .header-right .btn {
@@ -863,6 +864,8 @@ export default {
 	cursor: pointer;
 	font-size: 14px;
 	background: var(--card-bg, white);
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .header-right .btn:hover {
@@ -875,6 +878,12 @@ export default {
 	border-color: var(--primary-color, #2490ef);
 	padding: 8px 20px;
 	font-weight: 500;
+	white-space: nowrap;
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: max-content;
 }
 
 .header-right .btn-send:hover {
@@ -967,11 +976,18 @@ export default {
 
 .editor-container {
 	flex: 1;
+	min-height: 0;
 	padding: 16px;
 	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
 }
 
+/* The TipTap editor must grow to fill all the vertical space left in the
+   composer panel — without flex: 1 it sticks at min-height: 200px and
+   leaves a dead zone above the bottom toolbar (Nora). */
 .editor-container :deep(.ProseMirror) {
+	flex: 1;
 	min-height: 200px;
 	outline: none;
 }

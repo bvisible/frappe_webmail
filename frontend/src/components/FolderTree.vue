@@ -2,7 +2,7 @@
 	<div class="folder-tree">
 		<!-- Header with create button -->
 		<div class="folder-header">
-			<span class="header-title">{{ __("Folders") }}</span>
+			<span class="header-title">{{ __("Dossiers") }}</span>
 			<button
 				@click="showCreateDialog = true"
 				class="btn-create-folder"
@@ -31,19 +31,25 @@
 				@dragleave="onDragLeave"
 				@drop="onDrop($event, folder.name)"
 			>
-				<!-- Expand/Collapse chevron for parent folders -->
+				<component
+					:is="getFolderIcon(folder)"
+					:size="15"
+					:stroke-width="1.5"
+					class="folder-icon"
+				/>
+				<span class="folder-name">{{ getDisplayName(folder) }}</span>
+				<span v-if="folder.unread" class="unread-count">{{ folder.unread }}</span>
+				<!-- Expand/Collapse chevron on the right (only for parent folders).
+				     Kept last so it lives on the trailing edge and the name can use
+				     the full remaining width. -->
 				<button
 					v-if="hasChildren(folder)"
 					@click.stop="toggleFolder(folder)"
 					class="expand-btn"
+					:title="isCollapsed(folder) ? __('Expand') : __('Collapse')"
 				>
 					<ChevronRight :size="14" :class="{ rotated: !isCollapsed(folder) }" />
 				</button>
-				<span v-else class="expand-spacer"></span>
-
-				<component :is="getFolderIcon(folder)" :size="18" class="folder-icon" />
-				<span class="folder-name">{{ getDisplayName(folder) }}</span>
-				<span v-if="folder.unread" class="unread-count">{{ folder.unread }}</span>
 			</div>
 		</div>
 
@@ -617,10 +623,11 @@ export default {
 		},
 
 		getFolderIndent(folder) {
-			// Calculate indentation based on folder depth (only for nested folders)
+			// Calculate indentation based on folder depth.
+			// Small base padding so the icon sits close to the left edge - we want
+			// to give the folder name as much horizontal room as possible.
 			const depth = (folder.name.match(/\//g) || []).length;
-			// Base padding is 12px, add 20px per depth level
-			return 12 + depth * 20;
+			return 8 + depth * 20;
 		},
 
 		// Context menu methods
@@ -851,24 +858,27 @@ export default {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	background: var(--card-bg, white);
+	/* Transparent so the FolderTree inherits the surrounding sidebar
+	   surface (no white card behind the folders list). */
+	background: transparent;
 	padding: 0;
 }
 
+/* Harmonized with .sb-section style in Webmail.vue: no border-bottom,
+   compact padding, small uppercase muted label — and a "+" add button. */
 .folder-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 12px 16px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
+	padding: 14px 14px 6px;
 }
 
 .header-title {
-	font-size: 13px;
+	font-size: 10.5px;
 	font-weight: 600;
 	text-transform: uppercase;
 	color: var(--text-muted, #8d99a6);
-	letter-spacing: 0.5px;
+	letter-spacing: 0.08em;
 }
 
 .btn-create-folder {
@@ -905,12 +915,12 @@ export default {
 .folder-item {
 	display: flex;
 	align-items: center;
-	padding: 10px 16px;
+	padding: 7px 12px;
 	cursor: pointer;
 	gap: 10px;
-	transition: background 0.15s ease, border-left 0.15s ease;
-	margin: 0;
-	border-left: 3px solid transparent;
+	transition: background 0.15s ease;
+	margin: 0 6px;
+	border-radius: 7px;
 }
 
 .folder-item:hover {
@@ -919,9 +929,13 @@ export default {
 
 .folder-item.selected {
 	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
+	color: var(--primary-color, #2490ef);
 	font-weight: 600;
-	border-left-color: var(--primary-color, #2490ef);
-	padding-left: 13px;
+}
+
+.folder-item.selected .folder-icon,
+.folder-item.selected .folder-name {
+	color: var(--primary-color, #2490ef);
 }
 
 .folder-item.disabled {
@@ -963,11 +977,6 @@ export default {
 	transform: rotate(90deg);
 }
 
-.expand-spacer {
-	width: 18px;
-	flex-shrink: 0;
-}
-
 .folder-icon {
 	flex-shrink: 0;
 	color: var(--text-muted, #8d99a6);
@@ -975,7 +984,7 @@ export default {
 
 .folder-name {
 	flex: 1;
-	font-size: 14px;
+	font-size: 12.5px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -985,12 +994,13 @@ export default {
 .unread-count {
 	background: var(--primary-color, #2490ef);
 	color: white;
-	font-size: 11px;
-	padding: 2px 8px;
-	border-radius: 10px;
-	min-width: 20px;
+	font-size: 10.5px;
+	padding: 1px 7px;
+	border-radius: 999px;
+	min-width: 18px;
 	text-align: center;
-	font-weight: 500;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
 }
 
 /* Create folder dialog */

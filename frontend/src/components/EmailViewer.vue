@@ -126,6 +126,39 @@
 				</button>
 			</div>
 		</div>
+
+		<!-- Inline reply bar — answer without opening the full composer.
+		     Cmd/Ctrl + Enter sends. The maximize button opens the full
+		     composer modal (formatting, attachments, signature…). -->
+		<div class="reply-bar">
+			<div class="reply-wrap">
+				<textarea
+					v-model="quickReplyText"
+					class="reply-input"
+					:placeholder="__('Reply to {0}…', [email.from_name || email.from_email])"
+					@keydown.meta.enter.prevent="sendQuickReply"
+					@keydown.ctrl.enter.prevent="sendQuickReply"
+				></textarea>
+				<div class="reply-foot">
+					<button
+						class="reply-tool"
+						@click="$emit('reply', email)"
+						:title="__('Open full composer (formatting, attachments…)')"
+					>
+						<Maximize2 :size="14" />
+					</button>
+					<span class="reply-spacer"></span>
+					<button
+						class="reply-send"
+						@click="sendQuickReply"
+						:disabled="!quickReplyText.trim() || sendingReply"
+					>
+						<Send :size="13" />
+						<span>{{ sendingReply ? __("Sending…") : __("Send") }}</span>
+					</button>
+				</div>
+			</div>
+		</div>
 	</div>
 	<div v-else class="no-email-selected">
 		<p>Selectionnez un email pour le lire</p>
@@ -154,6 +187,8 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Sparkles,
+	Send,
+	Maximize2,
 } from "lucide-vue-next";
 
 export default {
@@ -179,6 +214,8 @@ export default {
 		ChevronDown,
 		ChevronUp,
 		Sparkles,
+		Send,
+		Maximize2,
 	},
 
 	props: {
@@ -196,6 +233,10 @@ export default {
 			senderContact: null,
 			showAllAttachments: false,
 			quickReplyLoading: false,
+			// Inline reply bar state — lets the user answer without opening
+			// the full composer modal.
+			quickReplyText: "",
+			sendingReply: false,
 		};
 	},
 
@@ -337,6 +378,52 @@ export default {
 	},
 
 	methods: {
+		// Send a quick text reply from the inline bar at the bottom of
+		// the reader. Skips the full composer modal — for one-liners.
+		async sendQuickReply() {
+			if (!this.quickReplyText.trim() || this.sendingReply || !this.email) return;
+			this.sendingReply = true;
+			try {
+				const sub = (this.email.subject || "").trim();
+				const subject = /^re\s*:/i.test(sub) ? sub : "Re: " + sub;
+				const body = this.quickReplyText
+					.split("\n")
+					.map((line) => `<p>${this.escapeHtml(line) || "&nbsp;"}</p>`)
+					.join("");
+				await frappe.call({
+					method: "frappe_webmail.api.send_email",
+					args: {
+						account_name: this.account,
+						to: this.email.from_email,
+						subject: subject,
+						html_content: body,
+						reply_to_message_id: this.email.message_id || null,
+						reply_to_uid: this.email.uid,
+						reply_to_folder: this.folder,
+					},
+				});
+				frappe.show_alert({ message: this.__("Reply sent"), indicator: "green" }, 4);
+				this.quickReplyText = "";
+			} catch (e) {
+				frappe.toast({
+					message: this.__("Error sending reply"),
+					indicator: "red",
+				});
+			} finally {
+				this.sendingReply = false;
+			}
+		},
+
+		// Minimal HTML escape so a quick reply can't inject markup.
+		escapeHtml(s) {
+			return (s || "")
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;")
+				.replace(/'/g, "&#039;");
+		},
+
 		async handleQuickReply() {
 			if (this.quickReplyLoading || !this.email) return;
 			this.quickReplyLoading = true;
@@ -645,68 +732,108 @@ export default {
 }
 
 .email-header {
-	padding: 16px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
+	padding: 16px 26px 14px;
+	border-bottom: 1px solid var(--wm-line-soft, #efefef);
 	flex: 0 0 auto;
+	background: var(--wm-bg-raised, #ffffff);
 }
 
+/* Subject: serif heading from the Neoffice theme (Forum). We don't override
+   font-family here on purpose so the global h1/h2 style still wins. */
 .email-subject {
-	font-size: 18px;
-	font-weight: 600;
+	font-size: 22px;
+	font-weight: 400;
+	letter-spacing: -0.005em;
 	margin-bottom: 12px;
-	color: var(--text-color, #333);
+	color: var(--wm-ink, #1a1a1a);
+	line-height: 1.25;
 }
 
+/* Sender meta block — visually grouped into a soft card to match the
+   "sender-card" pattern from the design without restructuring the markup. */
 .email-meta {
 	font-size: 13px;
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, #8d99a6);
+	background: var(--wm-bg-sunken, #f7f7f5);
+	border-radius: 10px;
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
 }
 
 .email-meta .from {
-	color: var(--text-color, #333);
-	margin-bottom: 4px;
+	color: var(--wm-ink, #1a1a1a);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+}
+
+.email-meta .from strong {
+	font-weight: 600;
 }
 
 .email-meta .email-address {
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, #8d99a6);
 	font-weight: normal;
+	font-size: 12px;
 }
 
+.email-meta .to,
+.email-meta .cc,
+.email-meta .date {
+	font-size: 12px;
+	color: var(--wm-ink-mute, #8d99a6);
+}
+
+/* Actions row: ghost buttons (no border) — only hover gives a soft bg. */
 .email-actions {
 	display: flex;
-	gap: 8px;
-	padding: 8px 16px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
-	background: var(--subtle-bg, #f5f5f5);
+	gap: 4px;
+	padding: 8px 22px;
+	border-bottom: 1px solid var(--wm-line-soft, #efefef);
+	background: transparent;
 	flex: 0 0 auto;
+	align-items: center;
+	flex-wrap: wrap;
 }
 
 .email-actions .btn {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 6px 12px;
-	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 4px;
-	background: var(--card-bg, white);
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
 	cursor: pointer;
-	font-size: 13px;
-	color: var(--text-color, #333);
-	transition: all 0.15s ease;
+	font-size: 12.5px;
+	color: var(--wm-ink-soft, #555);
+	transition: background 0.15s, color 0.15s;
+	font-family: inherit;
+	font-weight: 500;
 }
 
 .email-actions .btn:hover {
-	background: var(--hover-bg, #eee);
+	background: var(--wm-bg-sunken, #f7f7f5);
+	color: var(--wm-ink, #1a1a1a);
 }
 
 .email-actions .btn.starred {
-	color: var(--yellow-500, #eab308);
+	color: var(--wm-amber, #b45309);
 }
 
 .email-actions .btn-danger:hover {
-	background: var(--red-50, #fef2f2);
-	border-color: var(--red-200, #fecaca);
-	color: var(--red-600, #dc2626);
+	background: var(--wm-danger-soft, #fee2e2);
+	color: var(--wm-danger, #dc2626);
+}
+
+.actions-separator {
+	width: 1px;
+	height: 16px;
+	background: var(--wm-line, #e5e5e5);
+	margin: 0 4px;
 }
 
 .blocked-images-notice {
@@ -934,5 +1061,107 @@ export default {
 	to {
 		transform: rotate(360deg);
 	}
+}
+
+/* ========================================================================
+   Inline reply bar — sticky at the bottom of the reader column.
+   The textarea grows to 56px, focus puts a soft accent ring around the
+   wrap. Cmd/Ctrl + Enter triggers Send via the keydown handler.
+   ======================================================================== */
+.reply-bar {
+	flex-shrink: 0;
+	padding: 10px 14px;
+	border-top: 1px solid var(--wm-line, #e5e5e5);
+	background: var(--wm-bg-sunken, #f5f5f5);
+}
+
+.reply-wrap {
+	background: var(--wm-bg-raised, #fff);
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 10px;
+	overflow: hidden;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.reply-wrap:focus-within {
+	border-color: var(--wm-accent, #5145e8);
+	box-shadow: 0 0 0 3px var(--wm-accent-soft, #eeebfe);
+}
+
+.reply-input {
+	display: block;
+	width: 100%;
+	padding: 10px 14px;
+	border: 0;
+	outline: none;
+	resize: none;
+	font-size: 13.5px;
+	color: var(--wm-ink, #1a1a1a);
+	background: transparent;
+	font-family: inherit;
+	line-height: 1.5;
+	height: 56px;
+}
+
+.reply-input::placeholder {
+	color: var(--wm-ink-mute, #b0b0b0);
+}
+
+.reply-foot {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 8px;
+	border-top: 1px solid var(--wm-line-soft, #efefef);
+	background: var(--wm-bg, #fafafa);
+}
+
+.reply-tool {
+	width: 26px;
+	height: 26px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	background: transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--wm-ink-mute, #8d99a6);
+	transition: background 0.15s, color 0.15s;
+}
+
+.reply-tool:hover {
+	background: var(--wm-bg-sunken, #f5f5f5);
+	color: var(--wm-ink, #1a1a1a);
+}
+
+.reply-spacer {
+	flex: 1;
+}
+
+.reply-send {
+	height: 28px;
+	padding: 0 14px;
+	border: 0;
+	border-radius: 7px;
+	background: var(--wm-accent, #5145e8);
+	color: white;
+	font-size: 12.5px;
+	font-weight: 500;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	box-shadow: 0 1px 2px rgba(81, 69, 232, 0.3);
+	font-family: inherit;
+	transition: background 0.15s;
+}
+
+.reply-send:hover:not(:disabled) {
+	background: var(--wm-accent-hover, #4338d4);
+}
+
+.reply-send:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 </style>

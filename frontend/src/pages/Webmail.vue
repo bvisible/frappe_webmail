@@ -1,82 +1,246 @@
 <template>
-	<div class="webmail-container">
-		<!-- Header -->
-		<div class="webmail-header">
-			<div class="header-left">
-				<h1>
-					<Mail :size="22" />
-					<span>Webmail</span>
-				</h1>
-				<div class="account-selector-wrapper">
-					<select
-						v-model="currentAccount"
-						class="account-selector"
-						@change="onAccountChange"
-					>
-						<option v-for="acc in accounts" :key="acc.name" :value="acc.name">
-							{{ acc.email }}{{ acc.is_shared ? ` (${__("shared")})` : "" }}
-						</option>
-					</select>
-					<div
-						v-if="currentAccountSharing"
-						class="sharing-indicator"
-						@mouseenter="showSharingTooltip = true"
-						@mouseleave="showSharingTooltip = false"
-					>
-						<Users :size="16" />
-						<div v-if="showSharingTooltip" class="sharing-tooltip">
-							{{ currentAccountSharing }}
-						</div>
+	<div class="webmail-app">
+		<!-- TOPBAR 52px (no brand: we are already inside the Webmail route) -->
+		<header class="topbar">
+			<!-- Account switcher -->
+			<div class="account-switch" v-if="currentAccount && accounts.length">
+				<div class="av-mini">{{ accountInitial }}</div>
+				<select v-model="currentAccount" @change="onAccountChange" class="account-select">
+					<option v-for="acc in accounts" :key="acc.name" :value="acc.name">
+						{{ acc.email }}{{ acc.is_shared ? ` (${__("shared")})` : "" }}
+					</option>
+				</select>
+				<ChevronDown :size="11" class="ch" />
+				<div
+					v-if="currentAccountSharing"
+					class="sharing-indicator-mini"
+					@mouseenter="showSharingTooltip = true"
+					@mouseleave="showSharingTooltip = false"
+				>
+					<Users :size="12" />
+					<div v-if="showSharingTooltip" class="sharing-tooltip">
+						{{ currentAccountSharing }}
 					</div>
 				</div>
 			</div>
-			<div class="header-right">
-				<button @click="showSearch = true" class="btn btn-secondary">
-					<Search :size="16" />
-					<span>{{ __("Search") }}</span>
+
+			<!-- Command palette search — real input + dropdown (Recent / Tips / Advanced).
+			     `@mousedown.prevent` on the dropdown keeps focus on the input so
+			     clicks inside the panel don't blur and close it. -->
+			<div class="cmd-search" :class="{ 'is-open': searchOpen }">
+				<Search :size="14" class="cmd-search-icon" />
+				<input
+					ref="cmdSearchInput"
+					v-model="searchInput"
+					type="text"
+					class="cmd-search-input"
+					:placeholder="__('Search in Webmail…')"
+					@focus="searchOpen = true"
+					@blur="onSearchBlur"
+					@keydown.enter="runQuickSearch"
+					@keydown.esc="closeSearch"
+				/>
+				<span class="kbd">⌘K</span>
+
+				<div v-if="searchOpen" class="cmd-dropdown" @mousedown.prevent>
+					<!-- Left panel: live results (when typing) OR recent searches -->
+					<div class="cmd-panel cmd-panel-main">
+						<template v-if="hasLiveQuery">
+							<div class="cmd-panel-title">
+								{{ __("Results") }}
+								<span
+									v-if="!liveSearching && liveResults.length"
+									class="cmd-panel-meta"
+								>
+									{{ liveResults.length }}
+								</span>
+								<span v-if="liveSearching" class="cmd-spinner"></span>
+							</div>
+							<div
+								v-if="liveSearching && liveResults.length === 0"
+								class="cmd-empty"
+							>
+								{{ __("Searching…") }}
+							</div>
+							<div v-else-if="liveResults.length === 0" class="cmd-empty">
+								{{ __("No match in {0}", [folderLabelForSearch]) }}
+							</div>
+							<button
+								v-for="email in liveResults"
+								:key="email.uid + '@' + email.folder"
+								class="cmd-result"
+								@click="pickResult(email)"
+							>
+								<div
+									class="cmd-result-avatar"
+									:class="getAvatarColor(email.from_email)"
+								>
+									{{ getAvatarInitials(email.from_name, email.from_email) }}
+								</div>
+								<div class="cmd-result-body">
+									<div class="cmd-result-top">
+										<span class="cmd-result-from">
+											{{ email.from_name || email.from_email }}
+										</span>
+										<span class="cmd-result-date">
+											{{ formatLiveDate(email.date) }}
+										</span>
+									</div>
+									<div class="cmd-result-subject">
+										{{ email.subject || __("(No subject)") }}
+									</div>
+								</div>
+							</button>
+						</template>
+						<template v-else>
+							<div class="cmd-panel-title">{{ __("Recent searches") }}</div>
+							<div v-if="filteredRecent.length === 0" class="cmd-empty">
+								{{ __("Nothing yet") }}
+							</div>
+							<button
+								v-for="(s, i) in filteredRecent"
+								:key="i"
+								class="cmd-item"
+								@click="pickRecent(s)"
+							>
+								<Search :size="13" />
+								<span class="cmd-item-text">{{ s }}</span>
+								<button
+									class="cmd-item-remove"
+									:title="__('Remove')"
+									@click.stop="removeRecent(s)"
+								>
+									<X :size="11" />
+								</button>
+							</button>
+						</template>
+					</div>
+
+					<!-- Right panel: tips / advanced search -->
+					<div class="cmd-panel cmd-panel-tips">
+						<div class="cmd-panel-title">{{ __("Tips") }}</div>
+						<div class="cmd-tip">
+							{{ __("Type words to search subject, body and sender.") }}
+						</div>
+						<div class="cmd-tip">
+							{{ __("Live results search the {0} folder.", [folderLabelForSearch]) }}
+						</div>
+						<div class="cmd-tip">
+							{{ __("Press {0} for advanced search.", ["⏎"]) }}
+						</div>
+						<button class="cmd-advanced-btn" @click="openAdvanced">
+							<Filter :size="12" />
+							{{ __("Advanced search…") }}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Top actions -->
+			<div class="top-actions">
+				<button @click="showFilters = true" class="icon-btn" :title="__('Filters')">
+					<Filter :size="14" />
 				</button>
-				<button @click="compose" class="btn btn-primary">
-					<SquarePen :size="16" />
+				<button @click="showSignatures = true" class="icon-btn" :title="__('Signatures')">
+					<PenLine :size="14" />
+				</button>
+				<button @click="openSettings" class="icon-btn" :title="__('Settings')">
+					<Settings :size="14" />
+				</button>
+				<button @click="compose" class="btn-compose">
+					<Plus :size="14" />
 					<span>{{ __("New Message") }}</span>
 				</button>
-				<button @click="showFilters = true" class="btn btn-secondary">
-					<Filter :size="16" />
-					<span>{{ __("Filters") }}</span>
-				</button>
-				<button @click="showSignatures = true" class="btn btn-secondary">
-					<PenLine :size="16" />
-					<span>{{ __("Signatures") }}</span>
-				</button>
-				<button @click="openSettings" class="btn btn-secondary">
-					<Settings :size="16" />
-					<span>{{ __("Settings") }}</span>
-				</button>
 			</div>
-		</div>
+		</header>
 
-		<!-- Main Content -->
-		<div class="webmail-main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
-			<!-- Folder Sidebar -->
-			<div class="sidebar" :style="{ width: sidebarWidth + 'px' }">
-				<FolderTree
-					ref="folderTree"
-					:account="currentAccount"
-					:account-email="currentAccountEmail"
-					:selected-folder="currentFolder"
-					@select="onFolderSelect"
-					@drop-email="handleMoveEmail"
-					@folder-mapping-loaded="onFolderMappingLoaded"
-				/>
-			</div>
+		<!-- MAIN — flex row with two draggable resizers between the columns.
+		     Widths come from `sidebarWidth` / `emailListWidth` (persisted in
+		     the Webmail Account UI preferences via saveUIPreferences). -->
+		<div class="main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
+			<!-- Sidebar: Dossiers (FolderTree) + Étiquettes + Nora + storage footer -->
+			<aside class="sidebar-col" :style="{ width: sidebarWidth + 'px' }">
+				<div class="sb-folders">
+					<FolderTree
+						ref="folderTree"
+						:account="currentAccount"
+						:account-email="currentAccountEmail"
+						:selected-folder="currentFolder"
+						@select="onFolderSelect"
+						@drop-email="handleMoveEmail"
+						@folder-mapping-loaded="onFolderMappingLoaded"
+					/>
+				</div>
 
-			<!-- Resizer 1: Sidebar / Email List -->
+				<!-- Étiquettes (mockup — wires to a real DocType later) -->
+				<div class="sb-section">
+					{{ __("Étiquettes") }}
+					<button
+						class="sb-section-add"
+						:title="__('Create label — coming soon')"
+						@click="frappe.toast({ message: __('Labels — coming soon') })"
+					>
+						<Plus :size="12" :stroke-width="1.7" />
+					</button>
+				</div>
+				<div class="sb-nav">
+					<div class="sb-item is-mock">
+						<span class="sb-dot dot-sage"></span>
+						<span class="sb-label">{{ __("Clients CRM") }}</span>
+						<span class="sb-count">8</span>
+					</div>
+					<div class="sb-item is-mock">
+						<span class="sb-dot dot-amber"></span>
+						<span class="sb-label">{{ __("Factures à traiter") }}</span>
+						<span class="sb-count">3</span>
+					</div>
+					<div class="sb-item is-mock">
+						<span class="sb-dot dot-rose"></span>
+						<span class="sb-label">{{ __("Équipe") }}</span>
+					</div>
+				</div>
+
+				<!-- Nora (placeholder while the Nora API is in refactoring) -->
+				<div class="sb-section">Nora</div>
+				<div class="sb-nav">
+					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
+						<span class="sb-ic"><span class="nora-dot"></span></span>
+						<span class="sb-label">{{ __("Prioritaires") }}</span>
+						<span class="sb-count sb-count-nora">3</span>
+					</div>
+					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
+						<span class="sb-ic"><Sparkles :size="14" :stroke-width="1.5" /></span>
+						<span class="sb-label">{{ __("Résumés") }}</span>
+					</div>
+					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
+						<span class="sb-ic"><Briefcase :size="14" :stroke-width="1.5" /></span>
+						<span class="sb-label">{{ __("Liés au CRM") }}</span>
+						<span class="sb-count">8</span>
+					</div>
+				</div>
+
+				<!-- Storage (mock values — wires to IMAP quota later) -->
+				<div class="storage">
+					<div class="storage-top">
+						<span>3.8 / 10 GB</span>
+						<a class="upgrade" :title="__('Mettre à jour le stockage')">
+							{{ __("Mettre à jour") }}
+						</a>
+					</div>
+					<div class="storage-bar"><span style="width: 38%"></span></div>
+					<div class="storage-email" v-if="currentAccountEmail">
+						{{ currentAccountEmail }}
+					</div>
+				</div>
+			</aside>
+
+			<!-- Resizer between sidebar and list -->
 			<div class="column-resizer" @mousedown="startResize('sidebar', $event)">
 				<div class="resizer-handle"></div>
 			</div>
 
 			<!-- Email List -->
-			<div class="email-list-panel" :style="{ width: emailListWidth + 'px' }">
-				<!-- Bulk Action Bar -->
+			<section class="list-col" :style="{ width: emailListWidth + 'px' }">
 				<BulkActionBar
 					:selected-count="selectedCount"
 					:folders="folders"
@@ -92,7 +256,6 @@
 					@spam="handleBulkSpam"
 					@delete-permanent="handleBulkDeletePermanent"
 				/>
-
 				<EmailList
 					ref="emailList"
 					:account="currentAccount"
@@ -108,15 +271,15 @@
 					@context-action="handleEmailContextAction"
 					@selection-change="onSelectionChange"
 				/>
-			</div>
+			</section>
 
-			<!-- Resizer 2: Email List / Email Viewer -->
+			<!-- Resizer between list and reader -->
 			<div class="column-resizer" @mousedown="startResize('emailList', $event)">
 				<div class="resizer-handle"></div>
 			</div>
 
-			<!-- Email Viewer -->
-			<div class="email-viewer-panel">
+			<!-- Reader -->
+			<section class="reader-col">
 				<EmailViewer
 					v-if="!showComposer"
 					:email="selectedEmailContent"
@@ -129,7 +292,6 @@
 					@mark-unread="onMarkUnread"
 					@quick-reply="handleQuickReply"
 				/>
-
 				<EmailComposer
 					v-else
 					:account="currentAccount"
@@ -142,7 +304,7 @@
 					@close="closeComposer"
 					@draft-deleted="onDraftDeleted"
 				/>
-			</div>
+			</section>
 		</div>
 
 		<!-- No Accounts State -->
@@ -150,7 +312,7 @@
 			<div class="no-accounts-content">
 				<h2>{{ __("Welcome to Webmail") }}</h2>
 				<p>{{ __("You haven't configured any email account yet.") }}</p>
-				<button @click="openSettings" class="btn btn-primary">
+				<button @click="openSettings" class="btn-compose">
 					{{ __("Configure an account") }}
 				</button>
 			</div>
@@ -176,6 +338,7 @@
 					:account="currentAccount"
 					:folders="folders"
 					:initial-folder="currentFolder"
+					:initial-query="searchInput"
 					@close="showSearch = false"
 					@select="onSearchSelect"
 				/>
@@ -204,7 +367,20 @@ import SignatureEditor from "../components/SignatureEditor.vue";
 import AdvancedSearch from "../components/AdvancedSearch.vue";
 import FilterManager from "../components/FilterManager.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
-import { Mail, Search, SquarePen, Filter, PenLine, Settings, Users } from "lucide-vue-next";
+import {
+	Mail,
+	Search,
+	SquarePen,
+	Filter,
+	PenLine,
+	Settings,
+	Users,
+	ChevronDown,
+	Plus,
+	Sparkles,
+	Briefcase,
+	X,
+} from "lucide-vue-next";
 
 export default {
 	name: "Webmail",
@@ -225,6 +401,11 @@ export default {
 		PenLine,
 		Settings,
 		Users,
+		ChevronDown,
+		Plus,
+		Sparkles,
+		Briefcase,
+		X,
 	},
 
 	data() {
@@ -270,10 +451,65 @@ export default {
 			selectedCount: 0,
 			selectedUids: [],
 			lastBulkAction: null,
+			// Topbar command palette state
+			searchInput: "",
+			searchOpen: false,
+			recentSearches: [],
+			searchBlurTimer: null,
+			// Live search (debounced) — results shown inside the dropdown.
+			liveResults: [],
+			liveSearching: false,
+			liveSearchTimer: null,
+			liveSearchSeq: 0,
 		};
 	},
 
 	computed: {
+		// True as soon as the user types ≥2 chars — switches the dropdown
+		// from "Recent searches" to "Live results".
+		hasLiveQuery() {
+			return (this.searchInput || "").trim().length >= 2;
+		},
+
+		// Pretty label of the folder the live search runs against.
+		folderLabelForSearch() {
+			const f = this.currentFolder || "";
+			const m = this.folderMapping || {};
+			if (f === "INBOX" || f === m.inbox) return this.__("Inbox");
+			if (f === m.sent) return this.__("Sent");
+			if (f === m.drafts) return this.__("Drafts");
+			if (f === m.trash) return this.__("Trash");
+			if (f === m.spam) return this.__("Spam");
+			if (f === m.archive) return this.__("Archive");
+			return f.split("/").pop() || f;
+		},
+
+		// Filtered recent searches for the cmd-palette dropdown — shows only
+		// the entries that contain the currently-typed query (most-recent first),
+		// capped at 6 items so the panel stays compact.
+		filteredRecent() {
+			const q = (this.searchInput || "").trim().toLowerCase();
+			if (!q) return this.recentSearches.slice(0, 6);
+			return this.recentSearches.filter((s) => s.toLowerCase().includes(q)).slice(0, 6);
+		},
+
+		// Initial letter of the active account email, for the topbar avatar mini.
+		accountInitial() {
+			const email = this.currentAccountEmail || "";
+			return (email.charAt(0) || "?").toUpperCase();
+		},
+
+		// Two-letter initials of the logged-in Frappe user, for the topbar avatar.
+		userInitials() {
+			const fullname =
+				(window.frappe && (frappe.session.user_fullname || frappe.session.user)) || "";
+			const parts = fullname.trim().split(/\s+/);
+			if (parts.length >= 2 && parts[0] && parts[1]) {
+				return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+			}
+			return (fullname.charAt(0) || "?").toUpperCase();
+		},
+
 		currentAccountEmail() {
 			const acc = this.accounts.find((a) => a.name === this.currentAccount);
 			return acc?.email || "";
@@ -297,11 +533,205 @@ export default {
 		},
 	},
 
+	watch: {
+		// Debounced live search — fires 400ms after the user stops typing.
+		// A monotonic seq guards against out-of-order responses (a slower
+		// request resolving after a fresher one).
+		searchInput(val) {
+			if (this.liveSearchTimer) clearTimeout(this.liveSearchTimer);
+			if (!this.hasLiveQuery) {
+				this.liveResults = [];
+				this.liveSearching = false;
+				return;
+			}
+			this.liveSearchTimer = setTimeout(() => this.runLiveSearch(val), 400);
+		},
+	},
+
 	mounted() {
 		this.initialize();
+		this.exposeWebmailBridge();
+		this.loadRecentSearches();
+		// ⌘K / Ctrl+K focuses the cmd-palette input from anywhere.
+		this._cmdShortcut = (e) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault();
+				const el = this.$refs.cmdSearchInput;
+				if (el) {
+					el.focus();
+					el.select();
+				}
+			}
+		};
+		document.addEventListener("keydown", this._cmdShortcut);
+	},
+
+	beforeUnmount() {
+		if (this._cmdShortcut) {
+			document.removeEventListener("keydown", this._cmdShortcut);
+		}
+		if (this.searchBlurTimer) {
+			clearTimeout(this.searchBlurTimer);
+		}
 	},
 
 	methods: {
+		// ===== Command palette (topbar search input + dropdown) =====
+		loadRecentSearches() {
+			try {
+				const raw = localStorage.getItem("webmail_recent_searches");
+				this.recentSearches = raw ? JSON.parse(raw) : [];
+			} catch (e) {
+				this.recentSearches = [];
+			}
+		},
+
+		saveRecentSearches() {
+			try {
+				localStorage.setItem(
+					"webmail_recent_searches",
+					JSON.stringify(this.recentSearches)
+				);
+			} catch (e) {
+				/* localStorage full or disabled - ignore */
+			}
+		},
+
+		addRecentSearch(s) {
+			const trimmed = (s || "").trim();
+			if (!trimmed) return;
+			// Move to top, dedupe, cap at 12.
+			this.recentSearches = [
+				trimmed,
+				...this.recentSearches.filter((x) => x !== trimmed),
+			].slice(0, 12);
+			this.saveRecentSearches();
+		},
+
+		removeRecent(s) {
+			this.recentSearches = this.recentSearches.filter((x) => x !== s);
+			this.saveRecentSearches();
+			// Keep focus on the input so the dropdown doesn't close.
+			this.$nextTick(() => this.$refs.cmdSearchInput?.focus());
+		},
+
+		pickRecent(s) {
+			this.searchInput = s;
+			this.runQuickSearch();
+		},
+
+		runQuickSearch() {
+			const q = (this.searchInput || "").trim();
+			if (!q) return;
+			this.addRecentSearch(q);
+			this.searchOpen = false;
+			this.$refs.cmdSearchInput?.blur();
+			// Open the advanced search dialog with the typed query pre-filled
+			// — reuses the existing results view inside the modal.
+			this.showSearch = true;
+		},
+
+		openAdvanced() {
+			this.searchOpen = false;
+			this.$refs.cmdSearchInput?.blur();
+			this.showSearch = true;
+		},
+
+		onSearchBlur() {
+			// Delay so clicks inside the dropdown fire before it closes.
+			this.searchBlurTimer = setTimeout(() => {
+				this.searchOpen = false;
+			}, 150);
+		},
+
+		closeSearch() {
+			this.searchOpen = false;
+			this.$refs.cmdSearchInput?.blur();
+		},
+
+		// Run a live search against the CURRENT folder (fast path) and stream
+		// the first ~15 matches into the dropdown. Heavier multi-folder
+		// queries stay behind the Advanced search dialog (⏎ on the input).
+		async runLiveSearch(query) {
+			if (!this.currentAccount || !query || !query.trim()) {
+				this.liveResults = [];
+				return;
+			}
+			const seq = ++this.liveSearchSeq;
+			this.liveSearching = true;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.search_emails",
+					args: {
+						account_name: this.currentAccount,
+						folder: this.currentFolder || "INBOX",
+						query: query.trim(),
+						limit: 15,
+						offset: 0,
+					},
+				});
+				// Ignore if a fresher query has already been launched.
+				if (seq !== this.liveSearchSeq) return;
+				const data = response.message || {};
+				this.liveResults = (data.emails || []).map((e) => ({
+					...e,
+					folder: this.currentFolder || "INBOX",
+				}));
+			} catch (e) {
+				if (seq === this.liveSearchSeq) this.liveResults = [];
+			} finally {
+				if (seq === this.liveSearchSeq) this.liveSearching = false;
+			}
+		},
+
+		// User clicked a live result row → close the palette and load the
+		// email into the reader (same flow as clicking it in the list).
+		async pickResult(email) {
+			this.closeSearch();
+			this.searchInput = "";
+			this.liveResults = [];
+			// Switch the active folder if the result came from somewhere else.
+			if (email.folder && email.folder !== this.currentFolder) {
+				this.currentFolder = email.folder;
+			}
+			await this.onEmailSelect(email);
+		},
+
+		// Deterministic gradient class (c1-c6) for the result avatar — same
+		// palette as EmailList so the colour for a sender is stable across
+		// the inbox and the palette.
+		getAvatarColor(email) {
+			const src = (email || "").toLowerCase();
+			let hash = 0;
+			for (let i = 0; i < src.length; i++) {
+				hash = (hash << 5) - hash + src.charCodeAt(i);
+				hash |= 0;
+			}
+			return "c" + ((Math.abs(hash) % 6) + 1);
+		},
+
+		getAvatarInitials(name, email) {
+			const raw = (name || email || "?").trim();
+			const parts = raw.split(/[\s@._-]+/).filter(Boolean);
+			if (parts.length >= 2 && parts[0] && parts[1]) {
+				return (parts[0][0] + parts[1][0]).toUpperCase();
+			}
+			return ((parts[0] || raw)[0] || "?").toUpperCase();
+		},
+
+		formatLiveDate(dateStr) {
+			if (!dateStr) return "";
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return "";
+			const now = new Date();
+			const sameYear = d.getFullYear() === now.getFullYear();
+			return d.toLocaleDateString("fr-FR", {
+				day: "numeric",
+				month: "short",
+				...(sameYear ? {} : { year: "numeric" }),
+			});
+		},
+
 		async initialize() {
 			this.loading = true;
 
@@ -314,6 +744,24 @@ export default {
 			} finally {
 				this.loading = false;
 			}
+		},
+
+		// Expose a small bridge on frappe.webmail so the global error handlers
+		// can identify the account currently open when a sign-in fails.
+		exposeWebmailBridge() {
+			if (!window.frappe) return;
+			frappe.provide("frappe.webmail");
+			frappe.webmail.getActiveAccount = () => {
+				const acc = this.accounts.find((a) => a.name === this.currentAccount);
+				if (acc) {
+					return {
+						name: acc.name,
+						email: acc.email,
+						auth_type: acc.auth_type,
+					};
+				}
+				return this.currentAccount ? { name: this.currentAccount } : null;
+			};
 		},
 
 		async loadAccounts() {
@@ -1555,5 +2003,1024 @@ export default {
 	max-width: 90vw;
 	max-height: 80vh;
 	overflow: hidden;
+}
+</style>
+
+<!-- ============================================================
+     Webmail design tokens — global so child components (FolderTree,
+     EmailList, EmailViewer...) can pick them up via var(--wm-*).
+     Scoped to .webmail-app so they don't leak across the Frappe Desk.
+     ============================================================ -->
+<style>
+.webmail-app {
+	/* === Surface / text — point to Frappe vars so dark mode adapts auto.
+	   Fallbacks keep the design working if Frappe ever renames its vars. */
+	--wm-bg: var(--bg-color, oklch(0.985 0.004 80));
+	--wm-bg-raised: var(--card-bg, #ffffff);
+	--wm-bg-sunken: var(--bg-light-gray, oklch(0.965 0.005 80));
+	--wm-bg-deeper: var(--bg-gray, oklch(0.955 0.006 80));
+	--wm-line: var(--border-color, oklch(0.88 0.012 80));
+	--wm-line-soft: var(--border-color, oklch(0.93 0.01 80));
+	--wm-line-strong: var(--border-color, oklch(0.78 0.014 78));
+	--wm-ink: var(--text-color, oklch(0.22 0.02 250));
+	--wm-ink-soft: var(--text-light, var(--text-color, oklch(0.45 0.015 250)));
+	--wm-ink-mute: var(--text-muted, oklch(0.62 0.012 250));
+	--wm-ink-placeholder: var(--text-muted, oklch(0.72 0.01 70));
+
+	/* === Brand / semantic accents — these stay the same across themes.
+	   Only their *-soft variants get overridden under [data-theme="dark"]. */
+	--wm-accent: #5145e8;
+	--wm-accent-hover: #4338d4;
+	--wm-accent-soft: #eeebfe;
+	--wm-accent-tint: #f5f2ff;
+	--wm-nora: #5145e8;
+	--wm-nora-2: #8b7fff;
+	--wm-nora-soft: #eeebfe;
+	--wm-sage: #047857;
+	--wm-sage-soft: #d1fae5;
+	--wm-amber: #b45309;
+	--wm-amber-soft: #fef3c7;
+	--wm-rose: #be185d;
+	--wm-rose-soft: #fce7f3;
+	--wm-danger: #dc2626;
+	--wm-danger-soft: #fee2e2;
+}
+
+/* ===== Dark mode tweaks =====
+   The light pastel "*-soft" backgrounds are unreadable on dark surfaces.
+   We swap them for translucent versions of the brand colours so each
+   accent keeps its meaning while staying legible against #171717. */
+[data-theme="dark"] .webmail-app {
+	--wm-accent-soft: rgba(81, 69, 232, 0.22);
+	--wm-accent-tint: rgba(81, 69, 232, 0.1);
+	--wm-nora-soft: rgba(139, 127, 255, 0.2);
+	--wm-sage-soft: rgba(52, 211, 153, 0.18);
+	--wm-amber-soft: rgba(245, 158, 11, 0.2);
+	--wm-rose-soft: rgba(236, 72, 153, 0.18);
+	--wm-danger-soft: rgba(248, 113, 113, 0.18);
+}
+
+/* ===== Frappe Desk wrapper overrides =====
+   The Frappe Desk page wraps our app in #webmail-app which ships with a
+   border, background and radius from the Desk page styles. We strip ALL
+   of that so the webmail looks like a flat full-screen app (same trick
+   Builder / Insights use).
+
+   CRITICAL: every rule in this <style> block is GLOBAL (no `scoped` on the
+   block). Without an extra qualifier these rules would leak to every Desk
+   page (Sales Invoice list, Customer form, etc.) and break their layout —
+   the `.page-head{display:none}` leak hid the [+ New] / refresh / ⋮ toolbar
+   from every list view. We gate each rule with `body:has(.webmail-app)` so
+   it only activates while the webmail component is actually mounted. The
+   `#webmail-app` and `.webmail-app …` selectors below are inherently scoped
+   to the wrapper and don't need the guard. */
+#webmail-app {
+	border: 0 !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	height: 100% !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+body:has(.webmail-app) .layout-main-section-wrapper {
+	padding: 0 !important;
+	border: 0 !important;
+}
+
+body:has(.webmail-app) .row.layout-main {
+	margin: 0 !important;
+}
+
+body:has(.webmail-app) .layout-main-section,
+body:has(.webmail-app) .page-content,
+body:has(.webmail-app) .page-wrapper,
+body:has(.webmail-app) .row.layout-main,
+body:has(.webmail-app) .col-md-12.layout-main-section-wrapper {
+	border: 0 !important;
+	background: transparent !important;
+	height: 100% !important;
+}
+
+/* Bootstrap container constrains the page-body to a max-width and adds a
+   15px padding. We blow it open so the webmail spans the full viewport. */
+body:has(.webmail-app) .container.page-body {
+	max-width: none !important;
+	width: 100% !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	height: calc(100vh - var(--navbar-height, 60px)) !important;
+	overflow: hidden !important;
+}
+
+/* Frappe Desk normally has its own top navbar. The webmail topbar starts
+   right under it — no need for the page header that sits in between. */
+body:has(.webmail-app) .page-head {
+	display: none !important;
+}
+
+/* The Neoffice theme already maps Forum onto every h1-h6. We force the
+   same serif on our visual titles (email subject, composer title, list
+   header) so the design feels consistent with the rest of Neoffice. */
+.webmail-app .email-subject,
+.webmail-app .composer-title,
+.webmail-app .list-h h2,
+.webmail-app .reader-h-top h1,
+.webmail-app .no-accounts-content h2 {
+	font-family: Forum, Georgia, "Times New Roman", serif;
+	font-weight: 400;
+	letter-spacing: 0;
+}
+</style>
+
+<!-- Component-scoped styles for the new layout shell (topbar + grid). -->
+<style scoped>
+.webmail-app {
+	display: grid;
+	grid-template-rows: 52px 1fr;
+	/* 100% (not 100vh) so the Frappe Desk navbar height is respected.
+	   The parent wrappers (#webmail-app, .layout-main-section, …) are
+	   already forced to height: 100% via the overrides above. */
+	height: 100%;
+	min-height: 0;
+	background: var(--wm-bg-sunken);
+	color: var(--wm-ink);
+	font-size: 13.5px;
+	overflow: hidden;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 0 16px;
+	background: var(--wm-bg-raised);
+	border-bottom: 1px solid var(--wm-line);
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 180px;
+}
+
+.brand-mark {
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
+	background: linear-gradient(145deg, oklch(0.32 0.025 65), oklch(0.2 0.02 60));
+	color: oklch(0.96 0.01 85);
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+
+.brand-name {
+	font-size: 17px;
+	font-weight: 500;
+	color: var(--wm-ink);
+	letter-spacing: -0.005em;
+}
+
+/* Account switcher: avatar mini + email select + chevron, in a soft pill */
+.account-switch {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 32px;
+	padding: 0 28px 0 8px;
+	background: var(--wm-bg-sunken);
+	border: 1px solid var(--wm-line);
+	border-radius: 8px;
+	min-width: 220px;
+	max-width: 280px;
+	transition: border-color 0.15s;
+}
+
+.account-switch:hover {
+	border-color: var(--wm-line-strong);
+}
+
+.account-switch .av-mini {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--wm-accent);
+	color: white;
+	display: grid;
+	place-items: center;
+	font-size: 10px;
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.account-switch .account-select {
+	flex: 1;
+	min-width: 0;
+	appearance: none;
+	-webkit-appearance: none;
+	border: 0;
+	background: transparent;
+	font-size: 12.5px;
+	color: var(--wm-ink);
+	cursor: pointer;
+	outline: none;
+	padding: 0;
+	font-family: inherit;
+}
+
+.account-switch .ch {
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--wm-ink-mute);
+	pointer-events: none;
+}
+
+.sharing-indicator-mini {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	background: var(--wm-accent-soft);
+	color: var(--wm-accent);
+	cursor: help;
+	flex-shrink: 0;
+	margin-right: -22px; /* pull back into the right padding of the switch */
+}
+
+.sharing-tooltip {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	padding: 6px 10px;
+	background: var(--wm-ink);
+	color: white;
+	font-size: 11px;
+	border-radius: 6px;
+	white-space: nowrap;
+	z-index: 1000;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+	pointer-events: none;
+}
+
+/* ===== Command palette: input + dropdown ===== */
+.cmd-search {
+	position: relative;
+	flex: 1;
+	max-width: 460px;
+	height: 32px;
+	padding: 0 12px;
+	background: var(--wm-bg-sunken);
+	border: 1px solid var(--wm-line);
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.cmd-search:hover {
+	border-color: var(--wm-line-strong);
+}
+
+.cmd-search.is-open {
+	background: var(--wm-bg-raised);
+	border-color: var(--wm-accent);
+	box-shadow: 0 0 0 3px var(--wm-accent-soft);
+}
+
+.cmd-search-icon {
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+}
+
+.cmd-search-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	background: transparent;
+	border: 0;
+	outline: none;
+	font-family: inherit;
+	font-size: 12.5px;
+	color: var(--wm-ink);
+	padding: 0;
+}
+
+.cmd-search-input::placeholder {
+	color: var(--wm-ink-mute);
+}
+
+.cmd-search .kbd {
+	font-size: 10.5px;
+	padding: 1px 6px;
+	background: var(--wm-bg-raised);
+	border: 1px solid var(--wm-line);
+	border-radius: 4px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+}
+
+/* Dropdown panel — two side-by-side cards (Recent + Tips). Absolutely
+   positioned just below the search input. */
+.cmd-dropdown {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	right: 0;
+	min-width: 640px;
+	display: grid;
+	grid-template-columns: 1.4fr 1fr;
+	gap: 8px;
+	z-index: 1100;
+	cursor: default;
+}
+
+.cmd-panel {
+	background: var(--wm-bg-raised);
+	border: 1px solid var(--wm-line);
+	border-radius: 10px;
+	padding: 10px 6px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.cmd-panel-title {
+	padding: 2px 12px 6px;
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--wm-ink-mute);
+}
+
+.cmd-empty {
+	padding: 6px 12px 4px;
+	font-size: 12px;
+	color: var(--wm-ink-mute);
+	font-style: italic;
+}
+
+.cmd-item {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	padding: 6px 10px;
+	border: 0;
+	background: transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--wm-ink-soft);
+	font-size: 12.5px;
+	font-family: inherit;
+	text-align: left;
+	transition: background 0.12s, color 0.12s;
+}
+
+.cmd-item:hover {
+	background: var(--wm-bg-sunken);
+	color: var(--wm-ink);
+}
+
+.cmd-item > svg {
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+}
+
+.cmd-item-text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cmd-item-remove {
+	width: 20px;
+	height: 20px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	background: transparent;
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--wm-ink-mute);
+	opacity: 0;
+	transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+
+.cmd-item:hover .cmd-item-remove {
+	opacity: 1;
+}
+
+.cmd-item-remove:hover {
+	background: var(--wm-line);
+	color: var(--wm-ink);
+}
+
+/* === Live search results inside the cmd-palette dropdown === */
+.cmd-panel-meta {
+	margin-left: 6px;
+	font-size: 10px;
+	font-weight: 500;
+	color: var(--wm-ink-mute);
+	background: var(--wm-bg-sunken);
+	padding: 1px 6px;
+	border-radius: 999px;
+	letter-spacing: 0;
+	text-transform: none;
+	font-variant-numeric: tabular-nums;
+}
+
+.cmd-spinner {
+	display: inline-block;
+	width: 11px;
+	height: 11px;
+	margin-left: 6px;
+	border: 1.5px solid var(--wm-line);
+	border-top-color: var(--wm-accent);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	vertical-align: -1px;
+}
+
+.cmd-result {
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	width: 100%;
+	padding: 7px 10px;
+	border: 0;
+	background: transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	color: var(--wm-ink);
+	font-family: inherit;
+	text-align: left;
+	transition: background 0.12s;
+}
+
+.cmd-result:hover {
+	background: var(--wm-bg-sunken);
+}
+
+.cmd-result-avatar {
+	flex-shrink: 0;
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	color: white;
+	font-size: 10.5px;
+	font-weight: 600;
+	margin-top: 1px;
+}
+
+.cmd-result-avatar.c1 {
+	background: linear-gradient(135deg, #5145e8, #8b7fff);
+}
+.cmd-result-avatar.c2 {
+	background: linear-gradient(135deg, #b45309, #f59e0b);
+}
+.cmd-result-avatar.c3 {
+	background: linear-gradient(135deg, #047857, #34d399);
+}
+.cmd-result-avatar.c4 {
+	background: linear-gradient(135deg, #be185d, #ec4899);
+}
+.cmd-result-avatar.c5 {
+	background: linear-gradient(135deg, #0e7490, #06b6d4);
+}
+.cmd-result-avatar.c6 {
+	background: linear-gradient(135deg, #6d28d9, #c084fc);
+}
+
+.cmd-result-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.cmd-result-top {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.cmd-result-from {
+	flex: 1;
+	min-width: 0;
+	font-size: 12.5px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.cmd-result-date {
+	font-size: 10.5px;
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.cmd-result-subject {
+	font-size: 11.5px;
+	color: var(--wm-ink-mute);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Cap the dropdown height and make the inner panels scrollable. */
+.cmd-panel-main {
+	max-height: 480px;
+	overflow-y: auto;
+}
+
+.cmd-tip {
+	padding: 5px 12px;
+	font-size: 12px;
+	color: var(--wm-ink-soft);
+	line-height: 1.45;
+}
+
+.cmd-advanced-btn {
+	margin: 6px 10px 0;
+	padding: 7px 12px;
+	border: 1px solid var(--wm-line);
+	background: var(--wm-bg-sunken);
+	border-radius: 7px;
+	cursor: pointer;
+	color: var(--wm-ink);
+	font-size: 12px;
+	font-weight: 500;
+	font-family: inherit;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	transition: background 0.12s, border-color 0.12s;
+	width: calc(100% - 20px);
+	justify-content: center;
+}
+
+.cmd-advanced-btn:hover {
+	background: var(--wm-bg-raised);
+	border-color: var(--wm-accent);
+	color: var(--wm-accent);
+}
+
+/* Top actions cluster */
+.top-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.icon-btn {
+	width: 32px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	background: transparent;
+	border-radius: 7px;
+	color: var(--wm-ink-soft);
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+	background: var(--wm-bg-sunken);
+	color: var(--wm-ink);
+}
+
+.btn-compose {
+	height: 32px;
+	padding: 0 14px;
+	background: var(--wm-accent);
+	color: white;
+	border: 0;
+	border-radius: 8px;
+	font-size: 12.5px;
+	font-weight: 500;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	box-shadow: 0 1px 2px rgba(81, 69, 232, 0.3);
+	cursor: pointer;
+	transition: background 0.15s;
+	font-family: inherit;
+}
+
+.btn-compose:hover {
+	background: var(--wm-accent-hover);
+}
+
+.avatar-me {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--wm-rose-soft);
+	color: var(--wm-rose);
+	display: grid;
+	place-items: center;
+	font-size: 11px;
+	font-weight: 600;
+	margin-left: 6px;
+	flex-shrink: 0;
+}
+
+/* ===== MAIN — flex row with two draggable resizers ===== */
+.main {
+	display: flex;
+	min-height: 0;
+	overflow: hidden;
+	height: 100%;
+}
+
+.main.is-resizing {
+	cursor: col-resize;
+}
+
+.main.is-resizing * {
+	pointer-events: none;
+}
+
+.sidebar-col {
+	/* Background stays transparent so the sidebar blends into the webmail
+	   surface — but a thin right border separates it from the email list,
+	   matching the design reference. */
+	background: transparent;
+	border-right: 1px solid var(--wm-line);
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	overflow-x: hidden;
+	flex-shrink: 0;
+	min-width: 0;
+}
+
+/* Slim drag handle between two columns. A 6px-wide hit area with a
+   visible centered bar that grows on hover/active. */
+.column-resizer {
+	width: 6px;
+	flex-shrink: 0;
+	cursor: col-resize;
+	background: transparent;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0 -3px;
+	position: relative;
+	z-index: 10;
+	transition: background 0.15s ease;
+}
+
+.column-resizer:hover,
+.main.is-resizing .column-resizer {
+	background: var(--wm-accent-soft);
+}
+
+.resizer-handle {
+	width: 3px;
+	height: 36px;
+	background: var(--wm-line);
+	border-radius: 2px;
+	transition: background 0.15s ease, height 0.15s ease;
+}
+
+.column-resizer:hover .resizer-handle,
+.main.is-resizing .resizer-handle {
+	background: var(--wm-accent);
+	height: 56px;
+}
+
+/* The FolderTree component wraps itself — we just give it a flex slot. */
+.sb-folders {
+	flex-shrink: 0;
+}
+
+/* Uppercase section headers (Labels, Nora) consistent with the FolderTree
+   "FOLDERS" header style. */
+.sb-section {
+	padding: 14px 14px 6px;
+	font-size: 10.5px;
+	color: var(--wm-ink-mute);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.sb-section-add {
+	margin-left: auto;
+	width: 20px;
+	height: 20px;
+	border: 0;
+	background: transparent;
+	display: grid;
+	place-items: center;
+	border-radius: 5px;
+	cursor: pointer;
+	color: var(--wm-ink-mute);
+	transition: background 0.15s, color 0.15s;
+}
+
+.sb-section-add:hover {
+	background: var(--wm-bg-sunken);
+	color: var(--wm-accent);
+}
+
+.sb-empty {
+	padding: 2px 16px 6px;
+	font-size: 11.5px;
+	color: var(--wm-ink-mute);
+	font-style: italic;
+}
+
+.sb-nav {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 0 8px 4px;
+}
+
+.sb-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 30px;
+	padding: 0 10px;
+	border-radius: 7px;
+	font-size: 12.5px;
+	color: var(--wm-ink-soft);
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.sb-item:hover {
+	background: var(--wm-bg-sunken);
+	color: var(--wm-ink);
+}
+
+.sb-item.is-mock {
+	cursor: pointer;
+}
+
+.sb-ic {
+	width: 16px;
+	display: grid;
+	place-items: center;
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+}
+
+.sb-label {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Count badge shown on the right of the row (Inbox 12, CRM Clients 8, ...) */
+.sb-count {
+	margin-left: auto;
+	font-size: 11px;
+	color: var(--wm-ink-mute);
+	font-variant-numeric: tabular-nums;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: var(--wm-bg-sunken);
+}
+
+.sb-count-nora {
+	background: var(--wm-nora-soft);
+	color: var(--wm-nora);
+	font-weight: 600;
+}
+
+/* Color dot for a label (CRM Clients = sage, Invoices = amber, Team = rose) */
+.sb-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-left: 4px;
+	margin-right: 6px;
+}
+
+.sb-dot.dot-sage {
+	background: var(--wm-sage);
+}
+
+.sb-dot.dot-amber {
+	background: var(--wm-amber);
+}
+
+.sb-dot.dot-rose {
+	background: var(--wm-rose);
+}
+
+/* Tiny gradient dot used as the "Nora" badge in the priority item. */
+.nora-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, var(--wm-nora), var(--wm-nora-2));
+}
+
+/* Storage indicator pinned to the bottom of the sidebar.
+   (Values are placeholders until we wire IMAP quota; the bar is hidden
+   when the data isn't available so we don't show a misleading fill.) */
+.storage {
+	margin-top: auto;
+	padding: 12px 14px;
+	border-top: 1px solid var(--wm-line-soft);
+	font-size: 11px;
+	color: var(--wm-ink-mute);
+	flex-shrink: 0;
+}
+
+.storage-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.upgrade {
+	color: var(--wm-accent);
+	cursor: pointer;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.upgrade:hover {
+	text-decoration: underline;
+}
+
+.storage-bar {
+	height: 4px;
+	background: var(--wm-bg-sunken);
+	border-radius: 2px;
+	overflow: hidden;
+	margin: 6px 0 4px;
+}
+
+.storage-bar > span {
+	display: block;
+	height: 100%;
+	width: 0;
+	background: linear-gradient(90deg, var(--wm-accent), var(--wm-nora-2));
+	border-radius: 2px;
+}
+
+.storage-email {
+	font-size: 11px;
+	color: var(--wm-ink-mute);
+	word-break: break-all;
+}
+
+.list-col {
+	background: var(--wm-bg-raised);
+	border-right: 1px solid var(--wm-line);
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	min-width: 0;
+	flex-shrink: 0;
+	overflow: hidden;
+}
+
+.reader-col {
+	/* Transparent by default — when no email is selected the column shows
+	   through to the webmail surface, focusing the eye on the email list.
+	   .email-viewer itself paints its own bg-raised when an email is open. */
+	background: transparent;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* ===== Empty state, loading, modals ===== */
+.no-accounts {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--wm-bg-raised);
+}
+
+.no-accounts-content {
+	text-align: center;
+	padding: 40px;
+}
+
+.no-accounts-content h2 {
+	margin: 0 0 16px;
+	color: var(--wm-ink);
+}
+
+.no-accounts-content p {
+	margin: 0 0 24px;
+	color: var(--wm-ink-mute);
+}
+
+.loading-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.92);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.spinner {
+	width: 40px;
+	height: 40px;
+	border: 3px solid var(--wm-line);
+	border-top-color: var(--wm-accent);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	background: var(--wm-bg-raised);
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.signature-modal {
+	width: 800px;
+	height: 600px;
+	max-width: 90vw;
+	max-height: 80vh;
+}
+
+.search-modal {
+	width: 600px;
+	height: 80vh;
+	max-width: 90vw;
+	max-height: 80vh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.filter-modal {
+	width: 550px;
+	height: 70vh;
+	max-width: 90vw;
+	max-height: 80vh;
+	overflow: hidden;
+}
+
+/* ===== Responsive (flex-based) ===== */
+@media (max-width: 768px) {
+	.sidebar-col,
+	.reader-col,
+	.column-resizer {
+		display: none;
+	}
+	.list-col {
+		flex: 1;
+		width: auto !important;
+	}
 }
 </style>

@@ -1,49 +1,79 @@
 <template>
 	<div class="email-list-container">
-		<!-- Toolbar -->
-		<div class="list-toolbar">
-			<div class="select-all-wrapper" v-if="emails.length > 0">
-				<input
-					type="checkbox"
-					:checked="allSelected"
-					:indeterminate="someSelected"
-					@change="selectAll"
-					class="select-all-checkbox"
+		<!-- List header: serif folder title + unread count + actions
+		     (no search input — the topbar cmd-search is the single entry point) -->
+		<div class="list-header">
+			<h2 class="list-title">{{ folderLabel }}</h2>
+			<span class="list-count" v-if="unreadFilterCount > 0">
+				{{ __("{0} unread", [unreadFilterCount]) }}
+			</span>
+			<div class="list-header-right">
+				<div class="polling-status" v-if="pollingEnabled" :title="__('Auto-refresh on')">
+					<span class="polling-indicator"></span>
+				</div>
+				<button
+					@click="refresh"
+					:disabled="loading"
+					class="header-icon-btn"
+					:title="__('Refresh')"
+				>
+					<RefreshCw :size="14" :class="{ rotating: loading }" />
+				</button>
+				<label
+					v-if="emails.length > 0"
+					class="header-checkbox"
 					:title="allSelected ? __('Deselect all') : __('Select all')"
-				/>
+				>
+					<input
+						type="checkbox"
+						:checked="allSelected"
+						:indeterminate="someSelected"
+						@change="selectAll"
+					/>
+				</label>
 			</div>
-			<div class="search-wrapper">
-				<Search :size="16" class="search-icon" />
-				<input
-					v-model="searchQuery"
-					type="text"
-					:placeholder="__('Search...')"
-					@keyup.enter="search"
-				/>
-			</div>
+		</div>
+
+		<!-- Quick filter chips (Tous / Non lus / Avec PJ / Suivis) -->
+		<div class="filter-chips" v-if="emails.length > 0">
 			<button
-				@click="refresh"
-				:disabled="loading"
-				class="refresh-btn"
-				:title="__('Refresh')"
+				class="chip-filter"
+				:class="{ on: activeFilter === 'all' }"
+				@click="activeFilter = 'all'"
 			>
-				<RefreshCw :size="16" :class="{ rotating: loading }" />
+				{{ __("All") }}
+				<span class="ct">{{ emails.length }}</span>
 			</button>
-			<div
-				class="polling-status"
-				v-if="pollingEnabled"
-				title="Actualisation automatique active"
+			<button
+				class="chip-filter"
+				:class="{ on: activeFilter === 'unread' }"
+				@click="activeFilter = 'unread'"
 			>
-				<span class="polling-indicator"></span>
-			</div>
+				{{ __("Unread") }}
+				<span class="ct" v-if="unreadFilterCount">{{ unreadFilterCount }}</span>
+			</button>
+			<button
+				class="chip-filter"
+				:class="{ on: activeFilter === 'attachments' }"
+				@click="activeFilter = 'attachments'"
+			>
+				{{ __("Attachments") }}
+			</button>
+			<button
+				class="chip-filter"
+				:class="{ on: activeFilter === 'starred' }"
+				@click="activeFilter = 'starred'"
+			>
+				{{ __("Starred") }}
+			</button>
 		</div>
 
 		<!-- List -->
 		<RecycleScroller
-			v-if="emails.length"
+			v-if="displayedEmails.length"
 			class="email-list"
-			:items="emails"
-			:item-size="56"
+			:items="displayedEmails"
+			:item-size="64"
 			key-field="uid"
 			v-slot="{ item }"
 			@scroll-end="loadMore"
@@ -63,16 +93,27 @@
 				@dragstart="onDragStart($event, item)"
 				@dragend="onDragEnd"
 			>
-				<div class="checkbox-cell" @click.stop="toggleSelection(item, $event)">
-					<input
-						type="checkbox"
-						:checked="isSelected(item.uid)"
-						@click.stop
-						@change="toggleSelection(item, $event)"
-					/>
+				<!-- Checkbox + star stacked vertically (compact left column) -->
+				<div class="row-controls">
+					<div class="checkbox-cell" @click.stop="toggleSelection(item, $event)">
+						<input
+							type="checkbox"
+							:checked="isSelected(item.uid)"
+							@click.stop
+							@change="toggleSelection(item, $event)"
+						/>
+					</div>
+					<div class="star" @click.stop="toggleStar(item)">
+						<Star :size="14" :fill="item.flagged ? 'currentColor' : 'none'" />
+					</div>
 				</div>
-				<div class="star" @click.stop="toggleStar(item)">
-					<Star :size="16" :fill="item.flagged ? 'currentColor' : 'none'" />
+				<!-- Sender avatar with deterministic gradient color from email -->
+				<div
+					class="email-avatar"
+					:class="getAvatarColor(item.from_email)"
+					:title="item.from_name || item.from_email"
+				>
+					{{ getAvatarInitials(item.from_name, item.from_email) }}
 				</div>
 				<div class="email-content">
 					<div class="email-top-line">
@@ -203,10 +244,48 @@ export default {
 			// Multi-selection
 			selectedUids: new Set(),
 			lastSelectedIndex: -1,
+			// Quick filter chip state ("all" | "unread" | "attachments" | "starred").
+			activeFilter: "all",
 		};
 	},
 
 	computed: {
+		// Human-readable label for the current folder, shown as the serif
+		// list header. Uses folderMapping to recognise the standard buckets
+		// (Inbox/Sent/Drafts/Trash/Spam/Archive); falls back to the last
+		// path segment for nested IMAP folders.
+		folderLabel() {
+			const folder = this.folder || "";
+			const m = this.folderMapping || {};
+			if (folder === "INBOX" || folder === m.inbox) return this.__("Inbox");
+			if (folder === m.sent) return this.__("Sent");
+			if (folder === m.drafts) return this.__("Drafts");
+			if (folder === m.trash) return this.__("Trash");
+			if (folder === m.spam) return this.__("Spam");
+			if (folder === m.archive) return this.__("Archive");
+			return folder.split("/").pop() || folder;
+		},
+
+		// Emails filtered by the active quick-filter chip. The RecycleScroller
+		// uses this so filtering doesn't require an extra round-trip to IMAP.
+		displayedEmails() {
+			switch (this.activeFilter) {
+				case "unread":
+					return this.emails.filter((e) => !e.seen);
+				case "attachments":
+					return this.emails.filter((e) => e.has_attachments);
+				case "starred":
+					return this.emails.filter((e) => e.flagged);
+				default:
+					return this.emails;
+			}
+		},
+
+		// Count of unread emails — shown next to the "Unread" chip when > 0.
+		unreadFilterCount() {
+			return this.emails.filter((e) => !e.seen).length;
+		},
+
 		contextMenuItems() {
 			if (!this.contextMenuEmail) return [];
 
@@ -352,6 +431,28 @@ export default {
 	},
 
 	methods: {
+		// Deterministic gradient color class (c1-c6) for the sender avatar.
+		// Same email always renders with the same color across sessions.
+		getAvatarColor(email) {
+			const src = (email || "").toLowerCase();
+			let hash = 0;
+			for (let i = 0; i < src.length; i++) {
+				hash = (hash << 5) - hash + src.charCodeAt(i);
+				hash |= 0; // keep 32-bit
+			}
+			return "c" + ((Math.abs(hash) % 6) + 1);
+		},
+
+		// 1-2 letter initials drawn from the sender name (falling back to email).
+		getAvatarInitials(name, email) {
+			const raw = (name || email || "?").trim();
+			const parts = raw.split(/[\s@._-]+/).filter(Boolean);
+			if (parts.length >= 2 && parts[0] && parts[1]) {
+				return (parts[0][0] + parts[1][0]).toUpperCase();
+			}
+			return ((parts[0] || raw)[0] || "?").toUpperCase();
+		},
+
 		async loadEmails(append = false) {
 			if (this.loading) return;
 			if (append && !this.hasMore) return;
@@ -891,82 +992,189 @@ export default {
 	background: var(--card-bg, white);
 }
 
-.list-toolbar {
+/* =====================================================================
+   Quick filter chip bar — sits between toolbar and the scrollable list.
+   Active chip uses --wm-ink so the contrast pops on the soft bg.
+   ===================================================================== */
+.filter-chips {
 	display: flex;
-	gap: 8px;
-	padding: 8px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
-	align-items: center;
+	gap: 4px;
+	padding: 4px 10px 8px;
+	font-size: 12px;
+	border-bottom: 1px solid var(--wm-line-soft, #efefef);
 }
 
-.select-all-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0 4px;
-}
-
-.select-all-checkbox {
-	width: 18px !important;
-	height: 18px;
+.chip-filter {
+	height: 24px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wm-ink-mute, #8d99a6);
 	cursor: pointer;
-	accent-color: var(--primary-color, #2490ef);
-	padding: 10px !important;
-}
-
-.search-wrapper {
-	flex: 1;
-	position: relative;
-	display: flex;
-	align-items: center;
-}
-
-.search-wrapper .search-icon {
-	position: absolute;
-	left: 10px;
-	color: var(--text-muted, #8d99a6);
-	pointer-events: none;
-}
-
-.list-toolbar input {
-	flex: 1;
-	padding: 8px 10px 8px 34px;
-	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 6px;
-	outline: none;
-	font-size: 13px;
-	background: var(--card-bg, white);
-	color: var(--text-color, #333);
-}
-
-.list-toolbar input:focus {
-	border-color: var(--primary-color, #2490ef);
-}
-
-.refresh-btn {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	padding: 8px;
-	border: 1px solid var(--border-color, #e5e5e5);
+	gap: 5px;
+	font-size: 12px;
+	font-family: inherit;
+	transition: background 0.15s, color 0.15s;
+}
+
+.chip-filter:hover {
+	background: var(--wm-bg-sunken, #f5f5f5);
+	color: var(--wm-ink, #333);
+}
+
+.chip-filter.on {
+	background: var(--wm-ink, #1a1a1a);
+	color: var(--wm-bg-raised, white);
+	font-weight: 500;
+}
+
+/* In dark mode the active chip would be a bright slab on dark — switch
+   it to the brand accent so it reads as "selected" without dazzling. */
+:global([data-theme="dark"]) .chip-filter.on {
+	background: var(--wm-accent, #5145e8);
+	color: #ffffff;
+}
+
+.chip-filter .ct {
+	font-size: 10.5px;
+	background: rgba(0, 0, 0, 0.08);
+	padding: 1px 5px;
+	border-radius: 999px;
+	font-variant-numeric: tabular-nums;
+}
+
+.chip-filter.on .ct {
+	background: rgba(255, 255, 255, 0.22);
+	color: inherit;
+}
+
+:global([data-theme="dark"]) .chip-filter .ct {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+/* =====================================================================
+   Sender avatar — 32px circle with a deterministic gradient color
+   driven by getAvatarColor(email) in the script. c1..c6 cover the
+   palette from the design (indigo / amber / sage / rose / cyan / purple).
+   ===================================================================== */
+.email-avatar {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	color: white;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	align-self: center;
+}
+
+.email-avatar.c1 {
+	background: linear-gradient(135deg, #5145e8, #8b7fff);
+}
+.email-avatar.c2 {
+	background: linear-gradient(135deg, #b45309, #f59e0b);
+}
+.email-avatar.c3 {
+	background: linear-gradient(135deg, #047857, #34d399);
+}
+.email-avatar.c4 {
+	background: linear-gradient(135deg, #be185d, #ec4899);
+}
+.email-avatar.c5 {
+	background: linear-gradient(135deg, #0e7490, #06b6d4);
+}
+.email-avatar.c6 {
+	background: linear-gradient(135deg, #6d28d9, #c084fc);
+}
+
+/* ========================================================================
+   New list header — serif folder title + unread count + minimal icons.
+   Replaces the old toolbar that combined search + select-all + refresh.
+   ======================================================================== */
+.list-header {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	padding: 12px 14px 8px;
+	border-bottom: 1px solid var(--wm-line-soft, #efefef);
+}
+
+.list-title {
+	margin: 0;
+	font-family: Forum, Georgia, "Times New Roman", serif;
+	font-size: 19px;
+	font-weight: 400;
+	color: var(--wm-ink, #1a1a1a);
+	letter-spacing: -0.005em;
+	flex-shrink: 0;
+}
+
+.list-count {
+	font-size: 11.5px;
+	color: var(--wm-ink-mute, #8d99a6);
+	font-variant-numeric: tabular-nums;
+}
+
+.list-header-right {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.header-icon-btn {
+	width: 26px;
+	height: 26px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	background: transparent;
 	border-radius: 6px;
-	background: var(--card-bg, white);
+	color: var(--wm-ink-soft, #555);
 	cursor: pointer;
-	color: var(--text-color, #333);
-	transition: all 0.15s ease;
+	transition: background 0.15s, color 0.15s;
 }
 
-.refresh-btn:hover {
-	background: var(--hover-bg, #f5f5f5);
+.header-icon-btn:hover:not(:disabled) {
+	background: var(--wm-bg-sunken, #f5f5f5);
+	color: var(--wm-ink, #1a1a1a);
 }
 
-.refresh-btn:disabled {
+.header-icon-btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
 }
 
-.refresh-btn .rotating {
+.header-icon-btn .rotating {
 	animation: rotate 1s linear infinite;
+}
+
+.header-checkbox {
+	width: 26px;
+	height: 26px;
+	display: grid;
+	place-items: center;
+	border-radius: 6px;
+	cursor: pointer;
+	margin: 0 !important;
+}
+
+.header-checkbox:hover {
+	background: var(--wm-bg-sunken, #f5f5f5);
+}
+
+.header-checkbox input[type="checkbox"] {
+	width: 14px;
+	height: 14px;
+	margin: 0 !important;
+	cursor: pointer;
+	accent-color: var(--wm-accent, #5145e8);
 }
 
 @keyframes rotate {
@@ -985,11 +1193,11 @@ export default {
 
 .email-row {
 	display: flex;
-	align-items: flex-start;
-	padding: 10px 16px;
+	align-items: center;
+	padding: 10px 5px;
 	border-bottom: 1px solid var(--border-color, #e5e5e5);
 	cursor: pointer;
-	gap: 10px;
+	gap: 6px;
 }
 
 .email-row:hover {
@@ -1009,17 +1217,38 @@ export default {
 	color: var(--text-color, #333);
 }
 
+/* Active row = the email currently open in the reader.
+   Soft horizontal gradient (strong accent on the left fading to transparent)
+   + a 4px "guardian" bar on the left (box-shadow inset so it stays visible
+   even with the column-resizer's negative margin). */
 .email-row.active {
-	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
+	background: linear-gradient(
+		90deg,
+		var(--subtle-accent, rgba(36, 144, 239, 0.22)) 0%,
+		var(--subtle-accent, rgba(36, 144, 239, 0.1)) 35%,
+		transparent 90%
+	);
+	box-shadow: inset 4px 0 0 0 var(--primary-color, #2490ef);
 }
 
+/* Selected rows = multi-selection checkbox state (different from "active"). */
 .email-row.selected {
-	background: rgba(36, 144, 239, 0.12);
-	border-left: 3px solid var(--primary-color, #2490ef);
+	background: linear-gradient(
+		90deg,
+		rgba(81, 69, 232, 0.18),
+		rgba(81, 69, 232, 0.06) 50%,
+		transparent 90%
+	);
+	box-shadow: inset 4px 0 0 0 var(--primary-color, #2490ef);
 }
 
 .email-row.selected.active {
-	background: rgba(36, 144, 239, 0.2);
+	background: linear-gradient(
+		90deg,
+		rgba(81, 69, 232, 0.28),
+		rgba(81, 69, 232, 0.1) 50%,
+		transparent 90%
+	);
 }
 
 .email-row.dragging {
@@ -1027,31 +1256,44 @@ export default {
 	background: var(--bg-light-gray, #f5f5f5);
 }
 
-.checkbox-cell {
+/* Vertical wrapper that stacks the row checkbox above the star, so the
+   horizontal footprint of these two controls is one column instead of two. */
+.row-controls {
 	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding-top: 3px;
+	width: 20px;
+}
+
+.checkbox-cell {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 32px;
-	padding-top: 2px;
+	width: 100%;
+	height: 14px;
 }
 
 .checkbox-cell input[type="checkbox"] {
-	width: 18px;
-	height: 18px;
+	width: 14px;
+	height: 14px;
 	cursor: pointer;
 	accent-color: var(--primary-color, #2490ef);
-	margin: 0;
+	/* Frappe Desk ships a global "input { margin: 0 5px 0 0 }" rule that
+	   shifts the checkbox 2-3 px off-center inside its flex cell. Force it back. */
+	margin: 0 !important;
 }
 
 .star {
-	flex-shrink: 0;
 	cursor: pointer;
-	width: 20px;
+	width: 100%;
+	height: 14px;
 	color: var(--text-muted, #999);
-	padding-top: 2px;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	transition: color 0.15s ease;
 }
 
