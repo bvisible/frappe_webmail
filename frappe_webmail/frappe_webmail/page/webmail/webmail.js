@@ -24,29 +24,32 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 	document.documentElement.style.overflow = "hidden";
 	document.body.style.overflow = "hidden";
 
-	// Get the navbar height dynamically
-	const navbar = document.querySelector(".navbar");
-	const navbarHeight = navbar ? navbar.offsetHeight : 48;
-
-	// Reduce padding on page body container and prevent scroll
+	// Reduce padding on page body container and prevent scroll.
+	// NB: no navbar-based 100vh math here — under the NeoCockpit chrome the
+	// navbar is gone and the content lives inside a framed panel, so the
+	// only robust height is measured from the container's real position.
 	const pageBody = document.querySelector(".container.page-body");
 	if (pageBody) {
 		pageBody.style.padding = "15px";
 		pageBody.style.overflow = "hidden";
-		pageBody.style.height = `calc(100vh - ${navbarHeight}px)`;
 	}
-
-	// Calculate available height: viewport - navbar - padding (top + bottom)
-	const paddingTotal = 30; // 15px top + 15px bottom
-	const availableHeight = `calc(100vh - ${navbarHeight}px - ${paddingTotal}px)`;
 
 	// Create container for Vue app
 	const container = document.createElement("div");
 	container.id = "webmail-app";
 	container.className = "webmail-container";
-	container.style.cssText = `height: ${availableHeight}; overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);`;
+	container.style.cssText = `overflow: hidden; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg);`;
 
 	page.main.html("").append(container);
+
+	// Size from the measured top — works with both the legacy navbar and
+	// the cockpit chrome (and on window resize)
+	const size_container = () => {
+		const top = Math.round(container.getBoundingClientRect().top);
+		container.style.height = `calc(100vh - ${top}px - 15px)`;
+	};
+	requestAnimationFrame(size_container);
+	window.addEventListener("resize", frappe.utils.debounce(size_container, 150));
 
 	// Initialize webmail when ready
 	if (frappe.webmail) {
