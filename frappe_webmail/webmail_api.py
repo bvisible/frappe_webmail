@@ -680,6 +680,32 @@ def get_folders(account_name):
 
 
 @frappe.whitelist()
+def get_quota(account_name):
+	"""IMAP STORAGE quota for the account (RFC 2087). Returns None when the
+	server does not advertise the QUOTA capability — the UI hides the block."""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+
+	account = get_account(account_name)
+
+	try:
+		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+			imap_login(client, account)
+			if b"QUOTA" not in client.capabilities():
+				return None
+			quotas = client.get_quota_root("INBOX")[1] or []
+			for q in quotas:
+				resource = q.resource.decode() if isinstance(q.resource, bytes) else str(q.resource)
+				if resource.upper() == "STORAGE" and q.limit:
+					# RFC 2087: usage/limit are in KILOBYTES
+					return {"usage_kb": int(q.usage), "limit_kb": int(q.limit)}
+			return None
+	except Exception:
+		# quota is cosmetic — never break the mailbox over it
+		return None
+
+
+@frappe.whitelist()
 def create_folder(account_name, folder_name, parent_folder=None):
 	"""Create a new IMAP folder.
 

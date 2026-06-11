@@ -219,15 +219,13 @@
 					</div>
 				</div>
 
-				<!-- Storage (mock values — wires to IMAP quota later) -->
+				<!-- Storage — real IMAP quota (RFC 2087); hidden when the
+				     server doesn't advertise QUOTA so we never show fake data -->
 				<div class="storage">
-					<div class="storage-top">
-						<span>3.8 / 10 GB</span>
-						<a class="upgrade" :title="__('Mettre à jour le stockage')">
-							{{ __("Mettre à jour") }}
-						</a>
+					<div class="storage-top" v-if="quota">
+						<span>{{ quotaLabel }}</span>
 					</div>
-					<div class="storage-bar"><span style="width: 38%"></span></div>
+					<div class="storage-bar" v-if="quota"><span :style="{ width: quotaPercent + '%' }"></span></div>
 					<div class="storage-email" v-if="currentAccountEmail">
 						{{ currentAccountEmail }}
 					</div>
@@ -441,6 +439,7 @@ export default {
 			},
 			// Column resize state
 			sidebarWidth: 220,
+			quota: null,
 			emailListWidth: 350,
 			isResizing: false,
 			resizeTarget: null,
@@ -465,6 +464,15 @@ export default {
 	},
 
 	computed: {
+		quotaLabel() {
+			if (!this.quota) return "";
+			const gb = (kb) => (kb / 1024 / 1024).toFixed(1);
+			return `${gb(this.quota.usage_kb)} / ${gb(this.quota.limit_kb)} GB`;
+		},
+		quotaPercent() {
+			if (!this.quota || !this.quota.limit_kb) return 0;
+			return Math.min(100, Math.round((this.quota.usage_kb / this.quota.limit_kb) * 100));
+		},
 		// True as soon as the user types ≥2 chars — switches the dropdown
 		// from "Recent searches" to "Live results".
 		hasLiveQuery() {
@@ -549,7 +557,7 @@ export default {
 	},
 
 	mounted() {
-		this.initialize();
+		this.initialize().then(() => this.loadQuota());
 		this.exposeWebmailBridge();
 		this.loadRecentSearches();
 		// ⌘K / Ctrl+K focuses the cmd-palette input from anywhere.
@@ -576,6 +584,19 @@ export default {
 	},
 
 	methods: {
+		async loadQuota() {
+			this.quota = null;
+			if (!this.currentAccount) return;
+			try {
+				const r = await frappe.call({
+					method: "frappe_webmail.webmail_api.get_quota",
+					args: { account_name: this.currentAccount },
+				});
+				this.quota = r.message || null;
+			} catch (e) {
+				this.quota = null;
+			}
+		},
 		// ===== Command palette (topbar search input + dropdown) =====
 		loadRecentSearches() {
 			try {
@@ -820,6 +841,7 @@ export default {
 			this.selectedEmailContent = null;
 			this.loadFolders();
 			this.loadUIPreferences();
+			this.loadQuota();
 			// Save last used account to localStorage
 			localStorage.setItem("webmail_last_account", this.currentAccount);
 		},
@@ -2118,6 +2140,15 @@ body:has(.webmail-app) .container.page-body {
    right under it — no need for the page header that sits in between. */
 body:has(.webmail-app) .page-head {
 	display: none !important;
+}
+
+/* Warm Neoffice gradient on the webmail shell — LIGHT MODE ONLY (the
+   dark theme keeps its sunken background; the beige gradient would glare).
+   Outranks the scoped .webmail-app[data-v]{background:var(--wm-bg-sunken)}. */
+html:not([data-theme="dark"]) .webmail-app {
+	background:
+		radial-gradient(ellipse 420px 180px at 85% 0%, rgba(214, 138, 89, 0.10), transparent 70%),
+		linear-gradient(135deg, #faf3ea 0%, #fffdf8 60%);
 }
 
 /* The Neoffice theme already maps Forum onto every h1-h6. We force the

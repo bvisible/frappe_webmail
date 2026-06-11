@@ -60,7 +60,7 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 		const top = container.getBoundingClientRect().top;
 		container.style.setProperty(
 			"height",
-			`${Math.max(300, Math.round(bottom - top - 8))}px`,
+			`${Math.max(300, Math.round(bottom - top))}px`,
 			"important"
 		);
 	};
