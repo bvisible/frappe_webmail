@@ -466,8 +466,10 @@ export default {
 	computed: {
 		quotaLabel() {
 			if (!this.quota) return "";
-			const gb = (kb) => (kb / 1024 / 1024).toFixed(1);
-			return `${gb(this.quota.usage_kb)} / ${gb(this.quota.limit_kb)} GB`;
+			// small mailboxes: show MB usage instead of a misleading "0.0 GB"
+			const fmt = (kb) =>
+				kb < 1024 * 1024 ? `${Math.max(1, Math.round(kb / 1024))} MB` : `${(kb / 1024 / 1024).toFixed(1)} GB`;
+			return `${fmt(this.quota.usage_kb)} / ${(this.quota.limit_kb / 1024 / 1024).toFixed(0)} GB`;
 		},
 		quotaPercent() {
 			if (!this.quota || !this.quota.limit_kb) return 0;
