@@ -42,13 +42,17 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 
 	page.main.html("").append(container);
 
-	// Size from the measured top — works with both the legacy navbar and
-	// the cockpit chrome (and on window resize)
+	// Size from the measured geometry — works with both the legacy navbar
+	// and the cockpit chrome (framed panel). Fill down to the hosting
+	// panel's real bottom; re-measure once the chrome settles and on resize.
 	const size_container = () => {
-		const top = Math.round(container.getBoundingClientRect().top);
-		container.style.height = `calc(100vh - ${top}px - 15px)`;
+		const top = container.getBoundingClientRect().top;
+		const panel = container.closest(".nc-panel, .content.page-container") || document.body;
+		const bottom = Math.min(panel.getBoundingClientRect().bottom, window.innerHeight);
+		container.style.height = `${Math.max(300, Math.round(bottom - top - 15))}px`;
 	};
 	requestAnimationFrame(size_container);
+	setTimeout(size_container, 400);
 	window.addEventListener("resize", frappe.utils.debounce(size_container, 150));
 
 	// Initialize webmail when ready
