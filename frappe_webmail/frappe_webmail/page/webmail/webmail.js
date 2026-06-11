@@ -43,13 +43,26 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 	page.main.html("").append(container);
 
 	// Size from the measured geometry — works with both the legacy navbar
-	// and the cockpit chrome (framed panel). Fill down to the hosting
-	// panel's real bottom; re-measure once the chrome settles and on resize.
+	// and the cockpit chrome (framed panel). The Vue bundle pins heights
+	// with !important rules tuned for the legacy 60px navbar, so we must
+	// answer with inline !important (which outranks stylesheet !important).
 	const size_container = () => {
-		const top = container.getBoundingClientRect().top;
 		const panel = container.closest(".nc-panel, .content.page-container") || document.body;
 		const bottom = Math.min(panel.getBoundingClientRect().bottom, window.innerHeight);
-		container.style.height = `${Math.max(300, Math.round(bottom - top - 15))}px`;
+		if (pageBody) {
+			const pb_top = pageBody.getBoundingClientRect().top;
+			pageBody.style.setProperty(
+				"height",
+				`${Math.max(300, Math.round(bottom - pb_top))}px`,
+				"important"
+			);
+		}
+		const top = container.getBoundingClientRect().top;
+		container.style.setProperty(
+			"height",
+			`${Math.max(300, Math.round(bottom - top - 15))}px`,
+			"important"
+		);
 	};
 	requestAnimationFrame(size_container);
 	setTimeout(size_container, 400);
