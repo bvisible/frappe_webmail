@@ -559,7 +559,10 @@ export default {
 	},
 
 	mounted() {
-		this.initialize().then(() => this.loadQuota());
+		this.initialize().then(() => {
+			this.loadQuota();
+			this.applyUrlIntent();
+		});
 		this.exposeWebmailBridge();
 		this.loadRecentSearches();
 		// ⌘K / Ctrl+K focuses the cmd-palette input from anywhere.
@@ -766,6 +769,46 @@ export default {
 				console.error("Initialization error:", error);
 			} finally {
 				this.loading = false;
+			}
+		},
+
+		// Deep-link support (used by the NeoCockpit mail panel):
+		//   /app/webmail?compose=1                          → open the composer
+		//   /app/webmail?account=<name|email>&folder=<F>&uid=<n> → open an email
+		// The params are consumed once and stripped from the URL so reloads
+		// and the browser back button behave normally afterwards.
+		applyUrlIntent() {
+			let params;
+			try {
+				params = new URLSearchParams(window.location.search);
+			} catch (e) {
+				return;
+			}
+			if (params.get("compose")) {
+				this.compose();
+				this.cleanIntentUrl();
+				return;
+			}
+			const uid = parseInt(params.get("uid"), 10);
+			if (!uid) return;
+			const account = params.get("account");
+			if (account) {
+				const acc = this.accounts.find(
+					(a) => a.name === account || a.email === account
+				);
+				if (acc) this.currentAccount = acc.name;
+			}
+			this.currentFolder = params.get("folder") || "INBOX";
+			// open after the account/folder state propagated to children
+			this.$nextTick(() => this.onEmailSelect({ uid }));
+			this.cleanIntentUrl();
+		},
+
+		cleanIntentUrl() {
+			try {
+				window.history.replaceState({}, "", window.location.pathname);
+			} catch (e) {
+				/* sandboxed iframe or very old browser — harmless */
 			}
 		},
 
