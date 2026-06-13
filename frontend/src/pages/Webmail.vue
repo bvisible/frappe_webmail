@@ -2187,13 +2187,18 @@ body:has(.webmail-app) .page-head {
 	display: none !important;
 }
 
-/* Warm Neoffice gradient on the webmail shell — LIGHT MODE ONLY (the
-   dark theme keeps its sunken background; the beige gradient would glare).
-   Outranks the scoped .webmail-app[data-v]{background:var(--wm-bg-sunken)}. */
+/* Warm Neoffice gradient on the webmail shell — same warm card as the form
+   hero, with its dark variant (was light-only before). Outranks the scoped
+   .webmail-app[data-v]{background:var(--wm-bg-sunken)}. */
 html:not([data-theme="dark"]) .webmail-app {
 	background:
 		radial-gradient(ellipse 420px 180px at 85% 0%, rgba(214, 138, 89, 0.10), transparent 70%),
 		linear-gradient(135deg, #faf3ea 0%, #fffdf8 60%);
+}
+html[data-theme="dark"] .webmail-app {
+	background:
+		radial-gradient(ellipse 420px 180px at 85% 0%, rgba(214, 138, 89, 0.08), transparent 70%),
+		linear-gradient(135deg, #26211c 0%, #1c2127 60%);
 }
 
 /* The Neoffice theme already maps Forum onto every h1-h6. We force the
