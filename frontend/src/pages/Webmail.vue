@@ -225,7 +225,9 @@
 					<div class="storage-top" v-if="quota">
 						<span>{{ quotaLabel }}</span>
 					</div>
-					<div class="storage-bar" v-if="quota"><span :style="{ width: quotaPercent + '%' }"></span></div>
+					<div class="storage-bar" v-if="quota">
+						<span :style="{ width: quotaPercent + '%' }"></span>
+					</div>
 					<div class="storage-email" v-if="currentAccountEmail">
 						{{ currentAccountEmail }}
 					</div>
@@ -468,8 +470,12 @@ export default {
 			if (!this.quota) return "";
 			// small mailboxes: show MB usage instead of a misleading "0.0 GB"
 			const fmt = (kb) =>
-				kb < 1024 * 1024 ? `${Math.max(1, Math.round(kb / 1024))} MB` : `${(kb / 1024 / 1024).toFixed(1)} GB`;
-			return `${fmt(this.quota.usage_kb)} / ${(this.quota.limit_kb / 1024 / 1024).toFixed(0)} GB`;
+				kb < 1024 * 1024
+					? `${Math.max(1, Math.round(kb / 1024))} MB`
+					: `${(kb / 1024 / 1024).toFixed(1)} GB`;
+			return `${fmt(this.quota.usage_kb)} / ${(this.quota.limit_kb / 1024 / 1024).toFixed(
+				0
+			)} GB`;
 		},
 		quotaPercent() {
 			if (!this.quota || !this.quota.limit_kb) return 0;
@@ -793,9 +799,7 @@ export default {
 			if (!uid) return;
 			const account = params.get("account");
 			if (account) {
-				const acc = this.accounts.find(
-					(a) => a.name === account || a.email === account
-				);
+				const acc = this.accounts.find((a) => a.name === account || a.email === account);
 				if (acc) this.currentAccount = acc.name;
 			}
 			this.currentFolder = params.get("folder") || "INBOX";
@@ -2096,13 +2100,13 @@ export default {
 
 	/* === Brand / semantic accents — these stay the same across themes.
 	   Only their *-soft variants get overridden under [data-theme="dark"]. */
-	--wm-accent: #5145e8;
-	--wm-accent-hover: #4338d4;
-	--wm-accent-soft: #eeebfe;
-	--wm-accent-tint: #f5f2ff;
-	--wm-nora: #5145e8;
-	--wm-nora-2: #8b7fff;
-	--wm-nora-soft: #eeebfe;
+	--wm-accent: #d68a59;
+	--wm-accent-hover: #c2723f;
+	--wm-accent-soft: #faefe6;
+	--wm-accent-tint: #fdf6f0;
+	--wm-nora: #d68a59;
+	--wm-nora-2: #dda479;
+	--wm-nora-soft: #faefe6;
 	--wm-sage: #047857;
 	--wm-sage-soft: #d1fae5;
 	--wm-amber: #b45309;
@@ -2118,9 +2122,9 @@ export default {
    We swap them for translucent versions of the brand colours so each
    accent keeps its meaning while staying legible against #171717. */
 [data-theme="dark"] .webmail-app {
-	--wm-accent-soft: rgba(81, 69, 232, 0.22);
-	--wm-accent-tint: rgba(81, 69, 232, 0.1);
-	--wm-nora-soft: rgba(139, 127, 255, 0.2);
+	--wm-accent-soft: rgba(214, 138, 89, 0.22);
+	--wm-accent-tint: rgba(214, 138, 89, 0.1);
+	--wm-nora-soft: rgba(214, 138, 89, 0.2);
 	--wm-sage-soft: rgba(52, 211, 153, 0.18);
 	--wm-amber-soft: rgba(245, 158, 11, 0.2);
 	--wm-rose-soft: rgba(236, 72, 153, 0.18);
@@ -2191,13 +2195,19 @@ body:has(.webmail-app) .page-head {
    hero, with its dark variant (was light-only before). Outranks the scoped
    .webmail-app[data-v]{background:var(--wm-bg-sunken)}. */
 html:not([data-theme="dark"]) .webmail-app {
-	background:
-		radial-gradient(ellipse 420px 180px at 85% 0%, rgba(214, 138, 89, 0.10), transparent 70%),
+	background: radial-gradient(
+			ellipse 420px 180px at 85% 0%,
+			rgba(214, 138, 89, 0.1),
+			transparent 70%
+		),
 		linear-gradient(135deg, #faf3ea 0%, #fffdf8 60%);
 }
 html[data-theme="dark"] .webmail-app {
-	background:
-		radial-gradient(ellipse 420px 180px at 85% 0%, rgba(214, 138, 89, 0.08), transparent 70%),
+	background: radial-gradient(
+			ellipse 420px 180px at 85% 0%,
+			rgba(214, 138, 89, 0.08),
+			transparent 70%
+		),
 		linear-gradient(135deg, #26211c 0%, #1c2127 60%);
 }
 
@@ -2568,7 +2578,7 @@ html[data-theme="dark"] .webmail-app {
 }
 
 .cmd-result-avatar.c1 {
-	background: linear-gradient(135deg, #5145e8, #8b7fff);
+	background: linear-gradient(135deg, var(--wm-accent), var(--wm-nora-2));
 }
 .cmd-result-avatar.c2 {
 	background: linear-gradient(135deg, #b45309, #f59e0b);
@@ -2698,7 +2708,7 @@ html[data-theme="dark"] .webmail-app {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	box-shadow: 0 1px 2px rgba(81, 69, 232, 0.3);
+	box-shadow: 0 1px 2px rgba(214, 138, 89, 0.3);
 	cursor: pointer;
 	transition: background 0.15s;
 	font-family: inherit;

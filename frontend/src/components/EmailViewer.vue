@@ -1084,7 +1084,7 @@ export default {
 }
 
 .reply-wrap:focus-within {
-	border-color: var(--wm-accent, #5145e8);
+	border-color: var(--wm-accent, var(--wm-accent));
 	box-shadow: 0 0 0 3px var(--wm-accent-soft, #eeebfe);
 }
 
@@ -1143,7 +1143,7 @@ export default {
 	padding: 0 14px;
 	border: 0;
 	border-radius: 7px;
-	background: var(--wm-accent, #5145e8);
+	background: var(--wm-accent, var(--wm-accent));
 	color: white;
 	font-size: 12.5px;
 	font-weight: 500;
@@ -1151,7 +1151,7 @@ export default {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	box-shadow: 0 1px 2px rgba(81, 69, 232, 0.3);
+	box-shadow: 0 1px 2px rgba(214, 138, 89, 0.3);
 	font-family: inherit;
 	transition: background 0.15s;
 }

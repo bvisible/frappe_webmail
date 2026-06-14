@@ -1034,7 +1034,7 @@ export default {
 /* In dark mode the active chip would be a bright slab on dark — switch
    it to the brand accent so it reads as "selected" without dazzling. */
 :global([data-theme="dark"]) .chip-filter.on {
-	background: var(--wm-accent, #5145e8);
+	background: var(--wm-accent, var(--wm-accent));
 	color: #ffffff;
 }
 
@@ -1075,7 +1075,7 @@ export default {
 }
 
 .email-avatar.c1 {
-	background: linear-gradient(135deg, #5145e8, #8b7fff);
+	background: linear-gradient(135deg, var(--wm-accent), var(--wm-nora-2));
 }
 .email-avatar.c2 {
 	background: linear-gradient(135deg, #b45309, #f59e0b);
@@ -1174,7 +1174,7 @@ export default {
 	height: 14px;
 	margin: 0 !important;
 	cursor: pointer;
-	accent-color: var(--wm-accent, #5145e8);
+	accent-color: var(--wm-accent, var(--wm-accent));
 }
 
 @keyframes rotate {
@@ -1235,8 +1235,8 @@ export default {
 .email-row.selected {
 	background: linear-gradient(
 		90deg,
-		rgba(81, 69, 232, 0.18),
-		rgba(81, 69, 232, 0.06) 50%,
+		rgba(214, 138, 89, 0.18),
+		rgba(214, 138, 89, 0.06) 50%,
 		transparent 90%
 	);
 	box-shadow: inset 4px 0 0 0 var(--primary-color, #2490ef);
@@ -1245,8 +1245,8 @@ export default {
 .email-row.selected.active {
 	background: linear-gradient(
 		90deg,
-		rgba(81, 69, 232, 0.28),
-		rgba(81, 69, 232, 0.1) 50%,
+		rgba(214, 138, 89, 0.28),
+		rgba(214, 138, 89, 0.1) 50%,
 		transparent 90%
 	);
 }

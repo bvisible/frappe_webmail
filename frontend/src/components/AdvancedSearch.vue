@@ -462,7 +462,7 @@ export default {
 
 .field:focus {
 	outline: none;
-	border-color: var(--wm-accent, #5145e8);
+	border-color: var(--wm-accent, var(--wm-accent));
 }
 
 .field::placeholder {
@@ -504,7 +504,7 @@ export default {
 	height: 14px;
 	margin: 0 !important;
 	cursor: pointer;
-	accent-color: var(--wm-accent, #5145e8);
+	accent-color: var(--wm-accent, var(--wm-accent));
 	flex-shrink: 0;
 }
 
@@ -540,10 +540,10 @@ export default {
 }
 
 .btn-primary {
-	background: var(--wm-accent, #5145e8);
+	background: var(--wm-accent, var(--wm-accent));
 	color: white;
 	border: 0;
-	box-shadow: 0 1px 2px rgba(81, 69, 232, 0.3);
+	box-shadow: 0 1px 2px rgba(214, 138, 89, 0.3);
 }
 
 .btn-primary:hover {
@@ -598,7 +598,7 @@ export default {
 	width: 22px;
 	height: 22px;
 	border: 2px solid var(--wm-line, #e5e5e5);
-	border-top-color: var(--wm-accent, #5145e8);
+	border-top-color: var(--wm-accent, var(--wm-accent));
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 }
@@ -649,7 +649,7 @@ export default {
 }
 
 .result-avatar.c1 {
-	background: linear-gradient(135deg, #5145e8, #8b7fff);
+	background: linear-gradient(135deg, var(--wm-accent), var(--wm-nora-2));
 }
 .result-avatar.c2 {
 	background: linear-gradient(135deg, #b45309, #f59e0b);

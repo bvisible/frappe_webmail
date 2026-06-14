@@ -1415,7 +1415,7 @@ export default {
 
 .selection-badge.drive {
 	background: var(--purple-100, #f3e8ff);
-	color: var(--purple-700, #7c3aed);
+	color: var(--purple-700, var(--wm-accent));
 }
 
 .selection-badge.document {
