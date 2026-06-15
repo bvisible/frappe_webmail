@@ -10,12 +10,12 @@ msgstr ""
 "POT-Creation-Date: 2026-01-25 15:21+0034\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
-"Language: fr\n"
 "Language-Team: hello@neoservice.ai\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.13.1\n"
 
 #: frontend/src/components/AdvancedSearch.vue:108
@@ -146,8 +146,12 @@ msgid "Are you sure you want to delete this signature?"
 msgstr "Voulez-vous vraiment supprimer cette signature ?"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:227
-msgid "Are you sure you want to disconnect OAuth? You will need to reconnect to use this account."
-msgstr "Êtes-vous sûr de vouloir déconnecter OAuth ? Vous devrez vous reconnecter pour utiliser ce compte."
+msgid ""
+"Are you sure you want to disconnect OAuth? You will need to reconnect to use"
+" this account."
+msgstr ""
+"Êtes-vous sûr de vouloir déconnecter OAuth ? Vous devrez vous reconnecter "
+"pour utiliser ce compte."
 
 #: frontend/src/components/FilterManager.vue:106
 msgid "At least one condition (OR)"
@@ -632,7 +636,8 @@ msgstr "Mot de passe IMAP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:62
 msgid "IMAP Password is required for Password authentication"
-msgstr "Le mot de passe IMAP est requis pour l'authentification par mot de passe"
+msgstr ""
+"Le mot de passe IMAP est requis pour l'authentification par mot de passe"
 
 #. Label of a Int field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -864,8 +869,11 @@ msgid "OAuth credentials not configured for {0}"
 msgstr "Identifiants OAuth non configurés pour {0}"
 
 #: frappe_webmail/webmail_api.py:97
-msgid "OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
-msgstr "Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à site_config.json"
+msgid ""
+"OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
+msgstr ""
+"Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à "
+"site_config.json"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:238
 msgid "OAuth disconnected successfully."
@@ -1008,7 +1016,8 @@ msgstr "Mot de passe SMTP"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:64
 msgid "SMTP Password is required for Password authentication"
-msgstr "Le mot de passe SMTP est requis pour l'authentification par mot de passe"
+msgstr ""
+"Le mot de passe SMTP est requis pour l'authentification par mot de passe"
 
 #. Label of a Int field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -1356,7 +1365,8 @@ msgstr "Le paquet imapclient n'est pas installé"
 
 #: frappe_webmail/utils/imap_client.py:37
 msgid "imapclient package is not installed. Run: pip install imapclient"
-msgstr "Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
+msgstr ""
+"Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
 
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
@@ -1391,35 +1401,56 @@ msgstr "{0} résultat(s) sur {1}"
 
 #: frappe_webmail/webmail_api.py:436
 msgid "{0}: Authentication failed. Check your email address and password."
-msgstr "{0} : Échec d'authentification. Vérifiez votre adresse email et mot de passe."
+msgstr ""
+"{0} : Échec d'authentification. Vérifiez votre adresse email et mot de "
+"passe."
 
 #: frappe_webmail/webmail_api.py:431
 msgid "{0}: Cannot resolve server address '{1}'. Check the server hostname."
-msgstr "{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom d'hôte."
+msgstr ""
+"{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom "
+"d'hôte."
 
 #: frappe_webmail/webmail_api.py:454
-msgid "{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled."
-msgstr "{0} : Connexion fermée de manière inattendue. Vérifiez les paramètres SSL."
+msgid ""
+"{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL "
+"enabled."
+msgstr ""
+"{0} : Connexion fermée de manière inattendue. Vérifiez les paramètres SSL."
 
 #: frappe_webmail/webmail_api.py:416
-msgid "{0}: Connection refused to {1}:{2}. Check that the server address and port are correct."
-msgstr "{0} : Connexion refusée à {1}:{2}. Vérifiez l'adresse du serveur et le port."
+msgid ""
+"{0}: Connection refused to {1}:{2}. Check that the server address and port "
+"are correct."
+msgstr ""
+"{0} : Connexion refusée à {1}:{2}. Vérifiez l'adresse du serveur et le port."
 
 #: frappe_webmail/webmail_api.py:421
-msgid "{0}: Connection timeout. The server is not responding. Check your network and server settings."
-msgstr "{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre réseau."
+msgid ""
+"{0}: Connection timeout. The server is not responding. Check your network "
+"and server settings."
+msgstr ""
+"{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre "
+"réseau."
 
 #: frappe_webmail/webmail_api.py:451
 msgid "{0}: Connection was reset by the server. Check SSL/TLS settings."
-msgstr "{0} : La connexion a été réinitialisée par le serveur. Vérifiez les paramètres SSL/TLS."
+msgstr ""
+"{0} : La connexion a été réinitialisée par le serveur. Vérifiez les "
+"paramètres SSL/TLS."
 
 #: frappe_webmail/webmail_api.py:445
 msgid "{0}: SSL/TLS error. This server may require SSL. Try enabling SSL."
-msgstr "{0} : Erreur SSL/TLS. Ce serveur peut nécessiter SSL. Essayez d'activer SSL."
+msgstr ""
+"{0} : Erreur SSL/TLS. Ce serveur peut nécessiter SSL. Essayez d'activer SSL."
 
 #: frappe_webmail/webmail_api.py:441
-msgid "{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration."
-msgstr "{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la configuration SSL du serveur."
+msgid ""
+"{0}: SSL/TLS error. Try disabling SSL or check the server's SSL "
+"configuration."
+msgstr ""
+"{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la configuration"
+" SSL du serveur."
 
 #: frappe_webmail/webmail_api.py:448
 msgid "{0}: STARTTLS error. Try toggling the STARTTLS option."
@@ -1528,3 +1559,366 @@ msgstr "Tapez des mots pour chercher dans le sujet, le corps et l'expéditeur."
 msgid "Tips"
 msgstr "Astuces"
 
+msgid "Add star"
+msgstr "Ajouter une étoile"
+
+msgid "Remove star"
+msgstr "Retirer l'étoile"
+
+msgid "Toggle star"
+msgstr "Étoile (activer/désactiver)"
+
+msgid "Attach files"
+msgstr "Joindre des fichiers"
+
+msgid "Attach from..."
+msgstr "Joindre depuis…"
+
+msgid "Auto-refresh on"
+msgstr "Actualisation auto activée"
+
+msgid "Changes applied"
+msgstr "Modifications appliquées"
+
+msgid "Chat"
+msgstr "Chat"
+
+msgid "Chat with Nora"
+msgstr "Discuter avec Nora"
+
+msgid "Content inserted"
+msgstr "Contenu inséré"
+
+msgid "Copy to"
+msgstr "Copier vers"
+
+msgid "Create folder"
+msgstr "Créer un dossier"
+
+msgid "Create subfolder"
+msgstr "Créer un sous-dossier"
+
+msgid "Delete folder"
+msgstr "Supprimer le dossier"
+
+msgid "Delete permanently"
+msgstr "Supprimer définitivement"
+
+msgid "Deselect all"
+msgstr "Tout désélectionner"
+
+msgid "Document"
+msgstr "Document"
+
+msgid "Drop files here or click to browse"
+msgstr "Déposez des fichiers ici ou cliquez pour parcourir"
+
+msgid "Empty folder"
+msgstr "Vider le dossier"
+
+msgid "Enter new name"
+msgstr "Saisir un nouveau nom"
+
+msgid "Improve"
+msgstr "Améliorer"
+
+msgid "Improving..."
+msgstr "Amélioration en cours…"
+
+msgid "Insert in editor"
+msgstr "Insérer dans l'éditeur"
+
+msgid "Insert into email editor"
+msgstr "Insérer dans l'éditeur d'e-mail"
+
+msgid "Mark as spam"
+msgstr "Marquer comme spam"
+
+msgid "Maximum 25 MB per file"
+msgstr "Maximum 25 Mo par fichier"
+
+msgid "Move to"
+msgstr "Déplacer vers"
+
+msgid "Move to Trash"
+msgstr "Déplacer vers la corbeille"
+
+msgid "New name"
+msgstr "Nouveau nom"
+
+msgid "No changes needed"
+msgstr "Aucune modification nécessaire"
+
+msgid "No file selected"
+msgstr "Aucun fichier sélectionné"
+
+msgid "No files found"
+msgstr "Aucun fichier trouvé"
+
+msgid "No folders available"
+msgstr "Aucun dossier disponible"
+
+msgid "Nora Suggestion"
+msgstr "Suggestion de Nora"
+
+msgid "Original"
+msgstr "Original"
+
+msgid "PDF"
+msgstr "PDF"
+
+msgid "Proofread"
+msgstr "Corriger"
+
+msgid "Proofreading..."
+msgstr "Correction en cours…"
+
+msgid "Quick Reply"
+msgstr "Réponse rapide"
+
+msgid "Quick Reply with Nora"
+msgstr "Réponse rapide avec Nora"
+
+msgid "Reconnect"
+msgstr "Reconnecter"
+
+msgid "Redirecting..."
+msgstr "Redirection en cours…"
+
+msgid "Rename folder"
+msgstr "Renommer le dossier"
+
+msgid "Renaming..."
+msgstr "Renommage en cours…"
+
+msgid "Root level"
+msgstr "Racine"
+
+msgid "Save and retry"
+msgstr "Enregistrer et réessayer"
+
+msgid "Search Drive files..."
+msgstr "Rechercher dans Drive…"
+
+msgid "Search files..."
+msgstr "Rechercher des fichiers…"
+
+msgid "Select a document type to search"
+msgstr "Sélectionner un type de document à rechercher"
+
+msgid "Select a type..."
+msgstr "Sélectionner un type…"
+
+msgid "Selected files"
+msgstr "Fichiers sélectionnés"
+
+msgid "emails selected"
+msgstr "e-mails sélectionnés"
+
+msgid "shared"
+msgstr "partagé"
+
+msgid "your email account"
+msgstr "votre compte e-mail"
+
+msgid ""
+"Are you sure you want to delete the folder '{0}'? This action cannot be "
+"undone."
+msgstr ""
+"Êtes-vous sûr(e) de vouloir supprimer le dossier « {0} » ? Cette action est "
+"irréversible."
+
+msgid ""
+"Are you sure you want to permanently delete all emails in this folder? This "
+"action cannot be undone."
+msgstr ""
+"Êtes-vous sûr(e) de vouloir supprimer définitivement tous les e-mails de ce "
+"dossier ? Cette action est irréversible."
+
+msgid ""
+"Are you sure you want to permanently delete this email? This action cannot "
+"be undone."
+msgstr ""
+"Êtes-vous sûr(e) de vouloir supprimer définitivement cet e-mail ? Cette "
+"action est irréversible."
+
+msgid "Delete filter \"{0}\"?"
+msgstr "Supprimer le filtre « {0} » ?"
+
+msgid "Describe the email you want to write..."
+msgstr "Décrivez l'e-mail que vous souhaitez rédiger…"
+
+msgid "Describe the email..."
+msgstr "Décrivez l'e-mail…"
+
+msgid "Email moved to {0}"
+msgstr "E-mail déplacé vers {0}"
+
+msgid "Enter the current password for this account to reconnect."
+msgstr "Saisissez le mot de passe actuel de ce compte pour vous reconnecter."
+
+msgid "Failed to attach file: {0}"
+msgstr "Échec de l'ajout de la pièce jointe : {0}"
+
+msgid "Fill in any field and hit Search to find emails."
+msgstr ""
+"Renseignez au moins un champ et cliquez sur Rechercher pour trouver des "
+"e-mails."
+
+msgid "Folder name"
+msgstr "Nom du dossier"
+
+msgid "Loading Drive files..."
+msgstr "Chargement des fichiers Drive…"
+
+msgid "Loading files..."
+msgstr "Chargement des fichiers…"
+
+msgid "Nora encountered an error. Please try again."
+msgstr "Nora a rencontré une erreur. Veuillez réessayer."
+
+msgid "Password for {0}"
+msgstr "Mot de passe pour {0}"
+
+msgid "Password updated"
+msgstr "Mot de passe mis à jour"
+
+msgid "Permanently delete {0} emails? This action cannot be undone."
+msgstr "Supprimer définitivement {0} e-mails ? Cette action est irréversible."
+
+msgid "Reconnect the account to refresh its authorization."
+msgstr "Reconnectez le compte pour actualiser son autorisation."
+
+msgid "Reconnect your account"
+msgstr "Reconnectez votre compte"
+
+msgid "Shared by {0}"
+msgstr "Partagé par {0}"
+
+msgid "Translating to {0}..."
+msgstr "Traduction vers {0} en cours…"
+
+msgid "Try fewer filters or a different folder."
+msgstr "Essayez avec moins de filtres ou dans un autre dossier."
+
+msgid "Unable to determine which account to update."
+msgstr "Impossible de déterminer quel compte mettre à jour."
+
+msgid "{0} emails copied"
+msgstr "{0} e-mails copiés"
+
+msgid "{0} emails deleted"
+msgstr "{0} e-mails supprimés"
+
+msgid "{0} emails marked as read"
+msgstr "{0} e-mails marqués comme lus"
+
+msgid "{0} emails moved"
+msgstr "{0} e-mails déplacés"
+
+msgid "{0} emails updated"
+msgstr "{0} e-mails mis à jour"
+
+msgid "{0} exceeds 25 MB limit"
+msgstr "{0} dépasse la limite de 25 Mo"
+
+msgid "{0} files selected"
+msgstr "{0} fichiers sélectionnés"
+
+msgid "Could not connect to the email server. Check the account settings."
+msgstr ""
+"Impossible de se connecter au serveur de messagerie. Vérifiez les paramètres"
+" du compte."
+
+msgid "Email Connection Failed"
+msgstr "Échec de la connexion e-mail"
+
+msgid "Email copied"
+msgstr "E-mail copié"
+
+msgid "Email deleted permanently"
+msgstr "E-mail supprimé définitivement"
+
+msgid "Email moved"
+msgstr "E-mail déplacé"
+
+msgid "Error copying email"
+msgstr "Erreur lors de la copie de l'e-mail"
+
+msgid "Error copying emails"
+msgstr "Erreur lors de la copie des e-mails"
+
+msgid "Error creating folder"
+msgstr "Erreur lors de la création du dossier"
+
+msgid "Error deleting email"
+msgstr "Erreur lors de la suppression de l'e-mail"
+
+msgid "Error deleting emails"
+msgstr "Erreur lors de la suppression des e-mails"
+
+msgid "Error deleting folder"
+msgstr "Erreur lors de la suppression du dossier"
+
+msgid "Error moving email"
+msgstr "Erreur lors du déplacement de l'e-mail"
+
+msgid "Error moving emails"
+msgstr "Erreur lors du déplacement des e-mails"
+
+msgid "Error renaming folder"
+msgstr "Erreur lors du renommage du dossier"
+
+msgid "Error updating emails"
+msgstr "Erreur lors de la mise à jour des e-mails"
+
+msgid "Failed to generate reply"
+msgstr "Échec de la génération de la réponse"
+
+msgid "Failed to load files"
+msgstr "Échec du chargement des fichiers"
+
+msgid "Folder created"
+msgstr "Dossier créé"
+
+msgid "Folder deleted"
+msgstr "Dossier supprimé"
+
+msgid "Folder renamed"
+msgstr "Dossier renommé"
+
+msgid "Frappe Drive is not installed"
+msgstr "Frappe Drive n'est pas installé"
+
+msgid "The email address or password is incorrect."
+msgstr "L'adresse e-mail ou le mot de passe est incorrect."
+
+msgid "Factures à traiter"
+msgstr "Factures à traiter"
+
+msgid "Liés au CRM"
+msgstr "Liés au CRM"
+
+msgid "Équipe"
+msgstr "Équipe"
+
+msgid "Résumés"
+msgstr "Résumés"
+
+msgid "Clients CRM"
+msgstr "Clients CRM"
+
+msgid "Drive"
+msgstr "Drive"
+
+msgid "Étiquettes"
+msgstr "Étiquettes"
+
+msgid "Dossiers"
+msgstr "Dossiers"
+
+msgid "Prioritaires"
+msgstr "Prioritaires"
+
+msgid "Bientôt — Nora en refactoring"
+msgstr "Bientôt — Nora en refactoring"
