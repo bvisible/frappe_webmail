@@ -2141,7 +2141,7 @@ export default {
    block). Without an extra qualifier these rules would leak to every Desk
    page (Sales Invoice list, Customer form, etc.) and break their layout —
    the `.page-head{display:none}` leak hid the [+ New] / refresh / ⋮ toolbar
-   from every list view. We gate each rule with `body:has(.webmail-app)` so
+   from every list view. We gate each rule with `.page-container:has(.webmail-app)` so
    it only activates while the webmail component is actually mounted. The
    `#webmail-app` and `.webmail-app …` selectors below are inherently scoped
    to the wrapper and don't need the guard. */
@@ -2155,20 +2155,20 @@ export default {
 	margin: 0 !important;
 }
 
-body:has(.webmail-app) .layout-main-section-wrapper {
+.page-container:has(.webmail-app) .layout-main-section-wrapper {
 	padding: 0 !important;
 	border: 0 !important;
 }
 
-body:has(.webmail-app) .row.layout-main {
+.page-container:has(.webmail-app) .row.layout-main {
 	margin: 0 !important;
 }
 
-body:has(.webmail-app) .layout-main-section,
-body:has(.webmail-app) .page-content,
-body:has(.webmail-app) .page-wrapper,
-body:has(.webmail-app) .row.layout-main,
-body:has(.webmail-app) .col-md-12.layout-main-section-wrapper {
+.page-container:has(.webmail-app) .layout-main-section,
+.page-container:has(.webmail-app) .page-content,
+.page-container:has(.webmail-app) .page-wrapper,
+.page-container:has(.webmail-app) .row.layout-main,
+.page-container:has(.webmail-app) .col-md-12.layout-main-section-wrapper {
 	border: 0 !important;
 	background: transparent !important;
 	height: 100% !important;
@@ -2176,7 +2176,7 @@ body:has(.webmail-app) .col-md-12.layout-main-section-wrapper {
 
 /* Bootstrap container constrains the page-body to a max-width and adds a
    15px padding. We blow it open so the webmail spans the full viewport. */
-body:has(.webmail-app) .container.page-body {
+.page-container:has(.webmail-app) .container.page-body {
 	max-width: none !important;
 	width: 100% !important;
 	padding: 0 !important;
@@ -2187,7 +2187,7 @@ body:has(.webmail-app) .container.page-body {
 
 /* Frappe Desk normally has its own top navbar. The webmail topbar starts
    right under it — no need for the page header that sits in between. */
-body:has(.webmail-app) .page-head {
+.page-container:has(.webmail-app) .page-head {
 	display: none !important;
 }
 
@@ -2716,6 +2716,17 @@ html[data-theme="dark"] .webmail-app {
 
 .btn-compose:hover {
 	background: var(--color-primary-hover, #232020);
+}
+
+/* DS: on dark, the primary button flips to a bright paper button (ink text) */
+[data-theme="dark"] .btn-compose {
+	background: var(--color-primary, #FFFDF8);
+	color: var(--color-primary-fg, #141414);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .btn-compose:hover {
+	background: var(--color-primary-hover, #ECE7DE);
 }
 
 .avatar-me {
