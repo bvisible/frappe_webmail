@@ -2699,8 +2699,8 @@ html[data-theme="dark"] .webmail-app {
 .btn-compose {
 	height: 32px;
 	padding: 0 14px;
-	background: var(--wm-accent);
-	color: white;
+	background: var(--color-primary, #141414);
+	color: var(--color-primary-fg, #FFFDF8);
 	border: 0;
 	border-radius: 8px;
 	font-size: 12.5px;
@@ -2708,14 +2708,14 @@ html[data-theme="dark"] .webmail-app {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	box-shadow: 0 1px 2px rgba(214, 138, 89, 0.3);
+	box-shadow: 0 1px 2px rgba(20, 18, 16, 0.22);
 	cursor: pointer;
 	transition: background 0.15s;
 	font-family: inherit;
 }
 
 .btn-compose:hover {
-	background: var(--wm-accent-hover);
+	background: var(--color-primary-hover, #232020);
 }
 
 .avatar-me {
