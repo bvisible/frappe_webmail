@@ -186,7 +186,7 @@ class TestGetAccountHelper(TestWebmailAPIBase):
 class TestGetFoldersWithMock(TestWebmailAPIBase):
 	"""Tests for get_folders API with mocked IMAP"""
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_returns_folder_list(self, mock_imap_class):
 		"""Test that get_folders returns folder list"""
 		from frappe_webmail.api import get_folders
@@ -211,7 +211,7 @@ class TestGetFoldersWithMock(TestWebmailAPIBase):
 		inbox = next(f for f in folders if f["name"] == "INBOX")
 		self.assertTrue(inbox["selectable"])
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_handles_noselect_folders(self, mock_imap_class):
 		"""Test that non-selectable folders are marked correctly"""
 		from frappe_webmail.api import get_folders
@@ -231,7 +231,7 @@ class TestGetFoldersWithMock(TestWebmailAPIBase):
 class TestGetEmailsWithMock(TestWebmailAPIBase):
 	"""Tests for get_emails API with mocked IMAP"""
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_returns_email_list(self, mock_imap_class):
 		"""Test that get_emails returns email list with pagination info"""
 		from frappe_webmail.api import get_emails
@@ -270,7 +270,7 @@ class TestGetEmailsWithMock(TestWebmailAPIBase):
 		self.assertIn("has_more", result)
 		self.assertEqual(result["total"], 3)
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_respects_limit(self, mock_imap_class):
 		"""Test that limit parameter is respected"""
 		from frappe_webmail.api import get_emails
@@ -293,7 +293,7 @@ class TestGetEmailsWithMock(TestWebmailAPIBase):
 		from frappe_webmail.api import get_emails
 
 		# This would need a mock to fully test, but we can check the logic
-		with patch("frappe_webmail.api.IMAPClient") as mock_imap_class:
+		with patch("frappe_webmail.webmail_api.IMAPClient") as mock_imap_class:
 			mock_client = MagicMock()
 			mock_client.search.return_value = []
 			mock_client.fetch.return_value = {}
@@ -376,7 +376,7 @@ class TestSendEmailWithMock(TestWebmailAPIBase):
 class TestSetFlagsWithMock(TestWebmailAPIBase):
 	"""Tests for set_flags API"""
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_adds_flags(self, mock_imap_class):
 		"""Test adding flags to messages"""
 		from frappe_webmail.api import set_flags
@@ -395,7 +395,7 @@ class TestSetFlagsWithMock(TestWebmailAPIBase):
 		self.assertTrue(result["success"])
 		mock_client.add_flags.assert_called_once()
 
-	@patch("frappe_webmail.api.IMAPClient")
+	@patch("frappe_webmail.webmail_api.IMAPClient")
 	def test_removes_flags(self, mock_imap_class):
 		"""Test removing flags from messages"""
 		from frappe_webmail.api import set_flags

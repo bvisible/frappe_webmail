@@ -48,8 +48,29 @@ class EmailSignature(Document):
 		if existing_count == 0:
 			self.is_default = 1
 
+	def on_trash(self):
+		"""Clear this signature from any account that used it as default.
+
+		default_signature is a convenience Link on Webmail Account, not a hard
+		dependency. Frappe's default on-delete behaviour ("Restrict") otherwise
+		blocks deleting a signature any account points to. We null the link
+		(SET NULL semantics) so the signature can be removed and the account
+		survives with no default signature.
+		"""
+		linked_accounts = frappe.get_all(
+			"Webmail Account", filters={"default_signature": self.name}, pluck="name"
+		)
+		for account_name in linked_accounts:
+			frappe.db.set_value(
+				"Webmail Account", account_name, "default_signature", None, update_modified=False
+			)
+
 	def has_permission(self, permtype="read", doc=None):
 		"""Check if user has permission to access this signature"""
+		# Honour ignore_permissions like the base Document.has_permission does;
+		# this override otherwise shadows it and breaks programmatic writes.
+		if self.flags.ignore_permissions:
+			return True
 		if frappe.session.user == "Administrator":
 			return True
 		if self.user == frappe.session.user:

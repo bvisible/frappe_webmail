@@ -76,6 +76,13 @@ class EmailParser:
 		"th": ["colspan", "rowspan", "width", "valign", "align"],
 	}
 
+	# URI schemes kept in attributes such as <img src>. "data" is required so
+	# inline data: images survive (embedded bytes, not external/tracking
+	# resources) and so the external-image placeholder built by
+	# _block_external_images (a data:image/svg+xml URI) renders. Without it
+	# bleach's default allowlist (http/https/mailto) strips them.
+	SAFE_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto", "data", "cid"]
+
 	def __init__(self, raw_message):
 		"""
 		Initialize parser with raw email message.
@@ -218,7 +225,13 @@ class EmailParser:
 
 		# Sanitize with bleach if available
 		if bleach:
-			content = bleach.clean(content, tags=self.SAFE_TAGS, attributes=self.SAFE_ATTRIBUTES, strip=True)
+			content = bleach.clean(
+				content,
+				tags=self.SAFE_TAGS,
+				attributes=self.SAFE_ATTRIBUTES,
+				protocols=self.SAFE_PROTOCOLS,
+				strip=True,
+			)
 		else:
 			# Basic sanitization without bleach
 			content = self._basic_sanitize(content)

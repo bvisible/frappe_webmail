@@ -92,6 +92,12 @@ class WebmailAccount(Document):
 
 	def has_permission(self, permtype="read", doc=None):
 		"""Check if user has permission to access this account"""
+		# Honour ignore_permissions like the base Document.has_permission does.
+		# This override shadows the base method, so without this guard a
+		# programmatic write with ignore_permissions=True (e.g. creating an
+		# account on behalf of another user) wrongly raises PermissionError.
+		if self.flags.ignore_permissions:
+			return True
 		user = frappe.session.user
 
 		if user == "Administrator":
