@@ -85,7 +85,7 @@
 						<span>{{ m.label }}</span>
 						<span v-if="m.applied" class="ag-pill executed">{{ __("Applied") }}</span>
 					</div>
-					<div class="ag-block-body" v-html="sanitize(m.html)"></div>
+					<div class="ag-block-body" v-html="sanitize(m.preview || m.html)"></div>
 					<details v-if="m.original" class="ag-original">
 						<summary>{{ __("Original") }}</summary>
 						<div class="ag-block-body muted">{{ m.original }}</div>
@@ -979,6 +979,7 @@ export default {
 				this.pushDraft({
 					label,
 					html: joinQuote(html, composer.quote || ""),
+					preview: html,
 					original: data.original_text || "",
 				});
 				return true;
@@ -991,8 +992,16 @@ export default {
 		},
 
 		// Also called by the composer's own Nora bar (through the page): one place for results
-		pushDraft({ label, html, original }) {
-			this.push("draft", "", { label, html, original: original || "", applied: false });
+		// `html` is what goes back into the editor (rewritten part + untouched quote);
+		// `preview` is what the block shows — the rewritten part alone.
+		pushDraft({ label, html, original, preview }) {
+			this.push("draft", "", {
+				label,
+				html,
+				preview: preview || "",
+				original: original || "",
+				applied: false,
+			});
 		},
 
 		applyDraft(m) {

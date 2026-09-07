@@ -6,7 +6,7 @@
 				<button class="btn btn-icon" @click="$emit('close')" :title="__('Close')">
 					<X :size="18" />
 				</button>
-				<span class="composer-title">{{ __("New message") }}</span>
+				<span class="composer-title">{{ composerTitle }}</span>
 			</div>
 			<div class="header-right">
 				<button
@@ -273,6 +273,16 @@ export default {
 			noraLoading: false,
 			noraLoadingText: "",
 		};
+	},
+
+	computed: {
+		// The header names what is being written — a reply was labelled "New message"
+		composerTitle() {
+			if (this.replyTo) return __("Reply");
+			if (this.forwardEmail) return __("Forward");
+			if (this.editDraft) return __("Draft");
+			return __("New message");
+		},
 	},
 
 	mounted() {
