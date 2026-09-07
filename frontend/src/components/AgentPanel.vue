@@ -40,22 +40,31 @@
 						)
 					}}
 				</p>
-				<div class="ag-suggestions">
-					<button
-						v-for="s in suggestions"
-						:key="s.text"
-						class="ag-chip"
-						:disabled="s.needsEmail && !selectedEmail"
-						@click="send(s.text)"
-					>
-						{{ s.text }}
-					</button>
-				</div>
 			</div>
 
 			<div v-for="(m, i) in messages" :key="i" class="ag-msg" :class="m.role">
 				<div v-if="m.role === 'user'" class="ag-bubble">{{ m.content }}</div>
 				<div v-else-if="m.role === 'status'" class="ag-status">{{ m.content }}</div>
+				<!-- Text Nora rewrote for the draft being written: goes into the editor on a click -->
+				<div
+					v-else-if="m.role === 'draft'"
+					class="ag-draft"
+					:class="{ applied: m.applied }"
+				>
+					<div class="ag-draft-head">
+						<Wand2 :size="13" :stroke-width="1.7" />
+						<span>{{ m.label }}</span>
+						<span v-if="m.applied" class="ag-pill executed">{{ __("Applied") }}</span>
+					</div>
+					<div class="ag-draft-body" v-html="sanitize(m.html)"></div>
+					<div class="ag-card-actions" v-if="!m.applied">
+						<button class="ag-btn primary" @click="applyDraft(m)">
+							<Check :size="13" />
+							<span>{{ __("Replace in the editor") }}</span>
+						</button>
+						<button class="ag-btn" @click="dismissDraft(m)">{{ __("Ignore") }}</button>
+					</div>
+				</div>
 				<div v-else class="ag-bubble md" v-html="renderMarkdown(m.content)"></div>
 			</div>
 
@@ -151,6 +160,13 @@
 			</div>
 		</div>
 
+		<!-- One-click asks, chosen from what is on screen (draft, open email, mailbox) -->
+		<div class="ag-quick" v-if="!busy">
+			<button v-for="s in suggestions" :key="s.text" class="ag-chip" @click="send(s.text)">
+				{{ s.text }}
+			</button>
+		</div>
+
 		<div class="ag-input">
 			<textarea
 				ref="input"
@@ -186,7 +202,9 @@ import {
 	Pencil,
 	Ban,
 	Loader2,
+	Wand2,
 } from "lucide-vue-next";
+import { classifyIntent } from "../agentIntents";
 
 // Mailbox-scoped Nora chat. Same engine as the desk Quick Chat
 // (nora.api.chat.*): the conversation is a Hermes thread, replies arrive
@@ -205,6 +223,11 @@ const DEFERRED = [
 	/je reviens|d[èe]s que possible/i,
 	/votre p[oô]le|je confie|je transmets|r[ée]ponse dans un instant|j'arrive/i,
 	/sous-agent.*lanc[éè]/i,
+	// A pole that timed out and retries ("⏱ Support — la demande a pris trop de temps, je
+	// réessaie.") is a status, not an answer — keep waiting.
+	/a pris trop de temps|je r[ée]essaie|retrying|nouvel essai/i,
+	// Hermes gateway notices when a message arrives during a run
+	/Redirected current run|First-time tip|\/busy queue/i,
 	/I'm passing this to your|I'll be right back with you/i,
 	/Ich leite Ihre Anfrage|ich melde mich gleich/i,
 ];
@@ -222,6 +245,7 @@ export default {
 		Pencil,
 		Ban,
 		Loader2,
+		Wand2,
 	},
 
 	props: {
@@ -230,9 +254,12 @@ export default {
 		folder: { type: String, default: "INBOX" },
 		// The email open in the reader (uid, subject, from_email, from_name, date)
 		selectedEmail: { type: Object, default: null },
+		// The composer, when open: `readComposer()` returns {mode, to, subject, html, text}
+		composerOpen: { type: Boolean, default: false },
+		readComposer: { type: Function, default: null },
 	},
 
-	emits: ["close"],
+	emits: ["close", "apply-draft", "reply-with-draft", "compose-with-draft"],
 
 	data() {
 		return {
@@ -249,10 +276,25 @@ export default {
 
 	computed: {
 		suggestions() {
+			// Imperative forms on purpose: the same text goes through classifyIntent
+			if (this.composerOpen) {
+				return [
+					{ text: __("Proofread my draft") },
+					{ text: __("Improve the wording") },
+					{ text: __("Translate my draft into English") },
+				];
+			}
+			if (this.selectedEmail) {
+				return [
+					{ text: __("Summarise this email") },
+					{ text: __("Write a reply") },
+					{ text: __("What should I reply?") },
+				];
+			}
 			return [
-				{ text: __("Summarise this email"), needsEmail: true },
-				{ text: __("What should I reply?"), needsEmail: true },
-				{ text: __("Any invoices to process in this mailbox?"), needsEmail: false },
+				{ text: __("Any invoices to process in this mailbox?") },
+				{ text: __("Which automations are active?") },
+				{ text: __("Check this mailbox every hour for invoices") },
 			];
 		},
 	},
@@ -321,9 +363,9 @@ export default {
 			}
 			this.busy = true;
 			this.waitForReply(
-				pending.baseline || 0,
+				Array.isArray(pending.baseline) ? pending.baseline : [],
 				pending.startedAt,
-				pending.shownAcks || 0
+				Array.isArray(pending.shownAcks) ? pending.shownAcks : []
 			).finally(() => {
 				this.busy = false;
 			});
@@ -432,10 +474,151 @@ export default {
 					`no email is open — use list_inbox_emails / search_inbox_emails with account="${this.account}"`
 				);
 			}
+			if (this.threadId) {
+				lines.push(
+					`conversation_id: "${this.threadId}" — pass it to every tool that accepts it`
+				);
+			}
+			if (window.frappe && frappe.session && frappe.session.user) {
+				lines.push(`requester user: "${frappe.session.user}"`);
+			}
+			lines.push(
+				`recurring mailbox job → nora_schedule_task(mailbox="${this.account}", kind="invoice_scan" when invoices/PDFs ` +
+					`must be processed, "email_digest" for a plain summary; days="hourly" for "toutes les heures"); ` +
+					`existing jobs → nora_list_tasks; call the tool yourself, do not delegate`
+			);
+			const composer = this.composerOpen && this.readComposer ? this.readComposer() : null;
+			if (composer) {
+				lines.push(
+					`the user is writing an email (${composer.mode}) to "${composer.to}", subject "${composer.subject}"; ` +
+						`draft so far: ${JSON.stringify((composer.text || "").slice(0, 400))}`
+				);
+			}
 			return (
-				`\n\n[Webmail context for the assistant — not written by the user, do not quote it back]\n` +
+				`\n\n[Webmail context for the assistant — not written by the user. Never quote it, and when you delegate, title the task with the user's request only]\n` +
 				lines.join("\n")
 			);
+		},
+
+		// ── local actions (reply / write / fix / translate) ─────────────────
+		async runLocalIntent(intent, text) {
+			const composer = this.composerOpen && this.readComposer ? this.readComposer() : null;
+			try {
+				if (intent.kind === "reply") {
+					if (!this.selectedEmail) {
+						this.push(
+							"assistant",
+							__(
+								"Open the message you want to answer first — I will draft the reply from it."
+							)
+						);
+						return;
+					}
+					const r = await frappe.call({
+						method: "nora.api.nora_webmail.quick_reply",
+						args: {
+							account_name: this.account,
+							email_uid: this.selectedEmail.uid,
+							folder: this.folder,
+						},
+					});
+					const data = r.message || {};
+					if (!data.success) throw new Error("quick_reply");
+					this.$emit("reply-with-draft", {
+						original_email: this.selectedEmail,
+						draft_html: data.draft_html,
+					});
+					this.push(
+						"assistant",
+						__(
+							"I opened the reply in the editor with a draft — read it, adjust it, then send."
+						)
+					);
+					return;
+				}
+				if (intent.kind === "compose") {
+					const r = await frappe.call({
+						method: "nora.api.nora_webmail.generate_email",
+						args: { prompt: text, account_name: this.account },
+					});
+					const data = r.message || {};
+					if (!data.success) throw new Error("generate_email");
+					this.$emit("compose-with-draft", { html: data.draft_html });
+					this.push(
+						"assistant",
+						__(
+							"Draft inserted in a new message — add the recipient and the subject, then send."
+						)
+					);
+					return;
+				}
+				// proofread / improve / translate act on the draft being written
+				if (!composer || !(composer.text || "").trim()) {
+					this.push(
+						"assistant",
+						__(
+							"Open the editor first (New message or Reply) and write your draft — I will work on the text you have there."
+						)
+					);
+					return;
+				}
+				let method;
+				let args;
+				let label;
+				let pick;
+				if (intent.kind === "translate") {
+					method = "nora.api.nora_webmail.translate";
+					args = {
+						html_content: composer.html,
+						target_language: intent.lang,
+						account_name: this.account,
+					};
+					label = __("Translation");
+					pick = (d) => d.translated_html || this.textToHtml(d.translated_text);
+				} else if (intent.kind === "proofread") {
+					method = "nora.api.nora_webmail.proofread";
+					args = { html_content: composer.html, account_name: this.account };
+					label = __("Corrected draft");
+					pick = (d) => d.corrected_html || this.textToHtml(d.corrected_text);
+				} else {
+					method = "nora.api.nora_webmail.improve";
+					args = { html_content: composer.html, account_name: this.account };
+					label = __("Improved draft");
+					pick = (d) => d.improved_html || this.textToHtml(d.improved_text);
+				}
+				const r = await frappe.call({ method, args });
+				const data = r.message || {};
+				if (
+					intent.kind === "translate" &&
+					data.source_language &&
+					data.source_language === data.target_language
+				) {
+					this.push("assistant", __("The draft is already in that language."));
+					return;
+				}
+				const html = pick(data);
+				if (!html) throw new Error("empty");
+				this.pushDraft({ label, html });
+			} catch (e) {
+				this.push("assistant", __("That did not work — please try again."));
+			}
+		},
+
+		pushDraft({ label, html }) {
+			this.messages.push({ role: "draft", label, html, applied: false, ts: Date.now() });
+			this.persist();
+			this.scrollDown();
+		},
+
+		applyDraft(m) {
+			this.$emit("apply-draft", { html: m.html });
+			m.applied = true;
+			this.persist();
+		},
+
+		dismissDraft(m) {
+			this.messages = this.messages.filter((x) => x !== m);
+			this.persist();
 		},
 
 		extractContent(msg) {
@@ -447,6 +630,29 @@ export default {
 					.join("\n");
 			}
 			return typeof raw === "string" ? raw : "";
+		},
+
+		// The orchestrator sometimes copies the whole message (our block included) into
+		// the delegated task's title, which the pole echoes back — strip it from display.
+		cleanEcho(text) {
+			return String(text || "")
+				.replace(/\[Webmail context for the assistant[^\]]*\]\s*/g, "")
+				.replace(
+					/(?:mailbox account|folder|conversation_id|requester user)\s*:\s*"?[\w@.\-]*"?\s*(?:\([^)]*\)\s*)?/g,
+					""
+				)
+				.replace(/—\s*pass it to every tool that accepts it\s*/g, "")
+				.trim();
+		},
+
+		// Raw provider failures relayed by the gateway are not something to show verbatim
+		friendlyAnswer(text) {
+			if (/API call failed|empty stream|no finish_reason|Provider returned/i.test(text)) {
+				return __(
+					"Nora's model did not answer (service busy). Please try again in a moment."
+				);
+			}
+			return text;
 		},
 
 		looksDeferred(text) {
@@ -482,13 +688,28 @@ export default {
 			this.busy = true;
 
 			try {
+				// Reply / write / fix-my-draft: answered in seconds by the webmail's own
+				// endpoints, with the user's rights — no orchestrator round trip.
+				const intent = classifyIntent(text, {
+					composerOpen: this.composerOpen,
+					emailOpen: !!this.selectedEmail,
+				});
+				if (intent) {
+					await this.runLocalIntent(intent, text);
+					return;
+				}
 				// Replies accumulate in one thread: only answers beyond this count are ours.
-				let baseline = 0;
+				// What the thread already holds — by CONTENT, not by count: the replies
+				// buffer is not append-only (a pole's answer lives in the per-user buffer,
+				// the next run writes the thread's), so counting missed real answers.
+				let baseline = [];
 				if (this.threadId) {
 					try {
-						baseline = ((await this.fetchThread()).messages || []).length;
+						baseline = ((await this.fetchThread()).messages || []).map((m) =>
+							this.messageKey(m)
+						);
 					} catch (e) {
-						baseline = 0;
+						baseline = [];
 					}
 				}
 				const args = {
@@ -507,8 +728,8 @@ export default {
 				if (data.thread_id) this.threadId = data.thread_id;
 				this.persist();
 				const startedAt = Date.now();
-				this.writePending({ baseline, startedAt, shownAcks: 0 });
-				await this.waitForReply(baseline, startedAt, 0);
+				this.writePending({ baseline, startedAt, shownAcks: [] });
+				await this.waitForReply(baseline, startedAt, []);
 			} catch (e) {
 				this.writePending(null);
 				this.push("assistant", __("Nora could not be reached. Please try again."));
@@ -518,9 +739,15 @@ export default {
 			}
 		},
 
-		waitForReply(baseline, startedAt = Date.now(), acksShown = 0) {
+		// A stable key for one buffered message (content, truncated)
+		messageKey(m) {
+			return String(this.extractContent(m) || "").slice(0, 300);
+		},
+
+		waitForReply(baseline, startedAt = Date.now(), acksShown = []) {
 			return new Promise((resolve) => {
-				let shownAcks = acksShown;
+				const seen = new Set(baseline || []);
+				const shown = new Set(acksShown || []);
 				const finish = () => {
 					this.writePending(null);
 					resolve();
@@ -539,26 +766,31 @@ export default {
 						this.cards = (data.cards || []).filter(
 							(c) => c.kind === "Email" || c.kind === "Dunning"
 						);
-						const fresh = list
-							.slice(baseline)
-							.filter(
-								(m) =>
-									(m.role === "assistant" || m.author === "assistant") &&
-									this.extractContent(m)
-							);
+						const fresh = list.filter(
+							(m) =>
+								(m.role === "assistant" || m.author === "assistant") &&
+								this.extractContent(m) &&
+								!seen.has(this.messageKey(m))
+						);
 						const final = [...fresh]
 							.reverse()
 							.find((m) => !this.looksDeferred(this.extractContent(m)));
 						if (final) {
-							this.push("assistant", this.extractContent(final));
+							this.push(
+								"assistant",
+								this.friendlyAnswer(this.cleanEcho(this.extractContent(final)))
+							);
 							return finish();
 						}
-						// Show the routing acknowledgement ("je transmets à votre pôle…") once,
-						// as a status line, and keep waiting for the real answer.
-						if (fresh.length > shownAcks) {
-							shownAcks = fresh.length;
-							this.push("status", this.extractContent(fresh[fresh.length - 1]));
-							this.writePending({ baseline, startedAt, shownAcks });
+						// Routing acknowledgements ("je transmets à votre pôle…") show once, as
+						// status lines, while we keep waiting for the real answer.
+						const acks = fresh.filter((m) => !shown.has(this.messageKey(m)));
+						if (acks.length) {
+							acks.forEach((m) => {
+								shown.add(this.messageKey(m));
+								this.push("status", this.extractContent(m));
+							});
+							this.writePending({ baseline, startedAt, shownAcks: [...shown] });
 						}
 					} catch (e) {
 						/* transient — keep polling */
@@ -1121,6 +1353,60 @@ export default {
 .ag-send:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+}
+
+.ag-quick {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px 12px 0;
+}
+
+.ag-quick .ag-chip {
+	padding: 5px 9px;
+	font-size: 12px;
+	border-radius: 999px;
+}
+
+.ag-draft {
+	border: 1px solid var(--wm-line, var(--border-color, #e5e5e5));
+	border-left: 3px solid var(--wm-accent, #d68a59);
+	border-radius: 10px;
+	padding: 10px 12px;
+	background: var(--wm-bg-raised, var(--card-bg, #fff));
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.ag-draft.applied {
+	opacity: 0.75;
+}
+
+.ag-draft-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--wm-ink, var(--text-color, #333));
+}
+
+.ag-draft-head .ag-pill {
+	margin-left: auto;
+}
+
+.ag-draft-body {
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--wm-ink, var(--text-color, #333));
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.ag-draft-body :deep(p) {
+	margin: 0 0 6px;
 }
 
 .spin {

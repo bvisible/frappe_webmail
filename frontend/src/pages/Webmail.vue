@@ -304,6 +304,7 @@
 				/>
 				<EmailComposer
 					v-else
+					ref="composer"
 					:account="currentAccount"
 					:nora-enabled="capabilities.nora"
 					:reply-to="replyToEmail"
@@ -324,7 +325,12 @@
 					:account-email="currentAccountEmail"
 					:folder="currentFolder"
 					:selected-email="selectedEmailContent"
+					:composer-open="showComposer"
+					:read-composer="readComposerState"
 					@close="toggleAgentPanel"
+					@apply-draft="applyDraftToComposer"
+					@reply-with-draft="handleQuickReply"
+					@compose-with-draft="composeWithDraft"
 				/>
 			</aside>
 		</div>
@@ -1061,6 +1067,43 @@ export default {
 			};
 			this.forwardingEmail = null;
 			this.editingDraft = null;
+		},
+
+		// ── Nora panel ↔ composer bridge ─────────────────────────────────────
+		// The panel reads the draft being written and puts text back into it;
+		// TipTap lives in the composer, so the parent is the only one who can reach both.
+		readComposerState() {
+			const c = this.$refs.composer;
+			if (!this.showComposer || !c) return null;
+			return {
+				mode: this.replyToEmail ? "reply" : this.forwardingEmail ? "forward" : "new",
+				to: (c.emailData && c.emailData.to) || "",
+				subject: (c.emailData && c.emailData.subject) || "",
+				html: c.editor ? c.editor.getHTML() : "",
+				text: c.editor ? c.editor.getText() : "",
+			};
+		},
+
+		applyDraftToComposer({ html }) {
+			const c = this.$refs.composer;
+			if (c && html) c.insertNoraContent(html);
+		},
+
+		composeWithDraft({ html, subject, to }) {
+			this.compose();
+			// The composer mounts on the next tick and creates its editor in mounted()
+			let tries = 0;
+			const fill = () => {
+				const c = this.$refs.composer;
+				if (!c || !c.editor) {
+					if (tries++ < 20) setTimeout(fill, 100);
+					return;
+				}
+				if (to) c.emailData.to = to;
+				if (subject) c.emailData.subject = subject;
+				if (html) c.insertNoraContent(html);
+			};
+			this.$nextTick(fill);
 		},
 
 		closeComposer() {
