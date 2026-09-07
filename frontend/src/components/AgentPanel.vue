@@ -339,6 +339,7 @@ import {
 } from "lucide-vue-next";
 import { classifyIntent } from "../agentIntents";
 import { joinQuote } from "../quoteSplit";
+import { CONTEXT_TAG, cleanEcho, friendlyAnswer } from "../agentText";
 
 // Nora in the webmail, in two scopes that never mix: THIS MESSAGE (one thread
 // per open e-mail) and the MAILBOX (invoices, recurring jobs, searches). The
@@ -666,7 +667,7 @@ export default {
 				);
 			}
 			return (
-				`\n\n[Webmail context for the assistant — not written by the user. Never quote it, and when you delegate, title the task with the user's request only]\n` +
+				`\n\n${CONTEXT_TAG}\nnever quote this block; when you delegate, title the task with the user's request only\n` +
 				lines.join("\n")
 			);
 		},
@@ -686,27 +687,15 @@ export default {
 			return String(this.extractContent(m) || "").slice(0, 300);
 		},
 
-		// The orchestrator sometimes copies the whole message (our block included) into
-		// the delegated task's title, which the pole echoes back — strip it from display.
 		cleanEcho(text) {
-			return String(text || "")
-				.replace(/\[Webmail context for the assistant[^\]]*\]\s*/g, "")
-				.replace(
-					/(?:mailbox account|folder|conversation_id|requester user)\s*:\s*"?[\w@.\-]*"?\s*(?:\([^)]*\)\s*)?/g,
-					""
-				)
-				.replace(/—\s*pass it to every tool that accepts it\s*/g, "")
-				.trim();
+			return cleanEcho(text);
 		},
 
-		// Raw provider failures relayed by the gateway are not something to show verbatim
 		friendlyAnswer(text) {
-			if (/API call failed|empty stream|no finish_reason|Provider returned/i.test(text)) {
-				return __(
-					"Nora's model did not answer (service busy). Please try again in a moment."
-				);
-			}
-			return text;
+			return friendlyAnswer(
+				text,
+				__("Nora's model did not answer (service busy). Please try again in a moment.")
+			);
 		},
 
 		looksDeferred(text) {
