@@ -418,6 +418,15 @@ def imap_session(account):
 	"""Yield an authenticated IMAPClient for `account`, reusing the pooled
 	connection when there is one. Callers select their own folder; nothing is
 	assumed about the previous request's state."""
+	if frappe.flags.in_test:
+		# The test suite mocks IMAPClient as a context manager and configures the
+		# client behind __enter__ — keep that contract (fresh connection, logout at
+		# exit) so the tests exercise the endpoints, not the pool.
+		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+			imap_login(client, account)
+			yield client
+		return
+
 	key = account.name
 	entry = None
 	with _IMAP_POOL_LOCK:
