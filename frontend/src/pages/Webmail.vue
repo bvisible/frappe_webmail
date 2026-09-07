@@ -315,12 +315,15 @@
 					@sent="onEmailSent"
 					@close="closeComposer"
 					@draft-deleted="onDraftDeleted"
+					@nora-draft="onComposerNoraDraft"
+					@open-nora="openAgentPanel"
 				/>
 			</section>
 
 			<!-- Nora — mailbox-scoped chat, persistent across folders and emails -->
 			<aside class="agent-col" v-if="capabilities.nora && agentPanelOpen">
 				<AgentPanel
+					ref="agentPanel"
 					:account="currentAccount"
 					:account-email="currentAccountEmail"
 					:folder="currentFolder"
@@ -409,6 +412,7 @@ import BulkActionBar from "../components/BulkActionBar.vue";
 import AutomationsPanel from "../components/AutomationsPanel.vue";
 import AgentPanel from "../components/AgentPanel.vue";
 import { installTooltips } from "../tooltip";
+import { splitQuote } from "../quoteSplit";
 import {
 	Mail,
 	Search,
@@ -1075,13 +1079,37 @@ export default {
 		readComposerState() {
 			const c = this.$refs.composer;
 			if (!this.showComposer || !c) return null;
+			const html = c.editor ? c.editor.getHTML() : "";
+			const { own, quote } = splitQuote(html);
 			return {
 				mode: this.replyToEmail ? "reply" : this.forwardingEmail ? "forward" : "new",
 				to: (c.emailData && c.emailData.to) || "",
 				subject: (c.emailData && c.emailData.subject) || "",
-				html: c.editor ? c.editor.getHTML() : "",
+				html,
 				text: c.editor ? c.editor.getText() : "",
+				// what the user wrote / the quoted original — Nora only rewrites the former
+				own,
+				quote,
 			};
+		},
+
+		openAgentPanel() {
+			if (!this.agentPanelOpen) this.toggleAgentPanel();
+		},
+
+		// A result from the composer's own Nora bar is reviewed in the panel
+		onComposerNoraDraft(payload) {
+			this.openAgentPanel();
+			let tries = 0;
+			const hand = () => {
+				const panel = this.$refs.agentPanel;
+				if (!panel) {
+					if (tries++ < 20) setTimeout(hand, 100);
+					return;
+				}
+				panel.pushDraft(payload);
+			};
+			this.$nextTick(hand);
 		},
 
 		applyDraftToComposer({ html }) {

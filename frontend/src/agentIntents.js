@@ -45,6 +45,16 @@ const COMPOSE_VERB = new RegExp(
 const COMPOSE_OBJECT =
 	/\b(?:un |une |le |la |a |an |the |nouveau |nouvel |new )?(?:mail|e-?mail|courriel|message|lettre|mot|relance|email)\b/i;
 
+// Mailbox automations are handled by the panel itself, in code (the same parser as
+// the gateway's recurring-task router, exposed as preview_recurrent) — the most-sold
+// feature must not depend on a language model being available.
+const RECURRENCE_RE =
+	/\b(?:toutes? les|chaque|tous les|hourly|daily|weekly|monthly|every|each|en semaine|jours ouvr|1er du mois|premier du mois|mensuel|quotidien|hebdo|r[ée]guli[èe]rement|p[ée]riodiquement)\b/i;
+const SCHEDULE_VERB =
+	/\b(?:rel[èe]ve|rel[èe]ver|surveille|surveiller|scanne|scanner|traite|traiter|r[ée]sume|r[ée]sumer|programme|programmer|planifie|planifier|envoie|envoyer|pr[ée]viens|pr[ée]venir|check|watch|scan|schedule|send|remind)\b/i;
+const LIST_AUTOMATIONS_RE =
+	/\b(?:automatisations?|automations?|t[âa]ches? (?:programm|planifi|r[ée]current)|jobs?|ce qui tourne|what(?:'s| is) scheduled|scheduled tasks?)\b/i;
+
 /**
  * @param {string} text  what the user typed
  * @param {{composerOpen?: boolean, emailOpen?: boolean}} ctx
@@ -70,6 +80,14 @@ export function classifyIntent(text, ctx = {}) {
 
 	if (COMPOSE_VERB.test(t) && COMPOSE_OBJECT.test(t)) {
 		return { kind: "compose" };
+	}
+
+	if (LIST_AUTOMATIONS_RE.test(t) && !RECURRENCE_RE.test(t)) {
+		return { kind: "list_automations" };
+	}
+
+	if (RECURRENCE_RE.test(t) && SCHEDULE_VERB.test(t)) {
+		return { kind: "schedule" };
 	}
 
 	return null;

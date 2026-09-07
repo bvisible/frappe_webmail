@@ -56,11 +56,25 @@ describe("classifyIntent — what the panel handles without the orchestrator", (
 		expect(kind("traduis en italien")).toBeNull();
 	});
 
+	it("recurring mailbox jobs are scheduled by the panel itself", () => {
+		expect(kind("Relève la boîte toutes les heures pour les factures")).toBe("schedule");
+		expect(kind("Relève cette boîte toutes les heures pour les factures")).toBe("schedule");
+		expect(kind("Résume-moi les nouveaux mails chaque matin")).toBe("schedule");
+		expect(kind("Envoie-moi chaque lundi les devis en attente")).toBe("schedule");
+		expect(kind("Check this mailbox every hour for invoices")).toBe("schedule");
+	});
+
+	it("listing automations is answered by the panel too", () => {
+		expect(kind("Quelles automatisations sont actives ?")).toBe("list_automations");
+		expect(kind("Mes automatisations")).toBe("list_automations");
+		expect(kind("Which automations are active?")).toBe("list_automations");
+		expect(kind("Quelles tâches programmées existent ?")).toBe("list_automations");
+	});
+
 	it("leaves everything else to Nora", () => {
 		expect(kind("Résume ce mail")).toBeNull();
 		expect(kind("Des factures à traiter dans cette boîte ?")).toBeNull();
-		expect(kind("Relève la boîte toutes les heures pour les factures")).toBeNull();
-		expect(kind("Quelles automatisations sont actives ?")).toBeNull();
+		expect(kind("Combien de factures sont arrivées cette semaine ?")).toBeNull();
 		expect(kind("")).toBeNull();
 	});
 });

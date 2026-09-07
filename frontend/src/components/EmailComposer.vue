@@ -62,6 +62,20 @@
 		</div>
 
 		<!-- Toolbar -->
+		<!-- Nora: under the subject, where the eye goes before writing. Results land in the
+		     Nora panel on the right (one place for Nora), never below the editor. -->
+		<NoraBar
+			v-if="noraEnabled"
+			:editor="editor"
+			:loading="noraLoading"
+			:loading-text="noraLoadingText"
+			@proofread="handleNoraProofread"
+			@improve="handleNoraImprove"
+			@translate="handleNoraTranslate"
+			@learn-style="handleNoraLearnStyle"
+			@open-chat="$emit('open-nora')"
+		/>
+
 		<div class="editor-toolbar" v-if="editor">
 			<button
 				@click="editor.chain().focus().toggleBold().run()"
@@ -117,37 +131,6 @@
 			<editor-content :editor="editor" />
 		</div>
 
-		<!-- Nora AI Bar / diff / mini chat — only when the `nora` app is installed -->
-		<template v-if="noraEnabled">
-			<NoraBar
-				:editor="editor"
-				:loading="noraLoading"
-				:loading-text="noraLoadingText"
-				@proofread="handleNoraProofread"
-				@improve="handleNoraImprove"
-				@translate="handleNoraTranslate"
-				@learn-style="handleNoraLearnStyle"
-				@open-chat="showNoraMiniChat = true"
-			/>
-
-			<NoraDiffPanel
-				:visible="showNoraDiff"
-				:original-text="noraDiffOriginal"
-				:modified-text="noraDiffModified"
-				:title="noraDiffTitle"
-				@accept="acceptNoraDiff"
-				@reject="rejectNoraDiff"
-			/>
-
-			<NoraMiniChat
-				v-if="showNoraMiniChat"
-				:account="account"
-				:reply-context="replyTo ? replyTo.html || replyTo.text : ''"
-				@close="showNoraMiniChat = false"
-				@insert-content="insertNoraContent"
-			/>
-		</template>
-
 		<!-- Attachments -->
 		<div class="attachments-section" v-if="attachments.length || remoteAttachments.length">
 			<!-- Local file attachments -->
@@ -184,9 +167,9 @@
 			@select="handleRemoteAttachment"
 		/>
 
-		<!-- Footer with status -->
-		<div class="composer-footer">
-			<div class="draft-status" v-if="lastSaved || isSavingDraft">
+		<!-- Draft status — a thin line, only when there is something to say -->
+		<div class="composer-footer" v-if="lastSaved || isSavingDraft">
+			<div class="draft-status">
 				<span v-if="isSavingDraft" class="saving">{{ __("Saving...") }}</span>
 				<span v-else-if="lastSaved" class="saved">
 					<Check :size="14" />
@@ -207,8 +190,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import ContactAutocomplete from "./ContactAutocomplete.vue";
 import AttachmentPicker from "./AttachmentPicker.vue";
 import NoraBar from "./NoraBar.vue";
-import NoraDiffPanel from "./NoraDiffPanel.vue";
-import NoraMiniChat from "./NoraMiniChat.vue";
+import { joinQuote, splitQuote } from "../quoteSplit";
 import {
 	X,
 	Paperclip,
@@ -236,8 +218,6 @@ export default {
 		ContactAutocomplete,
 		AttachmentPicker,
 		NoraBar,
-		NoraDiffPanel,
-		NoraMiniChat,
 		X,
 		Paperclip,
 		Save,
@@ -268,7 +248,7 @@ export default {
 		noraEnabled: { type: Boolean, default: true },
 	},
 
-	emits: ["sent", "close", "draft-deleted"],
+	emits: ["sent", "close", "draft-deleted", "nora-draft", "open-nora"],
 
 	data() {
 		return {
@@ -292,12 +272,6 @@ export default {
 			// Nora AI assistant state
 			noraLoading: false,
 			noraLoadingText: "",
-			showNoraDiff: false,
-			noraDiffOriginal: "",
-			noraDiffModified: "",
-			noraDiffTitle: "",
-			noraCorrectedHtml: "",
-			showNoraMiniChat: false,
 		};
 	},
 
@@ -696,7 +670,7 @@ export default {
 			await this._callNoraAction(
 				"nora.api.nora_webmail.proofread",
 				{
-					html_content: this.editor.getHTML(),
+					html_content: splitQuote(this.editor.getHTML()).own,
 					account_name: this.account,
 				},
 				__("Proofreading..."),
@@ -708,7 +682,7 @@ export default {
 			await this._callNoraAction(
 				"nora.api.nora_webmail.improve",
 				{
-					html_content: this.editor.getHTML(),
+					html_content: splitQuote(this.editor.getHTML()).own,
 					account_name: this.account,
 				},
 				__("Improving..."),
@@ -721,7 +695,7 @@ export default {
 			await this._callNoraAction(
 				"nora.api.nora_webmail.translate",
 				{
-					html_content: this.editor.getHTML(),
+					html_content: splitQuote(this.editor.getHTML()).own,
 					target_language: lang,
 					account_name: this.account,
 				},
@@ -733,7 +707,6 @@ export default {
 		async _callNoraAction(method, args, loadingText, diffTitle) {
 			this.noraLoading = true;
 			this.noraLoadingText = loadingText;
-			this.showNoraDiff = false;
 
 			try {
 				const result = await frappe.call({ method, args });
@@ -755,14 +728,16 @@ export default {
 					return;
 				}
 
-				// Show diff panel
-				this.noraDiffOriginal = data.original_text || "";
-				this.noraDiffModified =
-					data.corrected_text || data.improved_text || data.translated_text || "";
-				this.noraCorrectedHtml =
+				// The result is reviewed in the Nora panel (right column) and put back into
+				// the editor from there; the quoted original below the draft is untouched.
+				const rewritten =
 					data.corrected_html || data.improved_html || data.translated_html || "";
-				this.noraDiffTitle = diffTitle;
-				this.showNoraDiff = true;
+				const { quote } = splitQuote(this.editor.getHTML());
+				this.$emit("nora-draft", {
+					label: diffTitle,
+					html: joinQuote(rewritten, quote),
+					original: data.original_text || "",
+				});
 			} catch (error) {
 				console.error("Nora action failed:", error);
 				frappe.toast({
@@ -773,24 +748,6 @@ export default {
 				this.noraLoading = false;
 				this.noraLoadingText = "";
 			}
-		},
-
-		acceptNoraDiff() {
-			if (this.noraCorrectedHtml && this.editor) {
-				this.editor.commands.setContent(this.noraCorrectedHtml);
-				frappe.toast({ message: __("Changes applied"), indicator: "green" });
-			}
-			this.showNoraDiff = false;
-			this.noraDiffOriginal = "";
-			this.noraDiffModified = "";
-			this.noraCorrectedHtml = "";
-		},
-
-		rejectNoraDiff() {
-			this.showNoraDiff = false;
-			this.noraDiffOriginal = "";
-			this.noraDiffModified = "";
-			this.noraCorrectedHtml = "";
 		},
 
 		// Learn the sender's writing style from the Sent folder (background job);
@@ -832,7 +789,6 @@ export default {
 		insertNoraContent(htmlContent) {
 			if (htmlContent && this.editor) {
 				this.editor.commands.setContent(htmlContent);
-				this.showNoraMiniChat = false;
 				frappe.toast({ message: __("Content inserted"), indicator: "green" });
 			}
 		},
@@ -1095,12 +1051,9 @@ export default {
 
 .composer-footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
-	padding: 8px 16px;
-	border-top: 1px solid var(--border-color, #e5e5e5);
-	background: var(--bg-light-gray, #f8f9fa);
-	min-height: 40px;
+	padding: 4px 16px;
 }
 
 .draft-status {

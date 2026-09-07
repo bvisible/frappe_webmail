@@ -71,11 +71,11 @@
 						@click="handleQuickReply"
 						class="btn btn-sm btn-nora"
 						:disabled="quickReplyLoading"
-						:data-tip="__('Quick Reply with Nora')"
+						:data-tip="__('Let Nora draft the reply (about 10 s)')"
 					>
 						<Sparkles :size="16" />
 						<span>{{
-							quickReplyLoading ? __("Generating...") : __("Quick Reply")
+							quickReplyLoading ? __("Nora is drafting…") : __("Draft a reply")
 						}}</span>
 						<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
 					</button>
