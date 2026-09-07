@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-09-07 18:49+0000\n"
+"POT-Creation-Date: 2026-09-07 18:57+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -1621,7 +1621,6 @@ msgstr "Local"
 msgid "Location"
 msgstr "Emplacement"
 
-#: frontend/src/components/AgentPanel.vue:48
 #: frontend/src/components/AgentPanel.vue:115
 msgid "Mailbox"
 msgstr "Boîte"
@@ -2670,6 +2669,10 @@ msgstr "Le brouillon est déjà dans cette langue."
 #: frontend/src/utils/webmailErrors.js:83
 msgid "The email address or password is incorrect."
 msgstr "L'adresse e-mail ou le mot de passe est incorrect."
+
+#: frontend/src/components/AgentPanel.vue:48
+msgid "The mailbox"
+msgstr "La boîte entière"
 
 #: frappe_webmail/webmail_api.py:539
 msgid ""

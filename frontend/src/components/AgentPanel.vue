@@ -45,7 +45,7 @@
 				@click="switchScope('mailbox')"
 			>
 				<Inbox :size="13" :stroke-width="1.7" />
-				<span>{{ __("Mailbox") }}</span>
+				<span>{{ __("The mailbox") }}</span>
 			</button>
 		</div>
 
