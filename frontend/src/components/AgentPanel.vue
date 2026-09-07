@@ -404,6 +404,40 @@ export default {
 			return ctx;
 		},
 
+		// Agent-facing block appended to every outgoing message (the user never sees it):
+		// which mailbox, which folder, which email is open and the exact call to read it.
+		// English, like the tool descriptions the agent already reads.
+		agentContextSuffix() {
+			const e = this.selectedEmail;
+			const lines = [
+				`mailbox account: "${this.account}"` +
+					(this.accountEmail && this.accountEmail !== this.account
+						? ` (${this.accountEmail})`
+						: ""),
+				`folder: "${this.folder}"`,
+			];
+			if (e) {
+				const from = [e.from_name, e.from_email ? `<${e.from_email}>` : ""]
+					.filter(Boolean)
+					.join(" ");
+				lines.push(
+					`open email: UID ${e.uid}, subject "${e.subject || ""}"` +
+						(from ? `, from ${from}` : "") +
+						(e.date ? `, date ${e.date}` : ""),
+					`"this email" / "ce mail" means that one — read it with ` +
+						`get_inbox_email(uid="${e.uid}", account="${this.account}", folder="${this.folder}")`
+				);
+			} else {
+				lines.push(
+					`no email is open — use list_inbox_emails / search_inbox_emails with account="${this.account}"`
+				);
+			}
+			return (
+				`\n\n[Webmail context for the assistant — not written by the user, do not quote it back]\n` +
+				lines.join("\n")
+			);
+		},
+
 		extractContent(msg) {
 			let raw = msg.content || msg.text || msg.body || "";
 			if (Array.isArray(raw)) {
@@ -458,7 +492,7 @@ export default {
 					}
 				}
 				const args = {
-					message: text,
+					message: text + this.agentContextSuffix(),
 					context: JSON.stringify(this.captureContext()),
 					block: 0,
 				};
