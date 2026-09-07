@@ -2,6 +2,18 @@
 	<div class="webmail-app">
 		<!-- TOPBAR 52px (no brand: we are already inside the Webmail route) -->
 		<header class="topbar">
+			<!-- Folder column toggle: collapses the folder tree to an icon rail so the
+			     reader gets the width back (per-account preference) -->
+			<button
+				v-if="accounts.length"
+				class="icon-btn sb-toggle"
+				@click="toggleSidebar"
+				:title="sidebarCollapsed ? __('Show folders') : __('Hide folders')"
+			>
+				<PanelLeftOpen v-if="sidebarCollapsed" :size="15" :stroke-width="1.7" />
+				<PanelLeftClose v-else :size="15" :stroke-width="1.7" />
+			</button>
+
 			<!-- Account switcher -->
 			<div class="account-switch" v-if="currentAccount && accounts.length">
 				<div class="av-mini">{{ accountInitial }}</div>
@@ -138,6 +150,14 @@
 
 			<!-- Top actions -->
 			<div class="top-actions">
+				<button
+					v-if="capabilities.nora"
+					@click="showAutomations = true"
+					class="icon-btn"
+					:title="__('Nora automations')"
+				>
+					<Bot :size="15" :stroke-width="1.7" />
+				</button>
 				<button @click="showFilters = true" class="icon-btn" :title="__('Filters')">
 					<Filter :size="14" />
 				</button>
@@ -159,10 +179,15 @@
 		     the Webmail Account UI preferences via saveUIPreferences). -->
 		<div class="main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
 			<!-- Sidebar: Dossiers (FolderTree) + Étiquettes + Nora + storage footer -->
-			<aside class="sidebar-col" :style="{ width: sidebarWidth + 'px' }">
+			<aside
+				class="sidebar-col"
+				:class="{ 'is-collapsed': sidebarCollapsed }"
+				:style="{ width: (sidebarCollapsed ? 56 : sidebarWidth) + 'px' }"
+			>
 				<div class="sb-folders">
 					<FolderTree
 						ref="folderTree"
+						:compact="sidebarCollapsed"
 						:account="currentAccount"
 						:account-email="currentAccountEmail"
 						:selected-folder="currentFolder"
@@ -172,56 +197,9 @@
 					/>
 				</div>
 
-				<!-- Étiquettes (mockup — wires to a real DocType later) -->
-				<div class="sb-section">
-					{{ __("Étiquettes") }}
-					<button
-						class="sb-section-add"
-						:title="__('Create label — coming soon')"
-						@click="frappe.toast({ message: __('Labels — coming soon') })"
-					>
-						<Plus :size="12" :stroke-width="1.7" />
-					</button>
-				</div>
-				<div class="sb-nav">
-					<div class="sb-item is-mock">
-						<span class="sb-dot dot-sage"></span>
-						<span class="sb-label">{{ __("Clients CRM") }}</span>
-						<span class="sb-count">8</span>
-					</div>
-					<div class="sb-item is-mock">
-						<span class="sb-dot dot-amber"></span>
-						<span class="sb-label">{{ __("Factures à traiter") }}</span>
-						<span class="sb-count">3</span>
-					</div>
-					<div class="sb-item is-mock">
-						<span class="sb-dot dot-rose"></span>
-						<span class="sb-label">{{ __("Équipe") }}</span>
-					</div>
-				</div>
-
-				<!-- Nora (placeholder while the Nora API is in refactoring) -->
-				<div class="sb-section">Nora</div>
-				<div class="sb-nav">
-					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
-						<span class="sb-ic"><span class="nora-dot"></span></span>
-						<span class="sb-label">{{ __("Prioritaires") }}</span>
-						<span class="sb-count sb-count-nora">3</span>
-					</div>
-					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
-						<span class="sb-ic"><Sparkles :size="14" :stroke-width="1.5" /></span>
-						<span class="sb-label">{{ __("Résumés") }}</span>
-					</div>
-					<div class="sb-item is-mock" :title="__('Bientôt — Nora en refactoring')">
-						<span class="sb-ic"><Briefcase :size="14" :stroke-width="1.5" /></span>
-						<span class="sb-label">{{ __("Liés au CRM") }}</span>
-						<span class="sb-count">8</span>
-					</div>
-				</div>
-
 				<!-- Storage — real IMAP quota (RFC 2087); hidden when the
 				     server doesn't advertise QUOTA so we never show fake data -->
-				<div class="storage">
+				<div class="storage" v-if="!sidebarCollapsed">
 					<div class="storage-top" v-if="quota">
 						<span>{{ quotaLabel }}</span>
 					</div>
@@ -235,7 +213,11 @@
 			</aside>
 
 			<!-- Resizer between sidebar and list -->
-			<div class="column-resizer" @mousedown="startResize('sidebar', $event)">
+			<div
+				v-if="!sidebarCollapsed"
+				class="column-resizer"
+				@mousedown="startResize('sidebar', $event)"
+			>
 				<div class="resizer-handle"></div>
 			</div>
 
@@ -285,6 +267,7 @@
 					:email="selectedEmailContent"
 					:account="currentAccount"
 					:folder="currentFolder"
+					:nora-enabled="capabilities.nora"
 					@reply="replyTo"
 					@forward="forwardEmail"
 					@delete="deleteEmail"
@@ -295,6 +278,7 @@
 				<EmailComposer
 					v-else
 					:account="currentAccount"
+					:nora-enabled="capabilities.nora"
 					:reply-to="replyToEmail"
 					:forward-email="forwardingEmail"
 					:edit-draft="editingDraft"
@@ -322,6 +306,17 @@
 		<div class="loading-overlay" v-if="loading">
 			<div class="spinner"></div>
 			<p>{{ __("Loading...") }}</p>
+		</div>
+
+		<!-- Nora automations (scheduled tasks on this mailbox) -->
+		<div class="modal-overlay" v-if="showAutomations" @click.self="showAutomations = false">
+			<div class="modal-content automations-modal">
+				<AutomationsPanel
+					:account="currentAccount"
+					:account-email="currentAccountEmail"
+					@close="showAutomations = false"
+				/>
+			</div>
 		</div>
 
 		<!-- Signature Editor Modal -->
@@ -367,6 +362,7 @@ import SignatureEditor from "../components/SignatureEditor.vue";
 import AdvancedSearch from "../components/AdvancedSearch.vue";
 import FilterManager from "../components/FilterManager.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
+import AutomationsPanel from "../components/AutomationsPanel.vue";
 import {
 	Mail,
 	Search,
@@ -377,8 +373,9 @@ import {
 	Users,
 	ChevronDown,
 	Plus,
-	Sparkles,
-	Briefcase,
+	PanelLeftClose,
+	PanelLeftOpen,
+	Bot,
 	X,
 } from "lucide-vue-next";
 
@@ -394,6 +391,7 @@ export default {
 		AdvancedSearch,
 		FilterManager,
 		BulkActionBar,
+		AutomationsPanel,
 		Mail,
 		Search,
 		SquarePen,
@@ -403,8 +401,9 @@ export default {
 		Users,
 		ChevronDown,
 		Plus,
-		Sparkles,
-		Briefcase,
+		PanelLeftClose,
+		PanelLeftOpen,
+		Bot,
 		X,
 	},
 
@@ -428,6 +427,9 @@ export default {
 			unreadCount: 0,
 			showSearch: false,
 			showFilters: false,
+			showAutomations: false,
+			// Optional companions installed on this site (see get_capabilities)
+			capabilities: { nora: false },
 			showSharingTooltip: false,
 			folders: [],
 			// Folder mapping (from FolderTree)
@@ -441,6 +443,10 @@ export default {
 			},
 			// Column resize state
 			sidebarWidth: 220,
+			// Folder column as an icon rail. First paint follows the viewport; the
+			// account preference (null = never chosen) is applied once loaded.
+			sidebarCollapsed: typeof window !== "undefined" && window.innerWidth < 1366,
+			sidebarCollapsedPref: null,
 			quota: null,
 			emailListWidth: 350,
 			isResizing: false,
@@ -769,8 +775,12 @@ export default {
 
 			try {
 				await this.loadAccounts();
-				await this.loadDefaultSignature();
-				await this.loadUIPreferences();
+				// Independent reads — fire them together instead of one after the other.
+				await Promise.all([
+					this.loadDefaultSignature(),
+					this.loadUIPreferences(),
+					this.loadCapabilities(),
+				]);
 			} catch (error) {
 				console.error("Initialization error:", error);
 			} finally {
@@ -1113,6 +1123,10 @@ export default {
 				if (response.message) {
 					this.sidebarWidth = response.message.sidebar_width || 220;
 					this.emailListWidth = response.message.email_list_width || 350;
+					const pref = response.message.sidebar_collapsed;
+					this.sidebarCollapsedPref =
+						pref === null || pref === undefined ? null : !!pref;
+					this.applySidebarDefault();
 				}
 			} catch (error) {
 				console.error("Error loading UI preferences:", error);
@@ -1135,12 +1149,46 @@ export default {
 							account_name: this.currentAccount,
 							sidebar_width: this.sidebarWidth,
 							email_list_width: this.emailListWidth,
+							// only once the user has actually chosen (null = leave the default)
+							sidebar_collapsed:
+								this.sidebarCollapsedPref === null
+									? undefined
+									: this.sidebarCollapsedPref
+									? 1
+									: 0,
 						},
 					});
 				} catch (error) {
 					console.error("Error saving UI preferences:", error);
 				}
 			}, 500);
+		},
+
+		// Folder column: an explicit user choice wins; otherwise collapse on narrow
+		// viewports so the reader keeps a usable width next to the cockpit rail.
+		applySidebarDefault() {
+			if (this.sidebarCollapsedPref !== null) {
+				this.sidebarCollapsed = this.sidebarCollapsedPref;
+				return;
+			}
+			this.sidebarCollapsed = window.innerWidth < 1366;
+		},
+
+		toggleSidebar() {
+			this.sidebarCollapsed = !this.sidebarCollapsed;
+			this.sidebarCollapsedPref = this.sidebarCollapsed;
+			this.saveUIPreferences();
+		},
+
+		async loadCapabilities() {
+			try {
+				const r = await frappe.call({
+					method: "frappe_webmail.webmail_api.get_capabilities",
+				});
+				this.capabilities = Object.assign({ nora: false }, r.message || {});
+			} catch (e) {
+				this.capabilities = { nora: false };
+			}
 		},
 
 		startResize(target, event) {
@@ -2700,7 +2748,7 @@ html[data-theme="dark"] .webmail-app {
 	height: 32px;
 	padding: 0 14px;
 	background: var(--color-primary, #141414);
-	color: var(--color-primary-fg, #FFFDF8);
+	color: var(--color-primary-fg, #fffdf8);
 	border: 0;
 	border-radius: 8px;
 	font-size: 12.5px;
@@ -2720,13 +2768,13 @@ html[data-theme="dark"] .webmail-app {
 
 /* DS: on dark, the primary button flips to a bright paper button (ink text) */
 [data-theme="dark"] .btn-compose {
-	background: var(--color-primary, #FFFDF8);
+	background: var(--color-primary, #fffdf8);
 	color: var(--color-primary-fg, #141414);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .btn-compose:hover {
-	background: var(--color-primary-hover, #ECE7DE);
+	background: var(--color-primary-hover, #ece7de);
 }
 
 .avatar-me {
@@ -2813,137 +2861,15 @@ html[data-theme="dark"] .webmail-app {
 	flex-shrink: 0;
 }
 
-/* Uppercase section headers (Labels, Nora) consistent with the FolderTree
-   "FOLDERS" header style. */
-.sb-section {
-	padding: 14px 14px 6px;
-	font-size: 10.5px;
-	color: var(--wm-ink-mute);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	font-weight: 600;
-	display: flex;
-	align-items: center;
-	gap: 8px;
+/* Collapsed folder column: a 56px icon rail (FolderTree renders its compact
+   mode, the quota block is hidden — no room for text). */
+.sidebar-col.is-collapsed {
+	overflow: visible;
+}
+
+.sb-toggle {
 	flex-shrink: 0;
-}
-
-.sb-section-add {
-	margin-left: auto;
-	width: 20px;
-	height: 20px;
-	border: 0;
-	background: transparent;
-	display: grid;
-	place-items: center;
-	border-radius: 5px;
-	cursor: pointer;
-	color: var(--wm-ink-mute);
-	transition: background 0.15s, color 0.15s;
-}
-
-.sb-section-add:hover {
-	background: var(--wm-bg-sunken);
-	color: var(--wm-accent);
-}
-
-.sb-empty {
-	padding: 2px 16px 6px;
-	font-size: 11.5px;
-	color: var(--wm-ink-mute);
-	font-style: italic;
-}
-
-.sb-nav {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-	padding: 0 8px 4px;
-}
-
-.sb-item {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	height: 30px;
-	padding: 0 10px;
-	border-radius: 7px;
-	font-size: 12.5px;
-	color: var(--wm-ink-soft);
-	cursor: pointer;
-	transition: background 0.15s;
-}
-
-.sb-item:hover {
-	background: var(--wm-bg-sunken);
-	color: var(--wm-ink);
-}
-
-.sb-item.is-mock {
-	cursor: pointer;
-}
-
-.sb-ic {
-	width: 16px;
-	display: grid;
-	place-items: center;
-	color: var(--wm-ink-mute);
-	flex-shrink: 0;
-}
-
-.sb-label {
-	flex: 1;
-	min-width: 0;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-/* Count badge shown on the right of the row (Inbox 12, CRM Clients 8, ...) */
-.sb-count {
-	margin-left: auto;
-	font-size: 11px;
-	color: var(--wm-ink-mute);
-	font-variant-numeric: tabular-nums;
-	padding: 1px 7px;
-	border-radius: 999px;
-	background: var(--wm-bg-sunken);
-}
-
-.sb-count-nora {
-	background: var(--wm-nora-soft);
-	color: var(--wm-nora);
-	font-weight: 600;
-}
-
-/* Color dot for a label (CRM Clients = sage, Invoices = amber, Team = rose) */
-.sb-dot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	margin-left: 4px;
-	margin-right: 6px;
-}
-
-.sb-dot.dot-sage {
-	background: var(--wm-sage);
-}
-
-.sb-dot.dot-amber {
-	background: var(--wm-amber);
-}
-
-.sb-dot.dot-rose {
-	background: var(--wm-rose);
-}
-
-/* Tiny gradient dot used as the "Nora" badge in the priority item. */
-.nora-dot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: linear-gradient(135deg, var(--wm-nora), var(--wm-nora-2));
+	margin-right: -6px;
 }
 
 /* Storage indicator pinned to the bottom of the sidebar.
@@ -3111,6 +3037,15 @@ html[data-theme="dark"] .webmail-app {
 	max-width: 90vw;
 	max-height: 80vh;
 	overflow: hidden;
+}
+
+.automations-modal {
+	width: 720px;
+	max-width: 92vw;
+	max-height: 86vh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 /* ===== Responsive (flex-based) ===== */

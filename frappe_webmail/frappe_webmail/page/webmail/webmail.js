@@ -4,6 +4,61 @@
  * This page provides the webmail interface within Frappe Desk.
  */
 
+// Auto-collapse the NeoCockpit menu while the webmail is open: the mailbox needs
+// the width far more than the module tree does (folders + list + reader + soon an
+// agent panel). The cockpit exposes no API for this — only its own toggle button —
+// and it persists the choice to localStorage. So we click the button, put the
+// user's real preference back in storage right after (other pages keep their
+// layout on reload), and re-expand on the way out only if WE collapsed it.
+const webmail_cockpit = {
+	collapsed_by_us: false,
+	side() {
+		return document.querySelector(".nc-side");
+	},
+	toggle_button() {
+		return document.querySelector(".nc-side .nc-collapse");
+	},
+	restore_preference(saved) {
+		try {
+			if (saved === null) localStorage.removeItem("neocockpit-pinned");
+			else localStorage.setItem("neocockpit-pinned", saved);
+		} catch (e) {
+			/* storage unavailable — nothing to restore */
+		}
+	},
+	collapse(attempt = 0) {
+		const side = this.side();
+		const btn = this.toggle_button();
+		if (!side || !btn) {
+			// Direct load of /app/webmail: the cockpit may mount after the page.
+			if (attempt < 10) setTimeout(() => this.collapse(attempt + 1), 300);
+			return;
+		}
+		if (!side.classList.contains("expanded")) return;
+		let saved = null;
+		try {
+			saved = localStorage.getItem("neocockpit-pinned");
+		} catch (e) {
+			saved = null;
+		}
+		btn.click();
+		this.collapsed_by_us = true;
+		// The cockpit's effect writes "false" on the next render — undo that write
+		// so the forced collapse never becomes the user's stored preference.
+		setTimeout(() => this.restore_preference(saved), 60);
+		setTimeout(() => this.restore_preference(saved), 400);
+	},
+	restore() {
+		if (!this.collapsed_by_us) return;
+		this.collapsed_by_us = false;
+		const side = this.side();
+		const btn = this.toggle_button();
+		// The user may have re-expanded it themselves meanwhile: then leave it.
+		if (!side || !btn || !side.classList.contains("collapsed")) return;
+		btn.click();
+	},
+};
+
 frappe.pages["webmail"].on_page_load = function (wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -13,6 +68,8 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 
 	// Store references
 	wrapper.page = page;
+
+	webmail_cockpit.collapse();
 
 	// Hide the page header for full-screen webmail experience
 	const pageHead = wrapper.querySelector(".page-head");
@@ -89,7 +146,15 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 	}
 };
 
+// Re-entering the page (route change back to /app/webmail) does not call
+// on_page_load again — collapse the cockpit on every show.
+frappe.pages["webmail"].on_page_show = function () {
+	webmail_cockpit.collapse();
+};
+
 frappe.pages["webmail"].on_page_hide = function (wrapper) {
+	webmail_cockpit.restore();
+
 	// Restore scroll on page when leaving
 	document.documentElement.style.overflow = "";
 	document.body.style.overflow = "";

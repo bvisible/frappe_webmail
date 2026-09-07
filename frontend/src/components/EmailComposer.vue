@@ -117,35 +117,36 @@
 			<editor-content :editor="editor" />
 		</div>
 
-		<!-- Nora AI Bar -->
-		<NoraBar
-			:editor="editor"
-			:loading="noraLoading"
-			:loading-text="noraLoadingText"
-			@proofread="handleNoraProofread"
-			@improve="handleNoraImprove"
-			@translate="handleNoraTranslate"
-			@open-chat="showNoraMiniChat = true"
-		/>
+		<!-- Nora AI Bar / diff / mini chat — only when the `nora` app is installed -->
+		<template v-if="noraEnabled">
+			<NoraBar
+				:editor="editor"
+				:loading="noraLoading"
+				:loading-text="noraLoadingText"
+				@proofread="handleNoraProofread"
+				@improve="handleNoraImprove"
+				@translate="handleNoraTranslate"
+				@learn-style="handleNoraLearnStyle"
+				@open-chat="showNoraMiniChat = true"
+			/>
 
-		<!-- Nora Diff Panel -->
-		<NoraDiffPanel
-			:visible="showNoraDiff"
-			:original-text="noraDiffOriginal"
-			:modified-text="noraDiffModified"
-			:title="noraDiffTitle"
-			@accept="acceptNoraDiff"
-			@reject="rejectNoraDiff"
-		/>
+			<NoraDiffPanel
+				:visible="showNoraDiff"
+				:original-text="noraDiffOriginal"
+				:modified-text="noraDiffModified"
+				:title="noraDiffTitle"
+				@accept="acceptNoraDiff"
+				@reject="rejectNoraDiff"
+			/>
 
-		<!-- Nora Mini Chat -->
-		<NoraMiniChat
-			v-if="showNoraMiniChat"
-			:account="account"
-			:reply-context="replyTo ? replyTo.html || replyTo.text : ''"
-			@close="showNoraMiniChat = false"
-			@insert-content="insertNoraContent"
-		/>
+			<NoraMiniChat
+				v-if="showNoraMiniChat"
+				:account="account"
+				:reply-context="replyTo ? replyTo.html || replyTo.text : ''"
+				@close="showNoraMiniChat = false"
+				@insert-content="insertNoraContent"
+			/>
+		</template>
 
 		<!-- Attachments -->
 		<div class="attachments-section" v-if="attachments.length || remoteAttachments.length">
@@ -263,6 +264,8 @@ export default {
 		editDraft: { type: Object, default: null },
 		signature: { type: String, default: "" },
 		folder: { type: String, default: "INBOX" },
+		// False on a site without the `nora` app: the composer stays a plain editor
+		noraEnabled: { type: Boolean, default: true },
 	},
 
 	emits: ["sent", "close", "draft-deleted"],
@@ -788,6 +791,42 @@ export default {
 			this.noraDiffOriginal = "";
 			this.noraDiffModified = "";
 			this.noraCorrectedHtml = "";
+		},
+
+		// Learn the sender's writing style from the Sent folder (background job);
+		// proofread/improve then adapt their tone to it.
+		async handleNoraLearnStyle() {
+			if (this.noraLoading) return;
+			this.noraLoading = true;
+			this.noraLoadingText = __("Starting style analysis...");
+			try {
+				const r = await frappe.call({
+					method: "nora.api.nora_webmail.scan_style",
+					args: { account_name: this.account },
+				});
+				const data = r.message || {};
+				if (data.success) {
+					frappe.toast({
+						message: __(
+							"Nora is learning your writing style from your sent emails. This takes a minute."
+						),
+						indicator: "blue",
+					});
+				} else {
+					frappe.toast({
+						message: data.error || __("Could not start the analysis"),
+						indicator: "red",
+					});
+				}
+			} catch (e) {
+				frappe.toast({
+					message: __("Nora encountered an error. Please try again."),
+					indicator: "red",
+				});
+			} finally {
+				this.noraLoading = false;
+				this.noraLoadingText = "";
+			}
 		},
 
 		insertNoraContent(htmlContent) {

@@ -53,17 +53,21 @@
 				<button @click="$emit('delete', email)" class="btn btn-sm btn-danger">
 					<Trash2 :size="16" />
 				</button>
-				<span class="actions-separator"></span>
-				<button
-					@click="handleQuickReply"
-					class="btn btn-sm btn-nora"
-					:disabled="quickReplyLoading"
-					:title="__('Quick Reply with Nora')"
-				>
-					<Sparkles :size="16" />
-					<span>{{ quickReplyLoading ? __("Generating...") : __("Quick Reply") }}</span>
-					<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
-				</button>
+				<template v-if="noraEnabled">
+					<span class="actions-separator"></span>
+					<button
+						@click="handleQuickReply"
+						class="btn btn-sm btn-nora"
+						:disabled="quickReplyLoading"
+						:title="__('Quick Reply with Nora')"
+					>
+						<Sparkles :size="16" />
+						<span>{{
+							quickReplyLoading ? __("Generating...") : __("Quick Reply")
+						}}</span>
+						<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
+					</button>
+				</template>
 			</div>
 
 			<!-- External images warning -->
@@ -222,6 +226,8 @@ export default {
 		email: { type: Object, default: null },
 		account: { type: String, required: true },
 		folder: { type: String, default: "INBOX" },
+		// False on a site without the `nora` app: no AI buttons that would 404
+		noraEnabled: { type: Boolean, default: true },
 	},
 
 	emits: ["reply", "forward", "delete", "flag-changed", "mark-unread", "quick-reply"],

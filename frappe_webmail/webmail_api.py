@@ -323,6 +323,144 @@ def imap_login(client, account):
 		_raise_webmail_login_error("IMAP", e, account)
 
 
+# ============================================
+# IMAP CONNECTION POOL
+# ============================================
+#
+# Every endpoint used to open a brand-new IMAP connection (TLS handshake + LOGIN)
+# per request: 100-800 ms of pure overhead before any useful work, paid 5-6 times
+# on a single page load and again on every 60 s poll. The pool keeps ONE
+# authenticated connection per account in this worker process and hands it to
+# consecutive requests; a connection idle for a while is checked with NOOP first
+# and dropped after a few minutes so a server-side timeout never surfaces to the
+# user. Gunicorn runs sync workers (one request at a time per process) and the RQ
+# workers are single-threaded, so the per-connection lock is a belt-and-braces
+# guard: a nested or concurrent lease simply gets a fresh, unpooled connection.
+
+import socket
+import ssl as _ssl
+import threading
+import time as _time
+from contextlib import contextmanager
+
+_IMAP_POOL = {}
+_IMAP_POOL_LOCK = threading.Lock()
+_IMAP_IDLE_RECHECK = 20  # seconds idle past which we NOOP before reusing
+_IMAP_MAX_IDLE = 240  # seconds idle past which we reconnect instead
+
+
+class _PooledIMAP:
+	__slots__ = ("client", "last_used", "lock")
+
+	def __init__(self, client):
+		self.client = client
+		self.last_used = _time.monotonic()
+		self.lock = threading.Lock()
+
+
+def _imap_connect(account):
+	"""Open and authenticate a new IMAP connection (typed errors via imap_login)."""
+	client = IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl)
+	try:
+		imap_login(client, account)
+	except Exception:
+		try:
+			client.shutdown()
+		except Exception:
+			pass
+		raise
+	return client
+
+
+def _imap_discard(entry):
+	try:
+		entry.client.logout()
+	except Exception:
+		try:
+			entry.client.shutdown()
+		except Exception:
+			pass
+
+
+def _imap_is_alive(entry):
+	idle = _time.monotonic() - entry.last_used
+	if idle > _IMAP_MAX_IDLE:
+		return False
+	if idle < _IMAP_IDLE_RECHECK:
+		return True
+	try:
+		entry.client.noop()
+		return True
+	except Exception:
+		return False
+
+
+def _imap_is_connection_error(exc):
+	"""True when the exception means the socket itself is unusable (as opposed to a
+	plain IMAP error such as 'select failed: Mailbox doesn't exist', after which the
+	connection is perfectly fine)."""
+	if isinstance(exc, OSError | EOFError | _ssl.SSLError | socket.error):
+		return True
+	try:
+		from imapclient import exceptions as imap_exc
+
+		if isinstance(exc, imap_exc.IMAPClientAbortError):
+			return True
+	except Exception:
+		pass
+	import imaplib
+
+	return isinstance(exc, imaplib.IMAP4.abort)
+
+
+@contextmanager
+def imap_session(account):
+	"""Yield an authenticated IMAPClient for `account`, reusing the pooled
+	connection when there is one. Callers select their own folder; nothing is
+	assumed about the previous request's state."""
+	key = account.name
+	entry = None
+	with _IMAP_POOL_LOCK:
+		cand = _IMAP_POOL.get(key)
+		if cand is not None and cand.lock.acquire(blocking=False):
+			entry = cand
+	if entry is not None and not _imap_is_alive(entry):
+		with _IMAP_POOL_LOCK:
+			if _IMAP_POOL.get(key) is entry:
+				_IMAP_POOL.pop(key, None)
+		entry.lock.release()
+		_imap_discard(entry)
+		entry = None
+	if entry is None:
+		entry = _PooledIMAP(_imap_connect(account))
+		entry.lock.acquire()
+
+	broken = False
+	try:
+		yield entry.client
+	except Exception as exc:
+		broken = _imap_is_connection_error(exc)
+		raise
+	finally:
+		entry.last_used = _time.monotonic()
+		if broken:
+			with _IMAP_POOL_LOCK:
+				if _IMAP_POOL.get(key) is entry:
+					_IMAP_POOL.pop(key, None)
+			entry.lock.release()
+			_imap_discard(entry)
+		else:
+			with _IMAP_POOL_LOCK:
+				current = _IMAP_POOL.get(key)
+				if current is None or current is entry:
+					_IMAP_POOL[key] = entry
+					entry.lock.release()
+				else:
+					# Another connection took the slot meanwhile: keep that one.
+					entry.lock.release()
+					_imap_discard(entry)
+
+
 def _smtp_login_raw(server, account):
 	"""Perform the raw SMTP login. Raises low-level exceptions on failure.
 
@@ -590,7 +728,7 @@ def _raise_webmail_login_error(protocol, exception, account):
 	error_text = str(exception).lower()
 
 	# Identify authentication failures by exception type or well-known markers.
-	is_auth_error = isinstance(exception, (WebmailAuthenticationError, smtplib.SMTPAuthenticationError))
+	is_auth_error = isinstance(exception, WebmailAuthenticationError | smtplib.SMTPAuthenticationError)
 	if not is_auth_error:
 		try:
 			from imapclient.exceptions import LoginError as IMAPLoginError
@@ -661,8 +799,7 @@ def get_folders(account_name):
 
 	account = get_account(account_name)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		folders = client.list_folders()
 
 		result = []
@@ -689,8 +826,7 @@ def get_quota(account_name):
 	account = get_account(account_name)
 
 	try:
-		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-			imap_login(client, account)
+		with imap_session(account) as client:
 			if b"QUOTA" not in client.capabilities():
 				return None
 			quotas = client.get_quota_root("INBOX")[1] or []
@@ -726,13 +862,11 @@ def create_folder(account_name, folder_name, parent_folder=None):
 	account = get_account(account_name)
 	folder_name = folder_name.strip()
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-
+	with imap_session(account) as client:
 		# Get folder delimiter from existing folders
 		folders = client.list_folders()
 		delimiter = "/"
-		for flags, delim, name in folders:
+		for _flags, delim, _name in folders:
 			delimiter = delim.decode() if isinstance(delim, bytes) else delim
 			break
 
@@ -743,55 +877,13 @@ def create_folder(account_name, folder_name, parent_folder=None):
 			full_path = folder_name
 
 		# Check if folder already exists
-		for flags, delim, name in folders:
+		for _flags, _delim, name in folders:
 			if name == full_path:
 				frappe.throw(_("Folder already exists"))
 
 		client.create_folder(full_path)
 
 		return {"success": True, "folder": full_path}
-
-
-@frappe.whitelist()
-def delete_folder(account_name, folder_name):
-	"""Delete an IMAP folder.
-
-	Args:
-		account_name: Webmail Account name
-		folder_name: Full path of the folder to delete
-
-	Returns:
-		dict: success status
-	"""
-	if not IMAPClient:
-		frappe.throw(_("imapclient package is not installed"))
-
-	if not folder_name:
-		frappe.throw(_("Folder name is required"))
-
-	account = get_account(account_name)
-
-	# Prevent deletion of standard folders
-	protected_folders = [
-		"inbox",
-		"sent",
-		"drafts",
-		"trash",
-		"spam",
-		"junk",
-		"archive",
-		"deleted items",
-		"sent items",
-		"sent mail",
-	]
-	if folder_name.lower() in protected_folders:
-		frappe.throw(_("Cannot delete standard folder"))
-
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-		client.delete_folder(folder_name)
-
-		return {"success": True}
 
 
 # ============================================
@@ -809,8 +901,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 	limit = min(int(limit), 100)  # Max 100 per request
 	offset = int(offset)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Search criteria
@@ -878,8 +969,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 	uid = int(uid)
 	mark_read = to_bool(mark_read, default=True)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Mark as read
@@ -987,8 +1077,7 @@ def mark_email_nora_seen(account_name, uid, seen=True, folder="INBOX"):
 	uid = int(uid)
 	seen = to_bool(seen, default=True)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		if seen:
@@ -1184,9 +1273,7 @@ def _copy_to_sent_folder(account, msg):
 	# Common sent folder names
 	sent_folder_names = ["Sent", "Sent Items", "Sent Mail", "INBOX.Sent", "Envoyés"]
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-
+	with imap_session(account) as client:
 		# Find the Sent folder
 		folders = client.list_folders()
 		sent_folder = None
@@ -1214,15 +1301,13 @@ def _mark_original_email(account, reply_to_uid, reply_to_folder, forward_uid, fo
 
 	# Mark as answered if this is a reply
 	if reply_to_uid and reply_to_folder:
-		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-			imap_login(client, account)
+		with imap_session(account) as client:
 			client.select_folder(reply_to_folder)
 			client.add_flags([int(reply_to_uid)], [b"\\Answered"])
 
 	# Mark as forwarded if this is a forward
 	if forward_uid and forward_folder:
-		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-			imap_login(client, account)
+		with imap_session(account) as client:
 			client.select_folder(forward_folder)
 			# $Forwarded is a common keyword, not a standard flag
 			client.add_flags([int(forward_uid)], [b"$Forwarded"])
@@ -1270,9 +1355,7 @@ def save_draft_imap(
 	# Common drafts folder names
 	drafts_folder_names = ["Drafts", "Draft", "INBOX.Drafts", "Brouillons"]
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-
+	with imap_session(account) as client:
 		# Find the Drafts folder
 		folders = client.list_folders()
 		drafts_folder = None
@@ -1323,8 +1406,7 @@ def set_flags(account_name, uids, folder, add_flags=None, remove_flags=None):
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		if add_flags:
@@ -1347,8 +1429,7 @@ def move_emails(account_name, uids, from_folder, to_folder):
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(from_folder)
 
 		# Copy then delete
@@ -1368,8 +1449,7 @@ def copy_emails(account_name, uids, from_folder, to_folder):
 	account = get_account(account_name)
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(from_folder)
 
 		# Copy only, don't delete
@@ -1393,9 +1473,7 @@ def rename_folder(account_name, old_name, new_name):
 
 	account = get_account(account_name)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-
+	with imap_session(account) as client:
 		# Check if source folder exists
 		folders = [f[2] for f in client.list_folders()]
 		if old_name not in folders:
@@ -1418,8 +1496,7 @@ def mark_folder_read(account_name, folder):
 
 	account = get_account(account_name)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Search for unread messages
@@ -1448,8 +1525,7 @@ def empty_folder(account_name, folder):
 	if not is_trash and not is_spam:
 		frappe.throw(_("Only Trash and Spam folders can be emptied"))
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Search for all messages
@@ -1478,9 +1554,7 @@ def delete_folder(account_name, folder_name):
 
 	account = get_account(account_name)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
-
+	with imap_session(account) as client:
 		# Check if folder exists
 		folders = [f[2] for f in client.list_folders()]
 		if folder_name not in folders:
@@ -1506,8 +1580,7 @@ def delete_emails(account_name, uids, folder, permanent=False):
 	uids = frappe.parse_json(uids) if isinstance(uids, str) else uids
 	permanent = to_bool(permanent)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		if permanent:
@@ -1592,8 +1665,7 @@ def get_attachment(account_name, uid, folder, attachment_id):
 	account = get_account(account_name)
 	uid = int(uid)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		data = client.fetch([uid], ["RFC822"])
@@ -1676,8 +1748,7 @@ def search_emails(
 	is_flagged = to_bool(is_flagged) if is_flagged is not None else None
 	is_nora_seen = to_bool(is_nora_seen) if is_nora_seen is not None else None
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Build search criteria
@@ -2114,8 +2185,7 @@ def extract_contacts_from_email(account_name, uid, folder="INBOX"):
 	account = get_account(account_name)
 	uid = int(uid)
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		data = client.fetch([uid], ["ENVELOPE"])
@@ -2415,8 +2485,7 @@ def apply_filters_to_email(account_name, uid, folder="INBOX"):
 		return {"success": True, "applied": []}
 
 	# Fetch email data
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		data = client.fetch([int(uid)], ["ENVELOPE", "FLAGS", "BODYSTRUCTURE"])
@@ -2522,8 +2591,7 @@ def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 
 	filter_docs = [frappe.get_doc("Email Filter", f.name) for f in filters]
 
-	with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-		imap_login(client, account)
+	with imap_session(account) as client:
 		client.select_folder(folder)
 
 		# Get recent unread messages
@@ -2696,6 +2764,19 @@ def get_trusted_sources(account_name):
 
 
 # ============================================
+# CAPABILITIES
+# ============================================
+
+
+@frappe.whitelist()
+def get_capabilities():
+	"""Optional companions installed on this site. The UI only shows what can run:
+	a bare Frappe site without `nora` gets a plain webmail, not buttons that 404."""
+	installed = set(frappe.get_installed_apps())
+	return {"nora": "nora" in installed}
+
+
+# ============================================
 # UI PREFERENCES
 # ============================================
 
@@ -2715,19 +2796,29 @@ def get_ui_preferences(account_name):
 		except (json.JSONDecodeError, TypeError):
 			collapsed_folders = []
 
+	# .get(): the column arrives with the DocType sync — a worker serving requests
+	# between `git pull` and `bench migrate` must not 500 on a missing attribute.
+	collapsed = account.get("sidebar_collapsed")
 	return {
 		"sidebar_width": account.sidebar_width or 220,
 		"email_list_width": account.email_list_width or 350,
 		"collapsed_folders": collapsed_folders,
+		# None = the user never chose → the client picks a default from the viewport
+		"sidebar_collapsed": None if collapsed is None else bool(collapsed),
 	}
 
 
 @frappe.whitelist()
-def save_ui_preferences(account_name, sidebar_width=None, email_list_width=None, collapsed_folders=None):
-	"""Save UI preferences (column widths, collapsed folders) for an account"""
+def save_ui_preferences(
+	account_name, sidebar_width=None, email_list_width=None, collapsed_folders=None, sidebar_collapsed=None
+):
+	"""Save UI preferences (column widths, collapsed folders, folder rail) for an account"""
 	import json
 
 	account = get_account(account_name)
+
+	if sidebar_collapsed is not None:
+		account.sidebar_collapsed = 1 if to_bool(sidebar_collapsed) else 0
 
 	# Validate and constrain values
 	if sidebar_width is not None:
@@ -2794,8 +2885,7 @@ def get_folder_mapping(account_name):
 	# Get auto-detected folders from IMAP
 	auto_detected = {}
 	try:
-		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
-			imap_login(client, account)
+		with imap_session(account) as client:
 			folders = client.list_folders()
 
 			for flags, delimiter, name in folders:
@@ -2999,15 +3089,15 @@ def has_attachments(bodystructure):
 
 	def check_part(part):
 		"""Recursively check parts for attachments"""
-		if not isinstance(part, (tuple, list)) or len(part) < 2:
+		if not isinstance(part, tuple | list) or len(part) < 2:
 			return False
 
 		first = part[0]
 
 		# Multipart: first element is a tuple/list (nested part)
-		if isinstance(first, (tuple, list)):
+		if isinstance(first, tuple | list):
 			for item in part:
-				if isinstance(item, (tuple, list)):
+				if isinstance(item, tuple | list):
 					if check_part(item):
 						return True
 			return False

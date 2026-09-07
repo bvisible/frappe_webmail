@@ -42,6 +42,15 @@
 					<button @click="handleTranslate('de')">{{ __("German") }}</button>
 				</div>
 			</div>
+			<button
+				class="nora-btn"
+				@click="$emit('learn-style')"
+				:disabled="loading"
+				:title="__('Learn my writing style from my sent emails')"
+			>
+				<Signature :size="14" />
+				<span>{{ __("My style") }}</span>
+			</button>
 			<span class="nora-separator"></span>
 			<button
 				class="nora-btn nora-btn-chat"
@@ -68,6 +77,7 @@ import {
 	Languages,
 	ChevronDown,
 	MessageSquare,
+	Signature,
 } from "lucide-vue-next";
 
 export default {
@@ -79,6 +89,7 @@ export default {
 		Languages,
 		ChevronDown,
 		MessageSquare,
+		Signature,
 	},
 
 	props: {
@@ -87,7 +98,7 @@ export default {
 		loadingText: { type: String, default: "" },
 	},
 
-	emits: ["proofread", "improve", "translate", "open-chat"],
+	emits: ["proofread", "improve", "translate", "learn-style", "open-chat"],
 
 	data() {
 		return {

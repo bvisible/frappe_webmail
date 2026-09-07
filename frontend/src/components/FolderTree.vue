@@ -1,7 +1,7 @@
 <template>
-	<div class="folder-tree">
+	<div class="folder-tree" :class="{ compact }">
 		<!-- Header with create button -->
-		<div class="folder-header">
+		<div class="folder-header" v-if="!compact">
 			<span class="header-title">{{ __("Dossiers") }}</span>
 			<button
 				@click="showCreateDialog = true"
@@ -24,7 +24,13 @@
 					disabled: !folder.selectable,
 					'drag-over': dragOverFolder === folder.name,
 				}"
-				:style="{ paddingLeft: getFolderIndent(folder) + 'px' }"
+				:style="{ paddingLeft: (compact ? 0 : getFolderIndent(folder)) + 'px' }"
+				:title="
+					compact
+						? getDisplayName(folder) +
+						  (folder.unread ? ' (' + folder.unread + ')' : '')
+						: null
+				"
 				@click="selectFolder(folder)"
 				@contextmenu.prevent="showContextMenu($event, folder)"
 				@dragover.prevent="onDragOver($event, folder)"
@@ -37,13 +43,16 @@
 					:stroke-width="1.5"
 					class="folder-icon"
 				/>
-				<span class="folder-name">{{ getDisplayName(folder) }}</span>
-				<span v-if="folder.unread" class="unread-count">{{ folder.unread }}</span>
+				<span v-if="!compact" class="folder-name">{{ getDisplayName(folder) }}</span>
+				<span v-if="folder.unread && !compact" class="unread-count">{{
+					folder.unread
+				}}</span>
+				<span v-else-if="folder.unread" class="unread-dot"></span>
 				<!-- Expand/Collapse chevron on the right (only for parent folders).
 				     Kept last so it lives on the trailing edge and the name can use
 				     the full remaining width. -->
 				<button
-					v-if="hasChildren(folder)"
+					v-if="hasChildren(folder) && !compact"
 					@click.stop="toggleFolder(folder)"
 					class="expand-btn"
 					:title="isCollapsed(folder) ? __('Expand') : __('Collapse')"
@@ -207,6 +216,9 @@ export default {
 		account: { type: String, required: true },
 		accountEmail: { type: String, default: "" },
 		selectedFolder: { type: String, default: "INBOX" },
+		// Icon-rail mode (folder column collapsed): icons + tooltips, no labels,
+		// no nesting chevrons — the whole tree stays reachable at 56px wide.
+		compact: { type: Boolean, default: false },
 	},
 
 	emits: ["select", "drop-email", "folder-mapping-loaded"],
@@ -1160,5 +1172,42 @@ select.form-control option {
 .btn-primary:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+/* ===== Compact icon rail (folder column collapsed) ===== */
+.folder-tree.compact .folder-list {
+	padding: 10px 0;
+	align-items: center;
+	gap: 2px;
+}
+
+.folder-tree.compact .folder-item {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	margin: 0;
+	gap: 0;
+	justify-content: center;
+	position: relative;
+}
+
+.folder-tree.compact .folder-icon {
+	color: var(--text-color, #333);
+}
+
+.folder-tree.compact .folder-item.selected .folder-icon {
+	color: var(--primary-color, #2490ef);
+}
+
+/* Unread marker when there is no room for a count */
+.folder-tree.compact .unread-dot {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--primary-color, #2490ef);
+	box-shadow: 0 0 0 2px var(--card-bg, #fff);
 }
 </style>

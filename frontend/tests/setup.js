@@ -5,6 +5,19 @@
  */
 
 import { vi } from "vitest";
+import { config } from "@vue/test-utils";
+
+// Translation helper. The real app injects Frappe's `__` through
+// app.config.globalProperties (main.js); components call `this.__()` and the
+// templates call `__()`, so the test mounts need the same global or every
+// render dies with "__ is not a function".
+const translate = (str, args) => {
+	if (!Array.isArray(args)) return str;
+	return String(str).replace(/\{(\d+)\}/g, (m, i) => (args[i] === undefined ? m : args[i]));
+};
+global.__ = translate;
+window.__ = translate;
+config.global.mocks = { ...(config.global.mocks || {}), __: translate };
 
 // Mock frappe global object
 global.frappe = {

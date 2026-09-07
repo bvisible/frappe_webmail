@@ -38,6 +38,7 @@
     "sb_ui_preferences",
     "sidebar_width",
     "email_list_width",
+    "sidebar_collapsed",
     "collapsed_folders",
     "sb_folder_mapping",
     "inbox_folder",
@@ -256,6 +257,14 @@
       "label": "Email List Width"
     },
     {
+      "default": "0",
+      "description": "Folder column collapsed to an icon rail (per-account UI preference)",
+      "fieldname": "sidebar_collapsed",
+      "fieldtype": "Check",
+      "hidden": 1,
+      "label": "Sidebar Collapsed"
+    },
+    {
       "default": "[]",
       "description": "JSON array of collapsed folder names",
       "fieldname": "collapsed_folders",
@@ -323,7 +332,7 @@
   ],
   "index_web_pages_for_search": 1,
   "links": [],
-  "modified": "2024-01-01 00:00:00.000000",
+  "modified": "2026-09-07 12:00:00.000000",
   "modified_by": "Administrator",
   "module": "Frappe Webmail",
   "name": "Webmail Account",
