@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import EmailViewer from "@/components/EmailViewer.vue";
+import { Archive, File, FileText, Film, Image, Music } from "lucide-vue-next";
 
 // Mock DOMPurify
 vi.mock("dompurify", () => ({
@@ -150,7 +151,7 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		await wrapper.findAll(".btn").at(0).trigger("click");
+		await wrapper.findAll(".email-actions .btn").at(0).trigger("click");
 
 		expect(wrapper.emitted("reply")).toBeTruthy();
 		expect(wrapper.emitted("reply")[0][0]).toEqual(mockEmail);
@@ -164,7 +165,7 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		await wrapper.findAll(".btn").at(1).trigger("click");
+		await wrapper.findAll(".email-actions .btn").at(1).trigger("click");
 
 		expect(wrapper.emitted("forward")).toBeTruthy();
 	});
@@ -177,9 +178,7 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		// Find delete button (last action button)
-		const buttons = wrapper.findAll(".email-actions .btn");
-		await buttons[buttons.length - 1].trigger("click");
+		await wrapper.find(".email-actions .btn-danger").trigger("click");
 
 		expect(wrapper.emitted("delete")).toBeTruthy();
 	});
@@ -242,12 +241,13 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		expect(wrapper.vm.getFileIcon("application/pdf")).toBe("📕");
-		expect(wrapper.vm.getFileIcon("image/png")).toBe("🖼️");
-		expect(wrapper.vm.getFileIcon("video/mp4")).toBe("🎬");
-		expect(wrapper.vm.getFileIcon("audio/mpeg")).toBe("🎵");
-		expect(wrapper.vm.getFileIcon("application/zip")).toBe("📦");
-		expect(wrapper.vm.getFileIcon("text/plain")).toBe("📄");
+		// Icons are Lucide components since the redesign (no more emoji)
+		expect(wrapper.vm.getFileIcon("application/pdf")).toBe(FileText);
+		expect(wrapper.vm.getFileIcon("image/png")).toBe(Image);
+		expect(wrapper.vm.getFileIcon("video/mp4")).toBe(Film);
+		expect(wrapper.vm.getFileIcon("audio/mpeg")).toBe(Music);
+		expect(wrapper.vm.getFileIcon("application/zip")).toBe(Archive);
+		expect(wrapper.vm.getFileIcon("text/plain")).toBe(File);
 	});
 
 	it("downloads attachment when clicked", async () => {
@@ -272,11 +272,6 @@ describe("EmailViewer", () => {
 		global.URL.createObjectURL = vi.fn(() => mockUrl);
 		global.URL.revokeObjectURL = vi.fn();
 
-		const mockLink = { click: vi.fn() };
-		vi.spyOn(document, "createElement").mockReturnValue(mockLink);
-		vi.spyOn(document.body, "appendChild").mockImplementation(() => {});
-		vi.spyOn(document.body, "removeChild").mockImplementation(() => {});
-
 		const wrapper = mount(EmailViewer, {
 			props: {
 				email: { ...mockEmail, attachments: [attachment] },
@@ -284,8 +279,25 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		await wrapper.vm.downloadAttachment(attachment);
-		await flushPromises();
+		// Let the component build a real <a>; stub only the browser side effects
+		// (object URL, the click) so Vue's own DOM work is never intercepted.
+		const originalCreateObjectURL = URL.createObjectURL;
+		const originalRevokeObjectURL = URL.revokeObjectURL;
+		URL.createObjectURL = vi.fn(() => "blob:mock");
+		URL.revokeObjectURL = vi.fn();
+		const clickSpy = vi
+			.spyOn(HTMLAnchorElement.prototype, "click")
+			.mockImplementation(() => {});
+		try {
+			await wrapper.vm.downloadAttachment(attachment);
+			await flushPromises();
+			expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+			expect(clickSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			clickSpy.mockRestore();
+			URL.createObjectURL = originalCreateObjectURL;
+			URL.revokeObjectURL = originalRevokeObjectURL;
+		}
 
 		expect(frappe.call).toHaveBeenCalledWith({
 			method: "frappe_webmail.api.get_attachment",

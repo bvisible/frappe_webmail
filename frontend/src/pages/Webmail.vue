@@ -8,7 +8,8 @@
 				v-if="accounts.length"
 				class="icon-btn sb-toggle"
 				@click="toggleSidebar"
-				:title="sidebarCollapsed ? __('Show folders') : __('Hide folders')"
+				:data-tip="sidebarCollapsed ? __('Show folders') : __('Hide folders')"
+				:aria-label="sidebarCollapsed ? __('Show folders') : __('Hide folders')"
 			>
 				<PanelLeftOpen v-if="sidebarCollapsed" :size="15" :stroke-width="1.7" />
 				<PanelLeftClose v-else :size="15" :stroke-width="1.7" />
@@ -152,19 +153,45 @@
 			<div class="top-actions">
 				<button
 					v-if="capabilities.nora"
+					@click="toggleAgentPanel"
+					class="icon-btn"
+					:class="{ 'is-on': agentPanelOpen }"
+					:data-tip="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
+					:aria-label="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
+				>
+					<Sparkles :size="15" :stroke-width="1.7" />
+				</button>
+				<button
+					v-if="capabilities.nora"
 					@click="showAutomations = true"
 					class="icon-btn"
-					:title="__('Nora automations')"
+					:data-tip="__('Nora automations')"
+					:aria-label="__('Nora automations')"
 				>
 					<Bot :size="15" :stroke-width="1.7" />
 				</button>
-				<button @click="showFilters = true" class="icon-btn" :title="__('Filters')">
+				<button
+					@click="showFilters = true"
+					class="icon-btn"
+					:data-tip="__('Filters')"
+					:aria-label="__('Filters')"
+				>
 					<Filter :size="14" />
 				</button>
-				<button @click="showSignatures = true" class="icon-btn" :title="__('Signatures')">
+				<button
+					@click="showSignatures = true"
+					class="icon-btn"
+					:data-tip="__('Signatures')"
+					:aria-label="__('Signatures')"
+				>
 					<PenLine :size="14" />
 				</button>
-				<button @click="openSettings" class="icon-btn" :title="__('Settings')">
+				<button
+					@click="openSettings"
+					class="icon-btn"
+					:data-tip="__('Settings')"
+					:aria-label="__('Settings')"
+				>
 					<Settings :size="14" />
 				</button>
 				<button @click="compose" class="btn-compose">
@@ -289,6 +316,17 @@
 					@draft-deleted="onDraftDeleted"
 				/>
 			</section>
+
+			<!-- Nora — mailbox-scoped chat, persistent across folders and emails -->
+			<aside class="agent-col" v-if="capabilities.nora && agentPanelOpen">
+				<AgentPanel
+					:account="currentAccount"
+					:account-email="currentAccountEmail"
+					:folder="currentFolder"
+					:selected-email="selectedEmailContent"
+					@close="toggleAgentPanel"
+				/>
+			</aside>
 		</div>
 
 		<!-- No Accounts State -->
@@ -363,6 +401,8 @@ import AdvancedSearch from "../components/AdvancedSearch.vue";
 import FilterManager from "../components/FilterManager.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import AutomationsPanel from "../components/AutomationsPanel.vue";
+import AgentPanel from "../components/AgentPanel.vue";
+import { installTooltips } from "../tooltip";
 import {
 	Mail,
 	Search,
@@ -376,6 +416,7 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Bot,
+	Sparkles,
 	X,
 } from "lucide-vue-next";
 
@@ -392,6 +433,7 @@ export default {
 		FilterManager,
 		BulkActionBar,
 		AutomationsPanel,
+		AgentPanel,
 		Mail,
 		Search,
 		SquarePen,
@@ -404,6 +446,7 @@ export default {
 		PanelLeftClose,
 		PanelLeftOpen,
 		Bot,
+		Sparkles,
 		X,
 	},
 
@@ -428,6 +471,15 @@ export default {
 			showSearch: false,
 			showFilters: false,
 			showAutomations: false,
+			// Nora side panel — remembered per browser (open by default)
+			agentPanelOpen: (() => {
+				try {
+					const v = localStorage.getItem("webmail_agent_panel_open");
+					return v === null ? true : v === "1";
+				} catch (e) {
+					return true;
+				}
+			})(),
 			// Optional companions installed on this site (see get_capabilities)
 			capabilities: { nora: false },
 			showSharingTooltip: false,
@@ -589,9 +641,14 @@ export default {
 			}
 		};
 		document.addEventListener("keydown", this._cmdShortcut);
+		// Icon-only controls (folder rail, top bar, reader, Nora) explain themselves
+		this._offTooltips = installTooltips(this.$el);
 	},
 
 	beforeUnmount() {
+		if (this._offTooltips) {
+			this._offTooltips();
+		}
 		if (this._cmdShortcut) {
 			document.removeEventListener("keydown", this._cmdShortcut);
 		}
@@ -1172,6 +1229,15 @@ export default {
 				return;
 			}
 			this.sidebarCollapsed = window.innerWidth < 1366;
+		},
+
+		toggleAgentPanel() {
+			this.agentPanelOpen = !this.agentPanelOpen;
+			try {
+				localStorage.setItem("webmail_agent_panel_open", this.agentPanelOpen ? "1" : "0");
+			} catch (e) {
+				/* storage unavailable — fine */
+			}
 		},
 
 		toggleSidebar() {
@@ -2870,6 +2936,28 @@ html[data-theme="dark"] .webmail-app {
 .sb-toggle {
 	flex-shrink: 0;
 	margin-right: -6px;
+}
+
+.icon-btn.is-on {
+	background: var(--wm-accent-soft);
+	color: var(--wm-accent);
+}
+
+/* Nora column: fixed width, right of the reader, hidden on narrow screens */
+.agent-col {
+	width: 360px;
+	flex-shrink: 0;
+	min-width: 0;
+	border-left: 1px solid var(--wm-line);
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+@media (max-width: 1100px) {
+	.agent-col {
+		display: none;
+	}
 }
 
 /* Storage indicator pinned to the bottom of the sidebar.

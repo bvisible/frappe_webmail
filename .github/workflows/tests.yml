@@ -27,3 +27,17 @@ jobs:
       test_args: ${{ inputs.test_args || '' }}
     # inherit: CI_REPORT_SECRET + FLEET_READ_TOKEN (private bvisible deps)
     secrets: inherit
+  # The Vue frontend has its own suite (vitest, happy-dom). It does not need a bench;
+  # it ran nowhere before 2026-09-07, so the specs had drifted red for months (#276).
+  frontend-tests:
+    name: frontend (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - run: yarn --cwd frontend install --frozen-lockfile
+      - run: yarn --cwd frontend test:run

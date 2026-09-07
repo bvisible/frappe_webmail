@@ -52,7 +52,7 @@ describe("EmailList", () => {
 		});
 
 		expect(wrapper.find(".email-list-container").exists()).toBe(true);
-		expect(wrapper.find(".list-toolbar").exists()).toBe(true);
+		expect(wrapper.find(".list-header").exists()).toBe(true);
 	});
 
 	it("loads emails on mount", async () => {
@@ -103,7 +103,8 @@ describe("EmailList", () => {
 		await flushPromises();
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.text()).toContain("Aucun email");
+		// `__` is the identity in tests (see tests/setup.js): the English source string shows
+		expect(wrapper.text()).toContain("No emails in this folder");
 	});
 
 	it("shows loading indicator while loading", () => {

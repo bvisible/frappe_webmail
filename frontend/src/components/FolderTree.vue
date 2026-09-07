@@ -6,7 +6,8 @@
 			<button
 				@click="showCreateDialog = true"
 				class="btn-create-folder"
-				:title="__('Create folder')"
+				:data-tip="__('Create folder')"
+				:aria-label="__('Create folder')"
 			>
 				<Plus :size="16" />
 			</button>
@@ -25,12 +26,14 @@
 					'drag-over': dragOverFolder === folder.name,
 				}"
 				:style="{ paddingLeft: (compact ? 0 : getFolderIndent(folder)) + 'px' }"
-				:title="
+				:data-tip="
 					compact
 						? getDisplayName(folder) +
 						  (folder.unread ? ' (' + folder.unread + ')' : '')
 						: null
 				"
+				data-tip-pos="right"
+				:aria-label="getDisplayName(folder)"
 				@click="selectFolder(folder)"
 				@contextmenu.prevent="showContextMenu($event, folder)"
 				@dragover.prevent="onDragOver($event, folder)"
@@ -55,7 +58,8 @@
 					v-if="hasChildren(folder) && !compact"
 					@click.stop="toggleFolder(folder)"
 					class="expand-btn"
-					:title="isCollapsed(folder) ? __('Expand') : __('Collapse')"
+					:data-tip="isCollapsed(folder) ? __('Expand') : __('Collapse')"
+					:aria-label="isCollapsed(folder) ? __('Expand') : __('Collapse')"
 				>
 					<ChevronRight :size="14" :class="{ rotated: !isCollapsed(folder) }" />
 				</button>

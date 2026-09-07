@@ -21,7 +21,8 @@
 								v-else
 								@click="saveAsContact(email.from_email, email.from_name)"
 								class="add-contact-btn"
-								title="Ajouter aux contacts"
+								:data-tip="__('Add to contacts')"
+								:aria-label="__('Add to contacts')"
 							>
 								<UserPlus :size="14" />
 							</button>
@@ -37,20 +38,31 @@
 			<div class="email-actions">
 				<button @click="$emit('reply', email)" class="btn btn-sm">
 					<Reply :size="16" />
-					<span>Repondre</span>
+					<span>{{ __("Reply") }}</span>
 				</button>
 				<button @click="$emit('forward', email)" class="btn btn-sm">
 					<Forward :size="16" />
-					<span>Transferer</span>
+					<span>{{ __("Forward") }}</span>
 				</button>
-				<button @click="markAsUnread" class="btn btn-sm" title="Marquer comme non lu">
+				<button @click="markAsUnread" class="btn btn-sm" :data-tip="__('Mark as unread')">
 					<MailOpen :size="16" />
-					<span>Non lu</span>
+					<span>{{ __("Unread") }}</span>
 				</button>
-				<button @click="toggleStar" class="btn btn-sm" :class="{ starred: email.flagged }">
+				<button
+					@click="toggleStar"
+					class="btn btn-sm"
+					:class="{ starred: email.flagged }"
+					:data-tip="email.flagged ? __('Remove star') : __('Star')"
+					:aria-label="email.flagged ? __('Remove star') : __('Star')"
+				>
 					<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
 				</button>
-				<button @click="$emit('delete', email)" class="btn btn-sm btn-danger">
+				<button
+					@click="$emit('delete', email)"
+					class="btn btn-sm btn-danger"
+					:data-tip="__('Delete')"
+					:aria-label="__('Delete')"
+				>
 					<Trash2 :size="16" />
 				</button>
 				<template v-if="noraEnabled">
@@ -59,7 +71,7 @@
 						@click="handleQuickReply"
 						class="btn btn-sm btn-nora"
 						:disabled="quickReplyLoading"
-						:title="__('Quick Reply with Nora')"
+						:data-tip="__('Quick Reply with Nora')"
 					>
 						<Sparkles :size="16" />
 						<span>{{

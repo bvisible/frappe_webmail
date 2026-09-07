@@ -2,11 +2,13 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	plugins: [vue()],
-	define: {
-		"process.env.NODE_ENV": JSON.stringify("production"),
-	},
+	// The IIFE bundle runs in the browser where `process` does not exist, so the
+	// build inlines NODE_ENV. Never in tests: vitest would then load Vue's
+	// production build, whose devtools hooks are stripped -> `wrapper.emitted()`
+	// records nothing and every emit assertion fails.
+	define: mode === "test" ? {} : { "process.env.NODE_ENV": JSON.stringify("production") },
 	build: {
 		outDir: "../frappe_webmail/public/js",
 		emptyOutDir: false,
@@ -43,4 +45,4 @@ export default defineConfig({
 			include: ["src/**/*.vue", "src/**/*.js"],
 		},
 	},
-});
+}));

@@ -8,21 +8,26 @@
 				{{ __("{0} unread", [unreadFilterCount]) }}
 			</span>
 			<div class="list-header-right">
-				<div class="polling-status" v-if="pollingEnabled" :title="__('Auto-refresh on')">
+				<div
+					class="polling-status"
+					v-if="pollingEnabled"
+					:data-tip="__('Auto-refresh on')"
+				>
 					<span class="polling-indicator"></span>
 				</div>
 				<button
 					@click="refresh"
 					:disabled="loading"
 					class="header-icon-btn"
-					:title="__('Refresh')"
+					:data-tip="__('Refresh')"
+					:aria-label="__('Refresh')"
 				>
 					<RefreshCw :size="14" :class="{ rotating: loading }" />
 				</button>
 				<label
 					v-if="emails.length > 0"
 					class="header-checkbox"
-					:title="allSelected ? __('Deselect all') : __('Select all')"
+					:data-tip="allSelected ? __('Deselect all') : __('Select all')"
 				>
 					<input
 						type="checkbox"
@@ -471,16 +476,19 @@ export default {
 					},
 				});
 
-				const data = response.message;
+				const data = response.message || {};
+				// A short or malformed answer must never leave `emails` undefined: every
+				// computed filter below runs `.filter()` on it.
+				const rows = Array.isArray(data.emails) ? data.emails : [];
 
 				if (append) {
-					this.emails.push(...data.emails);
+					this.emails.push(...rows);
 				} else {
-					this.emails = data.emails;
+					this.emails = rows;
 				}
 
-				this.total = data.total;
-				this.hasMore = data.has_more;
+				this.total = Number(data.total) || 0;
+				this.hasMore = Boolean(data.has_more);
 				this.$emit("update:total", this.total);
 			} catch (error) {
 				frappe.toast({ message: this.__("Loading error"), indicator: "red" });
