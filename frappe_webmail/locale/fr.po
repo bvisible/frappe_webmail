@@ -96,7 +96,10 @@ msgstr "Action"
 msgid "Actions"
 msgstr "Actions"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AutomationsPanel.vue:71
+#, fuzzy
 msgid "Active"
 msgstr "Active"
 
@@ -413,7 +416,10 @@ msgstr "Cc"
 msgid "Cc:"
 msgstr "Cc :"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/NoraBar.vue:62
+#, fuzzy
 msgid "Chat"
 msgstr "Chat"
 
@@ -1615,9 +1621,12 @@ msgstr "Chargement des fichiers…"
 msgid "Loading..."
 msgstr "Chargement..."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:609
 #: frontend/src/components/AttachmentPicker.vue:268
 #: frontend/src/components/AttachmentPicker.vue:404
+#, fuzzy
 msgid "Local"
 msgstr "Local"
 
@@ -2921,7 +2930,10 @@ msgstr "Vous n'avez pas encore configuré de compte email."
 msgid "Your draft"
 msgstr "Votre brouillon"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AgentPanel.vue:155
+#, fuzzy
 msgid "active"
 msgstr "active"
 
