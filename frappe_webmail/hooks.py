@@ -120,10 +120,13 @@ app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=36"
 
 permission_query_conditions = {
 	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.get_permission_query_conditions",
+	# Drafts are personal: without these two, the list showed every user's drafts (#431).
+	"Email Draft": "frappe_webmail.frappe_webmail.doctype.email_draft.email_draft.get_permission_query_conditions",
 }
 
 has_permission = {
 	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.has_permission",
+	"Email Draft": "frappe_webmail.frappe_webmail.doctype.email_draft.email_draft.has_permission",
 }
 
 # DocType Class
