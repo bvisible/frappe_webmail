@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-09-14 03:32+0000\n"
+"POT-Creation-Date: 2026-09-15 03:30+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -136,7 +136,6 @@ msgid "Advanced search…"
 msgstr "Recherche avancée…"
 
 #. Name of a role
-#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -672,6 +671,11 @@ msgstr "Livraison"
 #: frontend/src/components/EmailList.vue:30
 msgid "Deselect all"
 msgstr "Tout désélectionner"
+
+#. Name of a role
+#: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+msgid "Desk User"
+msgstr "Utilisateur Bureau"
 
 #: frontend/src/components/FilterManager.vue:174
 msgid "Destination folder"
