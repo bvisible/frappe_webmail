@@ -29,6 +29,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          settings: '{"attribution":{"commit":"","pr":"","sessionUrl":false}}'
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--max-turns 90 --allowedTools "Bash,Edit,Write,Read,Glob,Grep"'
           prompt: |
