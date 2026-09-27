@@ -26,5 +26,6 @@ jobs:
           fetch-depth: 1
       - uses: anthropics/claude-code-action@v1
         with:
+          settings: '{"attribution":{"commit":"","pr":"","sessionUrl":false}}'
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 40"
+          claude_args: "--max-turns 40 --append-system-prompt 'Never sign your work: no Generated with Claude Code line, no claude.ai link and no Co-Authored-By Claude trailer, in commits, pull request bodies, pre-filled PR links or comments.'"
