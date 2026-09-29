@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-09-28 03:36+0000\n"
+"POT-Creation-Date: 2026-09-29 03:33+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -3012,7 +3012,7 @@ msgstr "supprimer"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
 msgid "delivered"
-msgstr ""
+msgstr "livré"
 
 #: frontend/src/components/FilterManager.vue:32
 msgid "disabled"
@@ -3063,7 +3063,7 @@ msgstr "en pause"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
 msgid "see the Nora logs"
-msgstr ""
+msgstr "voir les journaux Nora"
 
 #: frontend/src/pages/Webmail.vue:23
 msgid "shared"
