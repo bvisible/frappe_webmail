@@ -3191,3 +3191,7 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 #: frappe_webmail/webmail_api.py:726
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
+
+#: frappe_webmail/www/webmail.py:22
+msgid "Webmail is part of the desk: your account has no access to it."
+msgstr "Le webmail fait partie du bureau : votre compte n'y a pas accès."
