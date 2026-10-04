@@ -131,7 +131,7 @@
 
 					<!-- Right panel: tips / advanced search -->
 					<div class="cmd-panel cmd-panel-tips">
-						<div class="cmd-panel-title">{{ __("Tips") }}</div>
+						<div class="cmd-panel-title">{{ __("Tips", null, "Search help") }}</div>
 						<div class="cmd-tip">
 							{{ __("Type words to search subject, body and sender.") }}
 						</div>

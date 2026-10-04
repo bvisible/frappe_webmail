@@ -298,7 +298,7 @@ export default {
 			if (isTrashOrSpam) {
 				items.push({
 					id: "empty-folder",
-					label: this.__("Empty folder"),
+					label: this.__("Empty folder", null, "Folder action"),
 					icon: Trash2,
 					action: "empty-folder",
 					danger: true,

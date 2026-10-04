@@ -84,7 +84,7 @@
 							class="au-act"
 							@click="togglePause(b)"
 							:disabled="busy[b.id]"
-							:title="b.enabled ? __('Pause') : __('Resume')"
+							:title="b.enabled ? __('Pause') : __('Resume', null, 'Continue')"
 						>
 							<Pause v-if="b.enabled" :size="14" />
 							<PlayCircle v-else :size="14" />

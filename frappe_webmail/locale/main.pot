@@ -844,6 +844,7 @@ msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:460
 #: frontend/src/components/FolderTree.vue:301
+msgctxt "Folder action"
 msgid "Empty folder"
 msgstr ""
 
@@ -1970,7 +1971,7 @@ msgstr ""
 msgid "Password updated"
 msgstr ""
 
-#: frontend/src/components/AgentPanel.vue:163
+#: frontend/src/components/AgentPanel.vue:164
 #: frontend/src/components/AutomationsPanel.vue:87
 msgid "Pause"
 msgstr ""
@@ -2180,8 +2181,9 @@ msgstr ""
 msgid "Results"
 msgstr ""
 
-#: frontend/src/components/AgentPanel.vue:163
+#: frontend/src/components/AgentPanel.vue:164
 #: frontend/src/components/AutomationsPanel.vue:87
+msgctxt "Continue"
 msgid "Resume"
 msgstr ""
 
@@ -2588,6 +2590,7 @@ msgid "Times Applied"
 msgstr ""
 
 #: frontend/src/pages/Webmail.vue:134
+msgctxt "Search help"
 msgid "Tips"
 msgstr ""
 
@@ -2866,6 +2869,11 @@ msgstr ""
 
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
+msgid "move"
+msgstr ""
+
+#: frappe_webmail/i18n_anchors.py:20
+msgctxt "Email Filter"
 msgid "move"
 msgstr ""
 

@@ -160,7 +160,9 @@
 								class="ag-btn"
 								@click="toggleAutomation(m, row)"
 								:disabled="m.busy"
-								:data-tip="row.enabled ? __('Pause') : __('Resume')"
+								:data-tip="
+									row.enabled ? __('Pause') : __('Resume', null, 'Continue')
+								"
 							>
 								<Pause v-if="row.enabled" :size="13" />
 								<Play v-else :size="13" />
