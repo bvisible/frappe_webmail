@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-03 03:39+0000\n"
+"POT-Creation-Date: 2026-10-04 04:32+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -2176,10 +2176,6 @@ msgstr "Veuillez entrer le mot de passe SMTP."
 msgid "Please enter the SMTP server address."
 msgstr "Veuillez entrer l'adresse du serveur SMTP."
 
-#: frappe_webmail/www/webmail.py:25
-msgid "Please login to access webmail"
-msgstr "Veuillez vous connecter pour accéder au webmail"
-
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:34
 msgid "Please save the document first."
 msgstr "Veuillez d'abord enregistrer le document."
@@ -2933,6 +2929,10 @@ msgstr "Compte Webmail"
 msgid "Webmail Account User"
 msgstr "Utilisateur du compte Webmail"
 
+#: frappe_webmail/www/webmail.py:24
+msgid "Webmail is part of the desk: your account has no access to it."
+msgstr "Le webmail fait partie du bureau : votre compte n'y a pas accès."
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:1147
 #: frontend/src/components/AutomationsPanel.vue:301
@@ -3191,7 +3191,3 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 #: frappe_webmail/webmail_api.py:726
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
-
-#: frappe_webmail/www/webmail.py:22
-msgid "Webmail is part of the desk: your account has no access to it."
-msgstr "Le webmail fait partie du bureau : votre compte n'y a pas accès."
