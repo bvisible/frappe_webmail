@@ -2442,7 +2442,7 @@ msgstr "Rechercher des fichiers…"
 
 #: frontend/src/pages/Webmail.vue:50
 msgid "Search in Webmail…"
-msgstr "Rechercher dans Webmail…"
+msgstr "Rechercher dans la messagerie…"
 
 #: frontend/src/components/AdvancedSearch.vue:20
 msgid "Search in all fields…"
@@ -2934,7 +2934,7 @@ msgstr "Utilisateur du compte Webmail"
 
 #: frappe_webmail/www/webmail.py:24
 msgid "Webmail is part of the desk: your account has no access to it."
-msgstr "Le webmail fait partie du bureau : votre compte n'y a pas accès."
+msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:1149
@@ -2948,7 +2948,7 @@ msgstr "Jours ouvrés uniquement"
 
 #: frontend/src/pages/Webmail.vue:344
 msgid "Welcome to Webmail"
-msgstr "Bienvenue sur Webmail"
+msgstr "Bienvenue dans la messagerie"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
 #: frontend/src/components/AgentPanel.vue:444
@@ -3199,3 +3199,9 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 #: frappe_webmail/webmail_api.py:726
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
+
+msgid "Webmail"
+msgstr "Messagerie"
+
+msgid "{0} filter(s) applied to {1} emails"
+msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
