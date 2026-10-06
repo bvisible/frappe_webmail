@@ -1,7 +1,7 @@
 <template>
 	<div class="agent">
 		<div class="ag-head">
-			<span class="ag-mark"><Sparkles :size="15" :stroke-width="1.7" /></span>
+			<span class="ag-mark"><NoraOrb :size="24" /></span>
 			<div class="ag-title">
 				<h3>Nora</h3>
 				<p class="ag-sub">{{ accountEmail || account }}</p>
@@ -322,7 +322,6 @@
 <script>
 import DOMPurify from "dompurify";
 import {
-	Sparkles,
 	X,
 	RotateCcw,
 	Mail,
@@ -339,6 +338,7 @@ import {
 	Play,
 	Trash2,
 } from "lucide-vue-next";
+import NoraOrb from "./NoraOrb.vue";
 import { classifyIntent } from "../agentIntents";
 import { joinQuote } from "../quoteSplit";
 import { CONTEXT_TAG, cleanEcho, friendlyAnswer } from "../agentText";
@@ -375,7 +375,7 @@ const FAILURE =
 export default {
 	name: "AgentPanel",
 	components: {
-		Sparkles,
+		NoraOrb,
 		X,
 		RotateCcw,
 		Mail,

@@ -73,7 +73,7 @@
 						:disabled="quickReplyLoading"
 						:data-tip="__('Let Nora draft the reply (about 10 s)')"
 					>
-						<Sparkles :size="16" />
+						<NoraOrb :size="18" />
 						<span>{{
 							quickReplyLoading ? __("Nora is drafting…") : __("Draft a reply")
 						}}</span>
@@ -202,10 +202,10 @@ import {
 	FileSpreadsheet,
 	ChevronDown,
 	ChevronUp,
-	Sparkles,
 	Send,
 	Maximize2,
 } from "lucide-vue-next";
+import NoraOrb from "./NoraOrb.vue";
 
 export default {
 	name: "EmailViewer",
@@ -229,7 +229,7 @@ export default {
 		FileSpreadsheet,
 		ChevronDown,
 		ChevronUp,
-		Sparkles,
+		NoraOrb,
 		Send,
 		Maximize2,
 	},

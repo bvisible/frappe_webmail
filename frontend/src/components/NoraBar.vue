@@ -2,7 +2,7 @@
 	<div class="nora-bar" v-if="editor">
 		<div class="nora-bar-left">
 			<span class="nora-label">
-				<Sparkles :size="14" />
+				<NoraOrb :size="16" />
 				<span>Nora</span>
 			</span>
 		</div>
@@ -71,7 +71,6 @@
 
 <script>
 import {
-	Sparkles,
 	CheckCheck,
 	Wand2,
 	Languages,
@@ -79,11 +78,12 @@ import {
 	MessageSquare,
 	Signature,
 } from "lucide-vue-next";
+import NoraOrb from "./NoraOrb.vue";
 
 export default {
 	name: "NoraBar",
 	components: {
-		Sparkles,
+		NoraOrb,
 		CheckCheck,
 		Wand2,
 		Languages,

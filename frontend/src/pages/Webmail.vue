@@ -159,7 +159,7 @@
 					:data-tip="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
 					:aria-label="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
 				>
-					<Sparkles :size="15" :stroke-width="1.7" />
+					<NoraOrb :size="22" />
 				</button>
 				<button
 					v-if="capabilities.nora"
@@ -426,9 +426,9 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Bot,
-	Sparkles,
 	X,
 } from "lucide-vue-next";
+import NoraOrb from "../components/NoraOrb.vue";
 
 export default {
 	name: "Webmail",
@@ -456,7 +456,7 @@ export default {
 		PanelLeftClose,
 		PanelLeftOpen,
 		Bot,
-		Sparkles,
+		NoraOrb,
 		X,
 	},
 
