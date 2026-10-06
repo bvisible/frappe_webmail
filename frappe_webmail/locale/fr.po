@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-05 03:40+0000\n"
+"POT-Creation-Date: 2026-10-06 03:33+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -2922,6 +2922,10 @@ msgstr "Utiliser STARTTLS"
 msgid "User"
 msgstr "Utilisateur"
 
+#: frappe_webmail/frappe_webmail/page/webmail/webmail.js:65
+msgid "Webmail"
+msgstr "Messagerie"
+
 #. Name of a DocType
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Webmail Account"
@@ -3199,9 +3203,6 @@ msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 #: frappe_webmail/webmail_api.py:726
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
-
-msgid "Webmail"
-msgstr "Messagerie"
 
 msgid "{0} filter(s) applied to {1} emails"
 msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
