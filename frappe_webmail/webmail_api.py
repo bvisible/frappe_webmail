@@ -895,6 +895,24 @@ def create_folder(account_name, folder_name, parent_folder=None):
 		return {"success": True, "folder": full_path}
 
 
+def _search_charset(criteria):
+	"""Return "UTF-8" when a SEARCH criterion carries non-ASCII text, else None.
+
+	IMAPClient encodes the text of a search as US-ASCII unless it is given a charset, so an accented
+	word ("démonstration") raised UnicodeEncodeError and could not be searched at all. An all-ASCII
+	search is sent exactly as before.
+
+	Criteria must stay flat lists (OR OR SUBJECT x FROM x TO x): IMAPClient 3.x drops the charset inside
+	a nested list, and glues the closing parenthesis to a literal, so a grouped criterion cannot carry
+	non-ASCII text.
+	"""
+	if isinstance(criteria, str):
+		return None if criteria.isascii() else "UTF-8"
+	if isinstance(criteria, list | tuple):
+		return "UTF-8" if any(_search_charset(item) for item in criteria) else None
+	return None
+
+
 # ============================================
 # EMAILS - LIST
 # ============================================
@@ -913,13 +931,13 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 	with imap_session(account) as client:
 		client.select_folder(folder)
 
-		# Search criteria
+		# Search criteria (flat on purpose: see _search_charset)
 		if search:
-			criteria = ["OR", "OR", ["SUBJECT", search], ["FROM", search], ["TO", search]]
+			criteria = ["OR", "OR", "SUBJECT", search, "FROM", search, "TO", search]
 		else:
 			criteria = ["NOT", "DELETED"]
 
-		messages = client.search(criteria)
+		messages = client.search(criteria, charset=_search_charset(criteria))
 		total = len(messages)
 
 		# Pagination (newest first)
@@ -1763,9 +1781,9 @@ def search_emails(
 		# Build search criteria
 		criteria = []
 
-		# Simple text search across common fields
+		# Simple text search across common fields (flat on purpose: see _search_charset)
 		if query:
-			criteria.append(["OR", ["OR", ["SUBJECT", query], ["FROM", query]], ["TO", query]])
+			criteria.append(["OR", "OR", "SUBJECT", query, "FROM", query, "TO", query])
 
 		# Specific field searches
 		if from_filter:
@@ -1822,7 +1840,7 @@ def search_emails(
 			for c in criteria[1:]:
 				search_criteria = search_criteria + c
 
-		messages = client.search(search_criteria)
+		messages = client.search(search_criteria, charset=_search_charset(search_criteria))
 		total = len(messages)
 
 		# Pagination (newest first)
