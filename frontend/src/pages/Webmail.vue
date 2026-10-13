@@ -208,7 +208,7 @@
 		     Widths come from `sidebarWidth` / `emailListWidth` (persisted in
 		     the Webmail Account UI preferences via saveUIPreferences). -->
 		<div class="main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
-			<!-- Sidebar: Dossiers (FolderTree) + Étiquettes + Nora + storage footer -->
+			<!-- Sidebar: folders (FolderTree) + labels + Nora + storage footer -->
 			<aside
 				v-if="!lendsNav"
 				class="sidebar-col"

@@ -89,13 +89,13 @@ msgstr "Compte introuvable"
 #. Label of a Select field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "Action"
-msgstr "Action"
+msgstr ""
 
 #. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:162
 msgid "Actions"
-msgstr "Actions"
+msgstr ""
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -376,7 +376,7 @@ msgstr "Liste à puces"
 
 #: frontend/src/components/AgentPanel.vue:117
 msgid "Cadence"
-msgstr "Cadence"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/AgentPanel.vue:133
@@ -412,7 +412,7 @@ msgstr "Copie carbone..."
 #. Label of a Small Text field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 msgid "Cc"
-msgstr "Cc"
+msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:52
 msgid "Cc:"
@@ -469,7 +469,7 @@ msgstr "Dossiers réduits"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:115
 msgid "Conditions"
-msgstr "Conditions"
+msgstr ""
 
 #: frontend/src/pages/Webmail.vue:347
 msgid "Configure an account"
@@ -715,7 +715,7 @@ msgstr "Le DocType est requis"
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:604
 #: frontend/src/components/AttachmentPicker.vue:406
 msgid "Document"
-msgstr "Document"
+msgstr ""
 
 #: frontend/src/components/AttachmentPicker.vue:198
 msgid "Document Type"
@@ -747,7 +747,7 @@ msgstr ""
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/FolderTree.vue:5
 msgid "Dossiers"
-msgstr "Dossiers"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:604
 #: frontend/src/components/EmailComposer.vue:283
@@ -803,7 +803,7 @@ msgstr "Dossier Brouillons non trouvé"
 #: frontend/src/components/AttachmentPicker.vue:274
 #: frontend/src/components/AttachmentPicker.vue:410
 msgid "Drive"
-msgstr "Drive"
+msgstr ""
 
 #: frappe_webmail/webmail_api.py:3356
 msgid "Drive file not found"
@@ -1359,7 +1359,7 @@ msgstr "Allemand"
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Gmail"
-msgstr "Gmail"
+msgstr ""
 
 #. Label of a Long Text field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
@@ -1475,7 +1475,7 @@ msgstr "Ignorer"
 #: frontend/src/components/EmailComposer.vue:120
 #: frontend/src/components/SignatureEditor.vue:75
 msgid "Image"
-msgstr "Image"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:619
 #: frontend/src/components/EmailComposer.vue:452
@@ -1486,7 +1486,7 @@ msgstr "URL de l'image :"
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/FolderTree.vue:635
 msgid "Important"
-msgstr "Important"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:619
 #: frontend/src/components/EmailComposer.vue:699
@@ -1731,7 +1731,7 @@ msgstr "Maximum 25 Mo par fichier"
 
 #: frontend/src/components/AgentPanel.vue:222
 msgid "Message"
-msgstr "Message"
+msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:61
 msgid "Message subject"
@@ -1998,7 +1998,7 @@ msgstr "Liste numérotée"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:106
 msgid "OAuth"
-msgstr "OAuth"
+msgstr ""
 
 #. Label of a Select field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -2054,7 +2054,7 @@ msgstr "Jeton OAuth non disponible"
 #. Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "OAuth2"
-msgstr "OAuth2"
+msgstr ""
 
 #: frappe_webmail/webmail_api.py:627
 msgid "OAuth2 not connected. Please authorize your account first."
@@ -2099,12 +2099,12 @@ msgstr ""
 
 #: frontend/src/components/AgentPanel.vue:90
 msgid "Original"
-msgstr "Original"
+msgstr ""
 
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Outlook"
-msgstr "Outlook"
+msgstr ""
 
 #. Label of a Link field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -2114,7 +2114,7 @@ msgstr "Propriétaire"
 #: frontend/src/components/AttachmentPicker.vue:242
 #: frontend/src/components/AttachmentPicker.vue:277
 msgid "PDF"
-msgstr "PDF"
+msgstr ""
 
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
@@ -2580,7 +2580,7 @@ msgstr "Largeur de la barre latérale"
 
 #: frontend/src/components/EmailComposer.vue:124
 msgid "Signature"
-msgstr "Signature"
+msgstr ""
 
 #. Label of a Text Editor field in DocType 'Email Signature'
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
@@ -2606,7 +2606,7 @@ msgstr "Signature enregistrée"
 
 #: frontend/src/pages/Webmail.vue:184 frontend/src/pages/Webmail.vue:185
 msgid "Signatures"
-msgstr "Signatures"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/BulkActionBar.vue:214
@@ -2618,7 +2618,7 @@ msgstr "Signatures"
 #: frontend/src/components/FolderTree.vue:632
 #: frontend/src/pages/Webmail.vue:566
 msgid "Spam"
-msgstr "Spam"
+msgstr ""
 
 #. Label of a Data field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -2627,7 +2627,7 @@ msgstr "Dossier Indésirables"
 
 #: frappe_webmail/webmail_api.py:3501
 msgid "Standard"
-msgstr "Standard"
+msgstr ""
 
 #: frontend/src/components/EmailViewer.vue:55
 #: frontend/src/components/EmailViewer.vue:56
@@ -2870,7 +2870,7 @@ msgstr "Essayez avec moins de filtres ou dans un autre dossier."
 #. Label of a Select field in DocType 'Trusted Email Source'
 #: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
 msgid "Type"
-msgstr "Type"
+msgstr ""
 
 #: frontend/src/pages/Webmail.vue:136
 msgid "Type words to search subject, body and sender."
@@ -2961,7 +2961,7 @@ msgstr "Que répondre ?"
 
 #: frontend/src/components/AutomationsPanel.vue:143
 msgid "WhatsApp"
-msgstr "WhatsApp"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:619
 #: frontend/src/components/AgentPanel.vue:449
@@ -3399,3 +3399,31 @@ msgstr "Autres boîtes mail"
 #: frontend/src/pages/Webmail.vue:757
 msgid "Shared mailboxes"
 msgstr "Boîtes mail partagées"
+
+#: frontend/src/components/EmailViewer.vue:373
+msgid "1 invoice this year"
+msgstr "1 facture cette année"
+
+#: frontend/src/components/EmailViewer.vue:113
+msgid "Always for this sender"
+msgstr "Toujours pour cet expéditeur"
+
+#: frontend/src/components/EmailViewer.vue:116
+msgid "Always for {0}"
+msgstr "Toujours pour {0}"
+
+#: frontend/src/pages/Webmail.vue:187 frontend/src/pages/Webmail.vue:188
+msgid "Mail settings"
+msgstr "Paramètres de messagerie"
+
+#: frontend/src/components/EmailViewer.vue:371
+msgid "No invoice this year"
+msgstr "Aucune facture cette année"
+
+#: frontend/src/components/EmailViewer.vue:20
+msgid "Reply with Nora"
+msgstr "Rédiger la réponse avec Nora"
+
+#: frontend/src/components/EmailViewer.vue:374
+msgid "{0} invoices this year"
+msgstr "{0} factures cette année"
