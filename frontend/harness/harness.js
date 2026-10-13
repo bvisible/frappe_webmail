@@ -5,6 +5,7 @@
 //   ?theme=dark       the dark theme
 //   ?lang=en          the English strings (the msgids)
 //   ?slow=1500        each answer takes that long (ms), to see the loading states
+//   ?cockpit=<url>    the desk's cockpit (its built neocockpit.global.js) beside the webmail, which lends it its folders
 import poText from "../../frappe_webmail/locale/fr.po?raw";
 import {
 	ACCOUNTS,
@@ -219,6 +220,43 @@ window.frappe = {
 	client: { set_value: async () => ({}), insert: async () => ({}), delete: async () => ({}) },
 	ValidationError: class extends Error {},
 };
+
+// ---- ?cockpit=<url of neocockpit.global.js>: the desk's cockpit beside the webmail, which lends it its folders
+// (window.NeoCockpit.setPageNav, Neodesk plan W1). Mounted before the webmail, which looks for it when it starts.
+const cockpitUrl = params.get("cockpit");
+if (cockpitUrl) {
+	window.frappe.boot = {
+		sidebar_pages: { pages: [] },
+		app_data: [],
+		user: {
+			name: ACCOUNTS[0].user,
+			email: ACCOUNTS[0].email,
+			full_name: ACCOUNTS[0].sender_name,
+		},
+		user_info: {},
+		surface_apps: [
+			{
+				name: "mail",
+				title: "Mail",
+				route: "/app/webmail",
+				logo: "https://osiris.neoffice.me/assets/neoffice_theme/icons/streamline/envelope.svg",
+			},
+		],
+	};
+	await new Promise((resolve, reject) => {
+		const script = document.createElement("script");
+		script.src = cockpitUrl;
+		script.onload = resolve;
+		script.onerror = reject;
+		document.head.append(script);
+	});
+	document.body.classList.add("with-cockpit");
+	window.NeoCockpit.mount(document.getElementById("cockpit"), {
+		env: "desk",
+		layout: "sidebar",
+		onNavigate: (route) => console.info("[harness] navigate", route),
+	});
+}
 
 const { init } = await import("../src/main.js");
 init(document.getElementById("app"));

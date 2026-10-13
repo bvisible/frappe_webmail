@@ -59,6 +59,10 @@ const webmail_cockpit = {
 	},
 };
 
+// A cockpit that draws a page's navigation (window.NeoCockpit.setPageNav, Neodesk plan W1) gets the webmail's
+// folders (Webmail.vue lends them): it is not folded any more, there is no second sidebar to make room for.
+const webmail_lends_nav = () => Boolean(window.NeoCockpit && window.NeoCockpit.setPageNav);
+
 frappe.pages["webmail"].on_page_load = function (wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -69,7 +73,7 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 	// Store references
 	wrapper.page = page;
 
-	webmail_cockpit.collapse();
+	if (!webmail_lends_nav()) webmail_cockpit.collapse();
 
 	// Hide the page header for full-screen webmail experience
 	const pageHead = wrapper.querySelector(".page-head");
@@ -148,12 +152,20 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 
 // Re-entering the page (route change back to /app/webmail) does not call
 // on_page_load again — collapse the cockpit on every show.
-frappe.pages["webmail"].on_page_show = function () {
-	webmail_cockpit.collapse();
+frappe.pages["webmail"].on_page_show = function (wrapper) {
+	// Leaving the page unmounted the app (on_page_hide): back on it, it is mounted again — it stayed blank
+	const container = wrapper && wrapper.querySelector("#webmail-app");
+	if (container && frappe.webmail && frappe.webmail.mounted && !frappe.webmail.mounted()) {
+		frappe.webmail.init(container);
+	}
+	if (webmail_lends_nav()) window.dispatchEvent(new Event("frappe_webmail:lend-nav"));
+	else webmail_cockpit.collapse();
 };
 
 frappe.pages["webmail"].on_page_hide = function (wrapper) {
 	webmail_cockpit.restore();
+	// The cockpit draws its own navigation again
+	if (webmail_lends_nav()) window.NeoCockpit.setPageNav(null);
 
 	// Restore scroll on page when leaving
 	document.documentElement.style.overflow = "";

@@ -1,8 +1,9 @@
 <template>
 	<div class="folder-tree" :class="{ compact }">
-		<!-- Header with create button -->
-		<div class="folder-header" v-if="!compact">
-			<span class="header-title">{{ __("Dossiers") }}</span>
+		<!-- Header with create button. Headless: the cockpit draws the folders (lent by Webmail.vue); the menu and the
+		     dialogs below stay here -->
+		<div class="folder-header" v-if="!compact && !headless">
+			<span class="header-title">{{ __("Folders") }}</span>
 			<button
 				@click="showCreateDialog = true"
 				class="btn-create-folder"
@@ -13,9 +14,9 @@
 			</button>
 		</div>
 
-		<div v-if="loading" class="loading">{{ __("Loading...") }}</div>
+		<div v-if="loading && !headless" class="loading">{{ __("Loading...") }}</div>
 
-		<div v-else class="folder-list">
+		<div v-else-if="!headless" class="folder-list">
 			<div
 				v-for="folder in visibleFolders"
 				:key="folder.name"
@@ -29,7 +30,7 @@
 				:data-tip="
 					compact
 						? getDisplayName(folder) +
-						  (folder.unread ? ' (' + folder.unread + ')' : '')
+						  (unreadOf(folder) ? ' (' + unreadOf(folder) + ')' : '')
 						: null
 				"
 				data-tip-pos="right"
@@ -47,13 +48,13 @@
 					class="folder-icon"
 				/>
 				<span v-if="!compact" class="folder-name">{{ getDisplayName(folder) }}</span>
-				<span v-if="folder.unread && !compact" class="unread-count">{{
-					folder.unread
+				<span v-if="unreadOf(folder) && !compact" class="unread-count">{{
+					unreadOf(folder)
 				}}</span>
-				<span v-else-if="folder.unread" class="unread-dot"></span>
+				<span v-else-if="unreadOf(folder)" class="unread-dot"></span>
 				<!-- Expand/Collapse chevron on the right (only for parent folders).
-				     Kept last so it lives on the trailing edge and the name can use
-				     the full remaining width. -->
+			     Kept last so it lives on the trailing edge and the name can use
+			     the full remaining width. -->
 				<button
 					v-if="hasChildren(folder) && !compact"
 					@click.stop="toggleFolder(folder)"
@@ -192,6 +193,30 @@ import {
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
 
+// A folder's role, its icon here and the cockpit's name for it (the cockpit draws lucide icons by name)
+const ROLE_ICONS = {
+	inbox: Inbox,
+	sent: Send,
+	drafts: FileEdit,
+	trash: Trash2,
+	spam: AlertTriangle,
+	archive: Archive,
+	starred: Star,
+	important: AlertCircle,
+	all: Folder,
+};
+const ROLE_LUCIDE = {
+	inbox: "lucide-inbox",
+	sent: "lucide-send",
+	drafts: "lucide-file-pen",
+	trash: "lucide-trash-2",
+	spam: "lucide-shield-alert",
+	archive: "lucide-archive",
+	starred: "lucide-star",
+	important: "lucide-star",
+};
+const COUNTS_EVERY_MS = 60000;
+
 export default {
 	name: "FolderTree",
 
@@ -223,13 +248,18 @@ export default {
 		// Icon-rail mode (folder column collapsed): icons + tooltips, no labels,
 		// no nesting chevrons — the whole tree stays reachable at 56px wide.
 		compact: { type: Boolean, default: false },
+		// The folders are drawn by the desk's cockpit (Webmail.vue lends them, `nav-changed`): this component keeps
+		// what they need — the list, the roles, the unread mail, the menu, the dialogs — and draws no list itself.
+		headless: { type: Boolean, default: false },
 	},
 
-	emits: ["select", "drop-email", "folder-mapping-loaded"],
+	emits: ["select", "drop-email", "folder-mapping-loaded", "nav-changed"],
 
 	data() {
 		return {
 			folders: [],
+			// Unread mail by folder name (attachments.get_folder_counts): the tree's numbers, the cockpit's
+			counts: {},
 			collapsedFolders: [],
 			folderMapping: {
 				inbox: "",
@@ -362,6 +392,23 @@ export default {
 			// Filter folders that can have subfolders (exclude special flags like \Noselect)
 			return this.folders.filter((f) => f.selectable);
 		},
+
+		// The folders as the cockpit draws them (Webmail.vue lends them): every folder, its parent's children under it
+		navItems() {
+			return this.sortedFolders.map((folder) => {
+				const role = this.getFolderRole(folder);
+				return {
+					name: folder.name,
+					label: this.getDisplayName(folder),
+					role,
+					icon: ROLE_LUCIDE[role] || "lucide-folder",
+					// as the tree indents it (getFolderIndent)
+					depth: (folder.name.match(/\//g) || []).length,
+					selectable: Boolean(folder.selectable),
+					unread: this.unreadOf(folder),
+				};
+			});
+		},
 	},
 
 	watch: {
@@ -392,6 +439,21 @@ export default {
 				this.renameFolderName = "";
 			}
 		},
+		navItems: {
+			deep: true,
+			handler(items) {
+				this.$emit("nav-changed", items);
+			},
+		},
+	},
+
+	mounted() {
+		// The unread mail moves while the page is open: read again every minute
+		this.countsTimer = setInterval(() => this.loadCounts(), COUNTS_EVERY_MS);
+	},
+
+	beforeUnmount() {
+		clearInterval(this.countsTimer);
 	},
 
 	methods: {
@@ -491,6 +553,26 @@ export default {
 			} finally {
 				this.loading = false;
 			}
+			this.loadCounts();
+		},
+
+		// The unread mail of each folder (one IMAP STATUS per folder, on the server); a failure keeps the last numbers
+		async loadCounts() {
+			if (!this.account) return;
+			const account = this.account;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.attachments.get_folder_counts",
+					args: { account_name: account },
+				});
+				if (account === this.account) this.counts = response.message || {};
+			} catch (error) {
+				// the numbers stay as they were
+			}
+		},
+
+		unreadOf(folder) {
+			return this.counts[folder.name]?.unseen || 0;
 		},
 
 		selectFolder(folder) {
@@ -556,45 +638,51 @@ export default {
 			}
 		},
 
-		getFolderIcon(folder) {
+		// What a folder is for (the mapping, then the IMAP special-use flags, then its name): its icon here, and
+		// in the cockpit (navItems)
+		getFolderRole(folder) {
 			const name = folder.name;
 			const nameLower = name.toLowerCase();
 			const flags = folder.flags || [];
 
 			// Check folder mapping first (configured or auto-detected)
-			if (this.folderMapping.inbox && name === this.folderMapping.inbox) return Inbox;
-			if (this.folderMapping.sent && name === this.folderMapping.sent) return Send;
-			if (this.folderMapping.drafts && name === this.folderMapping.drafts) return FileEdit;
-			if (this.folderMapping.trash && name === this.folderMapping.trash) return Trash2;
-			if (this.folderMapping.spam && name === this.folderMapping.spam) return AlertTriangle;
-			if (this.folderMapping.archive && name === this.folderMapping.archive) return Archive;
+			if (this.folderMapping.inbox && name === this.folderMapping.inbox) return "inbox";
+			if (this.folderMapping.sent && name === this.folderMapping.sent) return "sent";
+			if (this.folderMapping.drafts && name === this.folderMapping.drafts) return "drafts";
+			if (this.folderMapping.trash && name === this.folderMapping.trash) return "trash";
+			if (this.folderMapping.spam && name === this.folderMapping.spam) return "spam";
+			if (this.folderMapping.archive && name === this.folderMapping.archive)
+				return "archive";
 
 			// Check IMAP special-use flags
-			if (flags.includes("\\Inbox") || nameLower === "inbox") return Inbox;
-			if (flags.includes("\\Sent")) return Send;
-			if (flags.includes("\\Drafts")) return FileEdit;
-			if (flags.includes("\\Trash")) return Trash2;
-			if (flags.includes("\\Junk") || flags.includes("\\Spam")) return AlertTriangle;
-			if (flags.includes("\\Archive")) return Archive;
-			if (flags.includes("\\Flagged") || flags.includes("\\Starred")) return Star;
-			if (flags.includes("\\Important")) return AlertCircle;
-			if (flags.includes("\\All")) return Folder;
+			if (flags.includes("\\Inbox") || nameLower === "inbox") return "inbox";
+			if (flags.includes("\\Sent")) return "sent";
+			if (flags.includes("\\Drafts")) return "drafts";
+			if (flags.includes("\\Trash")) return "trash";
+			if (flags.includes("\\Junk") || flags.includes("\\Spam")) return "spam";
+			if (flags.includes("\\Archive")) return "archive";
+			if (flags.includes("\\Flagged") || flags.includes("\\Starred")) return "starred";
+			if (flags.includes("\\Important")) return "important";
+			if (flags.includes("\\All")) return "all";
 
 			// Fallback to name-based detection
-			if (nameLower === "inbox") return Inbox;
-			if (nameLower.includes("sent")) return Send;
-			if (nameLower.includes("draft")) return FileEdit;
+			if (nameLower.includes("sent")) return "sent";
+			if (nameLower.includes("draft")) return "drafts";
 			if (
 				nameLower.includes("trash") ||
 				nameLower.includes("deleted") ||
 				nameLower.includes("corbeille")
 			)
-				return Trash2;
-			if (nameLower.includes("spam") || nameLower.includes("junk")) return AlertTriangle;
-			if (nameLower.includes("archive")) return Archive;
-			if (nameLower.includes("starred") || nameLower.includes("important")) return Star;
+				return "trash";
+			if (nameLower.includes("spam") || nameLower.includes("junk")) return "spam";
+			if (nameLower.includes("archive")) return "archive";
+			if (nameLower.includes("starred") || nameLower.includes("important")) return "starred";
 
-			return Folder;
+			return null;
+		},
+
+		getFolderIcon(folder) {
+			return ROLE_ICONS[this.getFolderRole(folder)] || Folder;
 		},
 
 		getDisplayName(folder) {

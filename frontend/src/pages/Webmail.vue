@@ -5,7 +5,7 @@
 			<!-- Folder column toggle: collapses the folder tree to an icon rail so the
 			     reader gets the width back (per-account preference) -->
 			<button
-				v-if="accounts.length"
+				v-if="accounts.length && !lendsNav"
 				class="icon-btn sb-toggle"
 				@click="toggleSidebar"
 				:data-tip="sidebarCollapsed ? __('Show folders') : __('Hide folders')"
@@ -207,6 +207,7 @@
 		<div class="main" v-if="accounts.length" :class="{ 'is-resizing': isResizing }">
 			<!-- Sidebar: Dossiers (FolderTree) + Étiquettes + Nora + storage footer -->
 			<aside
+				v-if="!lendsNav"
 				class="sidebar-col"
 				:class="{ 'is-collapsed': sidebarCollapsed }"
 				:style="{ width: (sidebarCollapsed ? 56 : sidebarWidth) + 'px' }"
@@ -238,10 +239,25 @@
 					</div>
 				</div>
 			</aside>
+			<!-- The cockpit draws the folders (publishNav): the tree stays, headless, for their list, their unread
+			     mail, their menu and their dialogs (Neodesk plan W1) -->
+			<div v-else class="sb-lent">
+				<FolderTree
+					ref="folderTree"
+					headless
+					:account="currentAccount"
+					:account-email="currentAccountEmail"
+					:selected-folder="currentFolder"
+					@select="onFolderSelect"
+					@drop-email="handleMoveEmail"
+					@folder-mapping-loaded="onFolderMappingLoaded"
+					@nav-changed="onNavChanged"
+				/>
+			</div>
 
 			<!-- Resizer between sidebar and list -->
 			<div
-				v-if="!sidebarCollapsed"
+				v-if="!sidebarCollapsed && !lendsNav"
 				class="column-resizer"
 				@mousedown="startResize('sidebar', $event)"
 			>
@@ -466,6 +482,12 @@ export default {
 	data() {
 		return {
 			loading: true,
+			// The desk's cockpit draws the folders when it can (window.NeoCockpit.setPageNav, Neodesk plan W1): the
+			// page then lends them instead of drawing a column of its own
+			lendsNav:
+				typeof window !== "undefined" &&
+				Boolean(window.NeoCockpit && window.NeoCockpit.setPageNav),
+			navFolders: [],
 			accounts: [],
 			currentAccount: "",
 			currentFolder: "INBOX",
@@ -623,6 +645,18 @@ export default {
 	},
 
 	watch: {
+		currentFolder() {
+			this.publishNav();
+		},
+		currentAccount() {
+			this.publishNav();
+		},
+		accounts() {
+			this.publishNav();
+		},
+		quota() {
+			this.publishNav();
+		},
 		// Debounced live search — fires 400ms after the user stops typing.
 		// A monotonic seq guards against out-of-order responses (a slower
 		// request resolving after a fresher one).
@@ -658,9 +692,14 @@ export default {
 		document.addEventListener("keydown", this._cmdShortcut);
 		// Icon-only controls (folder rail, top bar, reader, Nora) explain themselves
 		this._offTooltips = installTooltips(this.$el);
+		// Back on the page (webmail.js on_page_show): the cockpit draws the folders again
+		this._lendNav = () => this.publishNav();
+		window.addEventListener("frappe_webmail:lend-nav", this._lendNav);
 	},
 
 	beforeUnmount() {
+		window.removeEventListener("frappe_webmail:lend-nav", this._lendNav);
+		if (this.lendsNav) window.NeoCockpit.setPageNav(null);
 		if (this._offTooltips) {
 			this._offTooltips();
 		}
@@ -673,6 +712,78 @@ export default {
 	},
 
 	methods: {
+		// ===== The folders, drawn by the desk's cockpit (Neodesk plan W1) =====
+		onNavChanged(items) {
+			this.navFolders = items;
+			this.publishNav();
+		},
+
+		// The cockpit's sections: the mailbox and its special folders, the other mailboxes, the own folders, and the
+		// mailbox's storage at the foot — the board « Desk — Courrier » of the canvas « Neodesk »
+		publishNav() {
+			if (!this.lendsNav || !this.currentAccount) return;
+			const tree = () => this.$refs.folderTree;
+			const folderOf = (name) => (tree()?.folders || []).find((f) => f.name === name);
+			const item = (f, special) => ({
+				label: f.label,
+				icon: f.icon,
+				depth: special ? 0 : f.depth,
+				active: f.name === this.currentFolder,
+				badge: f.unread || undefined,
+				badgeTone: f.role === "inbox" ? "accent" : undefined,
+				onClick: () => f.selectable && this.onFolderSelect(f.name),
+				onContextMenu: (event) => {
+					const folder = folderOf(f.name);
+					if (folder) tree()?.showContextMenu(event, folder);
+				},
+				onDrop: (event) => tree()?.onDrop(event, f.name),
+			});
+			const order = ["inbox", "sent", "drafts", "archive", "spam", "trash"];
+			const special = this.navFolders
+				.filter((f) => order.includes(f.role))
+				.sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role));
+			const own = this.navFolders.filter((f) => !order.includes(f.role));
+			const others = this.accounts.filter((a) => a.name !== this.currentAccount);
+			const local = (email) => (email || "").split("@")[0] + "@";
+			const nav = [
+				{
+					label: local(this.currentAccountEmail),
+					items: special.map((f) => item(f, true)),
+				},
+			];
+			if (others.length) {
+				nav.push({
+					label: others.every((a) => a.is_shared)
+						? this.__("Shared mailboxes")
+						: this.__("Other mailboxes"),
+					items: others.map((a) => ({
+						label: local(a.email),
+						icon: "lucide-users",
+						onClick: () => this.switchAccount(a.name),
+					})),
+				});
+			}
+			if (own.length)
+				nav.push({ label: this.__("Folders"), items: own.map((f) => item(f, false)) });
+			window.NeoCockpit.setPageNav({
+				app: { name: "mail", title: this.__("Mail") },
+				nav,
+				footer: this.quota
+					? {
+							label: this.__("Mailbox storage"),
+							sub: this.quotaLabel,
+							percent: this.quotaPercent,
+					  }
+					: undefined,
+			});
+		},
+
+		switchAccount(name) {
+			if (name === this.currentAccount) return;
+			this.currentAccount = name;
+			this.onAccountChange();
+		},
+
 		async loadQuota() {
 			this.quota = null;
 			if (!this.currentAccount) return;
@@ -999,6 +1110,8 @@ export default {
 				});
 
 				const emailContent = response.message;
+				// Reading it marked it read: the folders' numbers follow
+				if (!email.seen) this.$refs.folderTree?.loadCounts();
 
 				// Check if this is a Drafts folder - open in composer mode
 				if (this.isDraftsFolder(this.currentFolder)) {
@@ -2979,6 +3092,15 @@ html[data-theme="dark"] .webmail-app {
 
 .main.is-resizing * {
 	pointer-events: none;
+}
+
+/* The headless folder tree (the cockpit draws the folders): no room in the row; its menu and its dialogs are fixed
+   overlays, which a zero-size box does not clip */
+.sb-lent {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
 }
 
 .sidebar-col {

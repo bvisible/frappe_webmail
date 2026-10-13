@@ -65,6 +65,8 @@ if (typeof frappe !== "undefined") {
 	frappe.provide("frappe.webmail");
 	frappe.webmail.init = initWebmail;
 	frappe.webmail.destroy = destroyWebmail;
+	// Whether the app is mounted: the desk page mounts it again when one comes back to it (webmail.js)
+	frappe.webmail.mounted = () => Boolean(app);
 }
 
 // Also expose on window for fallback
