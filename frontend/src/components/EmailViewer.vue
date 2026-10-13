@@ -123,6 +123,7 @@
 				class="email-body"
 				sandbox="allow-popups allow-popups-to-escape-sandbox"
 				referrerpolicy="no-referrer"
+				:class="{ sheet: frame.sheet }"
 				:srcdoc="sanitizedContent"
 			/>
 		</div>
@@ -279,6 +280,7 @@ import {
 import NoraOrb from "./NoraOrb.vue";
 import ContextMenu from "./ContextMenu.vue";
 import DriveFolderPicker from "./DriveFolderPicker.vue";
+import { frameColours, frameStyle, hasOwnColours } from "../utils/messageFrame.js";
 import DocumentPicker from "./DocumentPicker.vue";
 import {
 	downloadUrl,
@@ -286,6 +288,30 @@ import {
 	menuItems,
 	previewable,
 } from "../attachmentActions.js";
+
+function isPageDark() {
+	return (
+		typeof document !== "undefined" &&
+		document.documentElement.getAttribute("data-theme") === "dark"
+	);
+}
+
+// The mail's own colours where it is drawn (--wm-*, set on .webmail-app from Frappe's theme)
+function deskColours(el) {
+	const root =
+		el?.closest?.(".webmail-app") ||
+		document.querySelector(".webmail-app") ||
+		document.documentElement;
+	const css = getComputedStyle(root);
+	const read = (name) => css.getPropertyValue(name).trim();
+	return {
+		bg: read("--wm-bg-raised"),
+		text: read("--wm-ink"),
+		muted: read("--wm-ink-mute"),
+		line: read("--wm-line"),
+		sunken: read("--wm-bg-sunken"),
+	};
+}
 
 export default {
 	name: "EmailViewer",
@@ -354,6 +380,8 @@ export default {
 			attachmentMenu: { visible: false, position: { x: 0, y: 0 }, attachment: null },
 			// The window an action asks for first: a Drive folder, a Neoffice document
 			picker: { kind: null, action: null, attachment: null, busy: false },
+			// The desk's theme, followed while the page is open (the message's frame takes its colours)
+			pageDark: isPageDark(),
 		};
 	},
 
@@ -449,7 +477,7 @@ export default {
 			// Remove hook to avoid affecting other sanitizations
 			DOMPurify.removeHook("afterSanitizeAttributes");
 
-			// Wrap in HTML document with base styles
+			// Wrap in HTML document with the desk's colours, or a light sheet (utils/messageFrame.js)
 			return `
         <!DOCTYPE html>
         <html>
@@ -457,37 +485,21 @@ export default {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            * { box-sizing: border-box; }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-              font-size: 14px;
-              line-height: 1.6;
-              color: #333;
-              margin: 0;
-              padding: 16px;
-              word-wrap: break-word;
-            }
-            img { max-width: 100%; height: auto; }
-            a { color: #0066cc; }
-            blockquote {
-              border-left: 3px solid #ccc;
-              margin: 10px 0;
-              padding-left: 15px;
-              color: #666;
-            }
-            pre, code {
-              background: #f5f5f5;
-              padding: 2px 6px;
-              border-radius: 3px;
-              font-size: 13px;
-            }
-            pre { padding: 10px; overflow-x: auto; }
-            table { max-width: 100%; }
+${frameStyle(this.frame)}
           </style>
         </head>
         <body>${clean}</body>
         </html>
       `;
+		},
+
+		// The frame's colours: the desk's for a message without colours of its own, else a light sheet in the dark theme
+		frame() {
+			return frameColours({
+				dark: this.pageDark,
+				ownColours: hasOwnColours(this.email?.html),
+				desk: this.pageDark ? deskColours(this.$el) : {},
+			});
 		},
 	},
 
@@ -495,6 +507,17 @@ export default {
 		loadAttachmentActions().then((actions) => {
 			this.attachmentActions = actions;
 		});
+		this.themeObserver = new MutationObserver(() => {
+			this.pageDark = isPageDark();
+		});
+		this.themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["data-theme"],
+		});
+	},
+
+	beforeUnmount() {
+		this.themeObserver?.disconnect();
 	},
 
 	watch: {
@@ -1200,6 +1223,14 @@ export default {
 	border: none;
 	width: 100%;
 	min-height: 100px;
+}
+
+/* A message with colours of its own, in the dark theme: its light sheet stands on the desk */
+.email-body.sheet {
+	width: calc(100% - 32px);
+	margin: 4px 16px 0;
+	border-radius: 12px;
+	background: #ffffff;
 }
 
 /* Attachments footer, always visible at the bottom: an eyebrow, then a card each (canvas « Neodesk », boards 2 and 7) */
