@@ -2,7 +2,8 @@
 # For license information, please see license.txt
 
 """The card under a message's sender (get_sender_card) and the contact it is read from (get_contact_by_email): the
-supplier or the customer a sender is, its invoices of the year, and nothing for whom may not read them.
+supplier or the customer a sender is, its invoices of the year, and nothing for whom may not read them. Without ERPNext
+(the app's own CI bench) there is no supplier to recognise: those tests are skipped, the contact's rights still run.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_sender_card
@@ -39,16 +40,20 @@ class TestSenderCard(FrappeTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		supplier = frappe.get_doc(
-			{
-				"doctype": "Supplier",
-				"supplier_name": SUPPLIER_NAME,
-				"supplier_group": frappe.db.get_value("Supplier Group", {"is_group": 0}, "name"),
-			}
-		)
-		supplier.insert(ignore_permissions=True)
-		cls.supplier = supplier.name
-		cls.contacts = [_contact(SENDER, [("Supplier", cls.supplier)]), _contact(LONER)]
+		cls.erpnext = bool(frappe.db.exists("DocType", "Supplier"))
+		cls.supplier = None
+		if cls.erpnext:
+			supplier = frappe.get_doc(
+				{
+					"doctype": "Supplier",
+					"supplier_name": SUPPLIER_NAME,
+					"supplier_group": frappe.db.get_value("Supplier Group", {"is_group": 0}, "name"),
+				}
+			)
+			supplier.insert(ignore_permissions=True)
+			cls.supplier = supplier.name
+		links = [("Supplier", cls.supplier)] if cls.supplier else []
+		cls.contacts = [_contact(SENDER, links), _contact(LONER)]
 		if not frappe.db.exists("User", PORTAL):
 			frappe.get_doc(
 				{
@@ -66,7 +71,8 @@ class TestSenderCard(FrappeTestCase):
 		frappe.set_user("Administrator")
 		for name in cls.contacts:
 			frappe.delete_doc("Contact", name, force=True, ignore_permissions=True)
-		frappe.delete_doc("Supplier", cls.supplier, force=True, ignore_permissions=True)
+		if cls.supplier:
+			frappe.delete_doc("Supplier", cls.supplier, force=True, ignore_permissions=True)
 		frappe.delete_doc("User", PORTAL, force=True, ignore_permissions=True)
 		frappe.db.commit()
 		super().tearDownClass()
@@ -74,7 +80,12 @@ class TestSenderCard(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
+	def need_erpnext(self):
+		if not self.erpnext:
+			self.skipTest("ERPNext is not installed: no supplier to recognise")
+
 	def test_a_supplier_s_contact_shows_the_supplier_and_its_invoices_of_the_year(self):
+		self.need_erpnext()
 		card = get_sender_card(SENDER)
 		self.assertEqual(card["doctype"], "Supplier")
 		self.assertEqual(card["name"], self.supplier)
@@ -84,6 +95,7 @@ class TestSenderCard(FrappeTestCase):
 		self.assertEqual(card["invoices"], 0)
 
 	def test_the_invoices_counted_are_the_supplier_s_submitted_ones_since_new_year(self):
+		self.need_erpnext()
 		with patch.object(webmail_api.frappe, "get_list", return_value=["PINV-1", "PINV-2"]) as get_list:
 			card = get_sender_card(SENDER)
 		self.assertEqual(card["invoices"], 2)
@@ -96,6 +108,7 @@ class TestSenderCard(FrappeTestCase):
 		self.assertEqual((filters["posting_date"][1].month, filters["posting_date"][1].day), (1, 1))
 
 	def test_no_count_for_whom_may_not_read_invoices(self):
+		self.need_erpnext()
 		real = frappe.has_permission
 
 		def no_invoices(doctype, *args, **kwargs):
@@ -119,4 +132,5 @@ class TestSenderCard(FrappeTestCase):
 	def test_the_contact_is_still_given_to_whom_may_read_it(self):
 		contact = get_contact_by_email(SENDER)
 		self.assertEqual(contact["primary_email"], SENDER)
-		self.assertEqual(contact["links"][0]["link_name"], self.supplier)
+		if self.supplier:
+			self.assertEqual(contact["links"][0]["link_name"], self.supplier)
