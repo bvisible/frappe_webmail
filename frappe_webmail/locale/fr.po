@@ -3206,3 +3206,184 @@ msgstr "{0} : {1}"
 
 msgid "{0} filter(s) applied to {1} emails"
 msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
+
+#: frontend/src/components/EmailViewer.vue:147
+msgid "Actions on {0}"
+msgstr "Actions sur {0}"
+
+#: frappe_webmail/attachments.py:156
+msgid "Already among the scanned documents"
+msgstr "Déjà parmi les scans de documents"
+
+#: frontend/src/components/DocumentPicker.vue:8
+#: frontend/src/components/DocumentPicker.vue:11
+msgid "Attach to a Neoffice document"
+msgstr "Joindre à un document Neoffice"
+
+#: frappe_webmail/attachments.py:82
+msgid "Attach to a Neoffice document…"
+msgstr "Joindre à un document Neoffice…"
+
+#: frappe_webmail/attachments.py:278
+msgid "Attached to {0} {1}"
+msgstr "Joint à {0} {1}"
+
+#: frontend/src/components/DocumentPicker.vue:78
+msgid "Attaching…"
+msgstr "Ajout en cours…"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:533
+#: frontend/src/components/EmailViewer.vue:780
+msgid "Contact created: {0}"
+msgstr "Contact créé : {0}"
+
+#: frontend/src/components/EmailViewer.vue:16
+msgid "Contact: {0}"
+msgstr "Contact : {0}"
+
+#: frappe_webmail/attachments.py:71
+msgid "Create a scanned document"
+msgstr "Créer un scan de document"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:533
+#: frontend/src/components/EmailViewer.vue:861
+msgid "Domain added to the trusted list"
+msgstr "Domaine ajouté à la liste de confiance"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:495
+#: frontend/src/components/EmailViewer.vue:396
+msgid "External image blocked"
+msgstr "Image externe bloquée"
+
+#: frontend/src/components/EmailViewer.vue:88
+msgid "External images were blocked for your safety."
+msgstr "Les images externes ont été bloquées pour votre sécurité."
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:673
+#: frontend/src/pages/Webmail.vue:1081
+msgid "Fwd: {0}"
+msgstr "Tr : {0}"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:533
+#: frontend/src/components/EmailViewer.vue:645
+msgid "Marked as unread"
+msgstr "Marqué comme non lu"
+
+#: frappe_webmail/drive.py:84 frappe_webmail/drive.py:100
+msgid "My Drive"
+msgstr "Mon Drive"
+
+#: frontend/src/components/DriveFolderPicker.vue:121
+msgid "Name of the folder"
+msgstr "Nom du dossier"
+
+#: frontend/src/components/DocumentPicker.vue:55
+msgid "No document found"
+msgstr "Aucun document trouvé"
+
+#: frontend/src/components/DriveFolderPicker.vue:47
+msgid "No folder found"
+msgstr "Aucun dossier trouvé"
+
+#: frontend/src/components/DocumentPicker.vue:51
+msgid "No kind of document can be attached to here"
+msgstr "Aucun type de document ne peut être joint ici"
+
+#: frappe_webmail/attachments.py:54
+msgid "Save as…"
+msgstr "Enregistrer sous…"
+
+#: frontend/src/components/DriveFolderPicker.vue:134
+msgid "Save here"
+msgstr "Enregistrer ici"
+
+#: frontend/src/components/DriveFolderPicker.vue:4
+#: frontend/src/components/DriveFolderPicker.vue:6
+msgid "Save to the Drive"
+msgstr "Enregistrer dans le Drive"
+
+#: frappe_webmail/attachments.py:60
+msgid "Save to the Drive…"
+msgstr "Enregistrer dans le Drive…"
+
+#: frappe_webmail/attachments.py:142
+msgid "Saved in the Drive: {0}"
+msgstr "Enregistré dans le Drive : {0}"
+
+#: frappe_webmail/scans.py:56
+msgid "Scanned documents are not available on this instance"
+msgstr "Les scans de documents ne sont pas disponibles sur cette instance"
+
+#: frontend/src/components/DriveFolderPicker.vue:25
+msgid "Search for a folder"
+msgstr "Rechercher un dossier"
+
+#: frontend/src/components/EmailViewer.vue:223
+msgid "Select an e-mail to read it"
+msgstr "Sélectionnez un e-mail pour le lire"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:533
+#: frontend/src/components/EmailViewer.vue:835
+msgid "Sender added to the trusted list"
+msgstr "Expéditeur ajouté à la liste de confiance"
+
+#: frappe_webmail/attachments.py:158
+msgid "Sent to the scanned documents: the reading takes about a minute"
+msgstr "Envoyé aux scans de documents : la lecture prend environ une minute"
+
+#: frappe_webmail/drive.py:103
+msgid "Shared Drive"
+msgstr "Drive partagé"
+
+#: frontend/src/components/EmailViewer.vue:89
+msgid "Show the images"
+msgstr "Afficher les images"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:533
+#: frontend/src/components/EmailViewer.vue:794
+msgid "The contact could not be created"
+msgstr "Le contact n'a pas pu être créé"
+
+#: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:118
+#: frappe_webmail/attachments.py:127 frappe_webmail/drive.py:36
+#: frappe_webmail/webmail_api.py:3277 frappe_webmail/webmail_api.py:3288
+msgid "The Drive is not installed on this instance"
+msgstr "Le Drive n'est pas installé sur cette instance"
+
+#: frontend/src/components/DriveFolderPicker.vue:99
+msgid "The file is copied by the server, straight from the e-mail: nothing is downloaded."
+msgstr "Le fichier est copié par le serveur, directement depuis l'e-mail : rien n'est téléchargé."
+
+#: frappe_webmail/scans.py:84
+msgid "The scanned document could not be created"
+msgstr "Le scan de document n'a pas pu être créé"
+
+#: frappe_webmail/scans.py:67
+msgid "This document is already among the scanned documents"
+msgstr "Ce document figure déjà parmi les scans de documents"
+
+#: frappe_webmail/drive.py:322
+msgid "This file no longer exists in the Drive"
+msgstr "Ce fichier n'existe plus dans le Drive"
+
+#: frappe_webmail/drive.py:139 frappe_webmail/drive.py:220
+#: frappe_webmail/drive.py:273
+msgid "This folder no longer exists in the Drive"
+msgstr "Ce dossier n'existe plus dans le Drive"
+
+#: frappe_webmail/attachments.py:254
+msgid "You are not allowed to attach a file to {0} {1}"
+msgstr "Vous n'êtes pas autorisé à joindre un fichier à {0} {1}"
+
+#: frappe_webmail/attachments.py:151 frappe_webmail/scans.py:58
+msgid "You are not allowed to create a scanned document"
+msgstr "Vous n'êtes pas autorisé à créer un scan de document"
+
+#: frappe_webmail/attachments.py:130 frappe_webmail/drive.py:222
+#: frappe_webmail/drive.py:275
+msgid "You cannot add files to this folder of the Drive"
+msgstr "Vous ne pouvez pas ajouter de fichiers à ce dossier du Drive"
+
+#: frappe_webmail/drive.py:324
+msgid "You cannot read this file of the Drive"
+msgstr "Vous ne pouvez pas lire ce fichier du Drive"
