@@ -1142,8 +1142,10 @@ def send_email(
 	forward_folder=None,
 	reference_doctype=None,
 	reference_name=None,
+	forward_attachments=None,
 ):
-	"""Send an email"""
+	"""Send an email. `forward_attachments`: the ids of the forwarded message's attachments the person kept, read
+	again on the server from `forward_uid` in `forward_folder` (never through the browser)."""
 	account = get_account(account_name)
 
 	# Sanitize HTML content if bleach is available
@@ -1226,15 +1228,17 @@ def send_email(
 	body.attach(MIMEText(html_content, "html", "utf-8"))
 	msg.attach(body)
 
-	# Attachments
+	# Attachments: the files the person joined (base64), then the forwarded message's they kept
 	if attachments:
 		for att in frappe.parse_json(attachments):
 			# att = {"filename": "...", "data": "base64...", "content_type": "..."}
-			part = MIMEBase("application", "octet-stream")
-			part.set_payload(base64.b64decode(att["data"]))
-			encoders.encode_base64(part)
-			part.add_header("Content-Disposition", f'attachment; filename="{att["filename"]}"')
-			msg.attach(part)
+			_attach(msg, att["filename"], att.get("content_type"), base64.b64decode(att["data"]))
+	if forward_attachments and forward_uid and forward_folder:
+		kept = frappe.parse_json(forward_attachments)
+		for filename, content_type, data in _forwarded_attachments(
+			account, forward_folder, forward_uid, kept
+		):
+			_attach(msg, filename, content_type, data)
 
 	# Send via SMTP
 	try:
@@ -1296,6 +1300,37 @@ def send_email(
 	except Exception as e:
 		frappe.log_error("Email send error", f"{e!s}")
 		frappe.throw(_("Failed to send email: {0}").format(e))
+
+
+def _attach(msg, filename, content_type, data):
+	"""A file joined to a message, of its own type (application/octet-stream when unknown), its name encoded for a
+	name with accents (RFC 2231): the name used to go raw into the header, every file as octet-stream."""
+	maintype, _sep, subtype = (content_type or "application/octet-stream").partition("/")
+	part = MIMEBase(maintype or "application", subtype or "octet-stream")
+	part.set_payload(data)
+	encoders.encode_base64(part)
+	part.add_header("Content-Disposition", "attachment", filename=filename)
+	msg.attach(part)
+
+
+def _forwarded_attachments(account, folder, uid, ids):
+	"""(file name, content type, bytes) of the attachments of a forwarded message the person kept, read once from the
+	IMAP server (EXAMINE and BODY.PEEK: forwarding never marks the message read)."""
+	wanted = {str(i) for i in ids or []}
+	if not wanted:
+		return []
+	uid = int(uid)
+	with imap_session(account) as client:
+		client.select_folder(folder, readonly=True)
+		data = client.fetch([uid], ["BODY.PEEK[]"])
+	if uid not in data:
+		frappe.throw(_("Email not found"))
+	msg = email.message_from_bytes(data[uid][b"BODY[]"])
+	return [
+		(attachment_filename(a), a.part.get_content_type(), attachment_bytes(a.part))
+		for a in iter_attachments(msg)
+		if a.id in wanted
+	]
 
 
 def _copy_to_sent_folder(account, msg):
