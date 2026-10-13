@@ -171,6 +171,16 @@ const BODIES = {
 	113: "<p>Trois factures fournisseurs sont arrivées dans compta@ ce week-end. Elles sont dans les documents scannés.</p>",
 };
 
+// The first words of each message under its subject, as the server reads them (frappe_webmail/previews.py)
+for (const email of EMAILS) {
+	const text = (BODIES[email.uid] || "")
+		.replace(/<br\s*\/?>|<\/p>/gi, " ")
+		.replace(/<[^>]*>/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
+	email.preview = text.length > 160 ? text.slice(0, 160).replace(/\s\S*$/, "") + "…" : text;
+}
+
 const ATTACHMENTS = {
 	118: [
 		{

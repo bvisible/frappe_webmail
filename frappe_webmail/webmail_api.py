@@ -21,6 +21,7 @@ import frappe
 from frappe import _
 
 from frappe_webmail.mime_parts import iter_attachments
+from frappe_webmail.previews import fetch_previews
 
 try:
 	import bleach
@@ -951,6 +952,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 
 		# Fetch envelope data
 		data = client.fetch(page, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
+		previews = _list_previews(client, data)
 
 		emails = []
 		for uid in page:  # Maintain order
@@ -977,10 +979,22 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 					"nora_seen": b"$NoraSeen" in flags,
 					"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
 					"size": msg_data.get(b"RFC822.SIZE", 0),
+					"preview": previews.get(uid, ""),
 				}
 			)
 
 		return {"emails": emails, "total": total, "has_more": offset + limit < total}
+
+
+def _list_previews(client, data):
+	"""The first words of each message of a page, under its subject in the list (previews.py). A server that cannot
+	give them leaves the list without them, never without its messages: a warning in the app's log, not an Error Log
+	at every refresh of the list."""
+	try:
+		return fetch_previews(client, {uid: msg.get(b"BODYSTRUCTURE") for uid, msg in data.items()})
+	except Exception:
+		frappe.logger("frappe_webmail").warning("Webmail list previews failed", exc_info=True)
+		return {}
 
 
 # ============================================
@@ -2115,7 +2129,8 @@ def search_contacts(query, limit=10):
 
 @frappe.whitelist()
 def get_contact_by_email(email):
-	"""Get contact details by email address"""
+	"""Get contact details by email address: a contact the person may read, or None. It answered anyone signed in,
+	a portal client included, with any contact's phones, company and links (the class of #1531)."""
 	if not email:
 		return None
 
@@ -2127,7 +2142,7 @@ def get_contact_by_email(email):
 		as_dict=True,
 	)
 
-	if not contact_email:
+	if not contact_email or not frappe.has_permission("Contact", "read", doc=contact_email.parent):
 		return None
 
 	contact = frappe.get_doc("Contact", contact_email.parent)
@@ -2159,6 +2174,49 @@ def get_contact_by_email(email):
 		"company_name": contact.company_name,
 		"links": links,
 	}
+
+
+# What a sender can be in Neoffice, in that order: the record their contact is linked to, and its documents counted
+# for the year (canvas « Neodesk », boards 2 and 7: « Supplier X · 3 invoices this year »)
+SENDER_KINDS = (
+	("Supplier", "Purchase Invoice", "supplier"),
+	("Customer", "Sales Invoice", "customer"),
+)
+
+
+@frappe.whitelist()
+def get_sender_card(email):
+	"""Who wrote, in Neoffice: the supplier or the customer the sender's contact is linked to, with its invoices of
+	the year, for the card under a message's sender (the desk's mail and Neodesk read the same answer). Only what the
+	person may read: None for a contact or a record they may not see, no count without the right to read invoices."""
+	contact = get_contact_by_email(email)
+	if not contact:
+		return None
+	links = {link["link_doctype"]: link for link in contact["links"]}
+	for doctype, invoice_doctype, field in SENDER_KINDS:
+		link = links.get(doctype)
+		if not link or not frappe.has_permission(doctype, "read", doc=link["link_name"]):
+			continue
+		invoices = None
+		if frappe.db.exists("DocType", invoice_doctype) and frappe.has_permission(invoice_doctype, "read"):
+			year_start = frappe.utils.getdate(frappe.utils.nowdate()).replace(month=1, day=1)
+			invoices = len(
+				frappe.get_list(
+					invoice_doctype,
+					filters={field: link["link_name"], "docstatus": 1, "posting_date": [">=", year_start]},
+					pluck="name",
+					limit_page_length=1000,
+				)
+			)
+		return {
+			"doctype": doctype,
+			"name": link["link_name"],
+			"title": link.get("link_title") or link["link_name"],
+			"kind": _(doctype),
+			"url": frappe.utils.get_url_to_form(doctype, link["link_name"]),
+			"invoices": invoices,
+		}
+	return None
 
 
 @frappe.whitelist()

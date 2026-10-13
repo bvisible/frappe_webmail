@@ -2,84 +2,106 @@
 	<div class="email-viewer" v-if="email">
 		<!-- Scrollable content area -->
 		<div class="email-content">
-			<!-- Header -->
+			<!-- Header, as the canvas « Neodesk » draws it (board 7): the subject in Forum with the message's actions
+			     beside it (Nora's reply first), then who wrote, to whom and when -->
 			<div class="email-header">
-				<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
-				<div class="email-meta">
-					<div class="from">
-						<div class="from-info">
-							<strong>{{ email.from_name || email.from_email }}</strong>
-							<span class="email-address">&lt;{{ email.from_email }}&gt;</span>
-							<span
-								v-if="senderContact"
-								class="contact-badge"
-								:title="__('Contact: {0}', [senderContact.full_name])"
-							>
-								<User :size="14" />
-							</span>
-							<button
-								v-else
-								@click="saveAsContact(email.from_email, email.from_name)"
-								class="add-contact-btn"
-								:data-tip="__('Add to contacts')"
-								:aria-label="__('Add to contacts')"
-							>
-								<UserPlus :size="14" />
-							</button>
-						</div>
+				<div class="subject-row">
+					<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
+					<div class="email-actions">
+						<button
+							v-if="noraEnabled"
+							@click="handleQuickReply"
+							class="nora-reply"
+							:disabled="quickReplyLoading"
+							:data-tip="__('Let Nora draft the reply (about 10 s)')"
+						>
+							<NoraOrb :size="20" />
+							<span>{{
+								quickReplyLoading ? __("Nora is drafting…") : __("Reply with Nora")
+							}}</span>
+							<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
+						</button>
+						<button
+							@click="$emit('reply', email)"
+							class="btn"
+							:data-tip="__('Reply')"
+							:aria-label="__('Reply')"
+						>
+							<Reply :size="16" />
+						</button>
+						<button
+							@click="$emit('forward', email)"
+							class="btn"
+							:data-tip="__('Forward')"
+							:aria-label="__('Forward')"
+						>
+							<Forward :size="16" />
+						</button>
+						<button
+							@click="markAsUnread"
+							class="btn"
+							:data-tip="__('Mark as unread')"
+							:aria-label="__('Mark as unread')"
+						>
+							<MailOpen :size="16" />
+						</button>
+						<button
+							@click="toggleStar"
+							class="btn"
+							:class="{ starred: email.flagged }"
+							:data-tip="email.flagged ? __('Remove star') : __('Star')"
+							:aria-label="email.flagged ? __('Remove star') : __('Star')"
+						>
+							<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
+						</button>
+						<button
+							@click="$emit('delete', email)"
+							class="btn btn-danger"
+							:data-tip="__('Delete')"
+							:aria-label="__('Delete')"
+						>
+							<Trash2 :size="16" />
+						</button>
 					</div>
-					<div class="to">A: {{ email.to }}</div>
-					<div v-if="email.cc" class="cc">Cc: {{ email.cc }}</div>
-					<div class="date">{{ formatDate(email.date) }}</div>
 				</div>
-			</div>
-
-			<!-- Actions -->
-			<div class="email-actions">
-				<button @click="$emit('reply', email)" class="btn btn-sm">
-					<Reply :size="16" />
-					<span>{{ __("Reply") }}</span>
-				</button>
-				<button @click="$emit('forward', email)" class="btn btn-sm">
-					<Forward :size="16" />
-					<span>{{ __("Forward") }}</span>
-				</button>
-				<button @click="markAsUnread" class="btn btn-sm" :data-tip="__('Mark as unread')">
-					<MailOpen :size="16" />
-					<span>{{ __("Unread") }}</span>
-				</button>
-				<button
-					@click="toggleStar"
-					class="btn btn-sm"
-					:class="{ starred: email.flagged }"
-					:data-tip="email.flagged ? __('Remove star') : __('Star')"
-					:aria-label="email.flagged ? __('Remove star') : __('Star')"
-				>
-					<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
-				</button>
-				<button
-					@click="$emit('delete', email)"
-					class="btn btn-sm btn-danger"
-					:data-tip="__('Delete')"
-					:aria-label="__('Delete')"
-				>
-					<Trash2 :size="16" />
-				</button>
-				<template v-if="noraEnabled">
-					<span class="actions-separator"></span>
-					<button
-						@click="handleQuickReply"
-						class="btn btn-sm btn-nora"
-						:disabled="quickReplyLoading"
-						:data-tip="__('Let Nora draft the reply (about 10 s)')"
-					>
-						<NoraOrb :size="18" />
-						<span>{{
-							quickReplyLoading ? __("Nora is drafting…") : __("Draft a reply")
-						}}</span>
-						<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
+				<div class="email-meta">
+					<div class="from-info">
+						<strong>{{ email.from_name || email.from_email }}</strong>
+						<span class="email-address">&lt;{{ email.from_email }}&gt;</span>
+						<span
+							v-if="senderContact"
+							class="contact-badge"
+							:title="__('Contact: {0}', [senderContact.full_name])"
+						>
+							<User :size="13" />
+						</span>
+						<button
+							v-else
+							@click="saveAsContact(email.from_email, email.from_name)"
+							class="add-contact-btn"
+							:data-tip="__('Add to contacts')"
+							:aria-label="__('Add to contacts')"
+						>
+							<UserPlus :size="13" />
+						</button>
+					</div>
+					<div class="meta-line">
+						<span class="to">{{ __("To: {0}", [email.to]) }}</span>
+						<span v-if="email.cc" class="cc">· {{ __("Cc: {0}", [email.cc]) }}</span>
+						<span class="date">· {{ formatDate(email.date) }}</span>
+					</div>
+				</div>
+				<!-- Who wrote, in Neoffice: their supplier or customer, its invoices of the year, its record (board 7) -->
+				<div v-if="senderCard" class="sender-card">
+					<span class="sender-mark">{{ initials(senderCard.title) }}</span>
+					<span class="sender-text">
+						{{ senderCard.kind }} <b>{{ senderCard.title }}</b
+						><template v-if="senderInvoices"> · {{ senderInvoices }}</template>
+					</span>
+					<button class="sender-open" @click="openSenderCard">
+						{{ __("Open the record") }}
 					</button>
-				</template>
+				</div>
 			</div>
 
 			<!-- External images warning -->
@@ -88,10 +110,10 @@
 				<span>{{ __("External images were blocked for your safety.") }}</span>
 				<button @click="showExternalImages = true">{{ __("Show the images") }}</button>
 				<button @click="trustSender" class="trust-btn" :title="email.from_email">
-					Toujours pour cet expediteur
+					{{ __("Always for this sender") }}
 				</button>
 				<button v-if="senderDomain" @click="trustDomain" class="trust-btn">
-					Toujours pour {{ senderDomain }}
+					{{ __("Always for {0}", [senderDomain]) }}
 				</button>
 			</div>
 
@@ -105,11 +127,12 @@
 			/>
 		</div>
 
-		<!-- Attachments Footer (sticky at bottom) -->
+		<!-- Attachments footer (sticky at bottom): a card each, its kind and its size under its name, as the
+		     canvas « Neodesk » draws them (boards 2 and 7) -->
 		<div v-if="email.attachments?.length" class="email-attachments">
 			<div class="attachments-header" @click="toggleAttachments">
 				<div class="attachments-title">
-					<Paperclip :size="14" />
+					<Paperclip :size="13" />
 					<span>{{
 						email.attachments.length > 1
 							? __("{0} attachments", [email.attachments.length])
@@ -138,9 +161,13 @@
 					@keydown.enter.prevent="openAttachment(att)"
 					@contextmenu.prevent.stop="openAttachmentMenu($event, att)"
 				>
-					<component :is="getFileIcon(att.content_type)" :size="16" class="file-icon" />
-					<span class="name">{{ att.filename }}</span>
-					<span class="size">({{ formatSize(att.size) }})</span>
+					<span class="file-glyph">
+						<component :is="getFileIcon(att.content_type)" :size="18" />
+					</span>
+					<span class="att-text">
+						<span class="name">{{ att.filename }}</span>
+						<span class="meta">{{ attachmentMeta(att) }}</span>
+					</span>
 					<button
 						v-if="attachmentActions.length"
 						class="attachment-more"
@@ -314,6 +341,8 @@ export default {
 			showExternalImages: false,
 			hasBlockedImages: false,
 			senderContact: null,
+			// Who wrote, in Neoffice: their supplier or customer and its invoices of the year (get_sender_card)
+			senderCard: null,
 			showAllAttachments: false,
 			quickReplyLoading: false,
 			// Inline reply bar state — lets the user answer without opening
@@ -333,6 +362,16 @@ export default {
 			if (!this.email?.from_email) return "";
 			const parts = this.email.from_email.split("@");
 			return parts.length > 1 ? parts[1] : "";
+		},
+
+		// « 3 invoices this year », or nothing for whom may not read them (invoices is null)
+		senderInvoices() {
+			const n = this.senderCard?.invoices;
+			if (n === null || n === undefined) return "";
+			if (n === 0) return this.__("No invoice this year");
+			return n === 1
+				? this.__("1 invoice this year")
+				: this.__("{0} invoices this year", [n]);
 		},
 
 		attachmentMenuItems() {
@@ -586,11 +625,38 @@ export default {
 			});
 		},
 
+		/** A size in the reader's language and units (« 184 ko », « 1,2 Mo »; « 184 kB » in English). */
 		formatSize(bytes) {
-			if (!bytes) return "0 B";
-			if (bytes < 1024) return bytes + " B";
-			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-			return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+			const lang = frappe.boot?.lang || document.documentElement.lang || "en";
+			const units = [
+				["gigabyte", 1024 ** 3],
+				["megabyte", 1024 ** 2],
+				["kilobyte", 1024],
+				["byte", 1],
+			];
+			const [unit, scale] = units.find(([, size]) => (bytes || 0) >= size) || units[3];
+			const value = (bytes || 0) / scale;
+			return new Intl.NumberFormat(lang, {
+				style: "unit",
+				unit,
+				unitDisplay: "short",
+				maximumFractionDigits: unit !== "byte" && value < 10 ? 1 : 0,
+			}).format(value);
+		},
+
+		/** Two letters for a name (« Sanitaires Romands SA » → « SR »). */
+		initials(name) {
+			const words = (name || "").split(/\s+/).filter((word) => /^[\p{L}\p{N}]/u.test(word));
+			return ((words[0]?.[0] || "") + (words[1]?.[0] || "")).toUpperCase() || "?";
+		},
+
+		/** What sits under an attachment's name: its kind, from its extension, and its size (« PDF · 184 ko »). */
+		attachmentMeta(att) {
+			const name = att.filename || "";
+			const dot = name.lastIndexOf(".");
+			const kind =
+				dot > 0 && name.length - dot <= 6 ? name.slice(dot + 1).toUpperCase() : "";
+			return [kind, this.formatSize(att.size)].filter(Boolean).join(" · ");
 		},
 
 		getFileIcon(contentType) {
@@ -754,8 +820,10 @@ export default {
 		async loadSenderContact(email) {
 			if (!email) {
 				this.senderContact = null;
+				this.senderCard = null;
 				return;
 			}
+			this.loadSenderCard(email);
 
 			try {
 				const response = await frappe.call({
@@ -766,6 +834,25 @@ export default {
 			} catch (error) {
 				this.senderContact = null;
 			}
+		},
+
+		// The card under the sender (board 7): kept only while the same message is open
+		async loadSenderCard(email) {
+			this.senderCard = null;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_sender_card",
+					args: { email },
+				});
+				if (this.email?.from_email === email) this.senderCard = response.message || null;
+			} catch (error) {
+				this.senderCard = null;
+			}
+		},
+
+		openSenderCard() {
+			if (this.senderCard)
+				frappe.set_route("Form", this.senderCard.doctype, this.senderCard.name);
 		},
 
 		async saveAsContact(email, name) {
@@ -901,91 +988,112 @@ export default {
 }
 
 .email-header {
-	padding: 16px 26px 14px;
+	padding: 18px 26px 14px;
 	border-bottom: 1px solid var(--wm-line-soft, #efefef);
 	flex: 0 0 auto;
 	background: var(--wm-bg-raised, #ffffff);
 }
 
+/* The subject and, beside it, the message's actions (board 7); they go under it when the column is narrow */
+.subject-row {
+	display: flex;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	gap: 10px 16px;
+	margin-bottom: 10px;
+}
+
 /* Subject: serif heading from the Neoffice theme (Forum). We don't override
    font-family here on purpose so the global h1/h2 style still wins. */
 .email-subject {
-	font-size: 22px;
+	flex: 1 1 260px;
+	min-width: 0;
+	font-size: 24px;
 	font-weight: 400;
 	letter-spacing: -0.005em;
-	margin-bottom: 12px;
 	color: var(--wm-ink, #1a1a1a);
 	line-height: 1.25;
 }
 
-/* Sender meta block — visually grouped into a soft card to match the
-   "sender-card" pattern from the design without restructuring the markup. */
+/* Who wrote, to whom and when: two quiet lines */
 .email-meta {
 	font-size: 13px;
 	color: var(--wm-ink-mute, #8d99a6);
-	background: var(--wm-bg-sunken, #f7f7f5);
-	border-radius: 10px;
-	padding: 10px 12px;
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
 }
 
-.email-meta .from {
-	color: var(--wm-ink, #1a1a1a);
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font-size: 13px;
-}
-
-.email-meta .from strong {
+.email-meta .from-info strong {
 	font-weight: 600;
+	color: var(--wm-ink, #1a1a1a);
 }
 
 .email-meta .email-address {
 	color: var(--wm-ink-mute, #8d99a6);
 	font-weight: normal;
-	font-size: 12px;
 }
 
-.email-meta .to,
-.email-meta .cc,
-.email-meta .date {
-	font-size: 12px;
+.meta-line {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 5px;
+	font-size: 12.5px;
 	color: var(--wm-ink-mute, #8d99a6);
 }
 
-/* Actions row: ghost buttons (no border) — only hover gives a soft bg. */
+/* The actions: Nora's reply as a pill, the others as round buttons */
 .email-actions {
 	display: flex;
-	gap: 4px;
-	padding: 8px 22px;
-	border-bottom: 1px solid var(--wm-line-soft, #efefef);
-	background: transparent;
-	flex: 0 0 auto;
+	gap: 8px;
+	flex: none;
 	align-items: center;
 	flex-wrap: wrap;
 }
 
-.email-actions .btn {
+.email-actions .nora-reply {
+	height: 36px;
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
-	border: 0;
-	border-radius: 7px;
-	background: transparent;
+	gap: 8px;
+	padding: 0 14px 0 8px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: var(--wm-bg-raised, #ffffff);
+	color: var(--wm-ink, #1a1a1a);
 	cursor: pointer;
-	font-size: 12.5px;
-	color: var(--wm-ink-soft, #555);
-	transition: background 0.15s, color 0.15s;
 	font-family: inherit;
-	font-weight: 500;
+	font-size: 13px;
+	font-weight: 600;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.email-actions .nora-reply:hover {
+	border-color: var(--wm-accent);
+	background: var(--wm-accent-soft);
+}
+
+.email-actions .nora-reply:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+.email-actions .btn {
+	width: 36px;
+	height: 36px;
+	display: inline-grid;
+	place-items: center;
+	padding: 0;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: var(--wm-bg-raised, #ffffff);
+	color: var(--wm-ink-soft, #555);
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .email-actions .btn:hover {
-	background: var(--wm-bg-sunken, #f7f7f5);
+	border-color: var(--wm-line-strong, #cfcfcf);
 	color: var(--wm-ink, #1a1a1a);
 }
 
@@ -994,15 +1102,62 @@ export default {
 }
 
 .email-actions .btn-danger:hover {
+	border-color: var(--wm-danger, #dc2626);
 	background: var(--wm-danger-soft, #fee2e2);
 	color: var(--wm-danger, #dc2626);
 }
 
-.actions-separator {
-	width: 1px;
-	height: 16px;
-	background: var(--wm-line, #e5e5e5);
-	margin: 0 4px;
+/* The sender's card (board 7): their mark, what they are in Neoffice, the way to their record */
+.sender-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 12px;
+	padding: 9px 12px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 12px;
+	background: var(--wm-bg, #fafafa);
+	font-size: 13.5px;
+	color: var(--wm-ink, #1a1a1a);
+}
+
+.sender-mark {
+	flex: none;
+	width: 28px;
+	height: 28px;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: var(--wm-bg-raised, #ffffff);
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--wm-ink-soft, #555);
+}
+
+.sender-text {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sender-open {
+	flex: none;
+	border: 0;
+	background: transparent;
+	padding: 4px 6px;
+	border-radius: 6px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--wm-accent);
+	cursor: pointer;
+}
+
+.sender-open:hover {
+	background: var(--wm-accent-soft);
 }
 
 .blocked-images-notice {
@@ -1047,13 +1202,13 @@ export default {
 	min-height: 100px;
 }
 
-/* Attachments Footer - always visible at bottom */
+/* Attachments footer, always visible at the bottom: an eyebrow, then a card each (canvas « Neodesk », boards 2 and 7) */
 .email-attachments {
 	flex: 0 0 auto;
-	padding: 10px 16px;
-	border-top: 1px solid var(--border-color, #e5e5e5);
-	background: var(--subtle-bg, #f5f5f5);
-	max-height: 150px;
+	padding: 12px 18px 14px;
+	border-top: 1px solid var(--wm-line, var(--border-color, #e5e5e5));
+	background: var(--wm-bg, var(--subtle-bg, #f5f5f5));
+	max-height: 196px;
 	overflow-y: auto;
 }
 
@@ -1062,16 +1217,19 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	cursor: pointer;
-	margin-bottom: 8px;
+	margin-bottom: 10px;
 }
 
 .attachments-title {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 13px;
+	font-size: 11px;
+	line-height: 14px;
 	font-weight: 600;
-	color: var(--text-color, #333);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 }
 
 .toggle-btn {
@@ -1083,58 +1241,94 @@ export default {
 	padding: 0;
 	border: none;
 	background: transparent;
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 	cursor: pointer;
-	border-radius: 4px;
+	border-radius: 6px;
 	transition: all 0.15s ease;
 }
 
 .toggle-btn:hover {
-	background: rgba(0, 0, 0, 0.05);
-	color: var(--text-color, #333);
+	background: var(--wm-bg-sunken, rgba(0, 0, 0, 0.05));
+	color: var(--wm-ink, var(--text-color, #333));
 }
 
 .attachment-list {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-	align-items: center;
+	gap: 10px;
+	align-items: stretch;
 }
 
 .attachment-item {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 6px 10px;
-	background: var(--card-bg, white);
-	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 6px;
+	gap: 12px;
+	flex: 1 1 240px;
+	max-width: 340px;
+	min-width: 0;
+	padding: 10px 12px;
+	background: var(--wm-bg-raised, var(--card-bg, white));
+	border: 1px solid var(--wm-line, var(--border-color, #e5e5e5));
+	border-radius: 12px;
 	cursor: pointer;
-	font-size: 12px;
 	transition: all 0.15s ease;
-	max-width: 200px;
 }
 
 .attachment-item:hover,
 .attachment-item.menu-open {
-	background: var(--wm-bg-raised, var(--card-bg));
 	border-color: var(--wm-accent);
 }
 
 .attachment-item.menu-open {
-	box-shadow: 0 0 0 3px var(--wm-accent-soft);
+	background: var(--wm-accent-soft);
+}
+
+.attachment-item .file-glyph {
+	display: inline-grid;
+	place-items: center;
+	flex: none;
+	width: 34px;
+	height: 34px;
+	border-radius: 9px;
+	background: var(--wm-bg-sunken, var(--bg-light-gray));
+	color: var(--wm-accent);
+}
+
+.attachment-item .att-text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	flex: 1;
+	min-width: 0;
+}
+
+.attachment-item .name {
+	font-size: 14px;
+	line-height: 18px;
+	font-weight: 600;
+	color: var(--wm-ink, var(--text-color, #333));
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.attachment-item .meta {
+	font-size: 12px;
+	line-height: 15px;
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
+	white-space: nowrap;
 }
 
 /* ⋯ : the attachment's menu without a right-click (touch screens, keyboard) */
 .attachment-more {
 	display: inline-grid;
 	place-items: center;
-	width: 22px;
-	height: 22px;
-	margin: -4px -6px -4px 0;
+	flex: none;
+	width: 26px;
+	height: 26px;
 	padding: 0;
 	border: 0;
-	border-radius: 6px;
+	border-radius: 7px;
 	background: transparent;
 	color: var(--wm-ink-mute, var(--text-muted));
 	cursor: pointer;
@@ -1152,101 +1346,63 @@ export default {
 	color: var(--wm-ink, var(--text-color));
 }
 
-.attachment-item .file-icon {
-	color: var(--text-muted, #8d99a6);
-	flex-shrink: 0;
-}
-
-.attachment-item .name {
-	color: var(--text-color, #333);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 120px;
-}
-
-.attachment-item .size {
-	color: var(--text-muted, #8d99a6);
-	white-space: nowrap;
-	flex-shrink: 0;
-}
-
 .show-more-btn {
 	display: inline-flex;
 	align-items: center;
+	align-self: center;
 	padding: 6px 12px;
-	background: var(--primary-color, #2490ef);
-	color: white;
-	border: none;
-	border-radius: 6px;
+	background: transparent;
+	color: var(--wm-ink-soft, var(--text-color));
+	border: 1px solid var(--wm-line, var(--border-color, #e5e5e5));
+	border-radius: 999px;
 	font-size: 12px;
-	font-weight: 500;
+	font-weight: 600;
 	cursor: pointer;
 	transition: all 0.15s ease;
 }
 
 .show-more-btn:hover {
-	background: var(--primary-dark, #1a7fd4);
+	border-color: var(--wm-accent);
+	color: var(--wm-ink, var(--text-color));
 }
 
 .from-info {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	flex-wrap: wrap;
+	font-size: 14px;
+}
+
+.contact-badge,
+.add-contact-btn {
+	display: inline-grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border-radius: 7px;
 }
 
 .contact-badge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
-	padding: 4px 8px;
-	border-radius: 4px;
+	background: var(--wm-accent-soft);
+	color: var(--wm-accent);
 	cursor: help;
-	color: var(--primary-color, #2490ef);
 }
 
 .add-contact-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	background: none;
-	border: 1px dashed var(--border-color, #ccc);
-	border-radius: 4px;
-	padding: 4px 8px;
+	border: 1px dashed var(--wm-line-strong, #ccc);
 	cursor: pointer;
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, #8d99a6);
 	transition: all 0.15s ease;
 }
 
 .add-contact-btn:hover {
-	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
-	border-color: var(--primary-color, #2490ef);
+	background: var(--wm-accent-soft);
+	border-color: var(--wm-accent);
 	border-style: solid;
-	color: var(--primary-color, #2490ef);
-}
-
-.actions-separator {
-	width: 1px;
-	height: 24px;
-	background: var(--border-color, #e5e5e5);
-	flex-shrink: 0;
-}
-
-.email-actions .btn-nora {
-	border-color: var(--primary-color, #2490ef);
-	color: var(--primary-color, #2490ef);
-	font-weight: 500;
-}
-
-.email-actions .btn-nora:hover {
-	background: var(--subtle-accent, rgba(36, 144, 239, 0.1));
-}
-
-.email-actions .btn-nora:disabled {
-	opacity: 0.6;
-	cursor: wait;
+	color: var(--wm-accent);
 }
 
 .nora-spinner-small {

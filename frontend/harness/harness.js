@@ -130,6 +130,18 @@ const answers = {
 	get_recent_contacts: () => [],
 	search_contacts: () => [],
 	get_contact_by_email: () => null,
+	// The supplier who sent the invoice is known in Neoffice; the others are not (board 7)
+	get_sender_card: ({ email }) =>
+		email === "compta@sanitaire.example.ch"
+			? {
+					doctype: "Supplier",
+					name: "SUP-0007",
+					title: "Exemple Sanitaire SA",
+					kind: "Fournisseur",
+					url: "/app/supplier/SUP-0007",
+					invoices: 3,
+			  }
+			: null,
 	quick_reply: () => ({
 		success: true,
 		draft_text:

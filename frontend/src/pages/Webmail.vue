@@ -15,8 +15,26 @@
 				<PanelLeftClose v-else :size="15" :stroke-width="1.7" />
 			</button>
 
+			<!-- In the desk's cockpit the mailboxes are in its bar (publishNav): a trail here, where the account
+			     switcher was, and the mailbox's sharing beside it (canvas « Neodesk », board 7) -->
+			<nav v-if="lendsNav && currentAccount" class="crumb">
+				<span class="crumb-app">{{ __("Mail") }}</span>
+				<ChevronRight :size="12" class="crumb-sep" />
+				<b class="crumb-here">{{ folderLabelForSearch }}</b>
+				<div
+					v-if="currentAccountSharing"
+					class="sharing-indicator-mini"
+					@mouseenter="showSharingTooltip = true"
+					@mouseleave="showSharingTooltip = false"
+				>
+					<Users :size="12" />
+					<div v-if="showSharingTooltip" class="sharing-tooltip">
+						{{ currentAccountSharing }}
+					</div>
+				</div>
+			</nav>
 			<!-- Account switcher -->
-			<div class="account-switch" v-if="currentAccount && accounts.length">
+			<div class="account-switch" v-else-if="currentAccount && accounts.length">
 				<div class="av-mini">{{ accountInitial }}</div>
 				<select v-model="currentAccount" @change="onAccountChange" class="account-select">
 					<option v-for="acc in accounts" :key="acc.name" :value="acc.name">
@@ -149,50 +167,28 @@
 				</div>
 			</div>
 
-			<!-- Top actions -->
+			<!-- Top actions: Nora by her name, the mail's settings in one menu, « New Message » (board 7) -->
 			<div class="top-actions">
 				<button
 					v-if="capabilities.nora"
 					@click="toggleAgentPanel"
-					class="icon-btn"
+					class="nora-chip"
 					:class="{ 'is-on': agentPanelOpen }"
+					:aria-pressed="agentPanelOpen"
 					:data-tip="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
-					:aria-label="agentPanelOpen ? __('Hide Nora') : __('Ask Nora')"
 				>
-					<NoraOrb :size="22" />
+					<NoraOrb :size="20" />
+					<span>Nora</span>
 				</button>
 				<button
-					v-if="capabilities.nora"
-					@click="showAutomations = true"
+					@click="openToolsMenu"
 					class="icon-btn"
-					:data-tip="__('Nora automations')"
-					:aria-label="__('Nora automations')"
+					:class="{ 'is-on': toolsMenu.visible }"
+					:data-tip="__('Mail settings')"
+					:aria-label="__('Mail settings')"
+					aria-haspopup="menu"
 				>
-					<Bot :size="15" :stroke-width="1.7" />
-				</button>
-				<button
-					@click="showFilters = true"
-					class="icon-btn"
-					:data-tip="__('Filters')"
-					:aria-label="__('Filters')"
-				>
-					<Filter :size="14" />
-				</button>
-				<button
-					@click="showSignatures = true"
-					class="icon-btn"
-					:data-tip="__('Signatures')"
-					:aria-label="__('Signatures')"
-				>
-					<PenLine :size="14" />
-				</button>
-				<button
-					@click="openSettings"
-					class="icon-btn"
-					:data-tip="__('Settings')"
-					:aria-label="__('Settings')"
-				>
-					<Settings :size="14" />
+					<Settings :size="15" />
 				</button>
 				<button @click="compose" class="btn-compose">
 					<Plus :size="14" />
@@ -200,6 +196,13 @@
 				</button>
 			</div>
 		</header>
+		<ContextMenu
+			:visible="toolsMenu.visible"
+			:items="toolsMenuItems"
+			:position="toolsMenu.position"
+			@select="onToolsMenu"
+			@close="toolsMenu.visible = false"
+		/>
 
 		<!-- MAIN — flex row with two draggable resizers between the columns.
 		     Widths come from `sidebarWidth` / `emailListWidth` (persisted in
@@ -430,6 +433,7 @@ import FilterManager from "../components/FilterManager.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import AutomationsPanel from "../components/AutomationsPanel.vue";
 import AgentPanel from "../components/AgentPanel.vue";
+import ContextMenu from "../components/ContextMenu.vue";
 import { installTooltips } from "../tooltip";
 import { splitQuote } from "../quoteSplit";
 import {
@@ -441,6 +445,7 @@ import {
 	Settings,
 	Users,
 	ChevronDown,
+	ChevronRight,
 	Plus,
 	PanelLeftClose,
 	PanelLeftOpen,
@@ -463,6 +468,7 @@ export default {
 		BulkActionBar,
 		AutomationsPanel,
 		AgentPanel,
+		ContextMenu,
 		Mail,
 		Search,
 		SquarePen,
@@ -471,6 +477,7 @@ export default {
 		Settings,
 		Users,
 		ChevronDown,
+		ChevronRight,
 		Plus,
 		PanelLeftClose,
 		PanelLeftOpen,
@@ -508,6 +515,8 @@ export default {
 			showSearch: false,
 			showFilters: false,
 			showAutomations: false,
+			// The mail's settings menu of the top bar (automations, filters, signatures, settings)
+			toolsMenu: { visible: false, position: { x: 0, y: 0 } },
 			// Nora side panel — remembered per browser (open by default)
 			agentPanelOpen: (() => {
 				try {
@@ -561,6 +570,22 @@ export default {
 	},
 
 	computed: {
+		// What the top bar's settings menu holds: the four buttons the bar had before (board 7 keeps the bar to the
+		// trail, the search, Nora and « New Message »)
+		toolsMenuItems() {
+			return [
+				this.capabilities.nora && {
+					id: "automations",
+					label: this.__("Nora automations"),
+					icon: Bot,
+				},
+				{ id: "filters", label: this.__("Filters"), icon: Filter },
+				{ id: "signatures", label: this.__("Signatures"), icon: PenLine },
+				{ separator: true },
+				{ id: "settings", label: this.__("Settings"), icon: Settings },
+			].filter(Boolean);
+		},
+
 		quotaLabel() {
 			if (!this.quota) return "";
 			// small mailboxes: show MB usage instead of a misleading "0.0 GB"
@@ -1356,6 +1381,23 @@ export default {
 		openSettings() {
 			// Open Webmail Account list
 			frappe.set_route("List", "Webmail Account");
+		},
+
+		// Under the button, its right edge on the button's (the menu is about 220 px wide)
+		openToolsMenu(event) {
+			const box = event.currentTarget.getBoundingClientRect();
+			this.toolsMenu = {
+				visible: true,
+				position: { x: Math.max(8, box.right - 220), y: box.bottom + 6 },
+			};
+		},
+
+		onToolsMenu({ action }) {
+			this.toolsMenu.visible = false;
+			if (action === "automations") this.showAutomations = true;
+			else if (action === "filters") this.showFilters = true;
+			else if (action === "signatures") this.showSignatures = true;
+			else if (action === "settings") this.openSettings();
 		},
 
 		onNewEmails({ count, emails }) {
@@ -3011,6 +3053,62 @@ html[data-theme="dark"] .webmail-app {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+}
+
+/* The trail in the desk's cockpit: « Mail › Inbox », where the account switcher was (board 7) */
+.crumb {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	white-space: nowrap;
+	font-size: 15px;
+	line-height: 20px;
+}
+
+.crumb-app {
+	color: var(--wm-ink-mute);
+}
+
+.crumb-sep {
+	flex: none;
+	color: var(--wm-ink-placeholder, var(--wm-ink-mute));
+}
+
+.crumb-here {
+	font-weight: 600;
+	color: var(--wm-ink);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Nora by her name: her orb and « Nora », a pill; on while her panel is open */
+.nora-chip {
+	height: 34px;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 0 12px 0 6px;
+	margin-right: 4px;
+	border: 1px solid var(--wm-line);
+	border-radius: 999px;
+	background: var(--wm-bg-raised);
+	color: var(--wm-ink);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.nora-chip:hover {
+	border-color: var(--wm-line-strong);
+}
+
+.nora-chip.is-on {
+	border-color: var(--wm-accent);
+	background: var(--wm-accent-soft);
 }
 
 .icon-btn {

@@ -17,5 +17,8 @@ export default defineConfig({
 		port: 5199,
 		strictPort: true,
 		fs: { allow: [path.resolve(__dirname, "../..")] },
+		// The desk's public files the page asks for (Nora's orb, /assets/nora/images/…) come from an instance, as the
+		// theme does (index.html): nothing there needs a session
+		proxy: { "/assets": { target: "https://osiris.neoffice.me", changeOrigin: true } },
 	},
 });

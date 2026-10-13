@@ -77,8 +77,9 @@
 		<RecycleScroller
 			v-if="displayedEmails.length"
 			class="email-list"
+			:class="{ selecting: selectedCount > 0 }"
 			:items="displayedEmails"
-			:item-size="64"
+			:item-size="82"
 			key-field="uid"
 			v-slot="{ item }"
 			@scroll-end="loadMore"
@@ -98,8 +99,10 @@
 				@dragstart="onDragStart($event, item)"
 				@dragend="onDragEnd"
 			>
-				<!-- Checkbox + star stacked vertically (compact left column) -->
-				<div class="row-controls">
+				<!-- The gutter: the unread dot; the row's checkbox over it on hover, or while rows are selected (canvas
+				     « Neodesk », board 7, draws the dot; the multi-selection stays) -->
+				<div class="row-gutter">
+					<span v-if="!item.seen" class="unread-dot" aria-hidden="true"></span>
 					<div class="checkbox-cell" @click.stop="toggleSelection(item, $event)">
 						<input
 							type="checkbox"
@@ -108,17 +111,6 @@
 							@change="toggleSelection(item, $event)"
 						/>
 					</div>
-					<div class="star" @click.stop="toggleStar(item)">
-						<Star :size="14" :fill="item.flagged ? 'currentColor' : 'none'" />
-					</div>
-				</div>
-				<!-- Sender avatar with deterministic gradient color from email -->
-				<div
-					class="email-avatar"
-					:class="getAvatarColor(item.from_email)"
-					:title="item.from_name || item.from_email"
-				>
-					{{ getAvatarInitials(item.from_name, item.from_email) }}
 				</div>
 				<div class="email-content">
 					<div class="email-top-line">
@@ -126,6 +118,11 @@
 						<span class="date">{{ formatDate(item.date) }}</span>
 					</div>
 					<div class="email-bottom-line">
+						<Paperclip
+							v-if="item.has_attachments"
+							:size="13"
+							class="attachment-icon"
+						/>
 						<span class="subject-text">{{ item.subject || __("(No subject)") }}</span>
 						<Reply
 							v-if="item.answered"
@@ -139,12 +136,13 @@
 							class="status-icon forwarded"
 							:title="__('Forwarded')"
 						/>
-						<Paperclip
-							v-if="item.has_attachments"
-							:size="14"
-							class="attachment-icon"
-						/>
+						<!-- Shown while it is starred, and on hover to star it -->
+						<div class="star" @click.stop="toggleStar(item)">
+							<Star :size="14" :fill="item.flagged ? 'currentColor' : 'none'" />
+						</div>
 					</div>
+					<!-- The first words of the message (frappe_webmail/previews.py) -->
+					<div v-if="item.preview" class="email-preview">{{ item.preview }}</div>
 				</div>
 			</div>
 		</RecycleScroller>
@@ -436,28 +434,6 @@ export default {
 	},
 
 	methods: {
-		// Deterministic gradient color class (c1-c6) for the sender avatar.
-		// Same email always renders with the same color across sessions.
-		getAvatarColor(email) {
-			const src = (email || "").toLowerCase();
-			let hash = 0;
-			for (let i = 0; i < src.length; i++) {
-				hash = (hash << 5) - hash + src.charCodeAt(i);
-				hash |= 0; // keep 32-bit
-			}
-			return "c" + ((Math.abs(hash) % 6) + 1);
-		},
-
-		// 1-2 letter initials drawn from the sender name (falling back to email).
-		getAvatarInitials(name, email) {
-			const raw = (name || email || "?").trim();
-			const parts = raw.split(/[\s@._-]+/).filter(Boolean);
-			if (parts.length >= 2 && parts[0] && parts[1]) {
-				return (parts[0][0] + parts[1][0]).toUpperCase();
-			}
-			return ((parts[0] || raw)[0] || "?").toUpperCase();
-		},
-
 		async loadEmails(append = false) {
 			if (this.loading) return;
 			if (append && !this.hasMore) return;
@@ -1063,44 +1039,6 @@ export default {
 	background: rgba(255, 255, 255, 0.08);
 }
 
-/* =====================================================================
-   Sender avatar — 32px circle with a deterministic gradient color
-   driven by getAvatarColor(email) in the script. c1..c6 cover the
-   palette from the design (indigo / amber / sage / rose / cyan / purple).
-   ===================================================================== */
-.email-avatar {
-	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	display: grid;
-	place-items: center;
-	color: white;
-	font-size: 12px;
-	font-weight: 600;
-	letter-spacing: 0.01em;
-	align-self: center;
-}
-
-.email-avatar.c1 {
-	background: linear-gradient(135deg, var(--wm-accent), var(--wm-nora-2));
-}
-.email-avatar.c2 {
-	background: linear-gradient(135deg, #b45309, #f59e0b);
-}
-.email-avatar.c3 {
-	background: linear-gradient(135deg, #047857, #34d399);
-}
-.email-avatar.c4 {
-	background: linear-gradient(135deg, #be185d, #ec4899);
-}
-.email-avatar.c5 {
-	background: linear-gradient(135deg, #0e7490, #06b6d4);
-}
-.email-avatar.c6 {
-	background: linear-gradient(135deg, #6d28d9, #c084fc);
-}
-
 /* ========================================================================
    New list header — serif folder title + unread count + minimal icons.
    Replaces the old toolbar that combined search + select-all + refresh.
@@ -1199,118 +1137,121 @@ export default {
 	overflow-y: auto;
 }
 
+/* A row as the canvas « Neodesk » draws it (board 7): the unread dot in a gutter, the sender and the time, the
+   subject, the first words of the message; the open message with a clay bar */
 .email-row {
 	display: flex;
-	align-items: center;
-	padding: 10px 5px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
+	align-items: flex-start;
+	gap: 4px;
+	height: 82px;
+	padding: 11px 14px 0 4px;
+	border-bottom: 1px solid var(--wm-line, var(--border-color, #e5e5e5));
 	cursor: pointer;
-	gap: 6px;
 }
 
 .email-row:hover {
-	background: var(--bg-light-gray, #f5f5f5);
-}
-
-.email-row.unread {
-	background: var(--subtle-accent, rgba(36, 144, 239, 0.08));
+	background: var(--wm-bg-sunken, var(--bg-light-gray, #f5f5f5));
 }
 
 .email-row.unread .from {
-	font-weight: 600;
+	font-weight: 700;
 }
 
 .email-row.unread .subject-text {
-	font-weight: 500;
-	color: var(--text-color, #333);
+	font-weight: 600;
+	color: var(--wm-ink, var(--text-color, #333));
 }
 
-/* Active row = the email currently open in the reader.
-   Soft horizontal gradient (strong accent on the left fading to transparent)
-   + a 4px "guardian" bar on the left (box-shadow inset so it stays visible
-   even with the column-resizer's negative margin). */
+/* The open message: a clay bar on its left (inset, so the column's resizer cannot hide it) */
 .email-row.active {
-	background: linear-gradient(
-		90deg,
-		var(--subtle-accent, rgba(36, 144, 239, 0.22)) 0%,
-		var(--subtle-accent, rgba(36, 144, 239, 0.1)) 35%,
-		transparent 90%
-	);
-	box-shadow: inset 4px 0 0 0 var(--primary-color, #2490ef);
+	background: var(--wm-bg-raised, var(--card-bg, white));
+	box-shadow: inset 3px 0 0 0 var(--wm-accent);
 }
 
-/* Selected rows = multi-selection checkbox state (different from "active"). */
+/* Rows of the multi-selection: the accent's wash */
 .email-row.selected {
-	background: linear-gradient(
-		90deg,
-		rgba(214, 138, 89, 0.18),
-		rgba(214, 138, 89, 0.06) 50%,
-		transparent 90%
-	);
-	box-shadow: inset 4px 0 0 0 var(--primary-color, #2490ef);
+	background: var(--wm-accent-soft);
 }
 
 .email-row.selected.active {
-	background: linear-gradient(
-		90deg,
-		rgba(214, 138, 89, 0.28),
-		rgba(214, 138, 89, 0.1) 50%,
-		transparent 90%
-	);
+	background: var(--wm-accent-soft);
+	box-shadow: inset 3px 0 0 0 var(--wm-accent);
 }
 
 .email-row.dragging {
 	opacity: 0.5;
-	background: var(--bg-light-gray, #f5f5f5);
 }
 
-/* Vertical wrapper that stacks the row checkbox above the star, so the
-   horizontal footprint of these two controls is one column instead of two. */
-.row-controls {
-	flex-shrink: 0;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 4px;
-	padding-top: 3px;
-	width: 20px;
+/* The gutter: the unread dot, or the checkbox over it */
+.row-gutter {
+	position: relative;
+	flex: none;
+	width: 22px;
+	height: 18px;
+	display: grid;
+	place-items: center;
+}
+
+.unread-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--wm-accent);
 }
 
 .checkbox-cell {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 14px;
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+}
+
+.email-row:hover .checkbox-cell,
+.email-row.selected .checkbox-cell,
+.selecting .checkbox-cell,
+.checkbox-cell:focus-within {
+	opacity: 1;
+}
+
+.email-row:hover .unread-dot,
+.email-row.selected .unread-dot,
+.selecting .unread-dot {
+	opacity: 0;
 }
 
 .checkbox-cell input[type="checkbox"] {
 	width: 14px;
 	height: 14px;
 	cursor: pointer;
-	accent-color: var(--primary-color, #2490ef);
+	accent-color: var(--wm-accent);
 	/* Frappe Desk ships a global "input { margin: 0 5px 0 0 }" rule that
 	   shifts the checkbox 2-3 px off-center inside its flex cell. Force it back. */
 	margin: 0 !important;
 }
 
+/* The star: always there on a starred message, on hover to star one */
 .star {
+	flex: none;
 	cursor: pointer;
-	width: 100%;
-	height: 14px;
-	color: var(--text-muted, #999);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: color 0.15s ease;
+	width: 18px;
+	height: 18px;
+	color: var(--wm-ink-mute, var(--text-muted, #999));
+	display: grid;
+	place-items: center;
+	opacity: 0;
+	transition: opacity 0.12s ease, color 0.15s ease;
 }
 
-.star:hover {
-	color: var(--yellow-500, #eab308);
-}
-
+.email-row:hover .star,
 .email-row.flagged .star {
-	color: var(--yellow-500, #eab308);
+	opacity: 1;
+}
+
+.star:hover,
+.email-row.flagged .star {
+	color: var(--wm-amber, var(--yellow-500, #eab308));
 }
 
 .email-content {
@@ -1318,62 +1259,77 @@ export default {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 3px;
 }
 
 .email-top-line {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: baseline;
 	gap: 12px;
 }
 
 .from {
 	flex: 1;
+	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	font-size: 14px;
+	font-size: 15px;
+	line-height: 20px;
+	font-weight: 600;
+	color: var(--wm-ink, var(--text-color, #333));
 }
 
 .date {
 	flex-shrink: 0;
 	font-size: 12px;
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 	white-space: nowrap;
 }
 
 .email-bottom-line {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
+	min-height: 18px;
 }
 
 .subject-text {
 	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: 14px;
+	line-height: 18px;
+	color: var(--wm-ink-soft, var(--text-color, #333));
+}
+
+.email-preview {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: 13px;
-	color: var(--text-muted, #8d99a6);
+	line-height: 17px;
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 }
 
 .attachment-icon {
 	flex-shrink: 0;
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 }
 
 .status-icon {
 	flex-shrink: 0;
-	margin-left: 4px;
 }
 
 .status-icon.replied {
-	color: var(--primary-color, #2490ef);
+	color: var(--wm-accent);
 }
 
 .status-icon.forwarded {
-	color: var(--text-muted, #8d99a6);
+	color: var(--wm-ink-mute, var(--text-muted, #8d99a6));
 }
 
 .empty-state,

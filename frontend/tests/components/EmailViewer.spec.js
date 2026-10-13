@@ -229,9 +229,38 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		expect(wrapper.vm.formatSize(500)).toBe("500 B");
-		expect(wrapper.vm.formatSize(1024)).toBe("1.0 KB");
-		expect(wrapper.vm.formatSize(1048576)).toBe("1.0 MB");
+		// Intl writes a no-break space between the number and the unit
+		const size = (bytes) => wrapper.vm.formatSize(bytes).replace(/\s/g, " ");
+		expect(size(500)).toBe("500 byte");
+		expect(size(1024)).toBe("1 kB");
+		expect(size(1536)).toBe("1.5 kB");
+		expect(size(1048576)).toBe("1 MB");
+	});
+
+	it("writes a size and an attachment's kind in the reader's language", () => {
+		const wrapper = mount(EmailViewer, {
+			props: {
+				email: mockEmail,
+				account: "test@example.com",
+			},
+		});
+		frappe.boot.lang = "fr";
+		try {
+			const plain = (text) => text.replace(/\s/g, " ");
+			expect(plain(wrapper.vm.formatSize(188416))).toBe("184 ko");
+			expect(plain(wrapper.vm.formatSize(1258291))).toBe("1,2 Mo");
+			expect(
+				plain(
+					wrapper.vm.attachmentMeta({ filename: "Facture-2026-118.pdf", size: 188416 })
+				)
+			).toBe("PDF · 184 ko");
+			// No extension: the size alone
+			expect(plain(wrapper.vm.attachmentMeta({ filename: "README", size: 500 }))).toBe(
+				"500 o"
+			);
+		} finally {
+			delete frappe.boot.lang;
+		}
 	});
 
 	it("returns correct file icons", () => {
