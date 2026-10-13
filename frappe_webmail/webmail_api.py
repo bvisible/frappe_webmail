@@ -20,6 +20,8 @@ from email.mime.text import MIMEText
 import frappe
 from frappe import _
 
+from frappe_webmail.mime_parts import iter_attachments
+
 try:
 	import bleach
 except ImportError:
@@ -1019,31 +1021,21 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 		text_content = None
 		attachments = []
 		inline_images = {}
+		# The same rule as the download and every action on an attachment (mime_parts)
+		attachment_of = {id(a.part): a for a in iter_attachments(msg)}
 
 		for part in msg.walk():
 			content_type = part.get_content_type()
-			content_disposition = str(part.get("Content-Disposition") or "").lower()
 			content_id = part.get("Content-ID", "").strip("<>")
-			filename = part.get_filename()
+			attachment = attachment_of.get(id(part))
 
-			# Check if this is an attachment (explicit attachment or has filename)
-			is_attachment = "attachment" in content_disposition or (
-				filename
-				and content_type
-				not in ["text/plain", "text/html", "multipart/alternative", "multipart/mixed"]
-			)
-
-			if is_attachment:
-				payload = part.get_payload(decode=True)
-				decoded_filename = (
-					decode_mime_header(filename) if filename else f"attachment_{len(attachments)}"
-				)
+			if attachment:
 				attachments.append(
 					{
-						"id": content_id or str(len(attachments)),
-						"filename": decoded_filename,
+						"id": attachment.id,
+						"filename": attachment_filename(attachment),
 						"content_type": content_type,
-						"size": len(payload) if payload else 0,
+						"size": len(attachment_bytes(part)),
 					}
 				)
 			elif content_type.startswith("image/") and content_id:
@@ -1678,60 +1670,69 @@ def delete_emails(account_name, uids, folder, permanent=False):
 
 @frappe.whitelist()
 def get_attachment(account_name, uid, folder, attachment_id):
-	"""Download an attachment.
+	"""Download an attachment, in base64 (the composer's forward, the viewer's download button).
 
-	Attachment detection uses the SAME logic as get_email_content (an
-	explicit ``Content-Disposition: attachment`` OR any part with a filename
-	that is not text/plain, text/html, or a multipart container). Without
-	this alignment, parts that show up in get_email_content's "attachments"
-	list (e.g. inline images with a filename) cannot be downloaded.
+	The attachment is found with the same rule as the list of get_email_content (`mime_parts`): an attachment the list
+	shows can always be downloaded. A preview or a file to save goes through `attachments.download_attachment`, which
+	streams the bytes instead of wrapping them in JSON.
 	"""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
 	account = get_account(account_name)
+	filename, content_type, payload = read_attachment(account, folder, uid, attachment_id)
+	return {
+		"filename": filename,
+		"content_type": content_type,
+		"data": base64.b64encode(payload).decode(),
+		"size": len(payload),
+	}
+
+
+def read_attachment(account, folder, uid, attachment_id):
+	"""(file name, content type, bytes) of one attachment of a message, read again from the IMAP server.
+
+	A read-only EXAMINE and BODY.PEEK: reading an attachment never marks its message as read. Every action on an
+	attachment (attachments.py) reads it here, on the server, so its bytes never travel through the browser.
+	"""
 	uid = int(uid)
-
 	with imap_session(account) as client:
-		client.select_folder(folder)
+		client.select_folder(folder, readonly=True)
+		data = client.fetch([uid], ["BODY.PEEK[]"])
 
-		data = client.fetch([uid], ["RFC822"])
+	if uid not in data:
+		frappe.throw(_("Email not found"))
 
-		if uid not in data:
-			frappe.throw(_("Email not found"))
-
-		raw = data[uid][b"RFC822"]
-		msg = email.message_from_bytes(raw)
-
-		# Find the attachment — same logic as get_email_content listing.
-		idx = 0
-		for part in msg.walk():
-			content_disposition = str(part.get("Content-Disposition", "")).lower()
-			content_id = part.get("Content-ID", "").strip("<>")
-			filename = part.get_filename()
-			content_type = part.get_content_type()
-
-			is_attachment = "attachment" in content_disposition or (
-				filename
-				and content_type
-				not in ["text/plain", "text/html", "multipart/alternative", "multipart/mixed"]
+	msg = email.message_from_bytes(data[uid][b"BODY[]"])
+	for attachment in iter_attachments(msg):
+		if attachment.id == str(attachment_id):
+			return (
+				attachment_filename(attachment),
+				attachment.part.get_content_type(),
+				attachment_bytes(attachment.part),
 			)
 
-			if is_attachment:
-				current_id = content_id or str(idx)
-				if current_id == attachment_id:
-					payload = part.get_payload(decode=True)
-					decoded_filename = decode_mime_header(filename) if filename else f"attachment_{idx}"
+	frappe.throw(_("Attachment not found"))
 
-					return {
-						"filename": decoded_filename,
-						"content_type": content_type,
-						"data": base64.b64encode(payload).decode(),
-						"size": len(payload),
-					}
-				idx += 1
 
-		frappe.throw(_("Attachment not found"))
+def attachment_bytes(part):
+	"""The bytes of an attachment. An attached e-mail (message/rfc822) has no payload to decode: its bytes are the
+	message it carries, which saves as a .eml file."""
+	payload = part.get_payload(decode=True)
+	if payload is None and part.get_content_type() == "message/rfc822":
+		inner = part.get_payload()
+		if isinstance(inner, list) and inner:
+			return inner[0].as_bytes()
+	return payload or b""
+
+
+def attachment_filename(attachment):
+	"""The decoded file name of an attachment; one without a name is called after its rank."""
+	filename = attachment.part.get_filename()
+	if filename:
+		return decode_mime_header(filename)
+	suffix = ".eml" if attachment.part.get_content_type() == "message/rfc822" else ""
+	return f"attachment_{attachment.rank}{suffix}"
 
 
 # ============================================
