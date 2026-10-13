@@ -98,6 +98,7 @@ import {
 	AlertTriangle,
 	Folder,
 } from "lucide-vue-next";
+import { folderName } from "../utils/folderNames.js";
 
 export default {
 	name: "BulkActionBar",
@@ -203,17 +204,17 @@ export default {
 
 		getFolderDisplayName(folderName) {
 			if (this.folderMapping.inbox && folderName === this.folderMapping.inbox)
-				return this.__("Inbox");
+				return folderName("inbox");
 			if (this.folderMapping.sent && folderName === this.folderMapping.sent)
-				return this.__("Sent");
+				return folderName("sent");
 			if (this.folderMapping.drafts && folderName === this.folderMapping.drafts)
-				return this.__("Drafts");
+				return folderName("drafts");
 			if (this.folderMapping.trash && folderName === this.folderMapping.trash)
-				return this.__("Trash");
+				return folderName("trash");
 			if (this.folderMapping.spam && folderName === this.folderMapping.spam)
-				return this.__("Spam");
+				return folderName("spam");
 			if (this.folderMapping.archive && folderName === this.folderMapping.archive)
-				return this.__("Archive");
+				return folderName("archive");
 
 			const parts = folderName.split("/");
 			return parts[parts.length - 1];

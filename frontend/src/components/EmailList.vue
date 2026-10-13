@@ -187,6 +187,7 @@ import {
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
 
+import { folderName } from "../utils/folderNames.js";
 export default {
 	name: "EmailList",
 	components: {
@@ -260,12 +261,12 @@ export default {
 		folderLabel() {
 			const folder = this.folder || "";
 			const m = this.folderMapping || {};
-			if (folder === "INBOX" || folder === m.inbox) return this.__("Inbox");
-			if (folder === m.sent) return this.__("Sent");
-			if (folder === m.drafts) return this.__("Drafts");
-			if (folder === m.trash) return this.__("Trash");
-			if (folder === m.spam) return this.__("Spam");
-			if (folder === m.archive) return this.__("Archive");
+			if (folder === "INBOX" || folder === m.inbox) return folderName("inbox");
+			if (folder === m.sent) return folderName("sent");
+			if (folder === m.drafts) return folderName("drafts");
+			if (folder === m.trash) return folderName("trash");
+			if (folder === m.spam) return folderName("spam");
+			if (folder === m.archive) return folderName("archive");
 			return folder.split("/").pop() || folder;
 		},
 
@@ -750,17 +751,17 @@ export default {
 		getFolderDisplayName(folderName) {
 			// Check folder mapping first
 			if (this.folderMapping.inbox && folderName === this.folderMapping.inbox)
-				return this.__("Inbox");
+				return folderName("inbox");
 			if (this.folderMapping.sent && folderName === this.folderMapping.sent)
-				return this.__("Sent");
+				return folderName("sent");
 			if (this.folderMapping.drafts && folderName === this.folderMapping.drafts)
-				return this.__("Drafts");
+				return folderName("drafts");
 			if (this.folderMapping.trash && folderName === this.folderMapping.trash)
-				return this.__("Trash");
+				return folderName("trash");
 			if (this.folderMapping.spam && folderName === this.folderMapping.spam)
-				return this.__("Spam");
+				return folderName("spam");
 			if (this.folderMapping.archive && folderName === this.folderMapping.archive)
-				return this.__("Archive");
+				return folderName("archive");
 
 			// Return last part of folder name
 			const parts = folderName.split("/");

@@ -454,6 +454,7 @@ import {
 } from "lucide-vue-next";
 import NoraOrb from "../components/NoraOrb.vue";
 
+import { folderName } from "../utils/folderNames.js";
 export default {
 	name: "Webmail",
 
@@ -611,12 +612,12 @@ export default {
 		folderLabelForSearch() {
 			const f = this.currentFolder || "";
 			const m = this.folderMapping || {};
-			if (f === "INBOX" || f === m.inbox) return this.__("Inbox");
-			if (f === m.sent) return this.__("Sent");
-			if (f === m.drafts) return this.__("Drafts");
-			if (f === m.trash) return this.__("Trash");
-			if (f === m.spam) return this.__("Spam");
-			if (f === m.archive) return this.__("Archive");
+			if (f === "INBOX" || f === m.inbox) return folderName("inbox");
+			if (f === m.sent) return folderName("sent");
+			if (f === m.drafts) return folderName("drafts");
+			if (f === m.trash) return folderName("trash");
+			if (f === m.spam) return folderName("spam");
+			if (f === m.archive) return folderName("archive");
 			return f.split("/").pop() || f;
 		},
 

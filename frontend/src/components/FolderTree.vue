@@ -193,6 +193,7 @@ import {
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
 
+import { folderName } from "../utils/folderNames.js";
 // A folder's role, its icon here and the cockpit's name for it (the cockpit draws lucide icons by name)
 const ROLE_ICONS = {
 	inbox: Inbox,
@@ -690,17 +691,17 @@ export default {
 
 			// Check folder mapping first - return translated name for mapped folders
 			if (this.folderMapping.inbox && fullName === this.folderMapping.inbox)
-				return this.__("Inbox");
+				return folderName("inbox");
 			if (this.folderMapping.sent && fullName === this.folderMapping.sent)
-				return this.__("Sent");
+				return folderName("sent");
 			if (this.folderMapping.drafts && fullName === this.folderMapping.drafts)
-				return this.__("Drafts");
+				return folderName("drafts");
 			if (this.folderMapping.trash && fullName === this.folderMapping.trash)
-				return this.__("Trash");
+				return folderName("trash");
 			if (this.folderMapping.spam && fullName === this.folderMapping.spam)
-				return this.__("Spam");
+				return folderName("spam");
 			if (this.folderMapping.archive && fullName === this.folderMapping.archive)
-				return this.__("Archive");
+				return folderName("archive");
 
 			// Remove prefix path and show just the folder name
 			const parts = fullName.split(folder.delimiter || "/");
@@ -708,17 +709,17 @@ export default {
 
 			// Translate common folder names
 			const translations = {
-				INBOX: this.__("Inbox"),
-				Sent: this.__("Sent"),
-				"Sent Items": this.__("Sent"),
-				"Sent Mail": this.__("Sent"),
-				Drafts: this.__("Drafts"),
-				Trash: this.__("Trash"),
-				"Deleted Items": this.__("Trash"),
-				Spam: this.__("Spam"),
-				Junk: this.__("Spam"),
-				"Junk E-mail": this.__("Spam"),
-				Archive: this.__("Archive"),
+				INBOX: folderName("inbox"),
+				Sent: folderName("sent"),
+				"Sent Items": folderName("sent"),
+				"Sent Mail": folderName("sent"),
+				Drafts: folderName("drafts"),
+				Trash: folderName("trash"),
+				"Deleted Items": folderName("trash"),
+				Spam: folderName("spam"),
+				Junk: folderName("spam"),
+				"Junk E-mail": folderName("spam"),
+				Archive: folderName("archive"),
 				Starred: this.__("Starred"),
 				Important: this.__("Important"),
 			};
