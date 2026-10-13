@@ -23,7 +23,7 @@ from unittest.mock import MagicMock, patch
 from imapclient import IMAPClient
 
 from frappe_webmail.tests.test_api import TestWebmailAPIBase
-from frappe_webmail.webmail_api import _search_charset, get_emails, search_emails
+from frappe_webmail.webmail_api import _search_charset, _search_words, get_emails, search_emails
 
 WORD = "démonstration"
 
@@ -58,6 +58,20 @@ class TestSearchCharset(unittest.TestCase):
 		self.assertIsNone(_search_charset(None))
 
 
+class TestSearchWords(unittest.TestCase):
+	def test_the_short_words_are_left_out_when_a_longer_one_remains(self):
+		self.assertEqual(_search_words("facture et plan"), ["facture", "plan"])
+		self.assertEqual(_search_words("ZZ Essai Neodesk W4 19h34"), ["Essai", "Neodesk", "19h34"])
+
+	def test_a_search_of_short_words_only_keeps_them(self):
+		self.assertEqual(_search_words("W4"), ["W4"])
+		self.assertEqual(_search_words("PV 12"), ["PV", "12"])
+
+	def test_nothing_to_look_for(self):
+		self.assertEqual(_search_words("   "), [])
+		self.assertEqual(_search_words(None), [])
+
+
 class TestAccentedSearchReachesTheWire(TestWebmailAPIBase):
 	"""Whichever door the words come through, the library accepts them and sends them as UTF-8."""
 
@@ -89,11 +103,13 @@ class TestAccentedSearchReachesTheWire(TestWebmailAPIBase):
 		self.assertIn("Müller".encode(), args)
 		self.assertEqual(args[-1], b"UNSEEN")
 
-	def test_search_emails_sends_a_phrase_with_an_accent_and_a_space_whole(self):
+	def test_search_emails_sends_each_word_of_a_phrase_with_an_accent(self):
 		args = self._search(search_emails, query="réunion client")
 		# a quoted word keeps the text it was made from; IMAPClient sends that text as a literal when it is 8-bit
 		texts = [getattr(arg, "original", arg) for arg in args]
-		self.assertEqual(texts.count("réunion client".encode()), 3, args)
+		self.assertEqual(texts.count("réunion".encode()), 3, args)
+		self.assertEqual(texts.count(b"client"), 3, args)
+		self.assertNotIn("réunion client".encode(), texts)
 
 	def test_search_emails_with_plain_ascii_names_no_charset(self):
 		args = self._search(search_emails, query="invoice", is_unread=True)
@@ -109,6 +125,13 @@ class TestAccentedSearchReachesTheWire(TestWebmailAPIBase):
 			args,
 			[b"CHARSET", b"UTF-8", b"OR", b"OR", b"SUBJECT", word, b"FROM", word, b"TO", word],
 		)
+
+	def test_get_emails_looks_for_each_word_but_the_short_ones(self):
+		# An indexed server (Dovecot FTS at Infomaniak) never finds « et » or « W4 »: a phrase holding them found nothing
+		args = self._search(get_emails, search="facture et plan")
+		facture = [b"OR", b"OR", b"SUBJECT", b"facture", b"FROM", b"facture", b"TO", b"facture"]
+		plan = [b"OR", b"OR", b"SUBJECT", b"plan", b"FROM", b"plan", b"TO", b"plan"]
+		self.assertEqual(args, [*facture, *plan])
 
 	def test_get_emails_without_a_search_names_no_charset(self):
 		args = self._search(get_emails)

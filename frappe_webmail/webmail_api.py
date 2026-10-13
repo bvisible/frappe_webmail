@@ -916,6 +916,29 @@ def _search_charset(criteria):
 	return None
 
 
+# The shortest word a search sends on its own: servers with a full-text index (Infomaniak's Dovecot) keep shorter words
+# out of their index, and a search holding one of them finds nothing at all.
+SEARCH_MIN_WORD = 3
+
+
+def _search_words(text):
+	"""The words of a search, each to be found somewhere in the message, in any order: full-text servers read a phrase
+	that way anyway (« facture plan » finds « facture et plan »), and a server without an index finds each word as a
+	substring. Words of one or two letters are left out when a longer one remains (« ZZ », « W4 », « et »): an indexed
+	server never finds them, so the whole search found nothing."""
+	words = (text or "").split()
+	return [word for word in words if len(word) >= SEARCH_MIN_WORD] or words
+
+
+def _text_criteria(text):
+	"""SEARCH criteria for words typed in a search box: each word in the subject, the sender or the recipients, all the
+	words together (IMAP joins criteria with AND). Flat on purpose: see _search_charset."""
+	criteria = []
+	for word in _search_words(text):
+		criteria += ["OR", "OR", "SUBJECT", word, "FROM", word, "TO", word]
+	return criteria
+
+
 # ============================================
 # EMAILS - LIST
 # ============================================
@@ -935,10 +958,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 		client.select_folder(folder)
 
 		# Search criteria (flat on purpose: see _search_charset)
-		if search:
-			criteria = ["OR", "OR", "SUBJECT", search, "FROM", search, "TO", search]
-		else:
-			criteria = ["NOT", "DELETED"]
+		criteria = _text_criteria(search) or ["NOT", "DELETED"]
 
 		messages = client.search(criteria, charset=_search_charset(criteria))
 		total = len(messages)
@@ -1831,9 +1851,9 @@ def search_emails(
 		# Build search criteria
 		criteria = []
 
-		# Simple text search across common fields (flat on purpose: see _search_charset)
-		if query:
-			criteria.append(["OR", "OR", "SUBJECT", query, "FROM", query, "TO", query])
+		# Simple text search across common fields, word by word (flat on purpose: see _search_charset)
+		if _text_criteria(query):
+			criteria.append(_text_criteria(query))
 
 		# Specific field searches
 		if from_filter:
