@@ -3387,3 +3387,15 @@ msgstr "Vous ne pouvez pas ajouter de fichiers à ce dossier du Drive"
 #: frappe_webmail/drive.py:324
 msgid "You cannot read this file of the Drive"
 msgstr "Vous ne pouvez pas lire ce fichier du Drive"
+
+#: frontend/src/pages/Webmail.vue:773
+msgid "Mailbox storage"
+msgstr "Stockage de la boîte mail"
+
+#: frontend/src/pages/Webmail.vue:758
+msgid "Other mailboxes"
+msgstr "Autres boîtes mail"
+
+#: frontend/src/pages/Webmail.vue:757
+msgid "Shared mailboxes"
+msgstr "Boîtes mail partagées"
