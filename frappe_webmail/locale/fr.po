@@ -376,7 +376,7 @@ msgstr "Liste à puces"
 
 #: frontend/src/components/AgentPanel.vue:117
 msgid "Cadence"
-msgstr ""
+msgstr "Fréquence"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/AgentPanel.vue:133
@@ -3427,3 +3427,33 @@ msgstr "Rédiger la réponse avec Nora"
 #: frontend/src/components/EmailViewer.vue:374
 msgid "{0} invoices this year"
 msgstr "{0} factures cette année"
+
+#: frontend/src/utils/folderNames.js:31
+msgctxt "Mail folder"
+msgid "Archive"
+msgstr "Archives"
+
+#: frontend/src/utils/folderNames.js:25
+msgctxt "Mail folder"
+msgid "Drafts"
+msgstr "Brouillons"
+
+#: frontend/src/utils/folderNames.js:21
+msgctxt "Mail folder"
+msgid "Inbox"
+msgstr "Réception"
+
+#: frontend/src/utils/folderNames.js:23
+msgctxt "Mail folder"
+msgid "Sent"
+msgstr "Envoyés"
+
+#: frontend/src/utils/folderNames.js:29
+msgctxt "Mail folder"
+msgid "Spam"
+msgstr "Indésirables"
+
+#: frontend/src/utils/folderNames.js:27
+msgctxt "Mail folder"
+msgid "Trash"
+msgstr "Corbeille"
