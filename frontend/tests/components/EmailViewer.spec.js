@@ -2,9 +2,10 @@
  * EmailViewer Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import EmailViewer from "@/components/EmailViewer.vue";
+import { resetAttachmentActions } from "@/attachmentActions.js";
 import { Archive, File, FileText, Film, Image, Music } from "lucide-vue-next";
 
 // Mock DOMPurify
@@ -48,7 +49,7 @@ describe("EmailViewer", () => {
 			},
 		});
 
-		expect(wrapper.text()).toContain("Selectionnez un email");
+		expect(wrapper.text()).toContain("Select an e-mail to read it");
 	});
 
 	it("renders email content when email provided", () => {
@@ -250,61 +251,44 @@ describe("EmailViewer", () => {
 		expect(wrapper.vm.getFileIcon("text/plain")).toBe(File);
 	});
 
-	it("downloads attachment when clicked", async () => {
+	it("saves an attachment from the server's stream, not from base64 in JSON", async () => {
 		const attachment = {
 			id: "0",
 			filename: "test.pdf",
 			content_type: "application/pdf",
 			size: 1024,
 		};
-
-		frappe.call.mockResolvedValue({
-			message: {
-				filename: "test.pdf",
-				content_type: "application/pdf",
-				data: "dGVzdA==", // base64 encoded "test"
-				size: 4,
-			},
-		});
-
-		// Mock URL and document methods
-		const mockUrl = "blob:test";
-		global.URL.createObjectURL = vi.fn(() => mockUrl);
-		global.URL.revokeObjectURL = vi.fn();
-
 		const wrapper = mount(EmailViewer, {
 			props: {
 				email: { ...mockEmail, attachments: [attachment] },
 				account: "test@example.com",
+				folder: "INBOX",
 			},
 		});
-
-		// Let the component build a real <a>; stub only the browser side effects
-		// (object URL, the click) so Vue's own DOM work is never intercepted.
-		const originalCreateObjectURL = URL.createObjectURL;
-		const originalRevokeObjectURL = URL.revokeObjectURL;
-		URL.createObjectURL = vi.fn(() => "blob:mock");
-		URL.revokeObjectURL = vi.fn();
+		let href = null;
 		const clickSpy = vi
 			.spyOn(HTMLAnchorElement.prototype, "click")
-			.mockImplementation(() => {});
+			.mockImplementation(function () {
+				href = this.getAttribute("href");
+			});
 		try {
-			await wrapper.vm.downloadAttachment(attachment);
-			await flushPromises();
-			expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+			wrapper.vm.downloadAttachment(attachment);
 			expect(clickSpy).toHaveBeenCalledTimes(1);
 		} finally {
 			clickSpy.mockRestore();
-			URL.createObjectURL = originalCreateObjectURL;
-			URL.revokeObjectURL = originalRevokeObjectURL;
 		}
-
-		expect(frappe.call).toHaveBeenCalledWith({
-			method: "frappe_webmail.api.get_attachment",
-			args: expect.objectContaining({
-				attachment_id: "0",
-			}),
+		const url = new URL(href, "http://site.test");
+		expect(url.pathname).toBe("/api/method/frappe_webmail.attachments.download_attachment");
+		expect(Object.fromEntries(url.searchParams)).toEqual({
+			account_name: "test@example.com",
+			folder: "INBOX",
+			uid: "1",
+			attachment_id: "0",
+			inline: "0",
 		});
+		expect(frappe.call).not.toHaveBeenCalledWith(
+			expect.objectContaining({ method: "frappe_webmail.api.get_attachment" })
+		);
 	});
 
 	it("wraps plain text emails correctly", () => {
@@ -354,5 +338,127 @@ describe("EmailViewer", () => {
 		// State should be reset
 		expect(wrapper.vm.showExternalImages).toBe(false);
 		expect(wrapper.vm.hasBlockedImages).toBe(false);
+	});
+
+	describe("the attachment's menu (described by the server)", () => {
+		const attachment = {
+			id: "0",
+			filename: "Facture.pdf",
+			content_type: "application/pdf",
+			size: 1024,
+		};
+		const actions = [
+			{ key: "preview", label: "Preview", icon: "eye", kind: "client", group: "view" },
+			{
+				key: "document_scan",
+				label: "Create a scanned document",
+				icon: "scan-line",
+				kind: "now",
+				group: "neoffice",
+				method: "m.scan",
+			},
+			{
+				key: "save_to_drive",
+				label: "Save to the Drive…",
+				icon: "cloud-upload",
+				kind: "pick_folder",
+				group: "neoffice",
+				method: "m.drive",
+			},
+		];
+		const mountWith = () =>
+			mount(EmailViewer, {
+				props: {
+					email: { ...mockEmail, attachments: [attachment] },
+					account: "me@example.com",
+					folder: "INBOX",
+				},
+			});
+
+		beforeEach(() => {
+			resetAttachmentActions();
+			frappe.call.mockImplementation(async ({ method }) =>
+				method === "frappe_webmail.attachments.get_attachment_actions"
+					? { message: actions }
+					: {
+							message: {
+								message: "Sent to the scanned documents",
+								url: "/app/document-scan/S-1",
+							},
+					  }
+			);
+			frappe.show_alert = vi.fn();
+			frappe.utils = { escape_html: (text) => String(text) };
+		});
+
+		afterEach(() => {
+			frappe.call.mockReset();
+			frappe.call.mockResolvedValue({ message: {} });
+		});
+
+		it("opens on a right-click with the server's entries", async () => {
+			const wrapper = mountWith();
+			await flushPromises();
+			await wrapper
+				.find(".attachment-item")
+				.trigger("contextmenu", { clientX: 10, clientY: 20 });
+			expect(wrapper.vm.attachmentMenu.visible).toBe(true);
+			expect(wrapper.vm.attachmentMenu.position).toEqual({ x: 10, y: 20 });
+			expect(
+				wrapper.vm.attachmentMenuItems.filter((i) => !i.separator).map((i) => i.id)
+			).toEqual(["preview", "document_scan", "save_to_drive"]);
+		});
+
+		it("runs an action at once on the attachment the menu was opened for, and says what the server said", async () => {
+			const wrapper = mountWith();
+			await flushPromises();
+			wrapper.vm.openAttachmentMenu(
+				{ type: "contextmenu", clientX: 1, clientY: 1 },
+				attachment
+			);
+			wrapper.vm.onAttachmentAction({ action: actions[1] });
+			await flushPromises();
+			expect(frappe.call).toHaveBeenCalledWith({
+				method: "m.scan",
+				args: {
+					account_name: "me@example.com",
+					folder: "INBOX",
+					uid: 1,
+					attachment_id: "0",
+				},
+			});
+			expect(frappe.show_alert.mock.calls[0][0].message).toContain(
+				"Sent to the scanned documents"
+			);
+			expect(frappe.show_alert.mock.calls[0][0].message).toContain(
+				'href="/app/document-scan/S-1"'
+			);
+		});
+
+		it("asks for a Drive folder before saving there", async () => {
+			const wrapper = mountWith();
+			await flushPromises();
+			wrapper.vm.openAttachmentMenu(
+				{ type: "contextmenu", clientX: 1, clientY: 1 },
+				attachment
+			);
+			wrapper.vm.onAttachmentAction({ action: actions[2] });
+			expect(wrapper.vm.picker.kind).toBe("pick_folder");
+			expect(frappe.call).not.toHaveBeenCalledWith(
+				expect.objectContaining({ method: "m.drive" })
+			);
+			await wrapper.vm.runAttachmentAction(actions[2], attachment, { drive_folder: "f-42" });
+			expect(frappe.call).toHaveBeenCalledWith({
+				method: "m.drive",
+				args: {
+					account_name: "me@example.com",
+					folder: "INBOX",
+					uid: 1,
+					attachment_id: "0",
+					drive_folder: "f-42",
+				},
+			});
+			expect(wrapper.vm.picker.kind).toBe(null);
+		});
 	});
 });

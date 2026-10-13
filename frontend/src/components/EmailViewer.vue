@@ -4,7 +4,7 @@
 		<div class="email-content">
 			<!-- Header -->
 			<div class="email-header">
-				<div class="email-subject">{{ email.subject || "(Sans objet)" }}</div>
+				<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
 				<div class="email-meta">
 					<div class="from">
 						<div class="from-info">
@@ -13,7 +13,7 @@
 							<span
 								v-if="senderContact"
 								class="contact-badge"
-								:title="'Contact: ' + senderContact.full_name"
+								:title="__('Contact: {0}', [senderContact.full_name])"
 							>
 								<User :size="14" />
 							</span>
@@ -85,8 +85,8 @@
 			<!-- External images warning -->
 			<div v-if="hasBlockedImages && !showExternalImages" class="blocked-images-notice">
 				<AlertTriangle :size="16" class="warning-icon" />
-				<span>Les images externes ont ete bloquees pour votre securite.</span>
-				<button @click="showExternalImages = true">Afficher les images</button>
+				<span>{{ __("External images were blocked for your safety.") }}</span>
+				<button @click="showExternalImages = true">{{ __("Show the images") }}</button>
 				<button @click="trustSender" class="trust-btn" :title="email.from_email">
 					Toujours pour cet expediteur
 				</button>
@@ -110,12 +110,11 @@
 			<div class="attachments-header" @click="toggleAttachments">
 				<div class="attachments-title">
 					<Paperclip :size="14" />
-					<span
-						>{{ email.attachments.length }}
-						{{
-							email.attachments.length > 1 ? "pieces jointes" : "piece jointe"
-						}}</span
-					>
+					<span>{{
+						email.attachments.length > 1
+							? __("{0} attachments", [email.attachments.length])
+							: __("1 attachment")
+					}}</span>
 				</div>
 				<button v-if="email.attachments.length > 2" class="toggle-btn">
 					<ChevronUp v-if="showAllAttachments" :size="16" />
@@ -123,24 +122,68 @@
 				</button>
 			</div>
 			<div class="attachment-list" :class="{ expanded: showAllAttachments }">
+				<!-- A click opens it (shown if the browser can, saved otherwise); a right-click, or ⋯,
+				     the menu the server describes (attachmentActions.js) -->
 				<div
-					v-for="(att, index) in visibleAttachments"
+					v-for="att in visibleAttachments"
 					:key="att.id"
 					class="attachment-item"
-					@click.stop="downloadAttachment(att)"
+					:class="{
+						'menu-open': attachmentMenu.visible && attachmentMenu.attachment === att,
+					}"
+					role="button"
+					tabindex="0"
+					:title="att.filename"
+					@click.stop="openAttachment(att)"
+					@keydown.enter.prevent="openAttachment(att)"
+					@contextmenu.prevent.stop="openAttachmentMenu($event, att)"
 				>
 					<component :is="getFileIcon(att.content_type)" :size="16" class="file-icon" />
 					<span class="name">{{ att.filename }}</span>
 					<span class="size">({{ formatSize(att.size) }})</span>
+					<button
+						v-if="attachmentActions.length"
+						class="attachment-more"
+						:aria-label="__('Actions on {0}', [att.filename])"
+						@click.stop="openAttachmentMenu($event, att)"
+					>
+						<MoreHorizontal :size="14" />
+					</button>
 				</div>
 				<button
 					v-if="!showAllAttachments && email.attachments.length > 2"
 					class="show-more-btn"
 					@click.stop="showAllAttachments = true"
 				>
-					+{{ email.attachments.length - 2 }} autres
+					{{ __("+{0} more", [email.attachments.length - 2]) }}
 				</button>
 			</div>
+			<ContextMenu
+				:visible="attachmentMenu.visible"
+				:items="attachmentMenuItems"
+				:position="attachmentMenu.position"
+				@select="onAttachmentAction"
+				@close="attachmentMenu.visible = false"
+			/>
+			<DriveFolderPicker
+				v-if="picker.kind === 'pick_folder'"
+				:attachment="picker.attachment"
+				:busy="picker.busy"
+				@pick="
+					(folder) =>
+						runAttachmentAction(picker.action, picker.attachment, {
+							drive_folder: folder.name,
+						})
+				"
+				@close="closePicker"
+			/>
+			<DocumentPicker
+				v-if="picker.kind === 'pick_document'"
+				:attachment="picker.attachment"
+				:busy="picker.busy"
+				@pick="(doc) => runAttachmentAction(picker.action, picker.attachment, doc)"
+				@close="closePicker"
+			/>
 		</div>
 
 		<!-- Inline reply bar — answer without opening the full composer.
@@ -177,7 +220,7 @@
 		</div>
 	</div>
 	<div v-else class="no-email-selected">
-		<p>Selectionnez un email pour le lire</p>
+		<p>{{ __("Select an e-mail to read it") }}</p>
 	</div>
 </template>
 
@@ -204,8 +247,18 @@ import {
 	ChevronUp,
 	Send,
 	Maximize2,
+	MoreHorizontal,
 } from "lucide-vue-next";
 import NoraOrb from "./NoraOrb.vue";
+import ContextMenu from "./ContextMenu.vue";
+import DriveFolderPicker from "./DriveFolderPicker.vue";
+import DocumentPicker from "./DocumentPicker.vue";
+import {
+	downloadUrl,
+	loadAttachmentActions,
+	menuItems,
+	previewable,
+} from "../attachmentActions.js";
 
 export default {
 	name: "EmailViewer",
@@ -232,6 +285,10 @@ export default {
 		NoraOrb,
 		Send,
 		Maximize2,
+		MoreHorizontal,
+		ContextMenu,
+		DriveFolderPicker,
+		DocumentPicker,
 	},
 
 	props: {
@@ -242,7 +299,15 @@ export default {
 		noraEnabled: { type: Boolean, default: true },
 	},
 
-	emits: ["reply", "forward", "delete", "flag-changed", "mark-unread", "quick-reply"],
+	emits: [
+		"reply",
+		"forward",
+		"delete",
+		"flag-changed",
+		"mark-unread",
+		"quick-reply",
+		"forward-attachment",
+	],
 
 	data() {
 		return {
@@ -255,6 +320,11 @@ export default {
 			// the full composer modal.
 			quickReplyText: "",
 			sendingReply: false,
+			// The menu of an attachment, as the server describes it (attachmentActions.js)
+			attachmentActions: [],
+			attachmentMenu: { visible: false, position: { x: 0, y: 0 }, attachment: null },
+			// The window an action asks for first: a Drive folder, a Neoffice document
+			picker: { kind: null, action: null, attachment: null, busy: false },
 		};
 	},
 
@@ -263,6 +333,10 @@ export default {
 			if (!this.email?.from_email) return "";
 			const parts = this.email.from_email.split("@");
 			return parts.length > 1 ? parts[1] : "";
+		},
+
+		attachmentMenuItems() {
+			return menuItems(this.attachmentActions);
 		},
 
 		visibleAttachments() {
@@ -316,10 +390,10 @@ export default {
 						node.setAttribute("data-blocked-src", src);
 						node.setAttribute(
 							"src",
-							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[Image bloquee]</text></svg>'
+							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[×]</text></svg>'
 						);
 						node.style.cursor = "pointer";
-						node.title = "Image externe bloquee";
+						node.title = __("External image blocked");
 						self.hasBlockedImages = true;
 					}
 				}
@@ -378,6 +452,12 @@ export default {
 		},
 	},
 
+	mounted() {
+		loadAttachmentActions().then((actions) => {
+			this.attachmentActions = actions;
+		});
+	},
+
 	watch: {
 		email: {
 			immediate: true,
@@ -385,6 +465,8 @@ export default {
 				this.showExternalImages = false;
 				this.hasBlockedImages = false;
 				this.showAllAttachments = false;
+				this.attachmentMenu.visible = false;
+				this.closePicker();
 				if (newEmail?.from_email) {
 					this.loadSenderContact(newEmail.from_email);
 					this.checkTrustedSender();
@@ -542,7 +624,7 @@ export default {
 				this.email.flagged = !this.email.flagged;
 				this.$emit("flag-changed", this.email);
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Something went wrong"), indicator: "red" });
 			}
 		},
 
@@ -560,43 +642,112 @@ export default {
 
 				this.email.seen = false;
 				this.$emit("mark-unread", this.email);
-				frappe.toast({ message: "Marque comme non lu", indicator: "green" });
+				frappe.toast({ message: __("Marked as unread"), indicator: "green" });
 			} catch (error) {
-				frappe.toast({ message: "Erreur", indicator: "red" });
+				frappe.toast({ message: __("Something went wrong"), indicator: "red" });
 			}
 		},
 
-		async downloadAttachment(attachment) {
+		attachmentUrl(attachment, inline) {
+			return downloadUrl({
+				account: this.account,
+				folder: this.folder,
+				uid: this.email.uid,
+				attachmentId: attachment.id,
+				inline,
+			});
+		},
+
+		// A click: shown by the browser when it can (PDF, images, text), saved otherwise
+		openAttachment(attachment) {
+			if (previewable(attachment.content_type)) {
+				window.open(this.attachmentUrl(attachment, true), "_blank", "noopener");
+			} else {
+				this.downloadAttachment(attachment);
+			}
+		},
+
+		// Streamed by the server (attachments.download_attachment), not base64 through JSON
+		downloadAttachment(attachment) {
+			const a = document.createElement("a");
+			a.href = this.attachmentUrl(attachment, false);
+			a.download = attachment.filename || "";
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+		},
+
+		openAttachmentMenu(event, attachment) {
+			if (!this.attachmentActions.length) return;
+			const box = event.currentTarget?.getBoundingClientRect?.();
+			// From the ⋯ button (or the keyboard) the menu hangs under it; from a right-click, at the pointer
+			const fromPointer = event.type === "contextmenu" && event.clientX;
+			this.attachmentMenu = {
+				visible: true,
+				attachment,
+				position: fromPointer
+					? { x: event.clientX, y: event.clientY }
+					: { x: box ? box.left : 0, y: box ? box.bottom + 4 : 0 },
+			};
+		},
+
+		onAttachmentAction({ action }) {
+			const attachment = this.attachmentMenu.attachment;
+			this.attachmentMenu.visible = false;
+			if (!action || !attachment) return;
+			if (action.kind === "client") {
+				if (action.key === "preview")
+					window.open(this.attachmentUrl(attachment, true), "_blank", "noopener");
+				else if (action.key === "download") this.downloadAttachment(attachment);
+				else if (action.key === "forward")
+					this.$emit("forward-attachment", { email: this.email, attachment });
+				return;
+			}
+			if (action.kind === "pick_folder" || action.kind === "pick_document") {
+				this.picker = { kind: action.kind, action, attachment, busy: false };
+				return;
+			}
+			this.runAttachmentAction(action, attachment, {});
+		},
+
+		closePicker() {
+			this.picker = { kind: null, action: null, attachment: null, busy: false };
+		},
+
+		// Every server action takes the attachment, plus what its window asked for; it answers its own message
+		async runAttachmentAction(action, attachment, extra) {
+			if (!action?.method || !this.email) return;
+			this.picker.busy = true;
 			try {
-				const response = await frappe.call({
-					method: "frappe_webmail.api.get_attachment",
+				const r = await frappe.call({
+					method: action.method,
 					args: {
 						account_name: this.account,
-						uid: this.email.uid,
 						folder: this.folder,
+						uid: this.email.uid,
 						attachment_id: attachment.id,
+						...extra,
 					},
 				});
-
-				const data = response.message;
-				const byteCharacters = atob(data.data);
-				const byteNumbers = new Array(byteCharacters.length);
-				for (let i = 0; i < byteCharacters.length; i++) {
-					byteNumbers[i] = byteCharacters.charCodeAt(i);
-				}
-				const byteArray = new Uint8Array(byteNumbers);
-				const blob = new Blob([byteArray], { type: data.content_type });
-
-				const url = URL.createObjectURL(blob);
-				const a = document.createElement("a");
-				a.href = url;
-				a.download = data.filename;
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
-				URL.revokeObjectURL(url);
+				const result = r.message || {};
+				this.closePicker();
+				const link = result.url
+					? ` <a href="${frappe.utils.escape_html(
+							result.url
+					  )}">${frappe.utils.escape_html(__("Open"))}</a>`
+					: "";
+				frappe.show_alert(
+					{
+						message: `${frappe.utils.escape_html(
+							result.message || __("Done")
+						)}${link}`,
+						indicator: "green",
+					},
+					8
+				);
 			} catch (error) {
-				frappe.toast({ message: "Erreur de telechargement", indicator: "red" });
+				this.picker.busy = false;
+				// The server's message (refused folder, document not found…) is already shown by frappe.call
 			}
 		},
 
@@ -626,7 +777,7 @@ export default {
 
 				if (response.message.success) {
 					frappe.toast({
-						message: `Contact cree: ${response.message.full_name}`,
+						message: __("Contact created: {0}", [response.message.full_name]),
 						indicator: "green",
 					});
 					this.loadSenderContact(email);
@@ -640,7 +791,7 @@ export default {
 				}
 			} catch (error) {
 				frappe.toast({
-					message: "Erreur lors de la creation du contact",
+					message: __("The contact could not be created"),
 					indicator: "red",
 				});
 			}
@@ -681,12 +832,12 @@ export default {
 
 				this.showExternalImages = true;
 				frappe.toast({
-					message: "Expediteur ajoute a la liste de confiance",
+					message: __("Sender added to the trusted list"),
 					indicator: "green",
 				});
 			} catch (error) {
 				frappe.toast({
-					message: "Erreur",
+					message: __("Something went wrong"),
 					indicator: "red",
 				});
 			}
@@ -707,12 +858,12 @@ export default {
 
 				this.showExternalImages = true;
 				frappe.toast({
-					message: "Domaine ajoute a la liste de confiance",
+					message: __("Domain added to the trusted list"),
 					indicator: "green",
 				});
 			} catch (error) {
 				frappe.toast({
-					message: "Erreur",
+					message: __("Something went wrong"),
 					indicator: "red",
 				});
 			}
@@ -964,9 +1115,41 @@ export default {
 	max-width: 200px;
 }
 
-.attachment-item:hover {
-	background: var(--hover-bg, #f5f5f5);
-	border-color: var(--primary-color, #2490ef);
+.attachment-item:hover,
+.attachment-item.menu-open {
+	background: var(--wm-bg-raised, var(--card-bg));
+	border-color: var(--wm-accent);
+}
+
+.attachment-item.menu-open {
+	box-shadow: 0 0 0 3px var(--wm-accent-soft);
+}
+
+/* ⋯ : the attachment's menu without a right-click (touch screens, keyboard) */
+.attachment-more {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	margin: -4px -6px -4px 0;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--wm-ink-mute, var(--text-muted));
+	cursor: pointer;
+	opacity: 0.55;
+}
+
+.attachment-item:hover .attachment-more,
+.attachment-item:focus-within .attachment-more,
+.attachment-item.menu-open .attachment-more {
+	opacity: 1;
+}
+
+.attachment-more:hover {
+	background: var(--wm-bg-sunken, var(--bg-light-gray));
+	color: var(--wm-ink, var(--text-color));
 }
 
 .attachment-item .file-icon {

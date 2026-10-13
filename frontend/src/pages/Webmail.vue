@@ -301,6 +301,7 @@
 					@flag-changed="onFlagChanged"
 					@mark-unread="onMarkUnread"
 					@quick-reply="handleQuickReply"
+					@forward-attachment="forwardAttachment"
 				/>
 				<EmailComposer
 					v-else
@@ -310,6 +311,8 @@
 					:reply-to="replyToEmail"
 					:forward-email="forwardingEmail"
 					:edit-draft="editingDraft"
+					:initial-attachments="composerAttachments"
+					:initial-subject="composerSubject"
 					:signature="defaultSignature"
 					:folder="currentFolder"
 					@sent="onEmailSent"
@@ -472,6 +475,8 @@ export default {
 			showComposer: false,
 			replyToEmail: null,
 			forwardingEmail: null,
+			composerAttachments: [],
+			composerSubject: "",
 			editingDraft: null,
 			defaultSignature: "",
 			showSignatures: false,
@@ -1045,6 +1050,38 @@ export default {
 			this.replyToEmail = null;
 			this.forwardingEmail = null;
 			this.editingDraft = null;
+			this.composerAttachments = [];
+			this.composerSubject = "";
+		},
+
+		// « Forward » on one attachment: a new message that carries it (read on the server, as the composer's
+		// other remote attachments are)
+		async forwardAttachment({ email, attachment }) {
+			try {
+				const r = await frappe.call({
+					method: "frappe_webmail.api.get_attachment",
+					args: {
+						account_name: this.currentAccount,
+						uid: email.uid,
+						folder: this.currentFolder,
+						attachment_id: attachment.id,
+					},
+				});
+				const data = r.message;
+				this.compose();
+				this.composerAttachments = [
+					{
+						source: "email",
+						filename: data.filename,
+						content: data.data,
+						content_type: data.content_type,
+						size: data.size,
+					},
+				];
+				this.composerSubject = __("Fwd: {0}", [data.filename]);
+			} catch (error) {
+				// frappe.call has shown the server's message
+			}
 		},
 
 		replyTo(email) {

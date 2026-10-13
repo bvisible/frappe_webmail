@@ -246,6 +246,9 @@ export default {
 		folder: { type: String, default: "INBOX" },
 		// False on a site without the `nora` app: the composer stays a plain editor
 		noraEnabled: { type: Boolean, default: true },
+		// A new message that already carries files: « Forward » on one attachment of a message
+		initialAttachments: { type: Array, default: () => [] },
+		initialSubject: { type: String, default: "" },
 	},
 
 	emits: ["sent", "close", "draft-deleted", "nora-draft", "open-nora"],
@@ -294,6 +297,11 @@ export default {
 			this.setupForward();
 		} else if (this.editDraft) {
 			this.setupDraftEdit();
+		} else if (this.initialAttachments.length) {
+			this.initialAttachments.forEach((attachment) =>
+				this.handleRemoteAttachment(attachment)
+			);
+			this.emailData.subject = this.initialSubject;
 		}
 	},
 

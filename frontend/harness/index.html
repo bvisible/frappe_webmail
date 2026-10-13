@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Webmail — banc d'essai</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Forum&family=Karla:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- The desk's own theme (warm paper, clay, ink), as an instance serves it: ?theme_css=<url> for another -->
+		<link id="theme-css" rel="stylesheet" href="https://osiris.neoffice.me/assets/neoffice_theme/css/neoffice-theme.css" />
+		<style>
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+				font-family: Karla, system-ui, -apple-system, sans-serif;
+				background: var(--bg-color);
+				color: var(--text-color);
+			}
+			#app {
+				height: 100vh;
+			}
+			#harness-toasts {
+				position: fixed;
+				right: 16px;
+				bottom: 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				z-index: 9999;
+			}
+			#harness-toasts div {
+				padding: 10px 14px;
+				border-radius: 12px;
+				background: var(--card-bg);
+				border: 1px solid var(--border-color);
+				box-shadow: 0 10px 26px rgba(40, 28, 10, 0.12);
+				font-size: 14px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<div id="harness-toasts"></div>
+		<script type="module" src="./harness.js"></script>
+	</body>
+</html>
