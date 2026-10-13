@@ -13,6 +13,7 @@ Run with:
 """
 
 import email
+import unittest
 from contextlib import contextmanager
 from datetime import datetime
 from email.mime.application import MIMEApplication
@@ -21,12 +22,14 @@ from email.mime.message import MIMEMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import frappe
 from pypdf import PdfWriter
 
+from frappe_webmail.attachments import LAST_DRIVE_FOLDER
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.tests.test_api import TestWebmailAPIBase
 
@@ -286,3 +289,236 @@ class TestAttachToDocument(TestWebmailAPIBase):
 		):
 			attach_to_document(self.test_account_email, "INBOX", UID, "0", "ToDo", self.todo.name)
 		self.assertFalse(frappe.db.exists("File", {"attached_to_name": self.todo.name}))
+
+
+class DriveCase(TestWebmailAPIBase):
+	"""A folder of the test user's own Drive, removed afterwards, with everything put in it."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		if "suite" not in frappe.get_installed_apps():
+			raise unittest.SkipTest("the Drive (suite) is not installed on this site")
+
+	def setUp(self):
+		super().setUp()
+		from suite.drive.api.files import create_folder
+
+		self.created = []
+		self.folder = create_folder(f"Webmail test {frappe.generate_hash(length=6)}").name
+		self.created.append(self.folder)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+		def remove(name):
+			# The deepest first: a folder goes once it is empty
+			for child in frappe.get_all("File", {"folder": name}, pluck="name"):
+				remove(child)
+			if frappe.db.exists("File", name):
+				frappe.delete_doc("File", name, force=True, ignore_permissions=True)
+
+		for name in reversed(self.created):
+			remove(name)
+		frappe.defaults.clear_user_default(LAST_DRIVE_FOLDER, self.test_user)
+		super().tearDown()
+
+	def save(self, attachment_id="0", folder=None):
+		from frappe_webmail.attachments import save_attachment_to_drive
+
+		with mocked_imap(imap_client()):
+			return save_attachment_to_drive(
+				self.test_account_email, "INBOX", UID, attachment_id, folder or self.folder
+			)
+
+
+class TestSaveToDrive(DriveCase):
+	"""« Save to the Drive… »: the folder the person chose, the Drive's rules, the bytes where the Drive keeps them."""
+
+	def test_the_attachment_lands_in_the_chosen_folder(self):
+		from suite.drive.utils.files import FileManager, storage_key
+
+		size_before = frappe.db.get_value("File", self.folder, "file_size") or 0
+		result = self.save()
+		saved = frappe.get_doc("File", result["name"])
+		self.assertEqual(
+			(saved.folder, saved.owner, saved.file_name), (self.folder, self.test_user, "Relevé 2026-118.pdf")
+		)
+		self.assertEqual(saved.mime_type, "application/pdf")
+		self.assertEqual(Path(FileManager().site_folder / storage_key(saved.file_url)).read_bytes(), PDF)
+		self.assertEqual(frappe.db.get_value("File", self.folder, "file_size"), size_before + len(PDF))
+		self.assertEqual(result["url"], f"/drive/f/{saved.name}")
+		# The next time, the picker proposes this folder first
+		from frappe_webmail.attachments import get_drive_folders
+
+		self.assertEqual(get_drive_folders()["last"]["name"], self.folder)
+
+	def test_a_second_copy_gets_a_free_name(self):
+		self.save()
+		second = frappe.get_doc("File", self.save()["name"])
+		self.assertEqual(second.file_name, "Relevé 2026-118 (1).pdf")
+
+	def test_a_folder_the_person_may_not_fill_is_refused_before_reading_the_mail(self):
+		from suite.drive.utils import get_user_folder
+
+		from frappe_webmail.attachments import save_attachment_to_drive
+
+		frappe.set_user("Administrator")
+		private = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": f"Private {frappe.generate_hash(length=6)}",
+				"is_folder": 1,
+				"folder": get_user_folder("Administrator").name,
+			}
+		).insert(ignore_permissions=True)
+		self.created.append(private.name)
+		frappe.set_user(self.test_user)
+
+		client = imap_client()
+		with mocked_imap(client), self.assertRaises(frappe.PermissionError):
+			save_attachment_to_drive(self.test_account_email, "INBOX", UID, "0", private.name)
+		client.fetch.assert_not_called()
+
+	def test_a_new_folder_is_made_by_the_drive_s_rules_and_can_be_filled(self):
+		from frappe_webmail.attachments import create_drive_folder
+
+		made = create_drive_folder(self.folder, "Factures / 2026")
+		row = frappe.db.get_value("File", made["name"], ["is_folder", "folder", "file_name"], as_dict=True)
+		self.assertEqual((row.is_folder, row.folder), (1, self.folder))
+		# What would cut a path is left out of the name
+		self.assertEqual(row.file_name, "Factures - 2026")
+		self.assertTrue(made["can_write"])
+		self.assertEqual(frappe.get_doc("File", self.save(folder=made["name"])["name"]).folder, made["name"])
+		with self.assertRaises(frappe.ValidationError):
+			create_drive_folder(self.folder, "Factures / 2026")
+
+	def test_the_picker_starts_at_my_drive_and_finds_a_folder_by_name(self):
+		from suite.drive.utils import get_user_folder
+
+		from frappe_webmail.attachments import get_drive_folders
+
+		home = get_user_folder().name
+		roots = get_drive_folders()["folders"]
+		self.assertEqual((roots[0]["name"], roots[0]["kind"], roots[0]["title"]), (home, "home", "My Drive"))
+		inside = get_drive_folders(parent=home)["folders"]
+		mine = next(f for f in inside if f["name"] == self.folder)
+		self.assertTrue(mine["can_write"])
+		title = frappe.db.get_value("File", self.folder, "file_name")
+		found = get_drive_folders(search=title)["folders"]
+		self.assertEqual([(f["name"], f["path"]) for f in found], [(self.folder, f"My Drive / {title}")])
+
+
+class TestDocumentScan(TestWebmailAPIBase):
+	"""« Create a scanned document »: once per file, a private source the scan owns, never the notifying channels."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		if not frappe.db.exists("DocType", "Document Scan"):
+			raise unittest.SkipTest("scanned documents (neoffice_theme) are not installed on this site")
+
+	def setUp(self):
+		super().setUp()
+		self.enqueue = patch("frappe.enqueue")
+		self.queued = self.enqueue.start()
+
+	def tearDown(self):
+		self.enqueue.stop()
+		frappe.set_user("Administrator")
+		import hashlib
+
+		for name in frappe.get_all(
+			"Document Scan", {"content_hash": hashlib.sha256(PDF).hexdigest()}, pluck="name"
+		):
+			for file in frappe.get_all(
+				"File", {"attached_to_doctype": "Document Scan", "attached_to_name": name}, pluck="name"
+			):
+				frappe.delete_doc("File", file, force=True, ignore_permissions=True)
+			frappe.delete_doc("Document Scan", name, force=True, ignore_permissions=True)
+		super().tearDown()
+
+	def scan(self):
+		from frappe_webmail.attachments import create_document_scan_from_attachment
+
+		with mocked_imap(imap_client()):
+			return create_document_scan_from_attachment(self.test_account_email, "INBOX", UID, "0")
+
+	def test_the_attachment_becomes_a_scan_read_by_the_ocr(self):
+		result = self.scan()
+		scan = frappe.get_doc("Document Scan", result["name"])
+		self.assertFalse(result["duplicate"])
+		self.assertEqual(scan.document_type, "Invoice")
+		self.assertEqual(scan.intake_channel, "Upload")
+		source = frappe.get_doc("File", {"file_url": scan.source_file})
+		self.assertTrue(source.is_private)
+		self.assertEqual((source.attached_to_doctype, source.attached_to_name), ("Document Scan", scan.name))
+		self.assertEqual(source.get_content(), PDF)
+		self.assertTrue(
+			any("process_ocr" in str(call.args[0]) for call in self.queued.call_args_list),
+			"the OCR is queued",
+		)
+
+	def test_the_same_file_is_never_scanned_twice(self):
+		first = self.scan()
+		again = self.scan()
+		self.assertEqual((again["name"], again["duplicate"]), (first["name"], True))
+		self.assertEqual(frappe.db.count("Document Scan", {"name": first["name"]}), 1)
+
+	def test_someone_who_may_not_create_a_scan_is_refused(self):
+		from frappe_webmail.attachments import create_document_scan_from_attachment
+
+		with (
+			mocked_imap(imap_client()),
+			patch("frappe_webmail.scans.can_create", return_value=False),
+			self.assertRaises(frappe.PermissionError),
+		):
+			create_document_scan_from_attachment(self.test_account_email, "INBOX", UID, "0")
+
+
+class TestTheMenu(TestWebmailAPIBase):
+	"""Both screens draw the menu the server describes: the same entries, the same words, only what can run."""
+
+	def test_the_menu_lists_what_this_site_can_do(self):
+		from frappe_webmail.attachments import get_attachment_actions
+
+		keys = [a["key"] for a in get_attachment_actions()]
+		self.assertEqual(keys[:2], ["preview", "download"])
+		self.assertEqual(keys[-1], "forward")
+		self.assertEqual("save_to_drive" in keys, "suite" in frappe.get_installed_apps())
+		self.assertEqual("document_scan" in keys, bool(frappe.db.exists("DocType", "Document Scan")))
+		for action in get_attachment_actions():
+			self.assertIn(action["kind"], ("client", "now", "pick_folder", "pick_document"))
+			if action["kind"] != "client":
+				self.assertTrue(frappe.get_attr(action["method"]))
+
+	def test_without_the_drive_the_menu_has_no_drive(self):
+		from frappe_webmail.attachments import get_attachment_actions
+
+		with patch("frappe_webmail.drive.available", return_value=False):
+			self.assertNotIn("save_to_drive", [a["key"] for a in get_attachment_actions()])
+
+
+class TestComposerDrive(DriveCase):
+	"""The composer's « From the Drive » tab reads the Drive of suite (it read the old app's Drive Entity, gone)."""
+
+	def test_the_tab_lists_and_attaches_a_drive_file(self):
+		from frappe_webmail.webmail_api import get_drive_file_content, get_drive_files
+
+		saved = self.save()["name"]
+		listed = get_drive_files(folder=self.folder)
+		self.assertTrue(listed["installed"])
+		self.assertEqual([f["name"] for f in listed["files"]], [saved])
+		self.assertEqual(listed["files"][0]["title"], "Relevé 2026-118.pdf")
+		content = get_drive_file_content(saved)
+		self.assertEqual((content["filename"], content["size"]), ("Relevé 2026-118.pdf", len(PDF)))
+
+	def test_a_file_the_person_may_not_read_is_refused(self):
+		from frappe_webmail.webmail_api import get_drive_file_content
+
+		saved = self.save()["name"]
+		with (
+			patch("frappe_webmail.drive.can_read", return_value=False),
+			self.assertRaises(frappe.PermissionError),
+		):
+			get_drive_file_content(saved)

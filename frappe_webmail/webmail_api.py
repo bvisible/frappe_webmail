@@ -2321,9 +2321,14 @@ def get_recent_contacts(limit=20):
 
 @frappe.whitelist()
 def link_contact_to_document(contact_name, link_doctype, link_name):
-	"""Link a contact to a document (Customer, Supplier, etc.)"""
+	"""Link a contact to a document (Customer, Supplier, etc.), with the person's own rights: writing the contact and
+	reading the document. It used to save with ignore_permissions, so anyone signed in could relink any contact."""
 	if not frappe.db.exists("Contact", contact_name):
 		frappe.throw(_("Contact not found"))
+	frappe.has_permission("Contact", "write", doc=contact_name, throw=True)
+	if not frappe.db.exists(link_doctype, link_name):
+		frappe.throw(_("{0} {1} not found").format(_(link_doctype), link_name), frappe.DoesNotExistError)
+	frappe.has_permission(link_doctype, "read", doc=link_name, throw=True)
 
 	contact = frappe.get_doc("Contact", contact_name)
 
@@ -2341,8 +2346,7 @@ def link_contact_to_document(contact_name, link_doctype, link_name):
 		},
 	)
 
-	contact.save(ignore_permissions=True)
-	frappe.db.commit()
+	contact.save()
 
 	return {"success": True}
 
@@ -3161,6 +3165,11 @@ def get_file_manager_files(folder="Home", start=0, page_length=20, search=None):
 	"""
 	start = int(start)
 	page_length = min(int(page_length), 50)
+	folder = folder or "Home"
+	# A folder is browsed only by who may read it: any folder id used to list its subfolders, « Users » the private
+	# Drive folder of every person, named after their e-mail address.
+	if folder != "Home" and not frappe.has_permission("File", "read", doc=folder):
+		frappe.throw(_("Access denied"), frappe.PermissionError)
 
 	filters = {"is_private": 0}  # Only public files for now
 
@@ -3170,13 +3179,17 @@ def get_file_manager_files(folder="Home", start=0, page_length=20, search=None):
 	if search:
 		filters["file_name"] = ["like", f"%{search}%"]
 
-	# Get folders first
-	folders = frappe.get_all(
-		"File",
-		filters={"is_folder": 1, "folder": folder or "Home"},
-		fields=["name", "file_name", "folder", "is_folder", "modified"],
-		order_by="file_name asc",
-	)
+	# Get folders first: those the person may read
+	folders = [
+		f
+		for f in frappe.get_all(
+			"File",
+			filters={"is_folder": 1, "folder": folder},
+			fields=["name", "file_name", "folder", "is_folder", "modified"],
+			order_by="file_name asc",
+		)
+		if frappe.has_permission("File", "read", doc=f.name)
+	]
 
 	# Get files
 	files = frappe.get_all(
@@ -3249,115 +3262,39 @@ def get_file_content(file_url):
 
 @frappe.whitelist()
 def get_drive_files(folder=None, search=None, limit=20):
+	"""Files and folders of the Neoffice Drive (the `suite` app) for the composer's « From the Drive » tab: the person's
+	own Drive, a folder's content, or a search across what they may read (frappe_webmail.drive).
+
+	It used to read the old Drive app's `Drive Entity`, which no instance has any more: the tab said « not installed ».
 	"""
-	Get files from Frappe Drive.
+	from frappe_webmail import drive
 
-	Args:
-		folder: Drive folder entity name
-		search: Search text
-		limit: Max number of results
-
-	Returns:
-		dict: List of Drive files
-	"""
-	limit = min(int(limit), 50)
-
-	# Check if Drive is installed
-	if "drive" not in frappe.get_installed_apps():
-		return {"files": [], "message": _("Frappe Drive is not installed")}
-
-	try:
-		filters = {"owner": frappe.session.user}
-
-		if folder:
-			filters["parent_drive_entity"] = folder
-
-		if search:
-			filters["title"] = ["like", f"%{search}%"]
-
-		# Get Drive entities (files only, not folders)
-		files = frappe.get_all(
-			"Drive Entity",
-			filters={**filters, "is_group": 0},
-			fields=["name", "title", "file_size", "mime_type", "modified", "parent_drive_entity"],
-			order_by="modified desc",
-			limit=limit,
-		)
-
-		# Get folders for navigation
-		folders = frappe.get_all(
-			"Drive Entity",
-			filters={**filters, "is_group": 1},
-			fields=["name", "title", "modified", "parent_drive_entity"],
-			order_by="title asc",
-		)
-
-		return {"files": files, "folders": folders}
-
-	except Exception as e:
-		frappe.log_error("Drive files error", f"Failed to get Drive files: {e!s}")
-		return {"files": [], "folders": [], "error": str(e)}
+	if not drive.available():
+		return {
+			"files": [],
+			"folders": [],
+			"installed": False,
+			"message": _("The Drive is not installed on this instance"),
+		}
+	return {"installed": True, **drive.listing(folder, search, min(int(limit), 50))}
 
 
 @frappe.whitelist()
 def get_drive_file_content(entity_name):
-	"""
-	Get content of a file from Frappe Drive.
+	"""A Drive file, in base64, to attach to a message (the Drive's own rules of access decide)."""
+	from frappe_webmail import drive
 
-	Args:
-		entity_name: Drive Entity name
-
-	Returns:
-		dict: filename, content (base64), content_type
-	"""
-	# Check if Drive is installed
-	if "drive" not in frappe.get_installed_apps():
-		frappe.throw(_("Frappe Drive is not installed"))
-
+	if not drive.available():
+		frappe.throw(_("The Drive is not installed on this instance"))
 	if not entity_name:
 		frappe.throw(_("Entity name is required"))
-
-	try:
-		entity = frappe.get_doc("Drive Entity", entity_name)
-
-		# Check ownership/permissions
-		if entity.owner != frappe.session.user:
-			# Check if shared with user
-			is_shared = frappe.db.exists(
-				"Drive DocShare",
-				{"share_doctype": "Drive Entity", "share_name": entity_name, "user": frappe.session.user},
-			)
-			if not is_shared:
-				frappe.throw(_("Access denied"))
-
-		# Get file path and read content
-		file_path = entity.path
-		if not file_path:
-			frappe.throw(_("File path not found"))
-
-		import os
-
-		drive_path = frappe.get_site_path("private", "files", "drive")
-		full_path = os.path.join(drive_path, file_path)
-
-		if not os.path.exists(full_path):
-			frappe.throw(_("File not found on disk"))
-
-		with open(full_path, "rb") as f:
-			content = f.read()
-
-		return {
-			"filename": entity.title,
-			"content": base64.b64encode(content).decode(),
-			"content_type": entity.mime_type or "application/octet-stream",
-			"size": len(content),
-		}
-
-	except frappe.DoesNotExistError:
-		frappe.throw(_("Drive file not found"))
-	except Exception as e:
-		frappe.log_error("Drive file content error", f"Failed to read Drive file {entity_name}: {e!s}")
-		frappe.throw(_("Could not read Drive file content"))
+	filename, content_type, content = drive.read(entity_name)
+	return {
+		"filename": filename,
+		"content": base64.b64encode(content).decode(),
+		"content_type": content_type,
+		"size": len(content),
+	}
 
 
 @frappe.whitelist()
@@ -3560,7 +3497,6 @@ def generate_document_pdf(doctype, docname, print_format=None):
 		frappe.throw(_("Failed to generate PDF: {0}").format(str(e)))
 
 
-@frappe.whitelist()
 def create_communication_link(
 	account_name,
 	to,
@@ -3588,6 +3524,11 @@ def create_communication_link(
 
 	if not frappe.db.exists(reference_doctype, reference_name):
 		return {"created": False, "reason": "Reference document not found"}
+
+	# Called by send_email only (no longer whitelisted: anyone signed in could write an e-mail into any document's
+	# timeline). The sent mail lands on a timeline the sender may read, no other.
+	if not frappe.has_permission(reference_doctype, "read", doc=reference_name):
+		return {"created": False, "reason": "No permission on the reference document"}
 
 	try:
 		comm = frappe.new_doc("Communication")

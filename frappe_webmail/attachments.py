@@ -19,9 +19,12 @@ never travel through the browser, reading it never marks the message as read, an
 right to the mailbox on every call.
 """
 
+from urllib.parse import quote
+
 import frappe
 from frappe import _
 
+from frappe_webmail import drive, scans
 from frappe_webmail.webmail_api import (
 	_imap_is_connection_error,
 	get_account,
@@ -29,6 +32,133 @@ from frappe_webmail.webmail_api import (
 	read_attachment,
 	to_bool,
 )
+
+# The Drive folder a person filed into last: proposed first the next time
+LAST_DRIVE_FOLDER = "webmail_last_drive_folder"
+
+
+def _action(key, label, icon, kind, group, method=None):
+	return {"key": key, "label": label, "icon": icon, "kind": kind, "group": group, "method": method}
+
+
+@frappe.whitelist()
+def get_attachment_actions():
+	"""The menu of an attachment, the same on every screen: what can be done here, by this person, in this order.
+
+	`icon` is a Lucide name (the desk draws Lucide; the app maps it to its own drawings); `group` separates the menu
+	into its parts; `method` is the server method a non-client action calls with (account_name, folder, uid,
+	attachment_id, …). Only what the instance and the person allow is listed.
+	"""
+	actions = [
+		_action("preview", _("Preview"), "eye", "client", "view"),
+		_action("download", _("Save as…"), "download", "client", "view"),
+	]
+	if drive.available():
+		actions.append(
+			_action(
+				"save_to_drive",
+				_("Save to the Drive…"),
+				"cloud-upload",
+				"pick_folder",
+				"neoffice",
+				"frappe_webmail.attachments.save_attachment_to_drive",
+			)
+		)
+	if scans.can_create():
+		actions.append(
+			_action(
+				"document_scan",
+				_("Create a scanned document"),
+				"scan-line",
+				"now",
+				"neoffice",
+				"frappe_webmail.attachments.create_document_scan_from_attachment",
+			)
+		)
+	if get_attachable_doctypes():
+		actions.append(
+			_action(
+				"attach_to_document",
+				_("Attach to a Neoffice document…"),
+				"link",
+				"pick_document",
+				"neoffice",
+				"frappe_webmail.attachments.attach_to_document",
+			)
+		)
+	actions.append(_action("forward", _("Forward"), "forward", "client", "share"))
+	return actions
+
+
+@frappe.whitelist()
+def get_drive_folders(parent=None, search=None):
+	"""The folder picker of « Save to the Drive… »: the roots (no parent), a folder's subfolders, or a search.
+
+	Each folder: name, title, kind, can_write, has_children, path (for a search result). `last` is the folder the person
+	filed into last, when it still exists and they may still file into it.
+	"""
+	if not drive.available():
+		frappe.throw(_("The Drive is not installed on this instance"))
+	if search:
+		folders = drive.search(search)
+	elif parent:
+		folders = drive.children(parent)
+	else:
+		folders = drive.roots()
+	return {
+		"folders": folders,
+		"last": drive.folder_entry(frappe.defaults.get_user_default(LAST_DRIVE_FOLDER)),
+	}
+
+
+@frappe.whitelist()
+def create_drive_folder(parent, title):
+	"""« New folder » in the picker of « Save to the Drive… »."""
+	if not drive.available():
+		frappe.throw(_("The Drive is not installed on this instance"))
+	return drive.create_folder(parent, title)
+
+
+@frappe.whitelist()
+def save_attachment_to_drive(account_name, folder, uid, attachment_id, drive_folder):
+	"""Put the attachment in the Drive folder the person chose (the right to add to it is checked by the Drive's rules)."""
+	account = get_account(account_name)
+	if not drive.available():
+		frappe.throw(_("The Drive is not installed on this instance"))
+	# Refused before reading the mail: a folder the person may not file into costs no IMAP round trip
+	if not drive.folder_entry(drive_folder):
+		frappe.throw(_("You cannot add files to this folder of the Drive"), frappe.PermissionError)
+
+	filename, _content_type, payload = read_attachment(account, folder, uid, attachment_id)
+	saved = drive.deposit(payload, filename, drive_folder)
+	frappe.defaults.set_user_default(LAST_DRIVE_FOLDER, drive_folder)
+	place = drive.folder_entry(drive_folder)
+	return {
+		"name": saved.name,
+		"file_name": saved.file_name,
+		"folder": drive_folder,
+		"url": drive.file_url(saved.name),
+		"folder_url": drive.folder_url(drive_folder),
+		"message": _("Saved in the Drive: {0}").format((place or {}).get("path") or saved.file_name),
+	}
+
+
+@frappe.whitelist()
+def create_document_scan_from_attachment(account_name, folder, uid, attachment_id, document_type="Invoice"):
+	"""Send the attachment to the scanned documents (a supplier invoice, a receipt…), where the OCR reads it."""
+	account = get_account(account_name)
+	if not scans.can_create():
+		frappe.throw(_("You are not allowed to create a scanned document"), frappe.PermissionError)
+
+	filename, _content_type, payload = read_attachment(account, folder, uid, attachment_id)
+	result = scans.create(payload, filename, document_type)
+	result["message"] = (
+		_("Already among the scanned documents")
+		if result["duplicate"]
+		else _("Sent to the scanned documents: the reading takes about a minute")
+	)
+	return result
+
 
 # What a browser may show inline from a stranger's e-mail. Anything else (HTML, SVG, XML…) would run on the
 # instance's own origin, with the person's session: it is only ever downloaded, as bytes.
@@ -136,10 +266,14 @@ def attach_to_document(account_name, folder, uid, attachment_id, doctype, docnam
 			"content": payload,
 		}
 	).insert()
+	if drive.available():
+		# suite's File.after_insert does not call Frappe's, which writes « attached » on the document's timeline
+		file.create_attachment_record()
 	return {
 		"file": file.name,
 		"file_name": file.file_name,
 		"doctype": doctype,
 		"docname": docname,
-		"url": frappe.utils.get_url_to_form(doctype, docname),
+		"url": f"/app/{frappe.scrub(doctype).replace('_', '-')}/{quote(docname)}",
+		"message": _("Attached to {0} {1}").format(_(doctype), docname),
 	}
