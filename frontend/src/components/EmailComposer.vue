@@ -55,6 +55,18 @@
 				v-model="emailData.cc"
 				:placeholder="__('Carbon copy...')"
 			/>
+			<!-- « Cci »: the hidden copy, a line of its own once asked for (as in the desktop app, 14.10.2026) -->
+			<button v-if="!showBcc" type="button" class="show-bcc" @click="showBcc = true">
+				{{ __("Bcc") }}
+			</button>
+		</div>
+		<div v-if="showBcc" class="composer-field">
+			<label>{{ __("Bcc:") }}</label>
+			<ContactAutocomplete
+				ref="bccField"
+				v-model="emailData.bcc"
+				:placeholder="__('Blind copy...')"
+			/>
 		</div>
 		<div class="composer-field">
 			<label>{{ __("Subject:") }}</label>
@@ -262,6 +274,7 @@ export default {
 				bcc: "",
 				subject: "",
 			},
+			showBcc: false,
 			attachments: [],
 			remoteAttachments: [],
 			showAttachmentPicker: false,
@@ -484,6 +497,8 @@ export default {
 			// Fill in the fields
 			this.emailData.to = draft.to || "";
 			this.emailData.cc = draft.cc || "";
+			this.emailData.bcc = draft.bcc || "";
+			this.showBcc = Boolean(draft.bcc);
 			this.emailData.subject = draft.subject || "";
 
 			// Set the body content
@@ -658,6 +673,7 @@ export default {
 						account_name: this.account,
 						to: this.emailData.to,
 						cc: this.emailData.cc || null,
+						bcc: this.emailData.bcc || null,
 						subject: this.emailData.subject,
 						html_content: this.editor.getHTML(),
 						reply_to_message_id: this.replyTo?.message_id || null,
@@ -976,6 +992,18 @@ export default {
 .header-right .btn-danger-light:hover {
 	background: var(--red-500, #dc3545);
 	color: white;
+}
+
+.composer-field .show-bcc {
+	flex: none;
+	border: 0;
+	background: transparent;
+	color: var(--wm-accent-ink, var(--wm-accent));
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 0 4px;
 }
 
 .composer-field {
