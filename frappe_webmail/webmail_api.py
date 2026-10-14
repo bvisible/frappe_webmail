@@ -22,6 +22,7 @@ import frappe
 from frappe import _
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
+from frappe_webmail.conversations import conversation_places
 from frappe_webmail.documents import list_attachable_documents
 from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, to_parts
 from frappe_webmail.mime_parts import iter_attachments
@@ -950,8 +951,11 @@ def _text_criteria(text):
 
 
 @frappe.whitelist()
-def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
-	"""Get emails from a folder with pagination"""
+def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, only=None, order="newest"):
+	"""Get emails from a folder with pagination.
+
+	`only`: « unread » or « flagged » (asked of the server, so that every such message is found, not those of the first
+	page alone); `order`: « newest » first (the default) or « oldest » first."""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -964,12 +968,16 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 
 		# Search criteria (flat on purpose: see _search_charset)
 		criteria = _text_criteria(search) or ["NOT", "DELETED"]
+		if only == "unread":
+			criteria = [*criteria, "UNSEEN"]
+		elif only == "flagged":
+			criteria = [*criteria, "FLAGGED"]
 
 		messages = client.search(criteria, charset=_search_charset(criteria))
 		total = len(messages)
 
-		# Pagination (newest first)
-		messages = list(reversed(messages))
+		# Pagination (newest first, unless the oldest are asked for)
+		messages = list(messages) if order == "oldest" else list(reversed(messages))
 		page = messages[offset : offset + limit]
 
 		if not page:
@@ -979,36 +987,58 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None):
 		data = client.fetch(page, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
 		previews = _list_previews(client, data)
 
-		emails = []
-		for uid in page:  # Maintain order
-			if uid not in data:
-				continue
-			msg_data = data[uid]
-			env = msg_data[b"ENVELOPE"]
-			flags = msg_data[b"FLAGS"]
-
-			emails.append(
-				{
-					"uid": uid,
-					"subject": decode_mime_header(env.subject),
-					"from_email": format_address(env.from_[0]) if env.from_ else "",
-					"from_name": (
-						decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""
-					),
-					"to": format_address(env.to[0]) if env.to else "",
-					"date": env.date.isoformat() if env.date else None,
-					"seen": b"\\Seen" in flags,
-					"flagged": b"\\Flagged" in flags,
-					"answered": b"\\Answered" in flags,
-					"forwarded": b"$Forwarded" in flags,
-					"nora_seen": b"$NoraSeen" in flags,
-					"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
-					"size": msg_data.get(b"RFC822.SIZE", 0),
-					"preview": previews.get(uid, ""),
-				}
-			)
+		emails = [_summary(uid, data[uid], previews) for uid in page if uid in data]  # Maintain order
 
 		return {"emails": emails, "total": total, "has_more": offset + limit < total}
+
+
+def _summary(uid, msg_data, previews, folder=None):
+	"""A message as a list shows it (get_emails, get_conversation): who, what, when, its flags, its first words."""
+	env = msg_data[b"ENVELOPE"]
+	flags = msg_data[b"FLAGS"]
+	row = {
+		"uid": uid,
+		"subject": decode_mime_header(env.subject),
+		"from_email": format_address(env.from_[0]) if env.from_ else "",
+		"from_name": (decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""),
+		"to": format_address(env.to[0]) if env.to else "",
+		"date": env.date.isoformat() if env.date else None,
+		"seen": b"\\Seen" in flags,
+		"flagged": b"\\Flagged" in flags,
+		"answered": b"\\Answered" in flags,
+		"forwarded": b"$Forwarded" in flags,
+		"nora_seen": b"$NoraSeen" in flags,
+		"has_attachments": has_attachments(msg_data.get(b"BODYSTRUCTURE")),
+		"size": msg_data.get(b"RFC822.SIZE", 0),
+		"preview": previews.get(uid, ""),
+	}
+	if folder:
+		row["folder"] = folder
+	return row
+
+
+@frappe.whitelist()
+def get_conversation(account_name, folder="INBOX", uid=None, limit=20):
+	"""The other messages of a message's conversation, oldest first (conversations.py): what it answers and what
+	answers it, in its folder, the inbox and the sent. Read only: nothing is marked read."""
+	if not IMAPClient:
+		frappe.throw(_("imapclient package is not installed"))
+	if not uid:
+		frappe.throw(_("The message is required"))
+
+	account = get_account(account_name)
+	limit = max(1, min(int(limit), 50))
+	with imap_session(account) as client:
+		places = conversation_places(client, folder, int(uid))
+		rows = []
+		for each in dict.fromkeys(f for f, _uid in places):
+			uids = [u for f, u in places if f == each]
+			client.select_folder(each, readonly=True)
+			data = client.fetch(uids, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
+			previews = _list_previews(client, data)
+			rows += [_summary(u, data[u], previews, folder=each) for u in uids if u in data]
+	rows.sort(key=lambda row: row["date"] or "")
+	return {"messages": rows[-limit:]}
 
 
 def _list_previews(client, data):
