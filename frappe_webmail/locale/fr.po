@@ -3559,3 +3559,17 @@ msgstr "{0} messages plus anciens dans cette conversation"
 #: frontend/src/components/EmailViewer.vue:530
 msgid "{0} other messages in this conversation"
 msgstr "{0} autres messages dans cette conversation"
+
+#: frontend/src/components/AttachmentPicker.vue:203
+msgid "Search an invoice, a quotation, a customer..."
+msgstr "Chercher une facture, un devis, un client…"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frontend/src/components/AttachmentPicker.vue:493
+msgid "The most recent"
+msgstr "Les plus récents"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frontend/src/components/AttachmentPicker.vue:492
+msgid "Those of the recipients first, then the most recent"
+msgstr "Ceux des destinataires d'abord, puis les plus récents"
