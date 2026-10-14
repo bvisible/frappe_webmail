@@ -23,6 +23,7 @@ from frappe import _
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
 from frappe_webmail.documents import list_attachable_documents
+from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, to_parts
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
 from frappe_webmail.replies import appended_uid, reply_recipients
@@ -1185,6 +1186,9 @@ def send_email(
 	`draft_folder`: the draft this message was written in, deleted once it has left."""
 	account = get_account(account_name)
 
+	# Images written in the text leave as parts of the message, before the cleaning (it would drop a `data:` image)
+	html_content, inline_parts = to_parts(html_content, (account.email or "webmail.local").split("@")[-1])
+
 	# Sanitize HTML content if bleach is available
 	if bleach:
 		# Allow safe HTML tags for email
@@ -1231,7 +1235,11 @@ def send_email(
 			"th": ["colspan", "rowspan", "width", "valign", "align"],
 		}
 		html_content = bleach.clean(
-			html_content, tags=allowed_tags, attributes=allowed_attributes, strip=True
+			html_content,
+			tags=allowed_tags,
+			attributes=allowed_attributes,
+			protocols=SAFE_PROTOCOLS,
+			strip=True,
 		)
 
 	# Build message
@@ -1263,7 +1271,7 @@ def send_email(
 
 	# HTML version
 	body.attach(MIMEText(html_content, "html", "utf-8"))
-	msg.attach(body)
+	msg.attach(body_with(body, inline_parts))
 
 	# Attachments: the files the person joined (base64), then the forwarded message's they kept
 	if attachments:
@@ -1470,6 +1478,9 @@ def save_draft_imap(
 	message_id = make_msgid(domain=(account.email or "webmail.local").split("@")[-1])
 	msg["Message-ID"] = message_id
 
+	# Images written in the text are kept as parts of the draft, as they will leave (taken back, they show again)
+	html_content, inline_parts = to_parts(html_content, (account.email or "webmail.local").split("@")[-1])
+
 	# Body
 	body = MIMEMultipart("alternative")
 	if html_content:
@@ -1481,7 +1492,7 @@ def save_draft_imap(
 			text_content = re.sub(r"<[^>]+>", "", html_content)
 		body.attach(MIMEText(text_content, "plain", "utf-8"))
 		body.attach(MIMEText(html_content, "html", "utf-8"))
-	msg.attach(body)
+	msg.attach(body_with(body, inline_parts))
 
 	# The files joined, then the forwarded message's attachments kept: what send_email would carry
 	if attachments:
