@@ -75,6 +75,22 @@ def drafts_client(append_response=b"[APPENDUID 1 77] Append completed."):
 
 
 class TestAnswersAndDrafts(TestWebmailAPIBase):
+	def test_a_message_read_to_answer_it_stays_unread(self):
+		from frappe_webmail.api import get_email_content
+
+		client = imap_client()
+		with mocked_imap(client):
+			message = get_email_content(self.test_account_email, UID, "INBOX", mark_read=0)
+			get_email_content(self.test_account_email, UID, "INBOX")
+		asked = [call.args[1] for call in client.fetch.call_args_list]
+		# Without marking it read, its body is peeked at (fetching RFC822 marks a message read by itself)
+		self.assertIn("BODY.PEEK[]", asked[0])
+		self.assertNotIn("RFC822", asked[0])
+		self.assertTrue(message["html"] or message["text"])
+		# Read, it is marked so
+		self.assertIn("RFC822", asked[-1])
+		self.assertEqual(client.add_flags.call_count, 1)
+
 	def test_a_message_comes_with_the_recipients_of_its_answers(self):
 		from frappe_webmail.api import get_email_content
 

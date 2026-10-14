@@ -1081,13 +1081,15 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 		if mark_read:
 			client.add_flags([uid], [b"\\Seen"])
 
-		# Fetch full message
-		data = client.fetch([uid], ["RFC822", "ENVELOPE", "FLAGS"])
+		# Fetch full message: a peek when it is not to be marked read (fetching RFC822 marks a message read by itself,
+		# RFC 3501 6.4.5: « Répondre » from a message's menu, a draft taken back, marked it read all the same)
+		body = "RFC822" if mark_read else "BODY.PEEK[]"
+		data = client.fetch([uid], [body, "ENVELOPE", "FLAGS"])
 
 		if uid not in data:
 			frappe.throw(_("Email not found"))
 
-		raw = data[uid][b"RFC822"]
+		raw = data[uid][b"RFC822" if mark_read else b"BODY[]"]
 		msg = email.message_from_bytes(raw)
 		env = data[uid][b"ENVELOPE"]
 		flags = data[uid][b"FLAGS"]
