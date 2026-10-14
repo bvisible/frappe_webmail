@@ -21,6 +21,8 @@ from email.utils import make_msgid
 import frappe
 from frappe import _
 
+# Served as frappe_webmail.api.list_attachable_documents, like every method of this module
+from frappe_webmail.documents import list_attachable_documents
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
 from frappe_webmail.replies import appended_uid, reply_recipients
@@ -3625,7 +3627,7 @@ def get_print_formats(doctype):
 
 
 @frappe.whitelist()
-def generate_document_pdf(doctype, docname, print_format=None):
+def generate_document_pdf(doctype, docname, print_format=None, language=None):
 	"""
 	Generate a PDF for a Frappe document.
 
@@ -3633,9 +3635,10 @@ def generate_document_pdf(doctype, docname, print_format=None):
 		doctype: DocType of the document
 		docname: Name of the document
 		print_format: Print format to use (default: Standard)
+		language: The language it is printed in (the person's when absent), as the desk's « Print » offers
 
 	Returns:
-		dict: filename, content (base64), content_type
+		dict: filename (the document's name), content (base64), content_type
 	"""
 	if not doctype or not docname:
 		frappe.throw(_("DocType and document name are required"))
@@ -3648,22 +3651,23 @@ def generate_document_pdf(doctype, docname, print_format=None):
 
 	try:
 		# Generate PDF using Frappe's built-in method
+		from frappe.translate import print_language
 		from frappe.utils.pdf import get_pdf
-		from frappe.utils.print_format import download_pdf
 
-		# Get HTML content
-		html = frappe.get_print(
-			doctype,
-			docname,
-			print_format=print_format or "Standard",
-			as_pdf=False,
-		)
+		# Get HTML content, in the language asked for
+		with print_language(language or None):
+			html = frappe.get_print(
+				doctype,
+				docname,
+				print_format=print_format or "Standard",
+				as_pdf=False,
+			)
 
 		# Convert to PDF
 		pdf_content = get_pdf(html)
 
-		# Generate filename
-		filename = f"{doctype.replace(' ', '_')}_{docname}.pdf"
+		# The file is named after the document, as the person knows it (« FA-2026-0121.pdf »)
+		filename = "".join(c if c.isalnum() or c in "-_." else "-" for c in str(docname)) + ".pdf"
 
 		return {
 			"filename": filename,
