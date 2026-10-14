@@ -3517,3 +3517,45 @@ msgstr "Traduit par Nora · {0}"
 #: frontend/src/components/EmailComposer.vue:68
 msgid "Blind copy..."
 msgstr "Copie cachée..."
+
+#: frontend/src/components/EmailViewer.vue:525
+msgid "1 older message in this conversation"
+msgstr "1 message plus ancien dans cette conversation"
+
+#: frontend/src/components/EmailViewer.vue:529
+msgid "1 other message in this conversation"
+msgstr "1 autre message dans cette conversation"
+
+#: frontend/src/pages/Webmail.vue:662 frontend/src/pages/Webmail.vue:831
+msgid "All mailboxes"
+msgstr "Toutes les boîtes"
+
+#: frontend/src/components/EmailList.vue:8
+msgid "all mailboxes"
+msgstr "toutes les boîtes"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:616
+msgid "Newest first"
+msgstr "Plus récents"
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:616
+msgid "Oldest first"
+msgstr "Plus anciens"
+
+#: frontend/src/components/EmailList.vue:19
+msgid "Sort: {0}"
+msgstr "Trier : {0}"
+
+#: frappe_webmail/webmail_api.py:1028
+msgid "The message is required"
+msgstr "Le message est requis."
+
+#: frontend/src/components/EmailViewer.vue:526
+msgid "{0} older messages in this conversation"
+msgstr "{0} messages plus anciens dans cette conversation"
+
+#: frontend/src/components/EmailViewer.vue:530
+msgid "{0} other messages in this conversation"
+msgstr "{0} autres messages dans cette conversation"

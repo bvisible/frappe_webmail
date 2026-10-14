@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-14 10:29+0000\n"
-"PO-Revision-Date: 2026-10-14 10:29+0000\n"
+"POT-Creation-Date: 2026-10-14 11:40+0000\n"
+"PO-Revision-Date: 2026-10-14 11:40+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -18,40 +18,49 @@ msgstr ""
 
 #: frontend/src/components/AdvancedSearch.vue:138
 #: frontend/src/components/AgentPanel.vue:53
-#: frontend/src/components/EmailList.vue:126
-#: frontend/src/components/EmailList.vue:674
+#: frontend/src/components/EmailList.vue:164
+#: frontend/src/components/EmailList.vue:834
 #: frontend/src/components/EmailViewer.vue:113
+#: frontend/src/components/EmailViewer.vue:180
 #: frontend/src/pages/Webmail.vue:121
 msgid "(No subject)"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:244
+#: frontend/src/components/EmailViewer.vue:289
 msgid "+{0} more"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:198
+#: frontend/src/components/EmailViewer.vue:243
 msgid "1 attachment"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:467
+#: frontend/src/components/EmailViewer.vue:545
 msgid "1 invoice this year"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frontend/src/components/EmailViewer.vue:525
+msgid "1 older message in this conversation"
+msgstr ""
+
+#: frontend/src/components/EmailViewer.vue:529
+msgid "1 other message in this conversation"
+msgstr ""
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1151
 #: frontend/src/components/AutomationsPanel.vue:303
 msgid "1st of the month at {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1654
+#: frappe_webmail/webmail_api.py:1711
 msgid "A folder with this name already exists"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:550
+#: frappe_webmail/webmail_api.py:552
 msgid "A password is required"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:254
 msgid "A short list of the new emails: sender, time, subject."
 msgstr ""
@@ -61,11 +70,11 @@ msgstr ""
 msgid "Access Token"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:219 frappe_webmail/webmail_api.py:2077
-#: frappe_webmail/webmail_api.py:2140 frappe_webmail/webmail_api.py:2169
-#: frappe_webmail/webmail_api.py:2642 frappe_webmail/webmail_api.py:2684
-#: frappe_webmail/webmail_api.py:3250 frappe_webmail/webmail_api.py:3367
-#: frappe_webmail/webmail_api.py:3442 frappe_webmail/webmail_api.py:3661
+#: frappe_webmail/webmail_api.py:221 frappe_webmail/webmail_api.py:2134
+#: frappe_webmail/webmail_api.py:2197 frappe_webmail/webmail_api.py:2226
+#: frappe_webmail/webmail_api.py:2699 frappe_webmail/webmail_api.py:2741
+#: frappe_webmail/webmail_api.py:3307 frappe_webmail/webmail_api.py:3424
+#: frappe_webmail/webmail_api.py:3499 frappe_webmail/webmail_api.py:3718
 msgid "Access denied"
 msgstr ""
 
@@ -81,19 +90,19 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3253
+#: frappe_webmail/webmail_api.py:3310
 msgid "Account is disabled"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:148
+#: frappe_webmail/webmail_api.py:150
 msgid "Account is not configured for OAuth2"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:273
+#: frappe_webmail/webmail_api.py:275
 msgid "Account is not using OAuth2"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3234
+#: frappe_webmail/webmail_api.py:3291
 msgid "Account not found"
 msgstr ""
 
@@ -108,7 +117,7 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:233
+#: frontend/src/components/EmailViewer.vue:278
 msgid "Actions on {0}"
 msgstr ""
 
@@ -124,8 +133,8 @@ msgstr ""
 msgid "Add recipients..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:328
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:383
 msgid "Add star"
 msgstr ""
 
@@ -151,7 +160,7 @@ msgstr ""
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
-#: frontend/src/components/EmailList.vue:49
+#: frontend/src/components/EmailList.vue:78
 msgid "All"
 msgstr ""
 
@@ -163,11 +172,15 @@ msgstr ""
 msgid "All folders"
 msgstr ""
 
+#: frontend/src/pages/Webmail.vue:662 frontend/src/pages/Webmail.vue:831
+msgid "All mailboxes"
+msgstr ""
+
 #: frappe_webmail/attachments.py:156
 msgid "Already among the scanned documents"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2895
+#: frappe_webmail/webmail_api.py:2952
 msgid "Already in trusted list"
 msgstr ""
 
@@ -189,20 +202,20 @@ msgstr ""
 msgid "Also mark as read"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:160
+#: frontend/src/components/EmailViewer.vue:205
 msgid "Always for this sender"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:163
+#: frontend/src/components/EmailViewer.vue:208
 msgid "Always for {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:811
 msgid "An error occurred"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:448
 msgid "Any invoices to process in this mailbox?"
 msgstr ""
@@ -223,7 +236,7 @@ msgstr ""
 msgid "Applying..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1160
 msgid "Approved"
 msgstr ""
@@ -242,7 +255,7 @@ msgstr ""
 msgid "Archive Folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:922
 msgid "Are you sure you want to delete the folder '{0}'? This action cannot be undone."
 msgstr ""
@@ -251,7 +264,7 @@ msgstr ""
 msgid "Are you sure you want to delete this draft?"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1335
+#: frontend/src/pages/Webmail.vue:1448
 msgid "Are you sure you want to delete this email?"
 msgstr ""
 
@@ -263,12 +276,12 @@ msgstr ""
 msgid "Are you sure you want to disconnect OAuth? You will need to reconnect to use this account."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:889
 msgid "Are you sure you want to permanently delete all emails in this folder? This action cannot be undone."
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1889
+#: frontend/src/pages/Webmail.vue:2018
 msgid "Are you sure you want to permanently delete this email? This action cannot be undone."
 msgstr ""
 
@@ -338,12 +351,12 @@ msgstr ""
 msgid "Attaching…"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1866
+#: frappe_webmail/webmail_api.py:1923
 msgid "Attachment not found"
 msgstr ""
 
 #: frontend/src/components/AdvancedSearch.vue:73
-#: frontend/src/components/EmailList.vue:65
+#: frontend/src/components/EmailList.vue:94
 msgid "Attachments"
 msgstr ""
 
@@ -362,11 +375,11 @@ msgstr ""
 msgid "Authentication Type"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:14
+#: frontend/src/components/EmailList.vue:43
 msgid "Auto-refresh on"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:361
 msgid "Automation created"
 msgstr ""
@@ -402,7 +415,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AgentPanel.vue:133
 #: frontend/src/components/AgentPanel.vue:239
 #: frontend/src/components/AttachmentPicker.vue:293
@@ -417,15 +430,15 @@ msgstr ""
 msgid "Cancelled"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1736
+#: frappe_webmail/webmail_api.py:1793
 msgid "Cannot delete folder with subfolders"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1723
+#: frappe_webmail/webmail_api.py:1780
 msgid "Cannot delete this folder"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1642
+#: frappe_webmail/webmail_api.py:1699
 msgid "Cannot rename this folder"
 msgstr ""
 
@@ -454,7 +467,7 @@ msgstr ""
 msgid "Chat with Nora"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:450
 msgid "Check this mailbox every hour for invoices"
 msgstr ""
@@ -481,7 +494,7 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:62
 #: frontend/src/components/FolderTree.vue:63
 msgid "Collapse"
@@ -498,7 +511,7 @@ msgstr ""
 msgid "Conditions"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:369
+#: frontend/src/pages/Webmail.vue:375
 msgid "Configure an account"
 msgstr ""
 
@@ -521,7 +534,7 @@ msgstr ""
 msgid "Connection Test Results"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:678
+#: frappe_webmail/webmail_api.py:680
 msgid "Connection successful"
 msgstr ""
 
@@ -529,16 +542,16 @@ msgstr ""
 msgid "Connection successful! Both IMAP and SMTP are working."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:1016
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1149
 msgid "Contact created: {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2522
+#: frappe_webmail/webmail_api.py:2579
 msgid "Contact not found"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2368
+#: frappe_webmail/webmail_api.py:2425
 msgid "Contact with this email already exists"
 msgstr ""
 
@@ -546,17 +559,17 @@ msgstr ""
 msgid "Contact: {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:886
 msgid "Content inserted"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:342
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:397
 msgid "Copy to"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:949
 msgid "Corrected draft"
 msgstr ""
@@ -565,44 +578,44 @@ msgstr ""
 msgid "Could not connect to the email server. Check the account settings."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:365
 msgid "Could not create the automation"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:426
 msgid "Could not delete the automation"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:328
 msgid "Could not load the automations"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3448
+#: frappe_webmail/webmail_api.py:3505
 msgid "Could not read file content"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:778
+#: frappe_webmail/webmail_api.py:780
 msgid "Could not sign in to {0} for {1}. The OAuth connection is no longer valid - please reconnect the account."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:782
+#: frappe_webmail/webmail_api.py:784
 msgid "Could not sign in to {0} for {1}. The email address or password is incorrect."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:868
 msgid "Could not start the analysis"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:409
 msgid "Could not update the automation"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AgentPanel.vue:130
 #: frontend/src/components/DriveFolderPicker.vue:129
 #: frontend/src/components/FolderTree.vue:166
@@ -617,14 +630,14 @@ msgstr ""
 msgid "Create automation"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:10
 #: frontend/src/components/FolderTree.vue:11
 #: frontend/src/components/FolderTree.vue:129
 msgid "Create folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:307
 msgid "Create subfolder"
 msgstr ""
@@ -633,12 +646,12 @@ msgstr ""
 msgid "Created"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:165
 msgid "Creating..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:625
 #: frontend/src/components/EmailComposer.vue:473
 msgid "Date:"
 msgstr ""
@@ -674,7 +687,7 @@ msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:756
 #: frontend/src/components/SignatureEditor.vue:287
-#: frontend/src/pages/Webmail.vue:1359
+#: frontend/src/pages/Webmail.vue:1472
 msgid "Delete error"
 msgstr ""
 
@@ -682,18 +695,18 @@ msgstr ""
 msgid "Delete filter \"{0}\"?"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:343
 msgid "Delete folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/BulkActionBar.vue:78
-#: frontend/src/components/EmailList.vue:373
+#: frontend/src/components/EmailList.vue:428
 msgid "Delete permanently"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:416
 msgid "Delete the automation « {0} »?"
 msgstr ""
@@ -702,7 +715,7 @@ msgstr ""
 msgid "Delivery"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:30
+#: frontend/src/components/EmailList.vue:59
 msgid "Deselect all"
 msgstr ""
 
@@ -727,15 +740,15 @@ msgstr ""
 msgid "Disconnect OAuth"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3655
+#: frappe_webmail/webmail_api.py:3712
 msgid "DocType and document name are required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3551 frappe_webmail/webmail_api.py:3580
+#: frappe_webmail/webmail_api.py:3608 frappe_webmail/webmail_api.py:3637
 msgid "DocType is required"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:406
 msgid "Document"
 msgstr ""
@@ -744,7 +757,7 @@ msgstr ""
 msgid "Document Type"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3658
+#: frappe_webmail/webmail_api.py:3715
 msgid "Document not found"
 msgstr ""
 
@@ -753,27 +766,27 @@ msgstr ""
 msgid "Domain"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:1097
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1230
 msgid "Domain added to the trusted list"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:957
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1038
 msgid "Done"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:384
 msgid "Done — {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1042
 msgid "Done — {0}, {1}. You will find it under Automations, where you can pause or delete it."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/EmailComposer.vue:305
 msgid "Draft"
 msgstr ""
@@ -782,16 +795,16 @@ msgstr ""
 msgid "Draft deleted"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:908
 msgid "Draft inserted in a new message — add the recipient and the subject, then send."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2135 frappe_webmail/webmail_api.py:2164
+#: frappe_webmail/webmail_api.py:2192 frappe_webmail/webmail_api.py:2221
 msgid "Draft not found"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1552
+#: frappe_webmail/webmail_api.py:1609
 #: frontend/src/components/EmailComposer.vue:730
 msgid "Draft saved"
 msgstr ""
@@ -806,11 +819,11 @@ msgstr ""
 msgid "Drafts Folder"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1526
+#: frappe_webmail/webmail_api.py:1583
 msgid "Drafts folder not found"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:274
 #: frontend/src/components/AttachmentPicker.vue:410
 msgid "Drive"
@@ -838,7 +851,7 @@ msgstr ""
 msgid "Email Address"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:803 frontend/src/utils/webmailErrors.js:98
+#: frappe_webmail/webmail_api.py:805 frontend/src/utils/webmailErrors.js:98
 msgid "Email Connection Failed"
 msgstr ""
 
@@ -857,7 +870,7 @@ msgstr ""
 msgid "Email List Width"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:792
+#: frappe_webmail/webmail_api.py:794
 msgid "Email Sign-in Failed"
 msgstr ""
 
@@ -870,19 +883,19 @@ msgstr ""
 msgid "Email address"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2363
+#: frappe_webmail/webmail_api.py:2420
 msgid "Email address is required"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1869
+#: frontend/src/pages/Webmail.vue:1998
 msgid "Email copied"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1348
+#: frontend/src/pages/Webmail.vue:1461
 msgid "Email deleted"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1905
+#: frontend/src/pages/Webmail.vue:2034
 msgid "Email deleted permanently"
 msgstr ""
 
@@ -890,17 +903,17 @@ msgstr ""
 msgid "Email filters"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1835
+#: frontend/src/pages/Webmail.vue:1964
 msgid "Email moved"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1624
+#: frontend/src/pages/Webmail.vue:1753
 msgid "Email moved to {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1051 frappe_webmail/webmail_api.py:1380
-#: frappe_webmail/webmail_api.py:1855 frappe_webmail/webmail_api.py:2417
-#: frappe_webmail/webmail_api.py:2721
+#: frappe_webmail/webmail_api.py:1090 frappe_webmail/webmail_api.py:1435
+#: frappe_webmail/webmail_api.py:1912 frappe_webmail/webmail_api.py:2474
+#: frappe_webmail/webmail_api.py:2778
 msgid "Email not found"
 msgstr ""
 
@@ -909,7 +922,7 @@ msgstr ""
 msgid "Email or Domain"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1349
+#: frappe_webmail/webmail_api.py:1392
 msgid "Email sent successfully"
 msgstr ""
 
@@ -923,13 +936,13 @@ msgstr ""
 msgid "Emails from trusted senders or domains will automatically display external images"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:332
 msgctxt "Folder action"
 msgid "Empty folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:646
 msgid "Empty message"
 msgstr ""
@@ -945,19 +958,19 @@ msgstr ""
 msgid "Enabled"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:788
-#: frontend/src/components/EmailViewer.vue:480
+#: frontend/src/components/EmailViewer.vue:558
 #: frontend/src/components/NoraBar.vue:41
 msgid "English"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:150
 msgid "Enter folder name"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:99
 msgid "Enter new name"
 msgstr ""
@@ -966,23 +979,23 @@ msgstr ""
 msgid "Enter the current password for this account to reconnect."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:338
 msgid "Enter the email address to report to"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3485
+#: frappe_webmail/webmail_api.py:3542
 msgid "Entity name is required"
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:217
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:313
-#: frontend/src/components/EmailList.vue:509
+#: frontend/src/components/EmailList.vue:656
 #: frontend/src/components/FilterManager.vue:386
 #: frontend/src/components/FolderTree.vue:881
 #: frontend/src/components/FolderTree.vue:912
-#: frontend/src/pages/Webmail.vue:1794 frontend/src/pages/Webmail.vue:1816
+#: frontend/src/pages/Webmail.vue:1923 frontend/src/pages/Webmail.vue:1945
 msgid "Error"
 msgstr ""
 
@@ -990,15 +1003,15 @@ msgstr ""
 msgid "Error applying filters"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1873
+#: frontend/src/pages/Webmail.vue:2002
 msgid "Error copying email"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2083
+#: frontend/src/pages/Webmail.vue:2212
 msgid "Error copying emails"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:609
 msgid "Error creating folder"
 msgstr ""
@@ -1007,25 +1020,25 @@ msgstr ""
 msgid "Error deleting"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1921
+#: frontend/src/pages/Webmail.vue:2050
 msgid "Error deleting email"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2011
+#: frontend/src/pages/Webmail.vue:2140
 msgid "Error deleting emails"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:950
 msgid "Error deleting folder"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1077
+#: frontend/src/pages/Webmail.vue:1180
 msgid "Error loading accounts"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1160 frontend/src/pages/Webmail.vue:1754
-#: frontend/src/pages/Webmail.vue:1772
+#: frontend/src/pages/Webmail.vue:1273 frontend/src/pages/Webmail.vue:1883
+#: frontend/src/pages/Webmail.vue:1901
 msgid "Error loading email"
 msgstr ""
 
@@ -1033,20 +1046,20 @@ msgstr ""
 msgid "Error loading filters"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:553
 msgid "Error loading folders"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1640 frontend/src/pages/Webmail.vue:1850
+#: frontend/src/pages/Webmail.vue:1769 frontend/src/pages/Webmail.vue:1979
 msgid "Error moving email"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2057
+#: frontend/src/pages/Webmail.vue:2186
 msgid "Error moving emails"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:853
 msgid "Error renaming folder"
 msgstr ""
@@ -1059,11 +1072,11 @@ msgstr ""
 msgid "Error saving draft"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:654
+#: frontend/src/components/EmailViewer.vue:735
 msgid "Error sending reply"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2126
+#: frontend/src/pages/Webmail.vue:2255
 msgid "Error updating emails"
 msgstr ""
 
@@ -1071,7 +1084,7 @@ msgstr ""
 msgid "Errors:"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1150
 msgid "Every Monday at {0}"
 msgstr ""
@@ -1080,20 +1093,20 @@ msgstr ""
 msgid "Every day"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1148
 #: frontend/src/components/AutomationsPanel.vue:304
 msgid "Every day at {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1147
 #: frontend/src/components/AutomationsPanel.vue:130
 #: frontend/src/components/AutomationsPanel.vue:299
 msgid "Every hour"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:242
 msgid "Every new PDF attachment is read by the OCR and filed in Document Scan."
 msgstr ""
@@ -1114,32 +1127,32 @@ msgstr ""
 msgid "Ex: newsletter@"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:62
 #: frontend/src/components/FolderTree.vue:63
 msgid "Expand"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1164
 msgid "Expired"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:496
-#: frontend/src/components/EmailViewer.vue:545
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:506
+#: frontend/src/components/EmailViewer.vue:623
 msgid "External image blocked"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:157
+#: frontend/src/components/EmailViewer.vue:202
 msgid "External images were blocked for your safety."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1163
 msgid "Failed"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:917
 msgid "Failed to attach file: {0}"
 msgstr ""
@@ -1148,20 +1161,20 @@ msgstr ""
 msgid "Failed to connect to IMAP server: {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3694
+#: frappe_webmail/webmail_api.py:3751
 msgid "Failed to generate PDF: {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:738
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:819
 msgid "Failed to generate reply"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:242
+#: frappe_webmail/webmail_api.py:244
 msgid "Failed to get OAuth tokens"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:596
 msgid "Failed to load files"
 msgstr ""
@@ -1174,7 +1187,7 @@ msgstr ""
 msgid "Failed to refresh OAuth token: {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1355
+#: frappe_webmail/webmail_api.py:1398
 msgid "Failed to send email: {0}"
 msgstr ""
 
@@ -1182,7 +1195,7 @@ msgstr ""
 msgid "Failed to test connection. Please check your settings."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:385
 msgid "Failed: {0}"
 msgstr ""
@@ -1191,15 +1204,15 @@ msgstr ""
 msgid "Failing"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3422
+#: frappe_webmail/webmail_api.py:3479
 msgid "File URL is required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3433
+#: frappe_webmail/webmail_api.py:3490
 msgid "File not found"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:271
 #: frontend/src/components/AttachmentPicker.vue:405
 msgid "Files"
@@ -1230,7 +1243,7 @@ msgstr ""
 msgid "Filter name is required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2637 frappe_webmail/webmail_api.py:2679
+#: frappe_webmail/webmail_api.py:2694 frappe_webmail/webmail_api.py:2736
 msgid "Filter not found"
 msgstr ""
 
@@ -1238,7 +1251,7 @@ msgstr ""
 msgid "Filter updated"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:583
+#: frontend/src/pages/Webmail.vue:632
 msgid "Filters"
 msgstr ""
 
@@ -1251,7 +1264,7 @@ msgstr ""
 msgid "Folder Mapping"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:899
+#: frappe_webmail/webmail_api.py:901
 msgid "Folder already exists"
 msgstr ""
 
@@ -1261,43 +1274,43 @@ msgstr ""
 msgid "Folder column collapsed to an icon rail (per-account UI preference)"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:601
 msgid "Folder created"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:937
 msgid "Folder deleted"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:145
 msgid "Folder name"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:877
+#: frappe_webmail/webmail_api.py:879
 msgid "Folder name is required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1650 frappe_webmail/webmail_api.py:1731
+#: frappe_webmail/webmail_api.py:1707 frappe_webmail/webmail_api.py:1788
 msgid "Folder not found"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:844
 msgid "Folder renamed"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/FolderTree.vue:6 frontend/src/pages/Webmail.vue:793
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/FolderTree.vue:6 frontend/src/pages/Webmail.vue:859
 msgid "Folders"
 msgstr ""
 
 #: frappe_webmail/attachments.py:89
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/EmailComposer.vue:304
-#: frontend/src/components/EmailList.vue:315
+#: frontend/src/components/EmailList.vue:370
 #: frontend/src/components/EmailViewer.vue:31
 #: frontend/src/components/EmailViewer.vue:32
 #: frontend/src/components/EmailViewer.vue:35
@@ -1314,11 +1327,11 @@ msgstr ""
 msgid "Forward UID"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:137
+#: frontend/src/components/EmailList.vue:175
 msgid "Forwarded"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:613
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:623
 #: frontend/src/components/EmailComposer.vue:471
 msgid "Forwarded message"
 msgstr ""
@@ -1327,9 +1340,9 @@ msgstr ""
 msgid "Frappe Drive is not installed"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:788
-#: frontend/src/components/EmailViewer.vue:478
+#: frontend/src/components/EmailViewer.vue:556
 #: frontend/src/components/NoraBar.vue:40
 msgid "French"
 msgstr ""
@@ -1351,20 +1364,20 @@ msgstr ""
 msgid "From — sender email"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:614
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
 #: frontend/src/components/EmailComposer.vue:472
 #: frontend/src/components/FilterManager.vue:37
 msgid "From:"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:649
-#: frontend/src/pages/Webmail.vue:1220
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:659
+#: frontend/src/pages/Webmail.vue:1333
 msgid "Fwd: {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:788
-#: frontend/src/components/EmailViewer.vue:479
+#: frontend/src/components/EmailViewer.vue:557
 #: frontend/src/components/NoraBar.vue:42
 msgid "German"
 msgstr ""
@@ -1388,6 +1401,10 @@ msgstr ""
 msgid "Has attachments"
 msgstr ""
 
+#: frontend/src/components/EmailViewer.vue:153
+msgid "Hide"
+msgstr ""
+
 #: frontend/src/pages/Webmail.vue:178
 msgid "Hide Nora"
 msgstr ""
@@ -1404,7 +1421,7 @@ msgstr ""
 msgid "How often"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:891
 msgid "I opened the reply in the editor with a draft — read it, adjust it, then send."
 msgstr ""
@@ -1481,35 +1498,35 @@ msgstr ""
 msgid "Image"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:524
 #: frontend/src/components/SignatureEditor.vue:211
 msgid "Image URL:"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:724
 msgid "Important"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:783
 #: frontend/src/components/NoraBar.vue:23
 #: frontend/src/components/NoraBar.vue:26
 msgid "Improve"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:436
 msgid "Improve the wording"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:954
 msgid "Improved draft"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:782
 msgid "Improving..."
 msgstr ""
@@ -1532,7 +1549,7 @@ msgstr ""
 msgid "Invalid IMAP port number"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:204
+#: frappe_webmail/webmail_api.py:206
 msgid "Invalid OAuth callback"
 msgstr ""
 
@@ -1544,20 +1561,20 @@ msgstr ""
 msgid "Invalid email address: {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:209
+#: frappe_webmail/webmail_api.py:211
 msgid "Invalid or expired OAuth state"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2887
+#: frappe_webmail/webmail_api.py:2944
 msgid "Invalid source type. Must be 'Sender' or 'Domain'"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:248
 msgid "Invoices from {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1139
 #: frontend/src/components/AutomationsPanel.vue:241
 msgid "Invoices → Document Scan"
@@ -1589,13 +1606,13 @@ msgstr ""
 msgid "Last Saved"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:313
 #: frontend/src/components/AutomationsPanel.vue:318
 msgid "Last run {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:316
 msgid "Last run {0} — {1} failure(s)"
 msgstr ""
@@ -1613,13 +1630,13 @@ msgstr ""
 msgid "Link"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:517
 #: frontend/src/components/SignatureEditor.vue:204
 msgid "Link URL:"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2533
+#: frappe_webmail/webmail_api.py:2590
 msgid "Link already exists"
 msgstr ""
 
@@ -1635,10 +1652,10 @@ msgstr ""
 msgid "Loading Drive files..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:471
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:544
 #: frontend/src/components/SignatureEditor.vue:167
-#: frontend/src/pages/Webmail.vue:1602
+#: frontend/src/pages/Webmail.vue:1731
 msgid "Loading error"
 msgstr ""
 
@@ -1646,11 +1663,11 @@ msgstr ""
 msgid "Loading files..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:148
 #: frontend/src/components/AutomationsPanel.vue:31
-#: frontend/src/components/EmailList.vue:156
-#: frontend/src/components/FolderTree.vue:17 frontend/src/pages/Webmail.vue:377
+#: frontend/src/components/EmailList.vue:194
+#: frontend/src/components/FolderTree.vue:17 frontend/src/pages/Webmail.vue:383
 msgid "Loading..."
 msgstr ""
 
@@ -1659,18 +1676,18 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:268
 #: frontend/src/components/AttachmentPicker.vue:404
 msgid "Local"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:136
 msgid "Location"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:21 frontend/src/pages/Webmail.vue:795
+#: frontend/src/pages/Webmail.vue:21 frontend/src/pages/Webmail.vue:861
 msgid "Mail"
 msgstr ""
 
@@ -1682,7 +1699,7 @@ msgstr ""
 msgid "Mailbox"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:799
+#: frontend/src/pages/Webmail.vue:865
 msgid "Mailbox storage"
 msgstr ""
 
@@ -1694,13 +1711,13 @@ msgstr ""
 msgid "Manage signatures"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:321
 msgid "Mark all as read"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:363
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:418
 msgid "Mark as Spam"
 msgstr ""
 
@@ -1709,9 +1726,9 @@ msgstr ""
 msgid "Mark as important"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/BulkActionBar.vue:19
-#: frontend/src/components/EmailList.vue:322
+#: frontend/src/components/EmailList.vue:377
 #: frontend/src/components/FilterManager.vue:168
 #: frontend/src/components/FilterManager.vue:439
 msgid "Mark as read"
@@ -1721,16 +1738,16 @@ msgstr ""
 msgid "Mark as spam"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/BulkActionBar.vue:24
-#: frontend/src/components/EmailList.vue:322
+#: frontend/src/components/EmailList.vue:377
 #: frontend/src/components/EmailViewer.vue:41
 #: frontend/src/components/EmailViewer.vue:42
 msgid "Mark as unread"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:860
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:941
 msgid "Marked as unread"
 msgstr ""
 
@@ -1755,20 +1772,20 @@ msgstr ""
 msgid "Message subject"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:302
 msgid "Mondays at {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/BulkActionBar.vue:37
-#: frontend/src/components/EmailList.vue:335
+#: frontend/src/components/EmailList.vue:390
 msgid "Move to"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/BulkActionBar.vue:16
-#: frontend/src/components/EmailList.vue:354
+#: frontend/src/components/EmailList.vue:409
 msgid "Move to Trash"
 msgstr ""
 
@@ -1796,7 +1813,7 @@ msgstr ""
 msgid "Name of the folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:308
 msgid "Never run yet"
 msgstr ""
@@ -1827,42 +1844,47 @@ msgstr ""
 msgid "New folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:258
 msgid "New mail in {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1140
 #: frontend/src/components/AutomationsPanel.vue:253
 msgid "New mail summary"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/EmailComposer.vue:306
 msgid "New message"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:624
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:784
 msgid "New message from {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:94
 msgid "New name"
+msgstr ""
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:616
+msgid "Newest first"
 msgstr ""
 
 #: frontend/src/components/AutomationsPanel.vue:34
 msgid "No automation yet. Create one below — Nora will check this mailbox on schedule."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:819
 msgid "No changes needed"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/ContactAutocomplete.vue:83
 msgid "No contact found. Press Enter to add."
 msgstr ""
@@ -1875,7 +1897,7 @@ msgstr ""
 msgid "No documents found"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:152
+#: frontend/src/components/EmailList.vue:190
 msgid "No emails in this folder"
 msgstr ""
 
@@ -1900,7 +1922,7 @@ msgstr ""
 msgid "No folders available"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:465
+#: frontend/src/components/EmailViewer.vue:543
 msgid "No invoice this year"
 msgstr ""
 
@@ -1912,7 +1934,7 @@ msgstr ""
 msgid "No match in {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3554 frappe_webmail/webmail_api.py:3583
+#: frappe_webmail/webmail_api.py:3611 frappe_webmail/webmail_api.py:3640
 msgid "No permission to read {0}"
 msgstr ""
 
@@ -1929,7 +1951,7 @@ msgid "None yet."
 msgstr ""
 
 #: frontend/src/components/AutomationsPanel.vue:7
-#: frontend/src/pages/Webmail.vue:580
+#: frontend/src/pages/Webmail.vue:629
 msgid "Nora automations"
 msgstr ""
 
@@ -1941,30 +1963,30 @@ msgstr ""
 msgid "Nora chat (desk)"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1235
 msgid "Nora could not apply this action"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:778
 msgid "Nora could not be reached. Please try again."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:800
 msgid "Nora did not answer in time. Try again in a moment."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
 #: frontend/src/components/EmailComposer.vue:838
 #: frontend/src/components/EmailComposer.vue:874
-#: frontend/src/components/EmailViewer.vue:705
-#: frontend/src/components/EmailViewer.vue:745
+#: frontend/src/components/EmailViewer.vue:786
+#: frontend/src/components/EmailViewer.vue:826
 msgid "Nora encountered an error. Please try again."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:874
 msgid "Nora is drafting the reply… (about 10 s)"
 msgstr ""
@@ -1973,12 +1995,12 @@ msgstr ""
 msgid "Nora is drafting…"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:861
 msgid "Nora is learning your writing style from your sent emails. This takes a minute."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:957
 msgid "Nora is working on your draft…"
 msgstr ""
@@ -1987,27 +2009,27 @@ msgstr ""
 msgid "Nora is working…"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:898
 msgid "Nora is writing… (about 10 s)"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:255
 msgid "Nora lists the emails received since the previous run — sender, time and subject — and sends it to the channel you choose. Nothing is moved or marked as read in your mailbox."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:245
 msgid "Nora reads the new emails of this mailbox, sends each PDF attachment through the OCR pipeline and files it as a Document Scan, ready for accounting. Emails already processed are remembered (they are never re-imported)."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:699
 msgid "Nora's model did not answer (service busy). Please try again in a moment."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2918 frappe_webmail/webmail_api.py:2936
+#: frappe_webmail/webmail_api.py:2975 frappe_webmail/webmail_api.py:2993
 msgid "Not found in trusted list"
 msgstr ""
 
@@ -2042,7 +2064,7 @@ msgstr ""
 msgid "OAuth Tokens (Internal)"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:264
+#: frappe_webmail/webmail_api.py:266
 msgid "OAuth authentication failed"
 msgstr ""
 
@@ -2050,7 +2072,7 @@ msgstr ""
 msgid "OAuth credentials not configured for {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:158
+#: frappe_webmail/webmail_api.py:160
 msgid "OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
 msgstr ""
 
@@ -2058,7 +2080,7 @@ msgstr ""
 msgid "OAuth disconnected successfully."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:201
+#: frappe_webmail/webmail_api.py:203
 msgid "OAuth error: {0}"
 msgstr ""
 
@@ -2066,7 +2088,7 @@ msgstr ""
 msgid "OAuth token expired. Please reconnect your account."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:312 frappe_webmail/webmail_api.py:490
+#: frappe_webmail/webmail_api.py:314 frappe_webmail/webmail_api.py:492
 msgid "OAuth token not available"
 msgstr ""
 
@@ -2076,24 +2098,29 @@ msgstr ""
 msgid "OAuth2"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:635
+#: frappe_webmail/webmail_api.py:637
 msgid "OAuth2 not connected. Please authorize your account first."
+msgstr ""
+
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:616
+msgid "Oldest first"
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:445
 msgid "On {0}, {1} wrote:"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:1696
+#: frappe_webmail/webmail_api.py:1753
 msgid "Only Trash and Spam folders can be emptied"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:544
+#: frappe_webmail/webmail_api.py:546
 msgid "Only the account owner can change the password"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:952
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1033
 msgid "Open"
 msgstr ""
 
@@ -2101,21 +2128,21 @@ msgstr ""
 msgid "Open a message first"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:291
+#: frontend/src/components/EmailViewer.vue:336
 msgid "Open full composer (formatting, attachments…)"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:925
 msgid "Open the editor first (New message or Reply) and write your draft — I will work on the text you have there."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:868
 msgid "Open the message you want to answer first — I will draft the reply from it."
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:149
+#: frontend/src/components/EmailViewer.vue:194
 msgid "Open the record"
 msgstr ""
 
@@ -2123,7 +2150,7 @@ msgstr ""
 msgid "Original"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:784
+#: frontend/src/pages/Webmail.vue:849
 msgid "Other mailboxes"
 msgstr ""
 
@@ -2165,11 +2192,11 @@ msgstr ""
 msgid "Paused"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:1980
+#: frontend/src/pages/Webmail.vue:2109
 msgid "Permanently delete {0} emails? This action cannot be undone."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:648
 msgid "Please enter a message before sending."
 msgstr ""
@@ -2182,7 +2209,7 @@ msgstr ""
 msgid "Please enter an email address."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:637
 msgid "Please enter at least one recipient."
 msgstr ""
@@ -2223,24 +2250,24 @@ msgstr ""
 msgid "Processing..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:771
 #: frontend/src/components/NoraBar.vue:14
 #: frontend/src/components/NoraBar.vue:17
 msgid "Proofread"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:435
 msgid "Proofread my draft"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:770
 msgid "Proofreading..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/ContactAutocomplete.vue:61
 msgid "Recent contacts"
 msgstr ""
@@ -2249,7 +2276,7 @@ msgstr ""
 msgid "Recent searches"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:635
 msgid "Recipient required"
 msgstr ""
@@ -2272,8 +2299,8 @@ msgid "Redirecting..."
 msgstr ""
 
 #: frontend/src/components/AutomationsPanel.vue:25
-#: frontend/src/components/EmailList.vue:22
-#: frontend/src/components/EmailList.vue:23
+#: frontend/src/components/EmailList.vue:51
+#: frontend/src/components/EmailList.vue:52
 msgid "Refresh"
 msgstr ""
 
@@ -2286,7 +2313,7 @@ msgstr ""
 msgid "Reject"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1162
 msgid "Rejected"
 msgstr ""
@@ -2295,25 +2322,25 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:328
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:383
 #: frontend/src/components/EmailViewer.vue:50
 #: frontend/src/components/EmailViewer.vue:51
 msgid "Remove star"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:115
 #: frontend/src/components/FolderTree.vue:313
 msgid "Rename"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:87
 msgid "Rename folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:114
 msgid "Renaming..."
 msgstr ""
@@ -2322,19 +2349,19 @@ msgstr ""
 msgid "Replace in the editor"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:131
+#: frontend/src/components/EmailList.vue:169
 msgid "Replied"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/EmailComposer.vue:303
-#: frontend/src/components/EmailList.vue:303
+#: frontend/src/components/EmailList.vue:358
 #: frontend/src/components/EmailViewer.vue:16
 msgid "Reply"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:309
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:364
 #: frontend/src/components/EmailViewer.vue:22
 #: frontend/src/components/EmailViewer.vue:23
 #: frontend/src/components/EmailViewer.vue:26
@@ -2356,7 +2383,7 @@ msgstr ""
 msgid "Reply To UID"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:650
+#: frontend/src/components/EmailViewer.vue:731
 msgid "Reply sent"
 msgstr ""
 
@@ -2364,7 +2391,7 @@ msgstr ""
 msgid "Reply to all with Nora"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:283
+#: frontend/src/components/EmailViewer.vue:328
 msgid "Reply to {0}…"
 msgstr ""
 
@@ -2376,7 +2403,7 @@ msgstr ""
 msgid "Report to"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/ContactAutocomplete.vue:39
 #: frontend/src/pages/Webmail.vue:81
 msgid "Results"
@@ -2392,12 +2419,12 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:138
 msgid "Root level"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:391
 msgid "Run failed"
 msgstr ""
@@ -2526,7 +2553,7 @@ msgstr ""
 msgid "Search {0}..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AdvancedSearch.vue:93
 #: frontend/src/components/AdvancedSearch.vue:109
 #: frontend/src/components/AttachmentPicker.vue:220
@@ -2550,11 +2577,11 @@ msgstr ""
 msgid "Select a type..."
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:30
+#: frontend/src/components/EmailList.vue:59
 msgid "Select all"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:309
+#: frontend/src/components/EmailViewer.vue:354
 msgid "Select an e-mail to read it"
 msgstr ""
 
@@ -2570,7 +2597,7 @@ msgstr ""
 #: frontend/src/components/AgentPanel.vue:313
 #: frontend/src/components/AgentPanel.vue:314
 #: frontend/src/components/EmailComposer.vue:37
-#: frontend/src/components/EmailViewer.vue:302
+#: frontend/src/components/EmailViewer.vue:347
 msgid "Send"
 msgstr ""
 
@@ -2588,8 +2615,8 @@ msgstr ""
 msgid "Sender Name"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:1071
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1204
 msgid "Sender added to the trusted list"
 msgstr ""
 
@@ -2597,11 +2624,11 @@ msgstr ""
 msgid "Sending..."
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:302
+#: frontend/src/components/EmailViewer.vue:347
 msgid "Sending…"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1161
 msgid "Sent"
 msgstr ""
@@ -2616,7 +2643,7 @@ msgstr ""
 msgid "Sent Folder"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1232
 msgid "Sent by Nora"
 msgstr ""
@@ -2625,7 +2652,7 @@ msgstr ""
 msgid "Sent to the scanned documents: the reading takes about a minute"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:586
+#: frontend/src/pages/Webmail.vue:635
 msgid "Settings"
 msgstr ""
 
@@ -2643,11 +2670,11 @@ msgstr ""
 msgid "Shared With"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:661
+#: frontend/src/pages/Webmail.vue:711
 msgid "Shared by {0}"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:783
+#: frontend/src/pages/Webmail.vue:848
 msgid "Shared mailboxes"
 msgstr ""
 
@@ -2655,19 +2682,23 @@ msgstr ""
 msgid "Shared with me"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:666
+#: frontend/src/pages/Webmail.vue:716
 msgid "Shared with {0}"
+msgstr ""
+
+#: frontend/src/components/EmailViewer.vue:153
+msgid "Show"
 msgstr ""
 
 #: frontend/src/pages/Webmail.vue:11 frontend/src/pages/Webmail.vue:12
 msgid "Show folders"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:158
+#: frontend/src/components/EmailViewer.vue:203
 msgid "Show the images"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:174
+#: frontend/src/components/EmailViewer.vue:219
 msgid "Show the original"
 msgstr ""
 
@@ -2707,16 +2738,20 @@ msgstr ""
 msgid "Signature saved"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:584
+#: frontend/src/pages/Webmail.vue:633
 msgid "Signatures"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:842
-#: frontend/src/components/EmailViewer.vue:862
-#: frontend/src/components/EmailViewer.vue:1076
-#: frontend/src/components/EmailViewer.vue:1102
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:923
+#: frontend/src/components/EmailViewer.vue:943
+#: frontend/src/components/EmailViewer.vue:1209
+#: frontend/src/components/EmailViewer.vue:1235
 msgid "Something went wrong"
+msgstr ""
+
+#: frontend/src/components/EmailList.vue:19
+msgid "Sort: {0}"
 msgstr ""
 
 #: frontend/src/utils/folderNames.js:29
@@ -2729,7 +2764,7 @@ msgstr ""
 msgid "Spam Folder"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3634
+#: frappe_webmail/webmail_api.py:3691
 msgid "Standard"
 msgstr ""
 
@@ -2738,14 +2773,14 @@ msgstr ""
 msgid "Star"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:81
-#: frontend/src/components/EmailList.vue:72
+#: frontend/src/components/EmailList.vue:101
 #: frontend/src/components/FolderTree.vue:723
 msgid "Starred"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:852
 msgid "Starting style analysis..."
 msgstr ""
@@ -2774,7 +2809,7 @@ msgstr ""
 msgid "Subject contains…"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
 #: frontend/src/components/EmailComposer.vue:72
 #: frontend/src/components/EmailComposer.vue:474
 #: frontend/src/components/FilterManager.vue:43
@@ -2785,7 +2820,7 @@ msgstr ""
 msgid "Success"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:442
 msgid "Summarise this email"
 msgstr ""
@@ -2824,7 +2859,7 @@ msgstr ""
 msgid "Text Content"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:978
 #: frontend/src/components/AgentPanel.vue:1107
 #: frontend/src/components/AgentPanel.vue:1127
@@ -2833,21 +2868,21 @@ msgstr ""
 
 #: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:118
 #: frappe_webmail/attachments.py:127 frappe_webmail/drive.py:36
-#: frappe_webmail/webmail_api.py:3472 frappe_webmail/webmail_api.py:3483
+#: frappe_webmail/webmail_api.py:3529 frappe_webmail/webmail_api.py:3540
 msgid "The Drive is not installed on this instance"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1051
 msgid "The automation could not be created — see the message above."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:509
-#: frontend/src/components/EmailViewer.vue:1030
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frontend/src/components/EmailViewer.vue:1163
 msgid "The contact could not be created"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:965
 msgid "The draft is already in that language."
 msgstr ""
@@ -2864,11 +2899,15 @@ msgstr ""
 msgid "The mailbox"
 msgstr ""
 
+#: frappe_webmail/webmail_api.py:1028
+msgid "The message is required"
+msgstr ""
+
 #: frappe_webmail/scans.py:84
 msgid "The scanned document could not be created"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:547
+#: frappe_webmail/webmail_api.py:549
 msgid "This account uses OAuth2. Please reconnect it instead of setting a password."
 msgstr ""
 
@@ -2911,7 +2950,7 @@ msgstr ""
 msgid "To Contains"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1159
 msgid "To approve"
 msgstr ""
@@ -2928,7 +2967,7 @@ msgstr ""
 msgid "To — recipient email"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:617
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:627
 #: frontend/src/components/EmailComposer.vue:44
 #: frontend/src/components/EmailComposer.vue:475
 #: frontend/src/components/FilterManager.vue:40
@@ -2954,21 +2993,21 @@ msgstr ""
 msgid "Translate"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:437
 msgid "Translate my draft into English"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:171
+#: frontend/src/components/EmailViewer.vue:216
 msgid "Translated by Nora into {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:796
 msgid "Translating to {0}..."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:944
 #: frontend/src/components/EmailComposer.vue:797
 msgid "Translation"
@@ -2995,7 +3034,7 @@ msgstr ""
 msgid "Trusted Sources"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:2882
+#: frappe_webmail/webmail_api.py:2939
 msgid "Trusted sources feature is not available. Please update the Webmail Account DocType."
 msgstr ""
 
@@ -3027,12 +3066,12 @@ msgid "Underline"
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:147
-#: frappe_webmail/webmail_api.py:152
+#: frappe_webmail/webmail_api.py:154
 msgid "Unknown OAuth provider"
 msgstr ""
 
 #: frontend/src/components/AdvancedSearch.vue:77
-#: frontend/src/components/EmailList.vue:57
+#: frontend/src/components/EmailList.vue:86
 msgid "Unread"
 msgstr ""
 
@@ -3075,7 +3114,7 @@ msgstr ""
 msgid "Webmail is part of the desk: your account has no access to it."
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1149
 #: frontend/src/components/AutomationsPanel.vue:301
 msgid "Weekdays at {0}"
@@ -3085,11 +3124,11 @@ msgstr ""
 msgid "Weekdays only"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:366
+#: frontend/src/pages/Webmail.vue:372
 msgid "Welcome to Webmail"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:444
 msgid "What should I reply?"
 msgstr ""
@@ -3098,7 +3137,7 @@ msgstr ""
 msgid "WhatsApp"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:449
 msgid "Which automations are active?"
 msgstr ""
@@ -3107,12 +3146,12 @@ msgstr ""
 msgid "With attachment"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:443
 msgid "Write a reply"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/EmailComposer.vue:366
 msgid "Write your message..."
 msgstr ""
@@ -3134,12 +3173,12 @@ msgstr ""
 msgid "You cannot read this file of the Drive"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:657
 msgid "You have not entered a subject. Do you want to send anyway?"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:367
+#: frontend/src/pages/Webmail.vue:373
 msgid "You haven't configured any email account yet."
 msgstr ""
 
@@ -3156,6 +3195,10 @@ msgstr ""
 msgid "all"
 msgstr ""
 
+#: frontend/src/components/EmailList.vue:8
+msgid "all mailboxes"
+msgstr ""
+
 #. Option for the 'Match Type' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 msgid "any"
@@ -3166,7 +3209,7 @@ msgstr ""
 msgid "delete"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 msgid "delivered"
 msgstr ""
 
@@ -3174,22 +3217,23 @@ msgstr ""
 msgid "disabled"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/ContextMenu.vue:19
 msgid "emails selected"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:519 frappe_webmail/webmail_api.py:581
-#: frappe_webmail/webmail_api.py:815 frappe_webmail/webmail_api.py:841
-#: frappe_webmail/webmail_api.py:874 frappe_webmail/webmail_api.py:956
-#: frappe_webmail/webmail_api.py:1034 frappe_webmail/webmail_api.py:1142
-#: frappe_webmail/webmail_api.py:1459 frappe_webmail/webmail_api.py:1574
-#: frappe_webmail/webmail_api.py:1597 frappe_webmail/webmail_api.py:1617
-#: frappe_webmail/webmail_api.py:1635 frappe_webmail/webmail_api.py:1665
-#: frappe_webmail/webmail_api.py:1686 frappe_webmail/webmail_api.py:1716
-#: frappe_webmail/webmail_api.py:1747 frappe_webmail/webmail_api.py:1831
-#: frappe_webmail/webmail_api.py:1918 frappe_webmail/webmail_api.py:2406
-#: frappe_webmail/webmail_api.py:2696 frappe_webmail/webmail_api.py:2801
+#: frappe_webmail/webmail_api.py:521 frappe_webmail/webmail_api.py:583
+#: frappe_webmail/webmail_api.py:817 frappe_webmail/webmail_api.py:843
+#: frappe_webmail/webmail_api.py:876 frappe_webmail/webmail_api.py:961
+#: frappe_webmail/webmail_api.py:1026 frappe_webmail/webmail_api.py:1071
+#: frappe_webmail/webmail_api.py:1181 frappe_webmail/webmail_api.py:1514
+#: frappe_webmail/webmail_api.py:1631 frappe_webmail/webmail_api.py:1654
+#: frappe_webmail/webmail_api.py:1674 frappe_webmail/webmail_api.py:1692
+#: frappe_webmail/webmail_api.py:1722 frappe_webmail/webmail_api.py:1743
+#: frappe_webmail/webmail_api.py:1773 frappe_webmail/webmail_api.py:1804
+#: frappe_webmail/webmail_api.py:1888 frappe_webmail/webmail_api.py:1975
+#: frappe_webmail/webmail_api.py:2463 frappe_webmail/webmail_api.py:2753
+#: frappe_webmail/webmail_api.py:2858
 msgid "imapclient package is not installed"
 msgstr ""
 
@@ -3221,7 +3265,7 @@ msgstr ""
 msgid "paused"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:620
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 msgid "see the Nora logs"
 msgstr ""
 
@@ -3229,7 +3273,7 @@ msgstr ""
 msgid "shared"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:780 frappe_webmail/webmail_api.py:784
+#: frappe_webmail/webmail_api.py:782 frappe_webmail/webmail_api.py:786
 msgid "this account"
 msgstr ""
 
@@ -3241,39 +3285,39 @@ msgstr ""
 msgid "your email account"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:197
+#: frontend/src/components/EmailViewer.vue:242
 msgid "{0} attachments"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2079
+#: frontend/src/pages/Webmail.vue:2208
 msgid "{0} emails copied"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:904
-#: frontend/src/pages/Webmail.vue:2006
+#: frontend/src/pages/Webmail.vue:2135
 msgid "{0} emails deleted"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:873
 msgid "{0} emails marked as read"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2053
+#: frontend/src/pages/Webmail.vue:2182
 msgid "{0} emails moved"
 msgstr ""
 
-#: frontend/src/pages/Webmail.vue:2122
+#: frontend/src/pages/Webmail.vue:2251
 msgid "{0} emails updated"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:532
 msgid "{0} exceeds 25 MB limit"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:605
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:430
 msgid "{0} files selected"
 msgstr ""
@@ -3282,64 +3326,72 @@ msgstr ""
 msgid "{0} filter(s)"
 msgstr ""
 
-#: frontend/src/components/EmailViewer.vue:468
+#: frontend/src/components/EmailViewer.vue:546
 msgid "{0} invoices this year"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:480
-#: frontend/src/components/EmailList.vue:629
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
+#: frontend/src/components/EmailList.vue:789
 msgid "{0} new messages"
+msgstr ""
+
+#: frontend/src/components/EmailViewer.vue:526
+msgid "{0} older messages in this conversation"
+msgstr ""
+
+#: frontend/src/components/EmailViewer.vue:530
+msgid "{0} other messages in this conversation"
 msgstr ""
 
 #: frontend/src/components/AdvancedSearch.vue:96
 msgid "{0} result(s) out of {1}"
 msgstr ""
 
-#: frontend/src/components/EmailList.vue:8
+#: frontend/src/components/EmailList.vue:10
 msgid "{0} unread"
 msgstr ""
 
-#: frappe_webmail/attachments.py:251 frappe_webmail/webmail_api.py:2525
+#: frappe_webmail/attachments.py:251 frappe_webmail/webmail_api.py:2582
 msgid "{0} {1} not found"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:711
+#: frappe_webmail/webmail_api.py:713
 msgid "{0}: Authentication failed. Check your email address and password."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:706
+#: frappe_webmail/webmail_api.py:708
 msgid "{0}: Cannot resolve server address '{1}'. Check the server hostname."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:729
+#: frappe_webmail/webmail_api.py:731
 msgid "{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:691
+#: frappe_webmail/webmail_api.py:693
 msgid "{0}: Connection refused to {1}:{2}. Check that the server address and port are correct."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:696
+#: frappe_webmail/webmail_api.py:698
 msgid "{0}: Connection timeout. The server is not responding. Check your network and server settings."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:726
+#: frappe_webmail/webmail_api.py:728
 msgid "{0}: Connection was reset by the server. Check SSL/TLS settings."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:720
+#: frappe_webmail/webmail_api.py:722
 msgid "{0}: SSL/TLS error. This server may require SSL. Try enabling SSL."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:716
+#: frappe_webmail/webmail_api.py:718
 msgid "{0}: SSL/TLS error. Try disabling SSL or check the server's SSL configuration."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:723
+#: frappe_webmail/webmail_api.py:725
 msgid "{0}: STARTTLS error. Try toggling the STARTTLS option."
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:734
+#: frappe_webmail/webmail_api.py:736
 msgid "{0}: {1}"
 msgstr ""
 
