@@ -392,6 +392,108 @@ describe("EmailViewer", () => {
 		expect(wrapper.vm.hasBlockedImages).toBe(false);
 	});
 
+	describe("the conversation, unfolded while a message is read (board 20)", () => {
+		const other = (uid, folder, date, extra = {}) => ({
+			uid,
+			folder,
+			date,
+			subject: `Re: Devis ${uid}`,
+			from_email: `marc${uid}@example.com`,
+			from_name: `Marc ${uid}`,
+			preview: `Mot ${uid}`,
+			seen: true,
+			...extra,
+		});
+		const answering = (messages) => (opts) =>
+			Promise.resolve(
+				opts.method === "frappe_webmail.api.get_conversation"
+					? { message: { messages } }
+					: { message: null }
+			);
+
+		it("says how many older messages there are, asked in the message's own mailbox and folder", async () => {
+			frappe.call.mockImplementation(
+				answering([
+					other(3, "INBOX", "2024-01-10T09:00:00"),
+					other(2, "Sent", "2024-01-12T09:00:00"),
+				])
+			);
+			const wrapper = mount(EmailViewer, {
+				props: {
+					email: { ...mockEmail, uid: 5 },
+					account: "info@example.com",
+					folder: "INBOX",
+					folderMapping: { sent: "Sent" },
+				},
+			});
+			await flushPromises();
+			const asked = frappe.call.mock.calls.find(
+				(c) => c[0].method === "frappe_webmail.api.get_conversation"
+			)[0].args;
+			expect(asked).toEqual({ account_name: "info@example.com", folder: "INBOX", uid: 5 });
+			expect(wrapper.find(".thread-label").text()).toBe(
+				"2 older messages in this conversation"
+			);
+			expect(wrapper.find(".thread-list").exists()).toBe(false);
+		});
+
+		it("unfolds into the messages, each opened in its folder, the conversation kept unfolded", async () => {
+			frappe.call.mockImplementation(
+				answering([
+					other(3, "INBOX", "2024-01-10T09:00:00"),
+					other(9, "INBOX", "2024-01-20T09:00:00"),
+				])
+			);
+			const wrapper = mount(EmailViewer, {
+				props: {
+					email: { ...mockEmail, uid: 5 },
+					account: "me@example.com",
+					folder: "INBOX",
+				},
+			});
+			await flushPromises();
+			// One is newer: « 2 other messages »
+			expect(wrapper.find(".thread-label").text()).toBe(
+				"2 other messages in this conversation"
+			);
+			await wrapper.find(".thread-head").trigger("click");
+			const rows = wrapper.findAll(".thread-row");
+			expect(rows.length).toBe(2);
+			await rows[1].trigger("click");
+			expect(wrapper.emitted("open-message")[0][0]).toEqual({ uid: 9, folder: "INBOX" });
+			// The message opened from there comes with its conversation unfolded
+			await wrapper.setProps({ email: { ...mockEmail, uid: 9 } });
+			await flushPromises();
+			expect(wrapper.find(".thread-list").exists()).toBe(true);
+			// Another message, read otherwise, starts folded
+			await wrapper.setProps({ email: { ...mockEmail, uid: 11 } });
+			await flushPromises();
+			expect(wrapper.find(".thread-list").exists()).toBe(false);
+		});
+
+		it("names a message's folder when it is not the one read, and shows nothing for a lone message", async () => {
+			frappe.call.mockImplementation(answering([other(2, "Sent", "2024-01-12T09:00:00")]));
+			const wrapper = mount(EmailViewer, {
+				props: {
+					email: { ...mockEmail, uid: 5, date: "2024-01-15T10:30:00" },
+					account: "me@example.com",
+					folder: "INBOX",
+					folderMapping: { sent: "Sent" },
+				},
+			});
+			await flushPromises();
+			expect(wrapper.find(".thread-label").text()).toBe(
+				"1 older message in this conversation"
+			);
+			await wrapper.find(".thread-head").trigger("click");
+			expect(wrapper.find(".thread-folder").text()).toBe("Sent");
+			frappe.call.mockImplementation(answering([]));
+			await wrapper.setProps({ email: { ...mockEmail, uid: 6 } });
+			await flushPromises();
+			expect(wrapper.find(".thread-strip").exists()).toBe(false);
+		});
+	});
+
 	describe("Nora's sphere on the message (board 21)", () => {
 		const withAll = {
 			...mockEmail,

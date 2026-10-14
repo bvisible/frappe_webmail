@@ -302,3 +302,129 @@ describe("EmailList", () => {
 		expect(typeof wrapper.vm.refresh).toBe("function");
 	});
 });
+
+// Lot 2 « retrouver » (canvas « Neodesk », board 20): the unread and the starred asked of the server, the order, and
+// « Toutes les boîtes ».
+describe("EmailList — finding a message again", () => {
+	const row = (uid, date, extra = {}) => ({
+		uid,
+		subject: `Message ${uid}`,
+		from_email: `sender${uid}@example.com`,
+		from_name: `Sender ${uid}`,
+		date,
+		seen: true,
+		flagged: false,
+		has_attachments: false,
+		...extra,
+	});
+	const listed = (emails) => ({ message: { emails, total: emails.length, has_more: false } });
+	const lastArgs = () => frappe.call.mock.calls.at(-1)[0].args;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("asks the server for the starred and the unread, and for the oldest first", async () => {
+		frappe.call.mockResolvedValue(listed([row(1, "2026-10-14T09:00:00")]));
+		const wrapper = mount(EmailList, {
+			props: { account: "me@example.com", folder: "INBOX" },
+		});
+		await flushPromises();
+		expect(lastArgs()).not.toHaveProperty("only");
+
+		wrapper.vm.activeFilter = "starred";
+		await flushPromises();
+		expect(lastArgs()).toMatchObject({ only: "flagged" });
+
+		wrapper.vm.activeFilter = "unread";
+		await flushPromises();
+		expect(lastArgs()).toMatchObject({ only: "unread" });
+
+		// Back to all: the whole list again; then the attachments, sorted out here: no new question
+		wrapper.vm.activeFilter = "all";
+		await flushPromises();
+		expect(lastArgs()).not.toHaveProperty("only");
+		const asked = frappe.call.mock.calls.length;
+		wrapper.vm.activeFilter = "attachments";
+		await flushPromises();
+		expect(frappe.call.mock.calls.length).toBe(asked);
+
+		wrapper.vm.setOrder("oldest");
+		await flushPromises();
+		expect(lastArgs()).toMatchObject({ order: "oldest" });
+	});
+
+	it("keeps the chips while a filter finds nothing, the way back to all", async () => {
+		frappe.call.mockResolvedValue(listed([row(1, "2026-10-14T09:00:00")]));
+		const wrapper = mount(EmailList, {
+			props: { account: "me@example.com", folder: "INBOX" },
+		});
+		await flushPromises();
+		frappe.call.mockResolvedValue(listed([]));
+		wrapper.vm.activeFilter = "starred";
+		await flushPromises();
+		expect(wrapper.find(".filter-chips").exists()).toBe(true);
+	});
+
+	it("lists every mailbox's inbox in one list, by date, each row tagged with its mailbox", async () => {
+		frappe.call.mockImplementation(({ args }) =>
+			Promise.resolve(
+				args.account_name === "info@example.com"
+					? listed([row(7, "2026-10-14T11:20:00")])
+					: listed([row(7, "2026-10-14T10:42:00"), row(5, "2026-10-13T16:30:00")])
+			)
+		);
+		const wrapper = mount(EmailList, {
+			props: {
+				account: "me@example.com",
+				folder: "INBOX",
+				unified: true,
+				accounts: ["me@example.com", "info@example.com"],
+				accountLabels: { "me@example.com": "Camille", "info@example.com": "Info" },
+			},
+		});
+		await flushPromises();
+		expect(
+			frappe.call.mock.calls.map((c) => [c[0].args.account_name, c[0].args.folder])
+		).toEqual([
+			["me@example.com", "INBOX"],
+			["info@example.com", "INBOX"],
+		]);
+		// The same number in two mailboxes is two messages
+		expect(wrapper.vm.emails.map((e) => e.key)).toEqual([
+			"info@example.com/7",
+			"me@example.com/7",
+			"me@example.com/5",
+		]);
+		expect(wrapper.findAll(".box-tag").map((t) => t.text())).toEqual([
+			"Info",
+			"Camille",
+			"Camille",
+		]);
+		expect(wrapper.find(".list-sub").exists()).toBe(true);
+		// No selection, no drag to this mailbox's folders
+		expect(wrapper.find(".checkbox-cell").exists()).toBe(false);
+		// A row is found by its mailbox too
+		wrapper.vm.markAsRead(7, "me@example.com");
+		expect(wrapper.vm.rowOf(7, "info@example.com")).toBe(wrapper.vm.emails[0]);
+	});
+
+	it("leaves out a mailbox that cannot be read, quietly", async () => {
+		frappe.call.mockImplementation(({ args, silent }) =>
+			args.account_name === "info@example.com"
+				? Promise.reject(new Error(silent ? "quiet" : "loud"))
+				: Promise.resolve(listed([row(3, "2026-10-14T09:00:00")]))
+		);
+		const wrapper = mount(EmailList, {
+			props: {
+				account: "me@example.com",
+				folder: "INBOX",
+				unified: true,
+				accounts: ["me@example.com", "info@example.com"],
+			},
+		});
+		await flushPromises();
+		expect(wrapper.vm.emails.map((e) => e.key)).toEqual(["me@example.com/3"]);
+		expect(frappe.call.mock.calls.every((c) => c[0].silent === true)).toBe(true);
+	});
+});

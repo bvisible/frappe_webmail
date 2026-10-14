@@ -4,10 +4,39 @@
 		     (no search input — the topbar cmd-search is the single entry point) -->
 		<div class="list-header">
 			<h2 class="list-title">{{ folderLabel }}</h2>
+			<!-- « Toutes les boîtes » (canvas « Neodesk », board 20): the inbox of every mailbox, one list -->
+			<span v-if="unified" class="list-sub">{{ __("all mailboxes") }}</span>
 			<span class="list-count" v-if="unreadFilterCount > 0">
 				{{ __("{0} unread", [unreadFilterCount]) }}
 			</span>
 			<div class="list-header-right">
+				<!-- The order of the list (board 20): the newest or the oldest first, asked of the server -->
+				<div class="sort-wrap">
+					<button
+						type="button"
+						class="sort-pill"
+						:aria-expanded="sortOpen ? 'true' : 'false'"
+						:aria-label="__('Sort: {0}', [orderLabel(order)])"
+						@click="sortOpen = !sortOpen"
+					>
+						<ListFilter :size="12" />
+						{{ orderLabel(order) }}
+						<ChevronDown :size="11" />
+					</button>
+					<div v-if="sortOpen" class="sort-menu" role="menu">
+						<button
+							v-for="choice in ['newest', 'oldest']"
+							:key="choice"
+							type="button"
+							role="menuitemradio"
+							:aria-checked="order === choice ? 'true' : 'false'"
+							@click="setOrder(choice)"
+						>
+							<span>{{ orderLabel(choice) }}</span>
+							<Check v-if="order === choice" :size="14" />
+						</button>
+					</div>
+				</div>
 				<div
 					class="polling-status"
 					v-if="pollingEnabled"
@@ -40,14 +69,14 @@
 		</div>
 
 		<!-- Quick filter chips (Tous / Non lus / Avec PJ / Suivis) -->
-		<div class="filter-chips" v-if="emails.length > 0">
+		<div class="filter-chips" v-if="emails.length > 0 || activeFilter !== 'all'">
 			<button
 				class="chip-filter"
 				:class="{ on: activeFilter === 'all' }"
 				@click="activeFilter = 'all'"
 			>
 				{{ __("All") }}
-				<span class="ct">{{ emails.length }}</span>
+				<span class="ct" v-if="activeFilter === 'all'">{{ emails.length }}</span>
 			</button>
 			<button
 				class="chip-filter"
@@ -80,30 +109,36 @@
 			:class="{ selecting: selectedCount > 0 }"
 			:items="displayedEmails"
 			:item-size="82"
-			key-field="uid"
+			:key-field="unified ? 'key' : 'uid'"
 			v-slot="{ item }"
 			@scroll-end="loadMore"
 		>
+			<!-- In « Toutes les boîtes » a message is read, answered, followed from its own mailbox: no selection, no
+			     drag to the folders, no menu of this mailbox's folders -->
 			<div
 				class="email-row"
 				:class="{
 					unread: !item.seen,
-					active: item.uid === selectedUid,
-					selected: isSelected(item.uid),
+					active: unified ? item.key === selectedKey : item.uid === selectedUid,
+					selected: !unified && isSelected(item.uid),
 					flagged: item.flagged,
 					dragging: draggingUid === item.uid,
 				}"
-				draggable="true"
+				:draggable="unified ? 'false' : 'true'"
 				@click="$emit('select', item)"
-				@contextmenu.prevent="showContextMenu($event, item)"
-				@dragstart="onDragStart($event, item)"
+				@contextmenu.prevent="!unified && showContextMenu($event, item)"
+				@dragstart="!unified && onDragStart($event, item)"
 				@dragend="onDragEnd"
 			>
 				<!-- The gutter: the unread dot; the row's checkbox over it on hover, or while rows are selected (canvas
 				     « Neodesk », board 7, draws the dot; the multi-selection stays) -->
 				<div class="row-gutter">
 					<span v-if="!item.seen" class="unread-dot" aria-hidden="true"></span>
-					<div class="checkbox-cell" @click.stop="toggleSelection(item, $event)">
+					<div
+						v-if="!unified"
+						class="checkbox-cell"
+						@click.stop="toggleSelection(item, $event)"
+					>
 						<input
 							type="checkbox"
 							:checked="isSelected(item.uid)"
@@ -115,6 +150,9 @@
 				<div class="email-content">
 					<div class="email-top-line">
 						<span class="from">{{ item.from_name || item.from_email }}</span>
+						<span v-if="unified && item.account" class="box-tag">{{
+							accountLabels[item.account] || item.account
+						}}</span>
 						<span class="date">{{ formatDate(item.date) }}</span>
 					</div>
 					<div class="email-bottom-line">
@@ -184,6 +222,9 @@ import {
 	Copy,
 	Trash2,
 	AlertTriangle,
+	ListFilter,
+	ChevronDown,
+	Check,
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
 
@@ -205,6 +246,9 @@ export default {
 		Copy,
 		Trash2,
 		AlertTriangle,
+		ListFilter,
+		ChevronDown,
+		Check,
 		ContextMenu,
 	},
 
@@ -212,6 +256,12 @@ export default {
 		account: { type: String, required: true },
 		folder: { type: String, default: "INBOX" },
 		selectedUid: { type: Number, default: null },
+		// « Toutes les boîtes » (board 20): the inbox of each of `accounts` in one list, each row with its `account`
+		// and a `key` (mailbox/uid); `accountLabels` names a mailbox on its rows
+		unified: { type: Boolean, default: false },
+		accounts: { type: Array, default: () => [] },
+		accountLabels: { type: Object, default: () => ({}) },
+		selectedKey: { type: String, default: null },
 		pollingEnabled: { type: Boolean, default: true },
 		pollingInterval: { type: Number, default: 60000 }, // 60 seconds
 		folders: { type: Array, default: () => [] },
@@ -248,8 +298,12 @@ export default {
 			// Multi-selection
 			selectedUids: new Set(),
 			lastSelectedIndex: -1,
-			// Quick filter chip state ("all" | "unread" | "attachments" | "starred").
+			// Quick filter chip state ("all" | "unread" | "attachments" | "starred"). The unread and the starred are
+			// asked of the server (get_emails' `only`), so that every one is found, not only those of the first page.
 			activeFilter: "all",
+			// The newest or the oldest first (get_emails' `order`), and its menu
+			order: "newest",
+			sortOpen: false,
 		};
 	},
 
@@ -259,6 +313,7 @@ export default {
 		// (Inbox/Sent/Drafts/Trash/Spam/Archive); falls back to the last
 		// path segment for nested IMAP folders.
 		folderLabel() {
+			if (this.unified) return folderName("inbox");
 			const folder = this.folder || "";
 			const m = this.folderMapping || {};
 			if (folder === "INBOX" || folder === m.inbox) return folderName("inbox");
@@ -411,6 +466,11 @@ export default {
 	watch: {
 		account: "onAccountOrFolderChange",
 		folder: "onAccountOrFolderChange",
+		unified: "onAccountOrFolderChange",
+		activeFilter(now, before) {
+			// The attachments are sorted out here; the unread and the starred come from the server
+			if (this.serverFilter(now) !== this.serverFilter(before)) this.refresh();
+		},
 		pollingEnabled(enabled) {
 			if (enabled) {
 				this.startPolling();
@@ -427,11 +487,14 @@ export default {
 		}
 		// Add keyboard event listeners
 		document.addEventListener("keydown", this.onKeydown);
+		// The order's menu closes on a click elsewhere
+		document.addEventListener("click", this.onDocumentClick);
 	},
 
 	beforeUnmount() {
 		this.stopPolling();
 		document.removeEventListener("keydown", this.onKeydown);
+		document.removeEventListener("click", this.onDocumentClick);
 	},
 
 	methods: {
@@ -440,6 +503,15 @@ export default {
 			if (append && !this.hasMore) return;
 
 			this.loading = true;
+
+			if (this.unified) {
+				try {
+					await this.loadAllBoxes();
+				} finally {
+					this.loading = false;
+				}
+				return;
+			}
 
 			try {
 				const response = await frappe.call({
@@ -450,6 +522,7 @@ export default {
 						limit: 50,
 						offset: append ? this.emails.length : 0,
 						search: this.searchQuery || null,
+						...this.listArgs(),
 					},
 				});
 
@@ -480,6 +553,80 @@ export default {
 			this.loadEmails();
 		},
 
+		/**
+		 * « Toutes les boîtes »: the first page of each mailbox's inbox, asked as the list is (filter, order, search),
+		 * merged by date. A mailbox that cannot be read is left out, quietly (no window at each refresh).
+		 */
+		async loadAllBoxes() {
+			const answers = await Promise.all(
+				this.accounts.map((account) =>
+					frappe
+						.call({
+							method: "frappe_webmail.api.get_emails",
+							args: {
+								account_name: account,
+								folder: "INBOX",
+								limit: 50,
+								offset: 0,
+								search: this.searchQuery || null,
+								...this.listArgs(),
+							},
+							silent: true,
+						})
+						.then((response) => ({ account, data: response.message || {} }))
+						.catch(() => ({ account, data: null }))
+				)
+			);
+			const time = (value) => (value ? Date.parse(value) || 0 : 0);
+			const sign = this.order === "oldest" ? 1 : -1;
+			const rows = answers
+				.filter((answer) => answer.data && Array.isArray(answer.data.emails))
+				.flatMap((answer) =>
+					answer.data.emails.map((row) => ({
+						...row,
+						account: answer.account,
+						folder: "INBOX",
+						key: `${answer.account}/${row.uid}`,
+					}))
+				)
+				.sort((a, b) => sign * (time(a.date) - time(b.date)));
+			this.emails = rows;
+			this.total = answers.reduce((n, answer) => n + (Number(answer.data?.total) || 0), 0);
+			this.hasMore = false;
+			this.$emit("update:total", this.total);
+		},
+
+		/** The filter the server applies (`only`), from a chip: the unread or the flagged, else none. */
+		serverFilter(filter) {
+			if (filter === "unread") return "unread";
+			if (filter === "starred") return "flagged";
+			return null;
+		},
+
+		/** What get_emails is asked besides the folder: the filter and the order, when not the default. */
+		listArgs() {
+			const only = this.serverFilter(this.activeFilter);
+			return {
+				...(only ? { only } : {}),
+				...(this.order === "oldest" ? { order: "oldest" } : {}),
+			};
+		},
+
+		orderLabel(order) {
+			return order === "oldest" ? this.__("Oldest first") : this.__("Newest first");
+		},
+
+		onDocumentClick(event) {
+			if (this.sortOpen && !event.target?.closest?.(".sort-wrap")) this.sortOpen = false;
+		},
+
+		setOrder(order) {
+			this.sortOpen = false;
+			if (order === this.order) return;
+			this.order = order;
+			this.refresh();
+		},
+
 		search() {
 			this.refresh();
 		},
@@ -497,9 +644,9 @@ export default {
 				await frappe.call({
 					method: "frappe_webmail.api.set_flags",
 					args: {
-						account_name: this.account,
+						account_name: email.account || this.account,
 						uids: JSON.stringify([email.uid]),
-						folder: this.folder,
+						folder: email.folder || this.folder,
 						[action]: JSON.stringify(["\\Flagged"]),
 					},
 				});
@@ -538,8 +685,15 @@ export default {
 			});
 		},
 
-		markAsRead(uid) {
-			const email = this.emails.find((e) => e.uid === uid);
+		/** The row of a message: by its number, and by its mailbox when the rows carry one (« Toutes les boîtes »). */
+		rowOf(uid, account = null) {
+			return this.emails.find(
+				(e) => e.uid === uid && (!account || !e.account || e.account === account)
+			);
+		},
+
+		markAsRead(uid, account = null) {
+			const email = this.rowOf(uid, account);
 			if (email) email.seen = true;
 		},
 
@@ -568,6 +722,12 @@ export default {
 		async checkForNewEmails() {
 			// Don't check while loading or if no emails loaded yet
 			if (this.loading || this.emails.length === 0) return;
+			// The unread, the starred or the oldest first, every mailbox: new mail is not simply on top, the first page is
+			// read again
+			if (this.unified || Object.keys(this.listArgs()).length) {
+				this.loadEmails();
+				return;
+			}
 
 			try {
 				const response = await frappe.call({
@@ -748,23 +908,25 @@ export default {
 				}));
 		},
 
-		getFolderDisplayName(folderName) {
+		// The parameter was called `folderName` and hid the imported function: a mapped folder in « Move to » or
+		// « Copy to » threw (« folderName is not a function ») and the submenu never opened
+		getFolderDisplayName(name) {
 			// Check folder mapping first
-			if (this.folderMapping.inbox && folderName === this.folderMapping.inbox)
+			if (this.folderMapping.inbox && name === this.folderMapping.inbox)
 				return folderName("inbox");
-			if (this.folderMapping.sent && folderName === this.folderMapping.sent)
+			if (this.folderMapping.sent && name === this.folderMapping.sent)
 				return folderName("sent");
-			if (this.folderMapping.drafts && folderName === this.folderMapping.drafts)
+			if (this.folderMapping.drafts && name === this.folderMapping.drafts)
 				return folderName("drafts");
-			if (this.folderMapping.trash && folderName === this.folderMapping.trash)
+			if (this.folderMapping.trash && name === this.folderMapping.trash)
 				return folderName("trash");
-			if (this.folderMapping.spam && folderName === this.folderMapping.spam)
+			if (this.folderMapping.spam && name === this.folderMapping.spam)
 				return folderName("spam");
-			if (this.folderMapping.archive && folderName === this.folderMapping.archive)
+			if (this.folderMapping.archive && name === this.folderMapping.archive)
 				return folderName("archive");
 
 			// Return last part of folder name
-			const parts = folderName.split("/");
+			const parts = name.split("/");
 			return parts[parts.length - 1];
 		},
 
@@ -791,15 +953,15 @@ export default {
 		},
 
 		// Methods to update email state from parent component
-		updateEmailFlag(uid, flag, value) {
-			const email = this.emails.find((e) => e.uid === uid);
+		updateEmailFlag(uid, flag, value, account = null) {
+			const email = this.rowOf(uid, account);
 			if (email) {
 				email[flag] = value;
 			}
 		},
 
-		removeEmail(uid) {
-			const index = this.emails.findIndex((e) => e.uid === uid);
+		removeEmail(uid, account = null) {
+			const index = this.emails.indexOf(this.rowOf(uid, account));
 			if (index !== -1) {
 				this.emails.splice(index, 1);
 				this.total--;
@@ -1062,6 +1224,13 @@ export default {
 	flex-shrink: 0;
 }
 
+/* « Réception · toutes les boîtes » (board 20) */
+.list-sub {
+	font-size: 12.5px;
+	color: var(--wm-ink-mute, #8d99a6);
+	white-space: nowrap;
+}
+
 .list-count {
 	font-size: 11.5px;
 	color: var(--wm-ink-mute, #8d99a6);
@@ -1073,6 +1242,72 @@ export default {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+}
+
+/* The order of the list (board 20): a pill, its menu under it */
+.sort-wrap {
+	position: relative;
+}
+
+.sort-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 10px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: var(--wm-bg-raised, #fff);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--wm-ink, #1a1a1a);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.sort-pill:hover,
+.sort-pill[aria-expanded="true"] {
+	border-color: var(--wm-accent);
+}
+
+.sort-menu {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	z-index: 30;
+	min-width: 170px;
+	padding: 4px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 12px;
+	background: var(--wm-bg-raised, #fff);
+	box-shadow: 0 12px 28px rgba(40, 28, 10, 0.14);
+}
+
+.sort-menu button {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+	min-height: 32px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	font: inherit;
+	font-size: 13px;
+	color: var(--wm-ink, #1a1a1a);
+	text-align: left;
+	cursor: pointer;
+}
+
+.sort-menu button:hover {
+	background: var(--wm-bg-sunken, #f5f5f5);
+}
+
+.sort-menu svg {
+	color: var(--wm-accent);
 }
 
 .header-icon-btn {
@@ -1280,6 +1515,23 @@ export default {
 	line-height: 20px;
 	font-weight: 600;
 	color: var(--wm-ink, var(--text-color, #333));
+}
+
+/* A message's mailbox in « Toutes les boîtes » (board 20), in the clay wash of the mailboxes */
+.box-tag {
+	flex: none;
+	max-width: 40%;
+	height: 18px;
+	padding: 0 6px;
+	border-radius: 5px;
+	background: var(--wm-accent-soft);
+	color: var(--wm-accent);
+	font-size: 10.5px;
+	font-weight: 700;
+	line-height: 18px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .date {

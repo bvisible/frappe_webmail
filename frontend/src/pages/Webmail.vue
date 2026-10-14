@@ -289,6 +289,10 @@
 					:account="currentAccount"
 					:folder="currentFolder"
 					:selected-uid="selectedEmail?.uid"
+					:unified="allBoxes"
+					:accounts="accountNames"
+					:account-labels="accountLabels"
+					:selected-key="selectedEmail?.key || null"
 					:polling-enabled="pollingEnabled"
 					:polling-interval="pollingInterval"
 					:folders="folders"
@@ -311,9 +315,10 @@
 				<EmailViewer
 					v-if="!showComposer"
 					:email="selectedEmailContent"
-					:account="currentAccount"
-					:folder="currentFolder"
+					:account="messageAccount"
+					:folder="messageFolder"
 					:nora-enabled="capabilities.nora"
+					:folder-mapping="folderMapping"
 					@reply="replyTo"
 					@forward="forwardEmail"
 					@delete="deleteEmail"
@@ -321,11 +326,12 @@
 					@mark-unread="onMarkUnread"
 					@quick-reply="handleQuickReply"
 					@forward-attachment="forwardAttachment"
+					@open-message="openFromConversation"
 				/>
 				<EmailComposer
 					v-else
 					ref="composer"
-					:account="currentAccount"
+					:account="composerAccount"
 					:nora-enabled="capabilities.nora"
 					:reply-to="replyToEmail"
 					:forward-email="forwardingEmail"
@@ -333,7 +339,7 @@
 					:initial-attachments="composerAttachments"
 					:initial-subject="composerSubject"
 					:signature="defaultSignature"
-					:folder="currentFolder"
+					:folder="composerFolder"
 					@sent="onEmailSent"
 					@close="closeComposer"
 					@draft-deleted="onDraftDeleted"
@@ -499,6 +505,11 @@ export default {
 			accounts: [],
 			currentAccount: "",
 			currentFolder: "INBOX",
+			// « Toutes les boîtes » (canvas « Neodesk », board 20; Jérémy's choice of 14.10.2026: his own box first, all
+			// of them one click away): the inbox of every mailbox in one list
+			allBoxes: false,
+			// Unread in the inbox of each mailbox (get_folder_counts), for the cockpit's entries
+			boxUnread: {},
 			selectedEmail: null,
 			selectedEmailContent: null,
 			totalEmails: 0,
@@ -571,6 +582,44 @@ export default {
 	},
 
 	computed: {
+		accountNames() {
+			return this.accounts.map((a) => a.name);
+		},
+
+		// A mailbox as its messages are tagged in « Toutes les boîtes »: its sender name, else its address's first part
+		accountLabels() {
+			return Object.fromEntries(
+				this.accounts.map((a) => [
+					a.name,
+					a.sender_name || (a.email || a.name).split("@")[0],
+				])
+			);
+		},
+
+		// The mailbox and the folder of the message read: its own in « Toutes les boîtes », else the ones on screen
+		messageAccount() {
+			return (this.allBoxes && this.selectedEmail?.account) || this.currentAccount;
+		},
+		messageFolder() {
+			return (this.allBoxes && this.selectedEmail?.folder) || this.currentFolder;
+		},
+
+		// An answer or a forward leaves from the message's mailbox; a new message from the one on screen
+		composerAccount() {
+			return this.replyToEmail || this.forwardingEmail
+				? this.messageAccount
+				: this.currentAccount;
+		},
+		composerFolder() {
+			return this.replyToEmail || this.forwardingEmail
+				? this.messageFolder
+				: this.currentFolder;
+		},
+
+		allBoxesUnread() {
+			return this.accountNames.reduce((n, name) => n + (this.boxUnread[name] || 0), 0);
+		},
+
 		// What the top bar's settings menu holds: the four buttons the bar had before (board 7 keeps the bar to the
 		// trail, the search, Nora and « New Message »)
 		toolsMenuItems() {
@@ -610,6 +659,7 @@ export default {
 
 		// Pretty label of the folder the live search runs against.
 		folderLabelForSearch() {
+			if (this.allBoxes) return this.__("All mailboxes");
 			const f = this.currentFolder || "";
 			const m = this.folderMapping || {};
 			if (f === "INBOX" || f === m.inbox) return folderName("inbox");
@@ -724,6 +774,7 @@ export default {
 	},
 
 	beforeUnmount() {
+		if (this._boxUnreadTimer) clearInterval(this._boxUnreadTimer);
 		window.removeEventListener("frappe_webmail:lend-nav", this._lendNav);
 		if (this.lendsNav) window.NeoCockpit.setPageNav(null);
 		if (this._offTooltips) {
@@ -754,7 +805,7 @@ export default {
 				label: f.label,
 				icon: f.icon,
 				depth: special ? 0 : f.depth,
-				active: f.name === this.currentFolder,
+				active: !this.allBoxes && f.name === this.currentFolder,
 				badge: f.unread || undefined,
 				badgeTone: f.role === "inbox" ? "accent" : undefined,
 				onClick: () => f.selectable && this.onFolderSelect(f.name),
@@ -771,12 +822,26 @@ export default {
 			const own = this.navFolders.filter((f) => !order.includes(f.role));
 			const others = this.accounts.filter((a) => a.name !== this.currentAccount);
 			const local = (email) => (email || "").split("@")[0] + "@";
-			const nav = [
-				{
-					label: local(this.currentAccountEmail),
-					items: special.map((f) => item(f, true)),
-				},
-			];
+			const nav = [];
+			// « Toutes les boîtes » heads the mailboxes (board 20): the inbox of every one, one click away
+			if (others.length) {
+				nav.push({
+					items: [
+						{
+							label: this.__("All mailboxes"),
+							icon: "lucide-inbox",
+							active: this.allBoxes,
+							badge: this.allBoxesUnread || undefined,
+							badgeTone: "accent",
+							onClick: () => this.showAllBoxes(),
+						},
+					],
+				});
+			}
+			nav.push({
+				label: local(this.currentAccountEmail),
+				items: special.map((f) => item(f, true)),
+			});
 			if (others.length) {
 				nav.push({
 					label: others.every((a) => a.is_shared)
@@ -785,6 +850,7 @@ export default {
 					items: others.map((a) => ({
 						label: local(a.email),
 						icon: "lucide-users",
+						badge: this.boxUnread[a.name] || undefined,
 						onClick: () => this.switchAccount(a.name),
 					})),
 				});
@@ -805,9 +871,44 @@ export default {
 		},
 
 		switchAccount(name) {
-			if (name === this.currentAccount) return;
+			if (name === this.currentAccount && !this.allBoxes) return;
+			this.allBoxes = false;
+			if (name === this.currentAccount) {
+				this.onFolderSelect("INBOX");
+				return;
+			}
 			this.currentAccount = name;
 			this.onAccountChange();
+		},
+
+		// « Toutes les boîtes »: every mailbox's inbox in the list, nothing read yet
+		showAllBoxes() {
+			if (this.allBoxes) return;
+			this.allBoxes = true;
+			this.selectedEmail = null;
+			this.selectedEmailContent = null;
+			this.showComposer = false;
+			this.loadBoxUnread();
+			this.publishNav();
+		},
+
+		// Unread in each mailbox's inbox, read quietly (a mailbox that cannot be read counts nothing)
+		async loadBoxUnread() {
+			if (this.accounts.length < 2) return;
+			const counts = await Promise.all(
+				this.accountNames.map((name) =>
+					frappe
+						.call({
+							method: "frappe_webmail.attachments.get_folder_counts",
+							args: { account_name: name },
+							silent: true,
+						})
+						.then((r) => [name, r.message?.INBOX?.unseen || 0])
+						.catch(() => [name, 0])
+				)
+			);
+			this.boxUnread = Object.fromEntries(counts);
+			this.publishNav();
 		},
 
 		async loadQuota() {
@@ -984,6 +1085,8 @@ export default {
 
 			try {
 				await this.loadAccounts();
+				this.loadBoxUnread();
+				this._boxUnreadTimer = setInterval(() => this.loadBoxUnread(), 60000);
 				// Independent reads — fire them together instead of one after the other.
 				await Promise.all([
 					this.loadDefaultSignature(),
@@ -1104,6 +1207,7 @@ export default {
 		},
 
 		onAccountChange() {
+			this.allBoxes = false;
 			this.currentFolder = "INBOX";
 			this.selectedEmail = null;
 			this.selectedEmailContent = null;
@@ -1115,32 +1219,41 @@ export default {
 		},
 
 		onFolderSelect(folder) {
+			const leftAllBoxes = this.allBoxes;
+			this.allBoxes = false;
 			this.currentFolder = folder;
 			this.selectedEmail = null;
 			this.selectedEmailContent = null;
+			if (leftAllBoxes) this.publishNav();
 		},
 
 		async onEmailSelect(email) {
 			this.selectedEmail = email;
+			// Its own mailbox and folder in « Toutes les boîtes », else the ones on screen
+			const account = this.messageAccount;
+			const folder = this.messageFolder;
 
 			// Load full content
 			try {
 				const response = await frappe.call({
 					method: "frappe_webmail.api.get_email_content",
 					args: {
-						account_name: this.currentAccount,
+						account_name: account,
 						uid: email.uid,
-						folder: this.currentFolder,
+						folder,
 						mark_read: true,
 					},
 				});
 
 				const emailContent = response.message;
 				// Reading it marked it read: the folders' numbers follow
-				if (!email.seen) this.$refs.folderTree?.loadCounts();
+				if (!email.seen) {
+					this.$refs.folderTree?.loadCounts();
+					this.loadBoxUnread();
+				}
 
 				// Check if this is a Drafts folder - open in composer mode
-				if (this.isDraftsFolder(this.currentFolder)) {
+				if (!this.allBoxes && this.isDraftsFolder(this.currentFolder)) {
 					this.editingDraft = { ...emailContent, folder: this.currentFolder };
 					this.replyToEmail = null;
 					this.forwardingEmail = null;
@@ -1153,7 +1266,7 @@ export default {
 
 					// Mark as read in list
 					if (this.$refs.emailList) {
-						this.$refs.emailList.markAsRead(email.uid);
+						this.$refs.emailList.markAsRead(email.uid, email.account || null);
 					}
 				}
 			} catch (error) {
@@ -1200,9 +1313,9 @@ export default {
 				const r = await frappe.call({
 					method: "frappe_webmail.api.get_attachment",
 					args: {
-						account_name: this.currentAccount,
+						account_name: this.messageAccount,
 						uid: email.uid,
-						folder: this.currentFolder,
+						folder: this.messageFolder,
 						attachment_id: attachment.id,
 					},
 				});
@@ -1337,9 +1450,9 @@ export default {
 					const response = await frappe.call({
 						method: "frappe_webmail.api.delete_emails",
 						args: {
-							account_name: this.currentAccount,
+							account_name: this.messageAccount,
 							uids: JSON.stringify([email.uid]),
-							folder: this.currentFolder,
+							folder: this.messageFolder,
 							permanent: false,
 						},
 					});
@@ -1364,7 +1477,10 @@ export default {
 		onFlagChanged(email) {
 			// Update in list if needed
 			if (this.$refs.emailList) {
-				const listEmail = this.$refs.emailList.emails.find((e) => e.uid === email.uid);
+				const listEmail = this.$refs.emailList.rowOf(
+					email.uid,
+					this.allBoxes ? this.messageAccount : null
+				);
 				if (listEmail) {
 					listEmail.flagged = email.flagged;
 				}
@@ -1374,7 +1490,10 @@ export default {
 		onMarkUnread(email) {
 			// Update in list to show as unread
 			if (this.$refs.emailList) {
-				const listEmail = this.$refs.emailList.emails.find((e) => e.uid === email.uid);
+				const listEmail = this.$refs.emailList.rowOf(
+					email.uid,
+					this.allBoxes ? this.messageAccount : null
+				);
 				if (listEmail) {
 					listEmail.seen = false;
 				}
@@ -1573,7 +1692,17 @@ export default {
 			this.saveUIPreferences();
 		},
 
+		// A message of the conversation of the one read (board 20): opened in its folder, as a search result is
+		openFromConversation({ uid, folder }) {
+			this.onSearchSelect({ email: { uid, folder, seen: true }, folder });
+		},
+
 		async onSearchSelect({ email, folder }) {
+			// A message of the mailbox on screen, in its folder: out of « Toutes les boîtes »
+			if (this.allBoxes) {
+				this.allBoxes = false;
+				this.publishNav();
+			}
 			// Switch to the folder if different
 			if (folder !== this.currentFolder) {
 				this.currentFolder = folder;

@@ -138,6 +138,51 @@
 						<span class="date">· {{ formatDate(email.date) }}</span>
 					</div>
 				</div>
+				<!-- The rest of its conversation (canvas « Neodesk », board 20; Jérémy's choice of 14.10.2026: one message per
+				     line, the conversation unfolded while a message is read): what it answers and what answers it -->
+				<div v-if="conversation.length" class="thread-strip">
+					<button
+						type="button"
+						class="thread-head"
+						:aria-expanded="threadOpen ? 'true' : 'false'"
+						@click="threadOpen = !threadOpen"
+					>
+						<MessageSquareText :size="16" class="thread-icon" />
+						<span class="thread-label">{{ threadLabel }}</span>
+						<span class="thread-toggle">{{
+							threadOpen ? __("Hide") : __("Show")
+						}}</span>
+					</button>
+					<div v-if="threadOpen" class="thread-list">
+						<button
+							v-for="other in conversation"
+							:key="other.folder + '/' + other.uid"
+							type="button"
+							class="thread-row"
+							@click="openFromThread(other)"
+						>
+							<span class="sender-mark">{{
+								initials(other.from_name || other.from_email)
+							}}</span>
+							<span class="thread-text">
+								<span class="thread-top">
+									<b :class="{ 'thread-unread': !other.seen }">{{
+										other.from_name || other.from_email
+									}}</b>
+									<span
+										v-if="other.folder !== messageFolder"
+										class="thread-folder"
+										>{{ folderLabel(other.folder) }}</span
+									>
+									<span class="thread-date">{{ shortDate(other.date) }}</span>
+								</span>
+								<span class="thread-preview">{{
+									other.preview || other.subject || __("(No subject)")
+								}}</span>
+							</span>
+						</button>
+					</div>
+				</div>
 				<!-- Who wrote, in Neoffice: their supplier or customer, its invoices of the year, its record (board 7) -->
 				<div v-if="senderCard" class="sender-card">
 					<span class="sender-mark">{{ initials(senderCard.title) }}</span>
@@ -336,12 +381,14 @@ import {
 	Send,
 	Maximize2,
 	MoreHorizontal,
+	MessageSquareText,
 } from "lucide-vue-next";
 import NoraOrb from "./NoraOrb.vue";
 import ContextMenu from "./ContextMenu.vue";
 import DriveFolderPicker from "./DriveFolderPicker.vue";
 import { frameColours, frameStyle, hasOwnColours } from "../utils/messageFrame.js";
 import DocumentPicker from "./DocumentPicker.vue";
+import { folderName } from "../utils/folderNames.js";
 import {
 	downloadUrl,
 	loadAttachmentActions,
@@ -401,6 +448,7 @@ export default {
 		Send,
 		Maximize2,
 		MoreHorizontal,
+		MessageSquareText,
 		ContextMenu,
 		DriveFolderPicker,
 		DocumentPicker,
@@ -412,6 +460,8 @@ export default {
 		folder: { type: String, default: "INBOX" },
 		// False on a site without the `nora` app: no AI buttons that would 404
 		noraEnabled: { type: Boolean, default: true },
+		// The mailbox's special folders (FolderTree's mapping): the folder of a message of the conversation, by its name
+		folderMapping: { type: Object, default: () => ({}) },
 	},
 
 	emits: [
@@ -422,6 +472,8 @@ export default {
 		"mark-unread",
 		"quick-reply",
 		"forward-attachment",
+		// A message of the conversation, in its folder: { uid, folder }
+		"open-message",
 	],
 
 	data() {
@@ -448,10 +500,36 @@ export default {
 			picker: { kind: null, action: null, attachment: null, busy: false },
 			// The desk's theme, followed while the page is open (the message's frame takes its colours)
 			pageDark: isPageDark(),
+			// The other messages of its conversation, oldest first (get_conversation), and whether they are unfolded; a
+			// message opened from there keeps them unfolded (its conversation too)
+			conversation: [],
+			threadOpen: false,
+			threadKeep: null,
 		};
 	},
 
 	computed: {
+		// The folder the message read is in
+		messageFolder() {
+			return this.email?.folder || this.folder;
+		},
+
+		// « 2 older messages in this conversation », or « 3 other messages… » when some are newer
+		threadLabel() {
+			const time = (value) => (value ? Date.parse(value) || 0 : 0);
+			const at = time(this.email?.date);
+			const all = this.conversation.length;
+			const older = this.conversation.filter((other) => time(other.date) <= at).length;
+			if (older === all) {
+				return older === 1
+					? this.__("1 older message in this conversation")
+					: this.__("{0} older messages in this conversation", [older]);
+			}
+			return all === 1
+				? this.__("1 other message in this conversation")
+				: this.__("{0} other messages in this conversation", [all]);
+		},
+
 		senderDomain() {
 			if (!this.email?.from_email) return "";
 			const parts = this.email.from_email.split("@");
@@ -612,6 +690,9 @@ ${frameStyle(this.frame)}
 				this.attachmentMenu.visible = false;
 				this.noraMenuOpen = false;
 				this.closePicker();
+				this.threadOpen = Boolean(newEmail) && this.threadKeep === this.placeOf(newEmail);
+				this.threadKeep = null;
+				this.loadConversation(newEmail);
 				if (newEmail?.from_email) {
 					this.loadSenderContact(newEmail.from_email);
 					this.checkTrustedSender();
@@ -997,6 +1078,58 @@ ${frameStyle(this.frame)}
 			} catch (error) {
 				this.senderCard = null;
 			}
+		},
+
+		/** Where a message is, as a key: its folder and its number. */
+		placeOf(email) {
+			return `${email.folder || this.folder}/${email.uid}`;
+		},
+
+		// The rest of its conversation, kept only while the same message is open
+		async loadConversation(email) {
+			this.conversation = [];
+			if (!email?.uid) return;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.get_conversation",
+					args: {
+						account_name: this.account,
+						folder: email.folder || this.folder,
+						uid: email.uid,
+					},
+				});
+				if (this.email === email) this.conversation = response.message?.messages || [];
+			} catch (error) {
+				this.conversation = [];
+			}
+		},
+
+		// A message of the conversation, opened in its folder; its conversation unfolded as this one was
+		openFromThread(other) {
+			this.threadKeep = `${other.folder}/${other.uid}`;
+			this.$emit("open-message", { uid: other.uid, folder: other.folder });
+		},
+
+		/** A folder by its name: the mailbox's special ones in the mail's words, another by its last part. */
+		folderLabel(name) {
+			const mapping = this.folderMapping || {};
+			const role = ["inbox", "sent", "drafts", "trash", "spam", "archive"].find(
+				(key) => mapping[key] && mapping[key] === name
+			);
+			if (role) return folderName(role);
+			if ((name || "").toUpperCase() === "INBOX") return folderName("inbox");
+			return (name || "").split("/").pop() || name;
+		},
+
+		/** « 10:42 » today, else « 12 oct. », in the reader's language. */
+		shortDate(value) {
+			if (!value) return "";
+			const date = new Date(value);
+			if (Number.isNaN(date.getTime())) return "";
+			const lang = frappe.boot?.lang || document.documentElement.lang || "fr";
+			return date.toDateString() === new Date().toDateString()
+				? date.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })
+				: date.toLocaleDateString(lang, { day: "numeric", month: "short" });
 		},
 
 		openSenderCard() {
@@ -1425,6 +1558,122 @@ ${frameStyle(this.frame)}
 	border-color: var(--wm-danger, #dc2626);
 	background: var(--wm-danger-soft, #fee2e2);
 	color: var(--wm-danger, #dc2626);
+}
+
+/* The rest of the conversation (board 20): a line, unfolded into compact cards */
+.thread-strip {
+	margin-top: 12px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 12px;
+	background: var(--wm-bg, #fafafa);
+	overflow: hidden;
+}
+
+.thread-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 12px;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	font-size: 13px;
+	color: var(--wm-ink-mute, #6b6b6b);
+	text-align: left;
+	cursor: pointer;
+}
+
+.thread-icon {
+	flex: none;
+}
+
+.thread-label {
+	flex: 1;
+	min-width: 0;
+}
+
+.thread-toggle {
+	flex: none;
+	font-weight: 600;
+	color: var(--wm-accent);
+}
+
+.thread-list {
+	max-height: 240px;
+	overflow-y: auto;
+	border-top: 1px solid var(--wm-line, #e5e5e5);
+}
+
+.thread-row {
+	display: flex;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 12px;
+	border: 0;
+	border-top: 1px solid var(--wm-line, #e5e5e5);
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	color: var(--wm-ink, #1a1a1a);
+	cursor: pointer;
+}
+
+.thread-row:first-child {
+	border-top: 0;
+}
+
+.thread-row:hover {
+	background: var(--wm-bg-sunken, #f1ece4);
+}
+
+.thread-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.thread-top {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	font-size: 13px;
+}
+
+.thread-top b {
+	flex: 1;
+	min-width: 0;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.thread-top b.thread-unread {
+	font-weight: 700;
+}
+
+.thread-folder {
+	flex: none;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--wm-ink-mute, #6b6b6b);
+}
+
+.thread-date {
+	flex: none;
+	font-size: 12px;
+	color: var(--wm-ink-mute, #6b6b6b);
+}
+
+.thread-preview {
+	font-size: 12px;
+	color: var(--wm-ink-mute, #6b6b6b);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* The sender's card (board 7): their mark, what they are in Neoffice, the way to their record */
