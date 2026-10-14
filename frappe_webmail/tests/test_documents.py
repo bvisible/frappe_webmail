@@ -22,6 +22,9 @@ PREFIX = "zz-webmail-docs"
 def an_invoice(oldest=False):
 	"""A Sales Invoice of the site, not cancelled, with its customer (None on a site without one). The oldest one when
 	asked: newer invoices of other customers then exist, so that coming first proves the ordering."""
+	if not frappe.db.exists("DocType", "Sales Invoice"):
+		# A site without ERPNext (the CI's): no table to read, so no invoice - the tests skip, as on a site with none
+		return None
 	rows = frappe.get_all(
 		"Sales Invoice",
 		filters={"docstatus": ["<", 2], "customer": ["is", "set"]},
