@@ -191,27 +191,31 @@
 					</div>
 				</div>
 
-				<!-- Document Tab -->
-				<div v-if="activeTab === 'document'" class="tab-content">
-					<!-- DocType selector -->
-					<div class="doctype-selector">
-						<label>{{ __("Document Type") }}</label>
-						<select v-model="selectedDoctype" @change="resetDocSearch">
-							<option value="">{{ __("Select a type...") }}</option>
-							<option v-for="dt in doctypes" :key="dt.doctype" :value="dt.doctype">
-								{{ dt.label }}
-							</option>
-						</select>
-					</div>
-
-					<!-- Document search -->
-					<div v-if="selectedDoctype" class="search-bar">
-						<Search :size="16" />
-						<input
-							v-model="docSearch"
-							:placeholder="__('Search {0}...', [selectedDoctype])"
-							@input="debouncedSearchDocs"
-						/>
+				<!-- Document Tab: a Neoffice document as a PDF, as Neodesk joins one (canvas « Neodesk », board 23): by kind,
+				     those of the people written to first, then the most recent, each with its party, amount and date; then
+				     the PDF's print format and language -->
+				<div v-if="activeTab === 'document'" class="tab-content jd-tab">
+					<div class="jd-head">
+						<div class="search-bar jd-search">
+							<Search :size="16" />
+							<input
+								v-model="docSearch"
+								:placeholder="__('Search an invoice, a quotation, a customer...')"
+								@input="debouncedSearchDocs"
+							/>
+						</div>
+						<div class="jd-chips">
+							<button
+								v-for="kind in documentKinds"
+								:key="kind.id || 'all'"
+								type="button"
+								class="jd-chip"
+								:class="{ on: docKind === kind.id }"
+								@click="setDocKind(kind.id)"
+							>
+								{{ kind.label }}
+							</button>
+						</div>
 					</div>
 
 					<!-- Loading -->
@@ -220,40 +224,63 @@
 						<span>{{ __("Searching...") }}</span>
 					</div>
 
-					<!-- Document results -->
-					<div v-else-if="selectedDoctype" class="document-list">
+					<div v-else class="document-list">
+						<div v-if="documentResults.length" class="jd-section">
+							{{ documentsSection }}
+						</div>
 						<div
 							v-for="doc in documentResults"
-							:key="doc.value"
+							:key="doc.doctype + '/' + doc.name"
 							class="document-item"
-							:class="{ selected: selectedDocument?.value === doc.value }"
+							:class="{ selected: isPickedDocument(doc) }"
 							@click="selectDocument(doc)"
 							@dblclick="attachDocument(doc)"
 						>
 							<FileText :size="20" class="icon" />
 							<div class="doc-info">
-								<span class="doc-name">{{ doc.value }}</span>
-								<span v-if="doc.description" class="doc-description">{{
-									doc.description
-								}}</span>
+								<span class="doc-name"
+									><b>{{ doc.name }}</b> · {{ doc.label }}</span
+								>
+								<span class="doc-description">{{ documentMeta(doc) }}</span>
 							</div>
-							<button class="btn-attach-pdf" @click.stop="attachDocument(doc)">
-								<FileDown :size="14" />
-								{{ __("PDF") }}
-							</button>
 						</div>
 
 						<!-- Empty state -->
-						<div v-if="!documentResults.length && !loadingDocs" class="empty-state">
+						<div v-if="!documentResults.length" class="empty-state">
 							<FileX :size="32" />
 							<span>{{ __("No documents found") }}</span>
 						</div>
 					</div>
 
-					<!-- Select doctype prompt -->
-					<div v-else class="empty-state">
-						<FileText :size="32" />
-						<span>{{ __("Select a document type to search") }}</span>
+					<!-- The PDF of the document picked: its print format, its language -->
+					<div v-if="selectedDocument" class="jd-options">
+						<label class="jd-option">
+							<span>{{ __("Template") }}</span>
+							<select v-model="docFormat">
+								<option
+									v-for="format in docFormatsShown"
+									:key="format.name"
+									:value="format.name"
+								>
+									{{ format.label || format.name }}
+								</option>
+							</select>
+						</label>
+						<div class="jd-option">
+							<span>{{ __("Language") }}</span>
+							<div class="jd-chips">
+								<button
+									v-for="code in documentLanguages"
+									:key="code"
+									type="button"
+									class="jd-chip"
+									:class="{ on: docLanguage === code }"
+									@click="docLanguage = code"
+								>
+									{{ code.toUpperCase() }}
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -360,6 +387,8 @@ export default {
 		show: { type: Boolean, default: false },
 		account: { type: String, required: true },
 		hasDrive: { type: Boolean, default: true },
+		// The addresses the message is written to: their documents come first in the Document tab
+		emails: { type: Array, default: () => [] },
 	},
 
 	emits: ["close", "select"],
@@ -385,13 +414,19 @@ export default {
 			loadingDrive: false,
 			selectedDriveFile: null,
 			driveNotInstalled: false,
-			// Documents
-			doctypes: [],
-			selectedDoctype: "",
+			// Documents (list_attachable_documents): the kind shown (every kind when empty), the words searched, the
+			// document picked, and its PDF's print format and language
+			docKind: "",
 			docSearch: "",
 			documentResults: [],
 			loadingDocs: false,
 			selectedDocument: null,
+			docFormats: [],
+			docFormat: "Standard",
+			docLanguage: ((typeof frappe !== "undefined" && frappe.boot?.lang) || "fr").slice(
+				0,
+				2
+			),
 			// General
 			isAttaching: false,
 			searchTimeout: null,
@@ -436,9 +471,36 @@ export default {
 				return this.selectedDriveFile.title;
 			}
 			if (this.selectedDocument) {
-				return `${this.selectedDoctype}: ${this.selectedDocument.value}`;
+				return `${this.selectedDocument.label}: ${this.selectedDocument.name}`;
 			}
 			return "";
+		},
+
+		// The kinds of document a message can carry (frappe_webmail/documents.py), every kind first
+		documentKinds() {
+			return [
+				{ id: "", label: this.__("All") },
+				{ id: "invoice", label: this.__("Invoices") },
+				{ id: "quotation", label: this.__("Quotations") },
+				{ id: "order", label: this.__("Orders") },
+				{ id: "delivery", label: this.__("Delivery notes") },
+			];
+		},
+
+		documentsSection() {
+			return this.documentResults.some((doc) => doc.linked)
+				? this.__("Those of the recipients first, then the most recent")
+				: this.__("The most recent");
+		},
+
+		documentLanguages() {
+			return ["fr", "de", "en", "it"];
+		},
+
+		docFormatsShown() {
+			return this.docFormats.length
+				? this.docFormats
+				: [{ name: "Standard", label: "Standard" }];
 		},
 
 		selectionSource() {
@@ -480,6 +542,8 @@ export default {
 				!this.driveNotInstalled
 			) {
 				this.loadDriveFiles();
+			} else if (newTab === "document" && this.documentResults.length === 0) {
+				this.loadDocuments();
 			}
 		},
 	},
@@ -499,8 +563,8 @@ export default {
 				await this.loadDriveFiles();
 			}
 
-			// Load doctypes for document tab
-			await this.loadDoctypes();
+			// The documents, for the people the message is written to now
+			if (this.activeTab === "document") await this.loadDocuments();
 		},
 
 		// =====================================
@@ -733,87 +797,77 @@ export default {
 		// DOCUMENTS
 		// =====================================
 
-		async loadDoctypes() {
+		/** The documents of the kind shown that match the words, those of the recipients first. */
+		async loadDocuments() {
+			this.loadingDocs = true;
 			try {
 				const response = await frappe.call({
-					method: "frappe_webmail.webmail_api.get_printable_doctypes",
+					method: "frappe_webmail.api.list_attachable_documents",
+					args: {
+						search: this.docSearch || null,
+						kind: this.docKind || null,
+						emails: JSON.stringify(this.emails || []),
+						limit: 30,
+					},
 				});
-				this.doctypes = response.message || [];
+				this.documentResults = response.message || [];
 			} catch (error) {
-				console.error("Failed to load doctypes:", error);
+				this.documentResults = [];
+			} finally {
+				this.loadingDocs = false;
 			}
 		},
 
-		resetDocSearch() {
-			this.docSearch = "";
-			this.documentResults = [];
+		setDocKind(kind) {
+			if (kind === this.docKind) return;
+			this.docKind = kind;
 			this.selectedDocument = null;
-			// Load recent documents when doctype is selected
-			if (this.selectedDoctype) {
-				this.loadRecentDocuments();
-			}
-		},
-
-		async loadRecentDocuments() {
-			if (!this.selectedDoctype) return;
-
-			this.loadingDocs = true;
-			try {
-				const response = await frappe.call({
-					method: "frappe_webmail.webmail_api.get_recent_documents",
-					args: {
-						doctype: this.selectedDoctype,
-						limit: 10,
-					},
-				});
-				this.documentResults = response.message || [];
-			} catch (error) {
-				console.error("Failed to load recent documents:", error);
-				this.documentResults = [];
-			} finally {
-				this.loadingDocs = false;
-			}
-		},
-
-		async searchDocuments() {
-			if (!this.selectedDoctype) {
-				this.documentResults = [];
-				return;
-			}
-
-			// If no search text, load recent documents
-			if (!this.docSearch) {
-				await this.loadRecentDocuments();
-				return;
-			}
-
-			this.loadingDocs = true;
-			try {
-				const response = await frappe.call({
-					method: "frappe_webmail.webmail_api.search_documents",
-					args: {
-						doctype: this.selectedDoctype,
-						search_text: this.docSearch,
-					},
-				});
-				this.documentResults = response.message || [];
-			} catch (error) {
-				console.error("Failed to search documents:", error);
-				this.documentResults = [];
-			} finally {
-				this.loadingDocs = false;
-			}
+			this.loadDocuments();
 		},
 
 		debouncedSearchDocs() {
 			clearTimeout(this.searchTimeout);
 			this.searchTimeout = setTimeout(() => {
-				this.searchDocuments();
+				this.loadDocuments();
 			}, 300);
 		},
 
+		isPickedDocument(doc) {
+			return (
+				Boolean(this.selectedDocument) &&
+				this.selectedDocument.doctype === doc.doctype &&
+				this.selectedDocument.name === doc.name
+			);
+		},
+
+		/** Under a document's name: its party, its amount and its date, in the reader's language. */
+		documentMeta(doc) {
+			const lang = (typeof frappe !== "undefined" && frappe.boot?.lang) || "fr";
+			let amount = "";
+			if (doc.amount !== null && doc.amount !== undefined) {
+				try {
+					amount = new Intl.NumberFormat(`${lang}-CH`, {
+						style: "currency",
+						currency: doc.currency || "CHF",
+					}).format(doc.amount);
+				} catch (error) {
+					amount = String(doc.amount);
+				}
+			}
+			const date = doc.date
+				? new Date(doc.date).toLocaleDateString(lang, {
+						day: "numeric",
+						month: "short",
+						year: "numeric",
+				  })
+				: "";
+			return [doc.party, amount, date].filter(Boolean).join(" · ");
+		},
+
 		selectDocument(doc) {
+			const another = !this.isPickedDocument(doc);
 			this.selectedDocument = doc;
+			if (another) this.loadDocFormats(doc.doctype);
 			// Clear other selections
 			this.localFiles = [];
 			this.selectedFile = null;
@@ -823,6 +877,22 @@ export default {
 		async attachDocument(doc) {
 			this.selectedDocument = doc;
 			await this.attachSelected();
+		},
+
+		// The print formats of the document's kind, « Standard » first (get_print_formats)
+		async loadDocFormats(doctype) {
+			this.docFormats = [];
+			this.docFormat = "Standard";
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.webmail_api.get_print_formats",
+					args: { doctype },
+				});
+				if (this.selectedDocument?.doctype === doctype)
+					this.docFormats = response.message || [];
+			} catch (error) {
+				this.docFormats = [];
+			}
 		},
 
 		// =====================================
@@ -891,8 +961,10 @@ export default {
 					const response = await frappe.call({
 						method: "frappe_webmail.webmail_api.generate_document_pdf",
 						args: {
-							doctype: this.selectedDoctype,
-							docname: this.selectedDocument.value,
+							doctype: this.selectedDocument.doctype,
+							docname: this.selectedDocument.name,
+							print_format: this.docFormat !== "Standard" ? this.docFormat : null,
+							language: this.docLanguage,
 						},
 					});
 
@@ -902,8 +974,8 @@ export default {
 						content: response.message.content,
 						content_type: response.message.content_type,
 						size: response.message.size,
-						doctype: this.selectedDoctype,
-						docname: this.selectedDocument.value,
+						doctype: this.selectedDocument.doctype,
+						docname: this.selectedDocument.name,
 					};
 				}
 
@@ -1196,25 +1268,86 @@ export default {
 	color: white;
 }
 
-.doctype-selector {
-	padding: 12px 16px;
-	border-bottom: 1px solid var(--border-color, #e5e5e5);
+/* The Document tab (board 23): the words, the kinds, the documents, then the PDF's template and language */
+.jd-tab {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 }
 
-.doctype-selector label {
-	display: block;
+.jd-head {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px 16px 10px;
+	border-bottom: 1px solid var(--wm-line, #e5e5e5);
+}
+
+.jd-head .jd-search {
+	padding: 0;
+	border-bottom: 0;
+}
+
+.jd-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.jd-chip {
+	height: 26px;
+	padding: 0 10px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: var(--wm-bg-raised, #fff);
+	font: inherit;
 	font-size: 12px;
-	color: var(--text-muted, #8d99a6);
-	margin-bottom: 6px;
+	font-weight: 600;
+	color: var(--wm-ink, #1a1a1a);
+	cursor: pointer;
 }
 
-.doctype-selector select {
-	width: 100%;
-	padding: 8px 12px;
-	border: 1px solid var(--border-color, #e5e5e5);
-	border-radius: 4px;
-	font-size: 14px;
-	background: var(--card-bg, white);
+.jd-chip.on {
+	background: var(--wm-ink, #1a1a1a);
+	border-color: var(--wm-ink, #1a1a1a);
+	color: var(--wm-bg-raised, #fff);
+}
+
+.jd-section {
+	padding: 6px 12px 4px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	color: var(--wm-ink-mute, #8d99a6);
+}
+
+.jd-options {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 16px;
+	padding: 10px 16px;
+	border-top: 1px solid var(--wm-line, #e5e5e5);
+}
+
+.jd-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	color: var(--wm-ink-mute, #8d99a6);
+}
+
+.jd-option select {
+	height: 28px;
+	padding: 0 8px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 8px;
+	background: var(--wm-bg-raised, #fff);
+	font: inherit;
+	font-size: 13px;
+	color: var(--wm-ink, #1a1a1a);
 }
 
 .loading-state,

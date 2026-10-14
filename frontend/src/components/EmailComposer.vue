@@ -175,6 +175,7 @@
 		<AttachmentPicker
 			:show="showAttachmentPicker"
 			:account="account"
+			:emails="recipientAddresses"
 			@close="showAttachmentPicker = false"
 			@select="handleRemoteAttachment"
 		/>
@@ -298,6 +299,15 @@ export default {
 	},
 
 	computed: {
+		// Who the message is written to, the addresses only: their Neoffice documents come first in the picker
+		recipientAddresses() {
+			return [this.emailData.to, this.emailData.cc]
+				.join(",")
+				.split(",")
+				.map((part) => (part.match(/<([^>]+)>/)?.[1] || part).trim().toLowerCase())
+				.filter((address) => address.includes("@"));
+		},
+
 		// The header names what is being written — a reply was labelled "New message"
 		composerTitle() {
 			if (this.replyTo) return __("Reply");
