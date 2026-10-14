@@ -3513,3 +3513,7 @@ msgstr "Voir l'original"
 #: frontend/src/components/EmailViewer.vue:171
 msgid "Translated by Nora into {0}"
 msgstr "Traduit par Nora · {0}"
+
+#: frontend/src/components/EmailComposer.vue:68
+msgid "Blind copy..."
+msgstr "Copie cachée..."
