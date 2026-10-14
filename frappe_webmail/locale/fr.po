@@ -3501,3 +3501,15 @@ msgstr "Corbeille"
 
 msgid "{0} filter(s) applied to {1} emails"
 msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
+
+#: frontend/src/components/EmailViewer.vue:95
+msgid "Reply to all with Nora"
+msgstr "Répondre à tous avec Nora"
+
+#: frontend/src/components/EmailViewer.vue:174
+msgid "Show the original"
+msgstr "Voir l'original"
+
+#: frontend/src/components/EmailViewer.vue:171
+msgid "Translated by Nora into {0}"
+msgstr "Traduit par Nora · {0}"
