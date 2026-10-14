@@ -153,7 +153,7 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 // Re-entering the page (route change back to /app/webmail) does not call
 // on_page_load again — collapse the cockpit on every show.
 frappe.pages["webmail"].on_page_show = function (wrapper) {
-	// Leaving the page unmounted the app (on_page_hide): back on it, it is mounted again — it stayed blank
+	// An app that something unmounted (frappe.webmail.destroy) is mounted again on the way back: it stayed blank
 	const container = wrapper && wrapper.querySelector("#webmail-app");
 	if (container && frappe.webmail && frappe.webmail.mounted && !frappe.webmail.mounted()) {
 		frappe.webmail.init(container);
@@ -162,6 +162,10 @@ frappe.pages["webmail"].on_page_show = function (wrapper) {
 	else webmail_cockpit.collapse();
 };
 
+// NB: Frappe's page view wires on_page_load, on_page_show and refresh, never on_page_hide: nothing calls this when the
+// desk leaves the page, and the app stays mounted under the hidden page (coming back is instant, the open message is
+// where it was). What must not outlive the page is the folders it lends the cockpit: they carry this page's address
+// (Webmail.vue, webmailRoute) and the cockpit draws them on that address only (pageNav.ts), 14.10.2026.
 frappe.pages["webmail"].on_page_hide = function (wrapper) {
 	webmail_cockpit.restore();
 	// The cockpit draws its own navigation again

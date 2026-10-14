@@ -461,6 +461,7 @@ import {
 import NoraOrb from "../components/NoraOrb.vue";
 
 import { folderName } from "../utils/folderNames.js";
+import { webmailRoute } from "../utils/pageRoute.js";
 export default {
 	name: "Webmail",
 
@@ -859,6 +860,9 @@ export default {
 				nav.push({ label: this.__("Folders"), items: own.map((f) => item(f, false)) });
 			window.NeoCockpit.setPageNav({
 				app: { name: "mail", title: this.__("Mail") },
+				// The cockpit draws the folders while the reader is on this page only: the page is never told it
+				// was left, and this app keeps publishing from the background
+				route: webmailRoute(),
 				nav,
 				footer: this.quota
 					? {
