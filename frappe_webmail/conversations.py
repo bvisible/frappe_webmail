@@ -21,6 +21,9 @@ HEADERS_KEY = b"BODY[HEADER.FIELDS (MESSAGE-ID IN-REPLY-TO REFERENCES)]"
 # The newest ancestors a search asks for: a long thread keeps its last references
 MAX_REFERENCES = 10
 
+# The References an answer carries at most: the first (the conversation's start) and the newest
+MAX_CHAIN = 20
+
 
 def _ids(value: str | None) -> list[str]:
 	"""The `<…>` Message-IDs of a header, in order."""
@@ -75,12 +78,19 @@ def sent_folder(folders: Iterable[tuple]) -> str | None:
 def conversation_places(client, folder: str, uid: int, inbox: str = "INBOX") -> list[tuple[str, int]]:
 	"""(folder, uid) of the other messages of the conversation of `uid` in `folder`: in that folder, the inbox and the
 	sent folder, the message itself left out. Read only (EXAMINE, BODY.PEEK)."""
+	return conversation_of(client, folder, uid, inbox)[1]
+
+
+def conversation_of(
+	client, folder: str, uid: int, inbox: str = "INBOX"
+) -> tuple[str | None, list[tuple[str, int]]]:
+	"""(the message's own Message-ID, the places of the other messages of its conversation): conversation_places."""
 	client.select_folder(folder, readonly=True)
 	head = client.fetch([uid], [HEADERS]).get(uid, {})
 	own, related = thread_ids(head.get(HEADERS_KEY))
 	criteria = criteria_for(own, related)
 	if criteria is None:
-		return []
+		return own, []
 	places: list[tuple[str, int]] = []
 	for each in dict.fromkeys([folder, inbox, sent_folder(client.list_folders())]):
 		if not each:
@@ -94,4 +104,54 @@ def conversation_places(client, folder: str, uid: int, inbox: str = "INBOX") -> 
 		places += [
 			(each, int(found_uid)) for found_uid in found if (each, int(found_uid)) != (folder, int(uid))
 		]
-	return places
+	return own, places
+
+
+def message_id_of(envelope) -> str | None:
+	"""The Message-ID of a message's ENVELOPE, `<…>`, or None."""
+	value = getattr(envelope, "message_id", None)
+	if isinstance(value, bytes):
+		value = value.decode("utf-8", errors="replace")
+	return (_ids(value) or [None])[0]
+
+
+def one_per_message(
+	found: Iterable[tuple[str | None, dict]], own: str | None, folder: str, inbox: str = "INBOX"
+):
+	"""The rows of a conversation, each message once. A message sent to oneself, or copied to one's own mailbox, sits
+	in the inbox and in the sent under one Message-ID: the copy in the folder read is kept, else the inbox's, else the
+	first found. A copy of the message read is not another message of its conversation."""
+	rank = {folder: 0, inbox: 1}
+	kept: dict = {}
+	for message_id, row in found:
+		if message_id and message_id == own:
+			continue
+		key = message_id or (row["folder"], row["uid"])
+		if key not in kept or rank.get(row["folder"], 2) < rank.get(kept[key]["folder"], 2):
+			kept[key] = row
+	return list(kept.values())
+
+
+def references_for(client, folder: str, uid: int, answered: str | None) -> str | None:
+	"""The References of an answer (RFC 5322, 3.6.4): those of the message answered, then its own Message-ID, so that
+	the whole conversation is found from any of its messages (an answer used to name its parent only, and the older
+	messages fell out of the conversation). The message answered alone when it cannot be read. Read only."""
+	parent = None
+	try:
+		client.select_folder(folder, readonly=True)
+		raw = client.fetch([int(uid)], [HEADERS]).get(int(uid), {}).get(HEADERS_KEY)
+		if raw:
+			parent = email.message_from_string(
+				raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
+			)
+	except Exception:
+		parent = None
+	last = _ids(answered)[:1]
+	chain: list[str] = []
+	if parent is not None:
+		chain = _ids(parent.get("References")) or _ids(parent.get("In-Reply-To"))[:1]
+		last = last or _ids(parent.get("Message-ID"))[:1]
+	chain = [value for value in chain if value not in last] + last
+	if len(chain) > MAX_CHAIN:
+		chain = chain[:1] + chain[-(MAX_CHAIN - 1) :]
+	return " ".join(chain) or None

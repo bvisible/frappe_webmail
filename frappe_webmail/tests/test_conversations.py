@@ -3,22 +3,28 @@
 
 """A message's conversation, read while the message is (« 2 messages plus anciens dans cette conversation »), and a
 folder listed by what the person asks: the unread or the followed ones only, the oldest first (the webmail's lot 2,
-« retrouver », 14.10.2026).
+« retrouver », 14.10.2026). A message sent to oneself is one message of its conversation, though it sits in two
+folders; an answer carries the whole chain of the message it answers, its date and its Message-ID.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_conversations
 """
 
+import email
 from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from frappe.tests.utils import FrappeTestCase
 
 from frappe_webmail.conversations import (
 	HEADERS,
 	HEADERS_KEY,
+	MAX_CHAIN,
 	conversation_places,
 	criteria_for,
+	one_per_message,
+	references_for,
 	sent_folder,
 	thread_ids,
 )
@@ -32,12 +38,13 @@ FOLDERS = [
 ]
 
 
-def envelope(subject, day, sender="marc"):
+def envelope(subject, day, sender="marc", message_id=None):
 	return SimpleNamespace(
 		subject=subject.encode(),
 		date=datetime(2026, 10, day, 9, 0),
 		from_=[SimpleNamespace(name=None, mailbox=sender.encode(), host=b"example.com")],
 		to=[SimpleNamespace(name=None, mailbox=b"test_account", host=b"webmail.test")],
+		message_id=message_id.encode() if message_id else None,
 	)
 
 
@@ -52,6 +59,7 @@ class FakeMailbox:
 		self.selected = None
 		self.searched = []
 		self.readonly = []
+		self.appended = []
 
 	def __getattr__(self, name):
 		# login, logout, noop…: nothing to do in a fake mailbox
@@ -76,6 +84,9 @@ class FakeMailbox:
 	def search(self, criteria, charset=None):
 		self.searched.append((self.selected, criteria))
 		return list(self.found.get(self.selected, []))
+
+	def append(self, folder, data, flags=None, msg_time=None):
+		self.appended.append((folder, data))
 
 
 HEADERS_OF_5 = (
@@ -183,3 +194,103 @@ class TestAFolderListedAsAsked(TestWebmailAPIBase):
 			oldest = get_emails(self.test_account_email, "INBOX", order="oldest")
 		self.assertEqual([m["uid"] for m in newest["emails"]], [13, 12, 11])
 		self.assertEqual([m["uid"] for m in oldest["emails"]], [11, 12, 13])
+
+
+class TestAMessageInTwoFolders(TestWebmailAPIBase):
+	def test_a_message_sent_to_oneself_is_one_message_of_its_conversation(self):
+		from frappe_webmail.api import get_conversation
+
+		client = FakeMailbox(
+			headers={5: HEADERS_OF_5},
+			found={"INBOX": [3, 5], "Envoyés": [2, 4]},
+			envelopes={
+				("INBOX", 3): envelope("Devis chaudière", 10, message_id="<one@example.com>"),
+				# The same message sent to oneself, its copy in « Envoyés »
+				("Envoyés", 2): envelope(
+					"Devis chaudière", 10, sender="test_account", message_id="<one@example.com>"
+				),
+				# The message read itself, its copy in « Envoyés »
+				("Envoyés", 4): envelope(
+					"Re: Devis chaudière", 12, sender="test_account", message_id="<five@example.com>"
+				),
+			},
+		)
+		with mocked_imap(client):
+			answer = get_conversation(self.test_account_email, "INBOX", 5)
+		self.assertEqual([(m["folder"], m["uid"]) for m in answer["messages"]], [("INBOX", 3)])
+
+	def test_the_copy_kept_is_the_folder_reads_then_the_inboxs(self):
+		found = [
+			("<a@example.com>", {"folder": "Envoyés", "uid": 2}),
+			("<a@example.com>", {"folder": "INBOX", "uid": 3}),
+			(None, {"folder": "Archives", "uid": 9}),
+			("<own@example.com>", {"folder": "INBOX", "uid": 7}),
+		]
+		self.assertEqual(
+			one_per_message(found, "<own@example.com>", "INBOX"),
+			[{"folder": "INBOX", "uid": 3}, {"folder": "Archives", "uid": 9}],
+		)
+		self.assertEqual(
+			one_per_message(found, "<own@example.com>", "Envoyés")[0], {"folder": "Envoyés", "uid": 2}
+		)
+
+
+class TestAnAnswerKeepsItsConversation(TestWebmailAPIBase):
+	def test_an_answer_names_the_whole_chain_of_the_message_it_answers(self):
+		client = FakeMailbox(headers={5: HEADERS_OF_5}, found={}, envelopes={})
+		self.assertEqual(
+			references_for(client, "INBOX", 5, "<five@example.com>"),
+			"<one@example.com> <two@example.com> <five@example.com>",
+		)
+		# Without References, its In-Reply-To; a message that cannot be read, the message answered alone
+		client = FakeMailbox(
+			headers={6: b"Message-ID: <six@example.com>\r\nIn-Reply-To: <two@example.com>\r\n\r\n"},
+			found={},
+			envelopes={},
+		)
+		self.assertEqual(
+			references_for(client, "INBOX", 6, "<six@example.com>"), "<two@example.com> <six@example.com>"
+		)
+		empty = FakeMailbox(headers={}, found={}, envelopes={})
+		self.assertEqual(references_for(empty, "INBOX", 8, "<eight@example.com>"), "<eight@example.com>")
+
+	def test_a_long_chain_keeps_its_start_and_its_newest(self):
+		chain = " ".join(f"<m{i}@example.com>" for i in range(40))
+		client = FakeMailbox(
+			headers={9: f"Message-ID: <answered@example.com>\r\nReferences: {chain}\r\n\r\n".encode()},
+			found={},
+			envelopes={},
+		)
+		kept = references_for(client, "INBOX", 9, "<answered@example.com>").split()
+		self.assertEqual(len(kept), MAX_CHAIN)
+		self.assertEqual(kept[0], "<m0@example.com>")
+		self.assertEqual(kept[-2:], ["<m39@example.com>", "<answered@example.com>"])
+
+	@patch("frappe_webmail.api.smtplib.SMTP")
+	def test_a_message_sent_carries_its_date_its_id_and_the_chain(self, smtp_class):
+		from frappe_webmail.api import send_email
+
+		server = MagicMock()
+		smtp_class.return_value = server
+		client = FakeMailbox(headers={5: HEADERS_OF_5}, found={}, envelopes={})
+		with mocked_imap(client):
+			send_email(
+				account_name=self.test_account_email,
+				to="marc@example.com",
+				subject="Re: Devis chaudière",
+				html_content="<p>Le mardi 27 nous convient.</p>",
+				reply_to_message_id="<five@example.com>",
+				reply_to_uid=5,
+				reply_to_folder="INBOX",
+			)
+		sent = email.message_from_string(server.sendmail.call_args.args[2])
+		self.assertEqual(sent["In-Reply-To"], "<five@example.com>")
+		self.assertEqual(
+			" ".join(sent["References"].split()), "<one@example.com> <two@example.com> <five@example.com>"
+		)
+		self.assertTrue(sent["Date"])
+		self.assertRegex(sent["Message-ID"], r"^<.+@.+>$")
+		# The copy kept in « Envoyés » is the same message: its answers find it by its Message-ID
+		folder, copy = client.appended[-1]
+		self.assertEqual(folder, "Envoyés")
+		self.assertEqual(email.message_from_bytes(copy)["Message-ID"], sent["Message-ID"])

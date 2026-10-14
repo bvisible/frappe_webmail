@@ -16,13 +16,14 @@ from email.header import decode_header
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import make_msgid
+from email.utils import formatdate, make_msgid
 
 import frappe
 from frappe import _
 
+from frappe_webmail.conversations import conversation_of, message_id_of, one_per_message, references_for
+
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
-from frappe_webmail.conversations import conversation_places
 from frappe_webmail.documents import list_attachable_documents
 from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, to_parts
 from frappe_webmail.mime_parts import iter_attachments
@@ -1029,14 +1030,20 @@ def get_conversation(account_name, folder="INBOX", uid=None, limit=20):
 	account = get_account(account_name)
 	limit = max(1, min(int(limit), 50))
 	with imap_session(account) as client:
-		places = conversation_places(client, folder, int(uid))
-		rows = []
+		own, places = conversation_of(client, folder, int(uid))
+		found = []
 		for each in dict.fromkeys(f for f, _uid in places):
 			uids = [u for f, u in places if f == each]
 			client.select_folder(each, readonly=True)
 			data = client.fetch(uids, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
 			previews = _list_previews(client, data)
-			rows += [_summary(u, data[u], previews, folder=each) for u in uids if u in data]
+			found += [
+				(message_id_of(data[u][b"ENVELOPE"]), _summary(u, data[u], previews, folder=each))
+				for u in uids
+				if u in data
+			]
+	# A message in two folders (sent to oneself) is one message of the conversation
+	rows = one_per_message(found, own, folder)
 	rows.sort(key=lambda row: row["date"] or "")
 	return {"messages": rows[-limit:]}
 
@@ -1277,13 +1284,17 @@ def send_email(
 	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
 	msg["To"] = to
 	msg["Subject"] = subject
+	# Its date and its Message-ID, the same in the copy kept in « Envoyés » as in the message received: the copy had
+	# neither, so it showed no date and the answers to it could not find it (a conversation, get_conversation)
+	msg["Date"] = formatdate(localtime=True)
+	msg["Message-ID"] = make_msgid(domain=(account.email or "webmail.local").split("@")[-1])
 
 	if cc:
 		msg["Cc"] = cc
 
 	if reply_to_message_id:
 		msg["In-Reply-To"] = reply_to_message_id
-		msg["References"] = reply_to_message_id
+		msg["References"] = _references(account, reply_to_message_id, reply_to_uid, reply_to_folder)
 
 	# Body (multipart/alternative for text + html)
 	body = MIMEMultipart("alternative")
@@ -1383,6 +1394,18 @@ def send_email(
 	except Exception as e:
 		frappe.log_error("Email send error", f"{e!s}")
 		frappe.throw(_("Failed to send email: {0}").format(e))
+
+
+def _references(account, message_id, uid, folder):
+	"""The References of an answer: the whole chain of the message answered (conversations.references_for), read on
+	the server; the message answered alone when its place is not given or cannot be read."""
+	if not (uid and folder and IMAPClient):
+		return message_id
+	try:
+		with imap_session(account) as client:
+			return references_for(client, folder, uid, message_id) or message_id
+	except Exception:
+		return message_id
 
 
 def _attach(msg, filename, content_type, data):
@@ -1501,6 +1524,8 @@ def save_draft_imap(
 		msg["Bcc"] = bcc
 	if subject:
 		msg["Subject"] = subject
+	# When it was last written, shown in « Brouillons »
+	msg["Date"] = formatdate(localtime=True)
 	if reply_to_message_id:
 		msg["In-Reply-To"] = reply_to_message_id
 		msg["References"] = reply_to_message_id
