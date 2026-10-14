@@ -98,6 +98,29 @@ class TestAttachableDocuments(FrappeTestCase):
 			self.assertLess(frappe.db.get_value(row["doctype"], row["name"], "docstatus"), 2)
 
 
+class TestWhoMaySeeThem(FrappeTestCase):
+	"""A person without access to a doctype gets none of its documents, and cannot print one (a portal user, say)."""
+
+	def setUp(self):
+		self.email = f"{PREFIX}-{frappe.generate_hash(length=8)}@example.com"
+		frappe.get_doc(
+			{"doctype": "User", "email": self.email, "first_name": PREFIX, "user_type": "Website User"}
+		).insert(ignore_permissions=True)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.delete_doc("User", self.email, force=True, ignore_permissions=True)
+		frappe.db.commit()
+
+	def test_a_user_without_access_gets_no_document_and_no_pdf(self):
+		invoice = an_invoice()
+		frappe.set_user(self.email)
+		self.assertEqual(list_attachable_documents(limit=50), [])
+		if invoice:
+			with self.assertRaises(frappe.ValidationError):
+				generate_document_pdf("Sales Invoice", invoice.name)
+
+
 class TestDocumentPdf(FrappeTestCase):
 	def test_the_pdf_is_named_after_its_document_and_printed_in_the_language_asked(self):
 		invoice = an_invoice()
