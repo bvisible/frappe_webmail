@@ -21,21 +21,22 @@
 							}}</span>
 							<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
 						</button>
-						<button
-							@click="$emit('reply', email)"
-							class="btn"
-							:data-tip="__('Reply')"
-							:aria-label="__('Reply')"
-						>
+						<!-- Reply, Reply all, Forward, named: « répondre, répondre à tous, très clair » (14.10.2026) -->
+						<button @click="$emit('reply', email)" class="btn btn-labelled">
 							<Reply :size="16" />
+							<span>{{ __("Reply") }}</span>
 						</button>
 						<button
-							@click="$emit('forward', email)"
-							class="btn"
-							:data-tip="__('Forward')"
-							:aria-label="__('Forward')"
+							v-if="email.reply_all"
+							@click="$emit('reply', { ...email, replyAll: true })"
+							class="btn btn-labelled"
 						>
+							<ReplyAll :size="16" />
+							<span>{{ __("Reply All") }}</span>
+						</button>
+						<button @click="$emit('forward', email)" class="btn btn-labelled">
 							<Forward :size="16" />
+							<span>{{ __("Forward") }}</span>
 						</button>
 						<button
 							@click="markAsUnread"
@@ -258,6 +259,7 @@ import {
 	User,
 	UserPlus,
 	Reply,
+	ReplyAll,
 	Forward,
 	MailOpen,
 	Star,
@@ -320,6 +322,7 @@ export default {
 		User,
 		UserPlus,
 		Reply,
+		ReplyAll,
 		Forward,
 		MailOpen,
 		Star,
@@ -1118,6 +1121,19 @@ ${frameStyle(this.frame)}
 .email-actions .btn:hover {
 	border-color: var(--wm-line-strong, #cfcfcf);
 	color: var(--wm-ink, #1a1a1a);
+}
+
+/* Reply, Reply all, Forward: named buttons, the rest stay round icons */
+.email-actions .btn.btn-labelled {
+	width: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 12px;
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--wm-ink, #1a1a1a);
+	white-space: nowrap;
 }
 
 .email-actions .btn.starred {

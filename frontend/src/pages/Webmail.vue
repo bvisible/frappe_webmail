@@ -1745,7 +1745,8 @@ export default {
 				});
 
 				const emailContent = response.message;
-				emailContent.reply_all = replyAll;
+				// The wish has a name of its own: `reply_all` is the server's recipients of « Reply all »
+				emailContent.replyAll = replyAll;
 				this.replyTo(emailContent);
 			} catch (error) {
 				frappe.toast({ message: this.__("Error loading email"), indicator: "red" });

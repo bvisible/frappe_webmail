@@ -171,6 +171,29 @@ describe("EmailViewer", () => {
 		expect(wrapper.emitted("forward")).toBeTruthy();
 	});
 
+	it("names Reply, Reply All and Forward, Reply All only where the server reckons its recipients", async () => {
+		const plain = mount(EmailViewer, {
+			props: { email: mockEmail, account: "test@example.com" },
+		});
+		expect(plain.findAll(".email-actions .btn-labelled").map((b) => b.text())).toEqual([
+			"Reply",
+			"Forward",
+		]);
+
+		const withAll = {
+			...mockEmail,
+			reply_all: { to: "sender@example.com, recipient@example.com", cc: "cc@example.com" },
+		};
+		const wrapper = mount(EmailViewer, {
+			props: { email: withAll, account: "test@example.com" },
+		});
+		const named = wrapper.findAll(".email-actions .btn-labelled");
+		expect(named.map((b) => b.text())).toEqual(["Reply", "Reply All", "Forward"]);
+		await named.at(1).trigger("click");
+		// The wish under its own name: `reply_all` stays the server's recipients
+		expect(wrapper.emitted("reply")[0][0]).toEqual({ ...withAll, replyAll: true });
+	});
+
 	it("emits delete event when delete button clicked", async () => {
 		const wrapper = mount(EmailViewer, {
 			props: {

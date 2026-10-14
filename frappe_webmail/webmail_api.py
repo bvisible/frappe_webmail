@@ -16,12 +16,14 @@ from email.header import decode_header
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import make_msgid
 
 import frappe
 from frappe import _
 
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
+from frappe_webmail.replies import appended_uid, reply_recipients
 
 try:
 	import bleach
@@ -1095,15 +1097,22 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			for cid, data_uri in inline_images.items():
 				html_content = html_content.replace(f"cid:{cid}", data_uri)
 
+		from_email = format_address(env.from_[0]) if env.from_ else ""
+		to = ", ".join([format_address(a) for a in (env.to or [])])
+		cc = ", ".join([format_address(a) for a in (env.cc or [])])
+		reply_to = format_address(env.reply_to[0]) if env.reply_to else ""
 		return {
 			"uid": uid,
 			"message_id": msg.get("Message-ID", ""),
 			"subject": decode_mime_header(env.subject),
-			"from_email": format_address(env.from_[0]) if env.from_ else "",
+			"from_email": from_email,
 			"from_name": (decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""),
-			"to": ", ".join([format_address(a) for a in (env.to or [])]),
-			"cc": ", ".join([format_address(a) for a in (env.cc or [])]),
-			"reply_to": format_address(env.reply_to[0]) if env.reply_to else "",
+			"to": to,
+			"cc": cc,
+			"reply_to": reply_to,
+			# Who « Reply » and « Reply all » write to, the same rule for both screens (replies.reply_recipients)
+			"reply": reply_recipients(account.email, from_email, reply_to, to, cc),
+			"reply_all": reply_recipients(account.email, from_email, reply_to, to, cc, reply_all=True),
 			"date": env.date.isoformat() if env.date else None,
 			"html": html_content,
 			"text": text_content,
@@ -1163,9 +1172,12 @@ def send_email(
 	reference_doctype=None,
 	reference_name=None,
 	forward_attachments=None,
+	draft_uid=None,
+	draft_folder=None,
 ):
 	"""Send an email. `forward_attachments`: the ids of the forwarded message's attachments the person kept, read
-	again on the server from `forward_uid` in `forward_folder` (never through the browser)."""
+	again on the server from `forward_uid` in `forward_folder` (never through the browser). `draft_uid` in
+	`draft_folder`: the draft this message was written in, deleted once it has left."""
 	account = get_account(account_name)
 
 	# Sanitize HTML content if bleach is available
@@ -1294,6 +1306,14 @@ def send_email(
 			# Log but don't fail - email was already sent
 			frappe.log_error("Mark original email", f"Failed to mark original email: {e!s}")
 
+		# The draft it was written in, gone with it (a sent message left in Drafts was sent twice by mistake)
+		if draft_uid and draft_folder:
+			try:
+				with imap_session(account) as client:
+					_delete_draft(client, draft_folder, draft_uid)
+			except Exception as e:
+				frappe.log_error("Delete sent draft", f"Failed to delete the draft of a sent email: {e!s}")
+
 		# Create Communication link if reference document is provided
 		communication_created = False
 		if reference_doctype and reference_name:
@@ -1410,8 +1430,18 @@ def save_draft_imap(
 	html_content=None,
 	draft_uid=None,
 	draft_folder=None,
+	bcc=None,
+	reply_to_message_id=None,
+	attachments=None,
+	forward_uid=None,
+	forward_folder=None,
+	forward_attachments=None,
 ):
-	"""Save a draft to the IMAP Drafts folder. If draft_uid is provided, delete the old draft."""
+	"""Save a draft to the IMAP Drafts folder, again and again while the person writes (both screens save on their own).
+
+	It keeps what the message will carry: Cc, Bcc, the message it answers, the files joined and the forwarded
+	message's attachments kept. The new copy is appended before the old one (`draft_uid` in `draft_folder`) is
+	deleted, so a failure never loses the text. Returns the new copy's place, for the next save and for sending."""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -1424,8 +1454,16 @@ def save_draft_imap(
 		msg["To"] = to
 	if cc:
 		msg["Cc"] = cc
+	if bcc:
+		msg["Bcc"] = bcc
 	if subject:
 		msg["Subject"] = subject
+	if reply_to_message_id:
+		msg["In-Reply-To"] = reply_to_message_id
+		msg["References"] = reply_to_message_id
+	# A Message-ID of its own: the draft is found again by it where the server gives no APPENDUID
+	message_id = make_msgid(domain=(account.email or "webmail.local").split("@")[-1])
+	msg["Message-ID"] = message_id
 
 	# Body
 	body = MIMEMultipart("alternative")
@@ -1439,6 +1477,17 @@ def save_draft_imap(
 		body.attach(MIMEText(text_content, "plain", "utf-8"))
 		body.attach(MIMEText(html_content, "html", "utf-8"))
 	msg.attach(body)
+
+	# The files joined, then the forwarded message's attachments kept: what send_email would carry
+	if attachments:
+		for att in frappe.parse_json(attachments):
+			_attach(msg, att["filename"], att.get("content_type"), base64.b64decode(att["data"]))
+	if forward_attachments and forward_uid and forward_folder:
+		kept = frappe.parse_json(forward_attachments)
+		for filename, content_type, data in _forwarded_attachments(
+			account, forward_folder, forward_uid, kept
+		):
+			_attach(msg, filename, content_type, data)
 
 	# Common drafts folder names
 	drafts_folder_names = ["Drafts", "Draft", "INBOX.Drafts", "Brouillons"]
@@ -1460,24 +1509,41 @@ def save_draft_imap(
 		if not drafts_folder:
 			frappe.throw(_("Drafts folder not found"))
 
-		# If updating an existing draft, delete the old one first
-		if draft_uid and draft_folder:
-			try:
-				client.select_folder(draft_folder)
-				client.delete_messages([int(draft_uid)])
-				client.expunge()
-			except Exception:
-				# Ignore errors when deleting old draft
-				pass
-
-		# Append message to Drafts folder with \Draft flag
+		# Append the new copy first, with the \Draft flag
 		import datetime
 
-		client.append(
+		response = client.append(
 			drafts_folder, msg.as_bytes(), flags=[b"\\Draft", b"\\Seen"], msg_time=datetime.datetime.now()
 		)
+		uid = appended_uid(response)
+		if uid is None:
+			client.select_folder(drafts_folder, readonly=True)
+			found = client.search(["HEADER", "Message-ID", message_id])
+			uid = max(found) if found else None
 
-	return {"success": True, "message": _("Draft saved")}
+		# Then the copy it replaces
+		if (
+			draft_uid
+			and draft_folder
+			and not (str(draft_folder) == str(drafts_folder) and str(draft_uid) == str(uid))
+		):
+			try:
+				_delete_draft(client, draft_folder, draft_uid)
+			except Exception:
+				# The old copy stays: a duplicate draft rather than a lost one
+				frappe.log_error("Replace draft", frappe.get_traceback())
+
+	return {"success": True, "message": _("Draft saved"), "uid": uid, "folder": drafts_folder}
+
+
+def _delete_draft(client, folder, uid):
+	"""Delete one draft, and only it: UID EXPUNGE where the server has UIDPLUS, else a plain EXPUNGE."""
+	client.select_folder(folder)
+	client.delete_messages([int(uid)])
+	try:
+		client.uid_expunge([int(uid)])
+	except Exception:
+		client.expunge()
 
 
 # ============================================

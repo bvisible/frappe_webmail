@@ -269,6 +269,12 @@ export default {
 			isSavingDraft: false,
 			draftUid: null,
 			draftFolder: null,
+			// Saved on its own while written (14.10.2026): a moment after the last change, and when the composer goes
+			autosaveTimer: null,
+			ready: false,
+			sentOk: false,
+			isDirty: false,
+			lastSaved: null,
 			// Reference document for Communication link
 			referenceDoctype: null,
 			referenceName: null,
@@ -303,9 +309,25 @@ export default {
 			);
 			this.emailData.subject = this.initialSubject;
 		}
+		// What the setup filled in is no change of the person's: only what they type from now on is kept
+		this.$nextTick(() => {
+			this.ready = true;
+		});
+	},
+
+	watch: {
+		emailData: {
+			deep: true,
+			handler() {
+				this.markDirty();
+			},
+		},
 	},
 
 	beforeUnmount() {
+		clearTimeout(this.autosaveTimer);
+		// Closed, or another message opened: what was written stays in the drafts, never lost without a word
+		if (this.isDirty && !this.sentOk) this.saveDraftNow();
 		if (this.editor) {
 			this.editor.destroy();
 		}
@@ -321,6 +343,7 @@ export default {
 
 			this.editor = new Editor({
 				content: initialContent,
+				onUpdate: () => this.markDirty(),
 				extensions: [
 					StarterKit,
 					Underline,
@@ -333,35 +356,57 @@ export default {
 			});
 		},
 
+		markDirty() {
+			if (!this.ready || this.sending || this.sentOk) return;
+			this.isDirty = true;
+			clearTimeout(this.autosaveTimer);
+			this.autosaveTimer = setTimeout(() => this.saveDraftNow(), 4000);
+		},
+
 		async saveDraftNow() {
 			if (this.isSavingDraft || this.sending) return;
 
+			// What it holds, read now: the composer may be closing and its editor about to go
+			const html = this.editor ? this.editor.getHTML() : "";
+			const text = this.editor ? this.editor.getText().trim() : "";
 			// Don't save empty drafts
-			const hasContent =
-				this.emailData.to ||
-				this.emailData.subject ||
-				(this.editor && this.editor.getText().trim());
+			const hasContent = this.emailData.to || this.emailData.subject || text;
 
 			if (!hasContent) return;
 
 			this.isSavingDraft = true;
 
 			try {
-				await frappe.call({
+				const attachments = await this.prepareAllAttachments();
+				const r = await frappe.call({
 					method: "frappe_webmail.api.save_draft_imap",
 					args: {
 						account_name: this.account,
 						to: this.emailData.to,
 						cc: this.emailData.cc,
+						bcc: this.emailData.bcc || null,
 						subject: this.emailData.subject,
-						html_content: this.editor ? this.editor.getHTML() : "",
+						html_content: html,
+						reply_to_message_id: this.replyTo?.message_id || null,
+						attachments: attachments.length ? JSON.stringify(attachments) : null,
+						forward_uid: this.forwardEmail?.uid || null,
+						forward_folder: this.forwardEmail ? this.folder : null,
+						forward_attachments: this.forwardEmail
+							? JSON.stringify(
+									(this.forwardEmail.attachments || []).map((a) => a.id)
+							  )
+							: null,
 						draft_uid: this.draftUid,
 						draft_folder: this.draftFolder,
 					},
 				});
-				// Clear draft UID after saving (new draft created)
-				this.draftUid = null;
-				this.draftFolder = null;
+				// The server says where the new copy sits: the next save replaces it, sending deletes it. A server
+				// not updated yet says nothing: forget the old place, as before.
+				const place = r.message || {};
+				this.draftUid = place.uid || null;
+				this.draftFolder = place.uid ? place.folder : null;
+				this.lastSaved = Date.now();
+				this.isDirty = false;
 			} catch (error) {
 				console.error("Save draft failed:", error);
 				frappe.toast({ message: this.__("Error saving draft"), indicator: "red" });
@@ -372,7 +417,11 @@ export default {
 
 		setupReply() {
 			const reply = this.replyTo;
-			this.emailData.to = reply.from_email;
+			// Who it goes to, as the server reckons it (frappe_webmail.replies): the Reply-To before the sender, and for
+			// « Reply all » everyone else the message went to, the mailbox itself never. A server not updated yet: the sender.
+			const answer = reply.replyAll ? reply.reply_all : reply.reply;
+			this.emailData.to = (answer && answer.to) || reply.reply_to || reply.from_email;
+			this.emailData.cc = (reply.replyAll && answer && answer.cc) || "";
 			this.emailData.subject = reply.subject.startsWith("Re:")
 				? reply.subject
 				: `Re: ${reply.subject}`;
@@ -617,10 +666,21 @@ export default {
 						reply_to_folder: this.replyTo ? this.folder : null,
 						forward_uid: this.forwardEmail?.uid || null,
 						forward_folder: this.forwardEmail ? this.folder : null,
+						// The forwarded message's attachments go with it (they were lost: none was named)
+						forward_attachments: this.forwardEmail
+							? JSON.stringify(
+									(this.forwardEmail.attachments || []).map((a) => a.id)
+							  )
+							: null,
+						// The draft it was written in: deleted by the server once the message has left
+						draft_uid: this.draftUid,
+						draft_folder: this.draftFolder,
 						reference_doctype: this.referenceDoctype || null,
 						reference_name: this.referenceName || null,
 					},
 				});
+				this.sentOk = true;
+				clearTimeout(this.autosaveTimer);
 
 				// Delete draft after successful send
 				if (this.currentDraftId) {
