@@ -1235,6 +1235,11 @@ export default {
 	font-size: 11.5px;
 	color: var(--wm-ink-mute, #8d99a6);
 	font-variant-numeric: tabular-nums;
+	/* One line beside the order's pill (board 20): cut short rather than broken over three */
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .list-header-right {
