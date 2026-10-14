@@ -86,8 +86,11 @@ class TestAnswersAndDrafts(TestWebmailAPIBase):
 			SimpleNamespace(name=None, mailbox=b"lea", host=b"example.com"),
 		]
 		envelope.cc = [SimpleNamespace(name=None, mailbox=b"info", host=b"example.com")]
+		envelope.bcc = [SimpleNamespace(name=None, mailbox=b"archive", host=b"example.com")]
 		with mocked_imap(client):
 			message = get_email_content(self.test_account_email, UID, "INBOX", mark_read=False)
+		# A draft resumed keeps its hidden copies
+		self.assertEqual(message["bcc"], "archive@example.com")
 		self.assertEqual(message["reply"], {"to": "supplier@example.com", "cc": ""})
 		self.assertEqual(
 			message["reply_all"], {"to": "supplier@example.com, lea@example.com", "cc": "info@example.com"}

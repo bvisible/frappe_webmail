@@ -1100,6 +1100,8 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 		from_email = format_address(env.from_[0]) if env.from_ else ""
 		to = ", ".join([format_address(a) for a in (env.to or [])])
 		cc = ", ".join([format_address(a) for a in (env.cc or [])])
+		# A draft or a message sent keeps its Bcc: resuming a draft must not lose its hidden copies
+		bcc = ", ".join([format_address(a) for a in (getattr(env, "bcc", None) or [])])
 		reply_to = format_address(env.reply_to[0]) if env.reply_to else ""
 		return {
 			"uid": uid,
@@ -1109,6 +1111,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			"from_name": (decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""),
 			"to": to,
 			"cc": cc,
+			"bcc": bcc,
 			"reply_to": reply_to,
 			# Who « Reply » and « Reply all » write to, the same rule for both screens (replies.reply_recipients)
 			"reply": reply_recipients(account.email, from_email, reply_to, to, cc),
