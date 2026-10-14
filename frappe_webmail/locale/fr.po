@@ -3573,3 +3573,11 @@ msgstr "Les plus récents"
 #: frontend/src/components/AttachmentPicker.vue:492
 msgid "Those of the recipients first, then the most recent"
 msgstr "Ceux des destinataires d'abord, puis les plus récents"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+msgid "Provider preset"
+msgstr "Préréglage du fournisseur"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+msgid "Fills the IMAP and SMTP servers of a provider that signs in with an address and a password."
+msgstr "Renseigne les serveurs IMAP et SMTP d'un fournisseur qui se connecte avec une adresse et un mot de passe."

@@ -3422,3 +3422,10 @@ msgstr ""
 msgid "{0}: {1}"
 msgstr ""
 
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+msgid "Provider preset"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+msgid "Fills the IMAP and SMTP servers of a provider that signs in with an address and a password."
+msgstr ""
