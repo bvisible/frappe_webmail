@@ -34,6 +34,21 @@ OAUTH_PROVIDERS = {
 	},
 }
 
+# Providers that sign in with an address and a password (no OAuth): only their servers are preset.
+# Infomaniak: IMAP 993 SSL; SMTP 587 STARTTLS (465 SSL answers too). Checked live with this app's
+# IMAP client (IMAPClient) and smtplib on a real mailbox, 14.10.2026. The form script mirrors this table.
+PASSWORD_PROVIDERS = {
+	"Infomaniak": {
+		"imap_host": "mail.infomaniak.com",
+		"imap_port": 993,
+		"imap_ssl": 1,
+		"smtp_host": "mail.infomaniak.com",
+		"smtp_port": 587,
+		"smtp_ssl": 0,
+		"smtp_starttls": 1,
+	},
+}
+
 
 class WebmailAccount(Document):
 	def validate(self):
@@ -42,6 +57,7 @@ class WebmailAccount(Document):
 		self.validate_ports()
 		self.validate_auth()
 		self.apply_oauth_provider_settings()
+		self.apply_password_provider_settings()
 		self.clean_allowed_users()
 
 	def validate_email(self):
@@ -79,6 +95,16 @@ class WebmailAccount(Document):
 				self.smtp_port = provider["smtp_port"]
 				self.smtp_ssl = provider["smtp_ssl"]
 				self.smtp_starttls = provider["smtp_starttls"]
+
+	def apply_password_provider_settings(self):
+		"""Fill IMAP/SMTP settings from a password provider preset (OAuth accounts use their own)."""
+		if self.auth_type != "Password" or not self.provider_preset:
+			return
+		provider = PASSWORD_PROVIDERS.get(self.provider_preset)
+		if not provider:
+			return
+		for fieldname, value in provider.items():
+			setattr(self, fieldname, value)
 
 	def clean_allowed_users(self):
 		"""Remove owner from allowed_users list to prevent duplicates"""

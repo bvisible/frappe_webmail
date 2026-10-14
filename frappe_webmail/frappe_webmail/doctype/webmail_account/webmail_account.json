@@ -13,6 +13,7 @@
     "allowed_users",
     "sb_auth",
     "auth_type",
+    "provider_preset",
     "oauth_provider",
     "oauth_status",
     "oauth_connect_btn",
@@ -106,6 +107,14 @@
       "label": "Authentication Type",
       "options": "Password\nOAuth2",
       "reqd": 1
+    },
+    {
+      "depends_on": "eval:doc.auth_type=='Password'",
+      "description": "Fills the IMAP and SMTP servers of a provider that signs in with an address and a password.",
+      "fieldname": "provider_preset",
+      "fieldtype": "Select",
+      "label": "Provider preset",
+      "options": "\nInfomaniak"
     },
     {
       "depends_on": "eval:doc.auth_type=='OAuth2'",
@@ -332,7 +341,7 @@
   ],
   "index_web_pages_for_search": 1,
   "links": [],
-  "modified": "2026-09-07 12:00:00.000000",
+  "modified": "2026-10-14 10:30:00.000000",
   "modified_by": "Administrator",
   "module": "Frappe Webmail",
   "name": "Webmail Account",

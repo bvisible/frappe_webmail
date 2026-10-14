@@ -21,6 +21,27 @@ frappe.ui.form.on("Webmail Account", {
 		}
 	},
 
+	provider_preset: function (frm) {
+		// Password providers: fill the IMAP/SMTP servers (mirrors PASSWORD_PROVIDERS in the controller)
+		const presets = {
+			Infomaniak: {
+				imap_host: "mail.infomaniak.com",
+				imap_port: 993,
+				imap_ssl: 1,
+				smtp_host: "mail.infomaniak.com",
+				smtp_port: 587,
+				smtp_ssl: 0,
+				smtp_starttls: 1,
+			},
+		};
+		const settings = presets[frm.doc.provider_preset];
+		if (settings) {
+			Object.keys(settings).forEach((fieldname) =>
+				frm.set_value(fieldname, settings[fieldname])
+			);
+		}
+	},
+
 	oauth_provider: function (frm) {
 		// Auto-fill settings when provider is selected
 		if (frm.doc.oauth_provider) {
