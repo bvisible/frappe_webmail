@@ -5,66 +5,112 @@
 			<!-- Header, as the canvas « Neodesk » draws it (board 7): the subject in Forum with the message's actions
 			     beside it (Nora's reply first), then who wrote, to whom and when -->
 			<div class="email-header">
-				<div class="subject-row">
-					<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
-					<div class="email-actions">
+				<!-- The bar of the message, as Neodesk has it (canvas « Neodesk », boards 20 and 21): Reply, Reply All and
+				     Forward by name, the message's actions, then Nora's sphere and what she does on the message. Jérémy,
+				     14.10.2026: « répondre, répondre à tous, très clair » ; « Répondre avec Nora, c'est peut-être un peu
+				     grand : toujours le logo Nora, puis quand on clique dessus, toute une liste d'actions ». The names give way
+				     as the column narrows (Forward's first, Reply All's last), so the bar never runs out of the reader. -->
+				<div class="email-actions reading-bar">
+					<button @click="$emit('reply', email)" class="btn btn-labelled btn-reply">
+						<Reply :size="16" />
+						<span>{{ __("Reply") }}</span>
+					</button>
+					<button
+						v-if="email.reply_all"
+						@click="$emit('reply', { ...email, replyAll: true })"
+						class="btn btn-labelled btn-reply-all"
+						:data-tip="__('Reply All')"
+						:aria-label="__('Reply All')"
+					>
+						<ReplyAll :size="16" />
+						<span>{{ __("Reply All") }}</span>
+					</button>
+					<button
+						@click="$emit('forward', email)"
+						class="btn btn-labelled btn-forward"
+						:data-tip="__('Forward')"
+						:aria-label="__('Forward')"
+					>
+						<Forward :size="16" />
+						<span>{{ __("Forward") }}</span>
+					</button>
+					<span class="bar-sep" aria-hidden="true"></span>
+					<button
+						@click="markAsUnread"
+						class="btn btn-unread"
+						:data-tip="__('Mark as unread')"
+						:aria-label="__('Mark as unread')"
+					>
+						<MailOpen :size="16" />
+					</button>
+					<button
+						@click="toggleStar"
+						class="btn btn-star"
+						:class="{ starred: email.flagged }"
+						:data-tip="email.flagged ? __('Remove star') : __('Star')"
+						:aria-label="email.flagged ? __('Remove star') : __('Star')"
+					>
+						<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
+					</button>
+					<button
+						@click="$emit('delete', email)"
+						class="btn btn-danger"
+						:data-tip="__('Delete')"
+						:aria-label="__('Delete')"
+					>
+						<Trash2 :size="16" />
+					</button>
+					<span class="bar-space"></span>
+					<div v-if="noraEnabled" class="nora-menu-wrap">
 						<button
-							v-if="noraEnabled"
-							@click="handleQuickReply"
-							class="nora-reply"
-							:disabled="quickReplyLoading"
-							:data-tip="__('Let Nora draft the reply (about 10 s)')"
+							type="button"
+							class="nora-sphere"
+							:class="{ on: noraMenuOpen }"
+							:disabled="quickReplyLoading || translating"
+							:aria-expanded="noraMenuOpen ? 'true' : 'false'"
+							:aria-label="quickReplyLoading ? __('Nora is drafting…') : 'Nora'"
+							@click="noraMenuOpen = !noraMenuOpen"
 						>
-							<NoraOrb :size="20" />
-							<span>{{
-								quickReplyLoading ? __("Nora is drafting…") : __("Reply with Nora")
-							}}</span>
-							<div v-if="quickReplyLoading" class="nora-spinner-small"></div>
+							<NoraOrb :size="22" />
+							<div
+								v-if="quickReplyLoading || translating"
+								class="nora-spinner-small"
+							></div>
+							<ChevronDown v-else :size="12" />
 						</button>
-						<!-- Reply, Reply all, Forward, named: « répondre, répondre à tous, très clair » (14.10.2026) -->
-						<button @click="$emit('reply', email)" class="btn btn-labelled">
-							<Reply :size="16" />
-							<span>{{ __("Reply") }}</span>
-						</button>
-						<button
-							v-if="email.reply_all"
-							@click="$emit('reply', { ...email, replyAll: true })"
-							class="btn btn-labelled"
-						>
-							<ReplyAll :size="16" />
-							<span>{{ __("Reply All") }}</span>
-						</button>
-						<button @click="$emit('forward', email)" class="btn btn-labelled">
-							<Forward :size="16" />
-							<span>{{ __("Forward") }}</span>
-						</button>
-						<button
-							@click="markAsUnread"
-							class="btn"
-							:data-tip="__('Mark as unread')"
-							:aria-label="__('Mark as unread')"
-						>
-							<MailOpen :size="16" />
-						</button>
-						<button
-							@click="toggleStar"
-							class="btn"
-							:class="{ starred: email.flagged }"
-							:data-tip="email.flagged ? __('Remove star') : __('Star')"
-							:aria-label="email.flagged ? __('Remove star') : __('Star')"
-						>
-							<Star :size="16" :fill="email.flagged ? 'currentColor' : 'none'" />
-						</button>
-						<button
-							@click="$emit('delete', email)"
-							class="btn btn-danger"
-							:data-tip="__('Delete')"
-							:aria-label="__('Delete')"
-						>
-							<Trash2 :size="16" />
-						</button>
+						<template v-if="noraMenuOpen">
+							<div class="nora-menu-backdrop" @click="noraMenuOpen = false"></div>
+							<div class="nora-menu" role="menu">
+								<button type="button" role="menuitem" @click="pickNora('reply')">
+									<PenLine :size="15" />
+									<span>{{ __("Reply with Nora") }}</span>
+								</button>
+								<button
+									v-if="email.reply_all"
+									type="button"
+									role="menuitem"
+									@click="pickNora('reply_all')"
+								>
+									<ReplyAll :size="15" />
+									<span>{{ __("Reply to all with Nora") }}</span>
+								</button>
+								<div class="nora-menu-label">{{ __("Translate") }}</div>
+								<div class="nora-langs">
+									<button
+										v-for="language in noraLanguages"
+										:key="language.code"
+										type="button"
+										role="menuitem"
+										@click="pickNora('translate', language.code)"
+									>
+										{{ language.label }}
+									</button>
+								</div>
+							</div>
+						</template>
 					</div>
 				</div>
+				<div class="email-subject">{{ email.subject || __("(No subject)") }}</div>
 				<div class="email-meta">
 					<div class="from-info">
 						<strong>{{ email.from_name || email.from_email }}</strong>
@@ -115,6 +161,17 @@
 				</button>
 				<button v-if="senderDomain" @click="trustDomain" class="trust-btn">
 					{{ __("Always for {0}", [senderDomain]) }}
+				</button>
+			</div>
+
+			<!-- Nora's translation of the message, for this message only, the original a click away -->
+			<div v-if="shownTranslation" class="translated-banner">
+				<NoraOrb :size="16" />
+				<span>{{
+					__("Translated by Nora into {0}", [languageName(shownTranslation.language)])
+				}}</span>
+				<button type="button" class="banner-link" @click="translated = null">
+					{{ __("Show the original") }}
 				</button>
 			</div>
 
@@ -261,6 +318,7 @@ import {
 	Reply,
 	ReplyAll,
 	Forward,
+	PenLine,
 	MailOpen,
 	Star,
 	Trash2,
@@ -324,6 +382,7 @@ export default {
 		Reply,
 		ReplyAll,
 		Forward,
+		PenLine,
 		MailOpen,
 		Star,
 		Trash2,
@@ -374,6 +433,10 @@ export default {
 			senderCard: null,
 			showAllAttachments: false,
 			quickReplyLoading: false,
+			// Nora's menu on the message, and her translation of it (for the message it was made for)
+			noraMenuOpen: false,
+			translating: false,
+			translated: null,
 			// Inline reply bar state — lets the user answer without opening
 			// the full composer modal.
 			quickReplyText: "",
@@ -405,6 +468,19 @@ export default {
 				: this.__("{0} invoices this year", [n]);
 		},
 
+		shownTranslation() {
+			const t = this.translated;
+			return t && this.email && t.uid === this.email.uid ? t : null;
+		},
+
+		noraLanguages() {
+			return [
+				{ code: "fr", label: this.__("French") },
+				{ code: "de", label: this.__("German") },
+				{ code: "en", label: this.__("English") },
+			];
+		},
+
 		attachmentMenuItems() {
 			return menuItems(this.attachmentActions);
 		},
@@ -418,7 +494,10 @@ export default {
 		sanitizedContent() {
 			if (!this.email) return "";
 
-			const content = this.email.html || this.wrapPlainText(this.email.text);
+			const content =
+				this.shownTranslation?.html ||
+				this.email.html ||
+				this.wrapPlainText(this.email.text);
 			if (!content) return "";
 
 			// Configure DOMPurify
@@ -531,6 +610,7 @@ ${frameStyle(this.frame)}
 				this.hasBlockedImages = false;
 				this.showAllAttachments = false;
 				this.attachmentMenu.visible = false;
+				this.noraMenuOpen = false;
 				this.closePicker();
 				if (newEmail?.from_email) {
 					this.loadSenderContact(newEmail.from_email);
@@ -589,7 +669,48 @@ ${frameStyle(this.frame)}
 				.replace(/'/g, "&#039;");
 		},
 
-		async handleQuickReply() {
+		// What Nora's sphere offers on the message: an answer in the person's style (to the sender or to all), the
+		// message translated
+		pickNora(action, language) {
+			this.noraMenuOpen = false;
+			if (action === "reply") return this.handleQuickReply();
+			if (action === "reply_all") return this.handleQuickReply({ replyAll: true });
+			if (action === "translate") return this.translateMessage(language);
+		},
+
+		languageName(code) {
+			const language = this.noraLanguages.find((l) => l.code === code);
+			return language ? language.label : code;
+		},
+
+		async translateMessage(language) {
+			if (this.translating || !this.email) return;
+			const uid = this.email.uid;
+			this.translating = true;
+			try {
+				const result = await frappe.call({
+					method: "nora.api.nora_webmail.translate",
+					args: {
+						account_name: this.account,
+						html_content: this.email.html || this.wrapPlainText(this.email.text),
+						target_language: language,
+					},
+				});
+				const data = result.message || result;
+				if (!data || !data.translated_html) throw new Error("no translation");
+				this.translated = { uid, language, html: data.translated_html };
+			} catch (error) {
+				console.error("Translate error:", error);
+				frappe.toast({
+					message: this.__("Nora encountered an error. Please try again."),
+					indicator: "red",
+				});
+			} finally {
+				this.translating = false;
+			}
+		},
+
+		async handleQuickReply(opts = {}) {
 			if (this.quickReplyLoading || !this.email) return;
 			this.quickReplyLoading = true;
 
@@ -609,6 +730,8 @@ ${frameStyle(this.frame)}
 						draft_html: data.draft_html,
 						draft_text: data.draft_text,
 						original_email: this.email,
+						// « Reply to all with Nora »: the recipients the server reckons for all
+						replyAll: Boolean(opts.replyAll),
 					});
 				} else {
 					frappe.toast({
@@ -1018,22 +1141,15 @@ ${frameStyle(this.frame)}
 	border-bottom: 1px solid var(--wm-line-soft, #efefef);
 	flex: 0 0 auto;
 	background: var(--wm-bg-raised, #ffffff);
-}
-
-/* The subject and, beside it, the message's actions (board 7); they go under it when the column is narrow */
-.subject-row {
-	display: flex;
-	align-items: flex-start;
-	flex-wrap: wrap;
-	gap: 10px 16px;
-	margin-bottom: 10px;
+	/* The bar reads its room from here: the reader is narrow beside Nora's panel */
+	container: reading / inline-size;
 }
 
 /* Subject: serif heading from the Neoffice theme (Forum). We don't override
    font-family here on purpose so the global h1/h2 style still wins. */
 .email-subject {
-	flex: 1 1 260px;
 	min-width: 0;
+	margin-bottom: 10px;
 	font-size: 24px;
 	font-weight: 400;
 	letter-spacing: -0.005em;
@@ -1068,40 +1184,156 @@ ${frameStyle(this.frame)}
 	color: var(--wm-ink-mute, #8d99a6);
 }
 
-/* The actions: Nora's reply as a pill, the others as round buttons */
+/* The bar of the message: the answers by name, the message's actions as round buttons, Nora's sphere at the end */
 .email-actions {
 	display: flex;
-	gap: 8px;
-	flex: none;
+	gap: 6px;
 	align-items: center;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
+	min-width: 0;
+	margin-bottom: 14px;
 }
 
-.email-actions .nora-reply {
+.email-actions .bar-sep {
+	flex: none;
+	width: 1px;
+	height: 22px;
+	margin: 0 4px;
+	background: var(--wm-line, #e5e5e5);
+}
+
+.email-actions .bar-space {
+	flex: 1 1 8px;
+}
+
+/* Nora's sphere and what she does on the message (board 21) */
+.nora-menu-wrap {
+	position: relative;
+	flex: none;
+}
+
+.nora-sphere {
 	height: 36px;
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	padding: 0 14px 0 8px;
+	gap: 6px;
+	padding: 0 10px 0 6px;
 	border: 1px solid var(--wm-line, #e5e5e5);
 	border-radius: 999px;
 	background: var(--wm-bg-raised, #ffffff);
-	color: var(--wm-ink, #1a1a1a);
+	color: var(--wm-ink-mute, #8d99a6);
 	cursor: pointer;
-	font-family: inherit;
-	font-size: 13px;
-	font-weight: 600;
-	transition: border-color 0.15s, background 0.15s;
+	transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.email-actions .nora-reply:hover {
+.nora-sphere:hover {
+	border-color: var(--wm-line-strong, #cfcfcf);
+}
+
+.nora-sphere.on {
 	border-color: var(--wm-accent);
+	box-shadow: 0 0 0 3px var(--wm-accent-soft);
+}
+
+.nora-sphere:disabled {
+	cursor: wait;
+}
+
+.nora-menu-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 29;
+}
+
+.nora-menu {
+	position: absolute;
+	right: 0;
+	top: 44px;
+	z-index: 30;
+	width: 270px;
+	padding: 6px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 14px;
+	background: var(--wm-bg-raised, #ffffff);
+	box-shadow: 0 14px 34px rgba(40, 28, 10, 0.14);
+}
+
+.nora-menu > button {
+	width: 100%;
+	min-height: 36px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--wm-ink, #1a1a1a);
+	font: inherit;
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.nora-menu > button:hover,
+.nora-langs button:hover {
 	background: var(--wm-accent-soft);
 }
 
-.email-actions .nora-reply:disabled {
-	opacity: 0.6;
-	cursor: wait;
+.nora-menu-label {
+	padding: 8px 10px 4px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--wm-ink-mute, #8d99a6);
+}
+
+.nora-langs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 2px 10px 8px;
+}
+
+.nora-langs button {
+	height: 30px;
+	padding: 0 11px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--wm-ink, #1a1a1a);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+/* Nora's translation: said above the message, the original a click away */
+.translated-banner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 26px 0;
+	padding: 8px 12px;
+	border: 1px solid var(--wm-line, #e5e5e5);
+	border-radius: 12px;
+	background: var(--wm-accent-soft);
+	font-size: 13px;
+	color: var(--wm-ink, #1a1a1a);
+}
+
+.translated-banner span {
+	flex: 1;
+}
+
+.translated-banner .banner-link {
+	border: 0;
+	background: transparent;
+	color: var(--wm-accent-ink, var(--wm-accent));
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
 }
 
 .email-actions .btn {
@@ -1134,6 +1366,55 @@ ${frameStyle(this.frame)}
 	font-size: 13px;
 	color: var(--wm-ink, #1a1a1a);
 	white-space: nowrap;
+}
+
+/* Répondre, the answer most given, in ink */
+.email-actions .btn.btn-reply {
+	background: var(--wm-ink, #1a1a1a);
+	border-color: var(--wm-ink, #1a1a1a);
+	color: var(--wm-bg-raised, #ffffff);
+}
+
+.email-actions .btn.btn-reply:hover {
+	color: var(--wm-bg-raised, #ffffff);
+	opacity: 0.88;
+}
+
+/* The room shrinks (Nora's panel open, a narrow window): Forward keeps its arrow first, then the message's lesser
+   actions leave for the list's menu, and Reply All keeps its arrow last; Reply keeps its name always */
+@container reading (max-width: 620px) {
+	.email-actions .btn.btn-forward {
+		width: 36px;
+		padding: 0;
+		justify-content: center;
+	}
+	.email-actions .btn.btn-forward span {
+		display: none;
+	}
+}
+
+@container reading (max-width: 540px) {
+	.email-actions .btn.btn-unread {
+		display: none;
+	}
+}
+
+@container reading (max-width: 470px) {
+	.email-actions .btn.btn-reply-all {
+		width: 36px;
+		padding: 0;
+		justify-content: center;
+	}
+	.email-actions .btn.btn-reply-all span {
+		display: none;
+	}
+}
+
+@container reading (max-width: 400px) {
+	.email-actions .btn.btn-star,
+	.email-actions .bar-sep {
+		display: none;
+	}
 }
 
 .email-actions .btn.starred {

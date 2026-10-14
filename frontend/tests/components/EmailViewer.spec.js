@@ -392,6 +392,91 @@ describe("EmailViewer", () => {
 		expect(wrapper.vm.hasBlockedImages).toBe(false);
 	});
 
+	describe("Nora's sphere on the message (board 21)", () => {
+		const withAll = {
+			...mockEmail,
+			reply_all: { to: "sender@example.com, recipient@example.com", cc: "cc@example.com" },
+		};
+		const mountWith = (email = withAll) =>
+			mount(EmailViewer, { props: { email, account: "me@example.com", folder: "INBOX" } });
+		const answer = (message) => frappe.call.mockImplementation(async () => ({ message }));
+
+		afterEach(() => {
+			frappe.call.mockImplementation(async () => ({ message: {} }));
+		});
+
+		it("opens a menu: an answer by Nora, to all where the server reckons them, the message translated", async () => {
+			const wrapper = mountWith();
+			expect(wrapper.find(".nora-menu").exists()).toBe(false);
+			await wrapper.find(".nora-sphere").trigger("click");
+			expect(wrapper.findAll(".nora-menu > button").map((b) => b.text())).toEqual([
+				"Reply with Nora",
+				"Reply to all with Nora",
+			]);
+			expect(wrapper.findAll(".nora-langs button").map((b) => b.text())).toEqual([
+				"French",
+				"German",
+				"English",
+			]);
+
+			const single = mountWith(mockEmail);
+			await single.find(".nora-sphere").trigger("click");
+			expect(single.findAll(".nora-menu > button").map((b) => b.text())).toEqual([
+				"Reply with Nora",
+			]);
+		});
+
+		it("answers all with Nora: her draft comes with the wish to answer all", async () => {
+			answer({ success: true, draft_html: "<p>Merci</p>", draft_text: "Merci" });
+			const wrapper = mountWith();
+			await wrapper.find(".nora-sphere").trigger("click");
+			await wrapper.findAll(".nora-menu > button").at(1).trigger("click");
+			await flushPromises();
+			expect(frappe.call).toHaveBeenCalledWith(
+				expect.objectContaining({ method: "nora.api.nora_webmail.quick_reply" })
+			);
+			const [payload] = wrapper.emitted("quick-reply")[0];
+			expect(payload.replyAll).toBe(true);
+			expect(payload.draft_html).toBe("<p>Merci</p>");
+			expect(wrapper.find(".nora-menu").exists()).toBe(false);
+		});
+
+		it("shows the message translated and says so, the original a click away", async () => {
+			answer({ translated_html: "<p>Hello in English</p>" });
+			const wrapper = mountWith();
+			await wrapper.find(".nora-sphere").trigger("click");
+			await wrapper.findAll(".nora-langs button").at(2).trigger("click");
+			await flushPromises();
+			expect(frappe.call).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: "nora.api.nora_webmail.translate",
+					args: expect.objectContaining({ target_language: "en" }),
+				})
+			);
+			expect(wrapper.find(".translated-banner").text()).toContain(
+				"Translated by Nora into English"
+			);
+			expect(wrapper.find("iframe").attributes("srcdoc")).toContain("Hello in English");
+
+			await wrapper.find(".translated-banner .banner-link").trigger("click");
+			expect(wrapper.find(".translated-banner").exists()).toBe(false);
+			expect(wrapper.find("iframe").attributes("srcdoc")).toContain("Test email content");
+		});
+
+		it("never shows another message translated", async () => {
+			answer({ translated_html: "<p>Hello in English</p>" });
+			const wrapper = mountWith();
+			await wrapper.find(".nora-sphere").trigger("click");
+			await wrapper.findAll(".nora-langs button").at(2).trigger("click");
+			await flushPromises();
+			await wrapper.setProps({
+				email: { ...withAll, uid: 2, html: "<p>Autre message</p>" },
+			});
+			expect(wrapper.find(".translated-banner").exists()).toBe(false);
+			expect(wrapper.find("iframe").attributes("srcdoc")).toContain("Autre message");
+		});
+	});
+
 	describe("the attachment's menu (described by the server)", () => {
 		const attachment = {
 			id: "0",

@@ -1244,6 +1244,8 @@ export default {
 			this.replyToEmail = {
 				...email,
 				noraDraftHtml: data.draft_html,
+				// « Reply to all with Nora »: the composer takes the recipients of all
+				replyAll: Boolean(data.replyAll),
 			};
 			this.forwardingEmail = null;
 			this.editingDraft = null;
