@@ -229,7 +229,7 @@ user_data_fields = [
 # MailCraft's JMAP facade (mailcraft_jmap.py): a request to its four addresses carrying the Bearer token /mailcraft
 # gave is made as that token's person; nothing else is touched.
 auth_hooks = ["frappe_webmail.mailcraft_jmap.authenticate"]
-# /mailcraft holds that token: no cache keeps the page.
+# /mailcraft holds that token and the facade's answers hold mail: no cache keeps them.
 after_request = ["frappe_webmail.mailcraft_jmap.no_store"]
 
 # Automatically update python controller files with type annotations for this app.

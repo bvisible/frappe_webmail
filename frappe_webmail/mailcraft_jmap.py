@@ -190,12 +190,9 @@ def _gate():
 
 
 def no_store(response=None, request=None):
-	"""after_request: /mailcraft holds a token; no cache keeps the page."""
-	if (
-		request is not None
-		and response is not None
-		and (getattr(request, "path", "") or "").rstrip("/") == "/mailcraft"
-	):
+	"""after_request: /mailcraft holds a token and the facade's answers hold mail; no cache keeps either."""
+	path = (getattr(request, "path", "") or "") if request is not None else ""
+	if response is not None and (path.rstrip("/") == "/mailcraft" or _OWN_PATH.match(path)):
 		response.headers["Cache-Control"] = "no-store"
 
 
@@ -402,6 +399,9 @@ def download(**kwargs):
 			return _problem("about:blank", 404, "No such blob.")
 		response = Response(data, status=200, content_type="message/rfc822")
 		response.headers["Content-Disposition"] = 'attachment; filename="message.eml"'
+		# Where the Suite is installed, its after_request replaces this policy on every /api/method/ answer. No browser
+		# shows the source either way: the address answers only a request that carries the token, and a page can't
+		# make a browser send one by opening the address.
 		response.headers["Content-Security-Policy"] = "sandbox"
 		response.headers["X-Content-Type-Options"] = "nosniff"
 		return response

@@ -657,10 +657,11 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertTrue(sample.build_url.endswith("?sample&nora"), "?sample opens the sample mailbox")
 		self.assertEqual(json.loads(sample.host_json), {"accounts": []})
 
-	def test_the_page_is_not_kept_by_a_cache(self):
-		response = SimpleNamespace(headers={})
-		jmap.no_store(response=response, request=SimpleNamespace(path="/mailcraft"))
-		self.assertEqual(response.headers["Cache-Control"], "no-store")
+	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
+		for path in ("/mailcraft", SESSION, "/api/method/frappe_webmail.mailcraft_jmap.download"):
+			response = SimpleNamespace(headers={})
+			jmap.no_store(response=response, request=SimpleNamespace(path=path))
+			self.assertEqual(response.headers["Cache-Control"], "no-store", path)
 		other = SimpleNamespace(headers={})
 		jmap.no_store(response=other, request=SimpleNamespace(path="/app/webmail"))
 		self.assertEqual(other.headers, {})
