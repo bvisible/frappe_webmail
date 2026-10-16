@@ -11,7 +11,11 @@
 	</style>
 </head>
 <body>
-	<script>window.frappe = window.frappe || {};</script>
+	<script>
+		window.frappe = window.frappe || {};
+		// The person's mailboxes for the framed MailCraft, which reads them from this page (same origin).
+		window.mailcraftJmap = {{ host_json | safe }};
+	</script>
 	<!-- csrf_token -->
 	<iframe src="{{ build_url }}" title="MailCraft"></iframe>
 </body>

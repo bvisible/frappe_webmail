@@ -2,14 +2,16 @@
 # For license information, please see license.txt
 
 """
-The /mailcraft address: the trial of MailCraft with Nora (« Reply with Nora »), on its sample mailbox.
+The /mailcraft address: the trial of MailCraft with Nora, on the person's own mailboxes.
 
-Off unless the site's configuration says `mailcraft_trial: 1` (osiris, while the first step of the plan
-« Nora dans mailcraft » is tried, maintenance#1629): everywhere else the address does not exist. The page
-frames the browser build of MailCraft (bvisible/mailcraft) that the Suite's installer puts next to the
-editors (suite/public/craft/mailcraft), and asks it to reach Nora with this page's session: the build
-reads this page's CSRF token (same origin) and calls Nora's methods, which apply their own rights.
-The desk's people only: a visitor signs in first, a portal account is refused, as for the webmail.
+Off unless the site's configuration says `mailcraft_trial: 1` (osiris, while the plan that brings Nora into MailCraft
+is tried, maintenance#1629 and #1630): everywhere else the address does not exist. The page frames the browser build
+of MailCraft (bvisible/mailcraft) that the Suite's installer puts next to the editors (suite/public/craft/mailcraft).
+It hands the build the person's mailboxes (owned or shared, as the webmail lists them), each with its JMAP session on
+the facade (mailcraft_jmap.py) and a token for it; without any mailbox, or with `?sample`, MailCraft opens its sample
+mailbox. The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
+methods apply their own rights. The desk's people only: a visitor signs in first, a portal account is refused, as for
+the webmail.
 """
 
 import frappe
@@ -33,8 +35,44 @@ def get_context(context):
 	# The framed build's calls to Nora carry this session's token: make sure the session has one.
 	frappe.sessions.get_csrf_token()
 	context.no_cache = 1
-	context.build_url = BUILD + "?sample&nora"
 	context.lang = frappe.local.lang or "en"
+	mailboxes = [] if "sample" in frappe.form_dict else host_mailboxes()
+	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox.
+	context.build_url = BUILD + ("?nora" if mailboxes else "?sample&nora")
+	context.host_json = _script_json({"accounts": mailboxes})
+
+
+def host_mailboxes():
+	"""The mailboxes of the person (owned or shared, enabled) as MailCraft opens them: the JMAP session of each, and
+	a token good for the facade only, twelve hours, that MailCraft keeps in the tab's memory."""
+	from urllib.parse import quote
+
+	from frappe_webmail.mailcraft_jmap import give_token
+	from frappe_webmail.webmail_api import get_accounts
+
+	accounts = get_accounts()
+	if not accounts:
+		return []
+	token = give_token()
+	base = frappe.utils.get_url() + "/api/method/frappe_webmail.mailcraft_jmap.session?account="
+	return [
+		{
+			"email": a["email"],
+			"name": a.get("sender_name") or "",
+			"session": base + quote(a["name"], safe=""),
+			"username": a["email"],
+			"secret": token,
+			"scheme": "bearer",
+		}
+		for a in accounts
+	]
+
+
+def _script_json(data):
+	"""JSON safe inside a <script> element."""
+	import json
+
+	return json.dumps(data).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def _redirect(location):
