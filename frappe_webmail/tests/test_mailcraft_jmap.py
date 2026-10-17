@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -712,7 +713,9 @@ class TestMailCraftJmap(FrappeTestCase):
 			patch.object(neomail, "nora_installed", return_value=True),
 		):
 			neomail.get_context(context)
-		self.assertTrue(context.build_url.endswith("index.html?nora"))
+		# The build is told who is signed in, for the initials of its account button
+		named = "author=" + quote(frappe.utils.get_fullname(frappe.session.user), safe="")
+		self.assertTrue(context.build_url.endswith("index.html?nora&" + named))
 		self.assertNotIn("<", context.host_json)
 		box = next(a for a in json.loads(context.host_json)["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual(box["scheme"], "bearer")
@@ -729,7 +732,10 @@ class TestMailCraftJmap(FrappeTestCase):
 			patch.object(neomail, "nora_installed", return_value=True),
 		):
 			neomail.get_context(sample)
-		self.assertTrue(sample.build_url.endswith("?sample&nora"), "?sample opens the sample mailbox")
+		shared = "author=" + quote(frappe.utils.get_fullname(SHARED), safe="")
+		self.assertTrue(
+			sample.build_url.endswith("?sample&nora&" + shared), "?sample opens the sample mailbox"
+		)
 		self.assertEqual(
 			json.loads(sample.host_json), {"accounts": [], "language": context.lang, "product": "NeoMail"}
 		)
