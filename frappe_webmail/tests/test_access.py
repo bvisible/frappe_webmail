@@ -73,3 +73,31 @@ class TestAccess(FrappeTestCase):
 		finally:
 			frappe.set_user("Administrator")
 			frappe.delete_doc("ToDo", todo.name, force=True)
+
+	def test_a_mailbox_that_is_not_ones_own_is_one_that_is_not_there(self):
+		"""« Access denied » told which addresses have a mailbox here (maintenance#1541)."""
+		from frappe_webmail.webmail_api import get_account
+
+		address = "webmail_access_box@webmail.test"
+		if not frappe.db.exists("Webmail Account", address):
+			frappe.get_doc(
+				{
+					"doctype": "Webmail Account",
+					"email": address,
+					"user": "Administrator",
+					"sender_name": "Box",
+					"auth_type": "Password",
+					"imap_host": "imap.test.local",
+					"imap_password": "x",
+					"smtp_host": "smtp.test.local",
+					"smtp_password": "x",
+					"enabled": 1,
+				}
+			).insert(ignore_permissions=True)
+		frappe.set_user(OUTSIDER)
+		answers = []
+		for name in (address, "webmail_access_nobody@webmail.test"):
+			with self.assertRaises(frappe.ValidationError, msg=name) as caught:
+				get_account(name)
+			answers.append(str(caught.exception))
+		self.assertEqual(answers[0], answers[1])

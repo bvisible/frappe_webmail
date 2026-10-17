@@ -120,7 +120,9 @@ class TestWhoMaySeeThem(FrappeTestCase):
 		frappe.set_user(self.email)
 		self.assertEqual(list_attachable_documents(limit=50), [])
 		if invoice:
-			with self.assertRaises(frappe.ValidationError):
+			# A portal user is refused the desk's webmail outright (maintenance#1541); a desk user without the right
+			# to read it is told it is not there (test_contacts_follow_permissions).
+			with self.assertRaises(frappe.PermissionError):
 				generate_document_pdf("Sales Invoice", invoice.name)
 
 

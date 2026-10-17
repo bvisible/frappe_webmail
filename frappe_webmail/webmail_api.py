@@ -20,6 +20,7 @@ from email.utils import formatdate, make_msgid
 
 import frappe
 from frappe import _
+from frappe.utils import cint
 
 from frappe_webmail.conversations import conversation_of, message_id_of, one_per_message, references_for
 
@@ -2273,39 +2274,72 @@ def get_default_signature():
 # ============================================
 
 
+def _may_read_contacts():
+	"""Whether the person may read any contact. The lists below go through frappe.get_list, which applies their rights
+	and user permissions, and refuses outright someone with no right at all: a portal client gets nothing, not an
+	error, for the composer's suggestions."""
+	return bool(frappe.has_permission("Contact", "read"))
+
+
+def _existing_contact(email):
+	"""Whether a contact the person may read already has this address, and its name. A contact they may not read is as
+	if it did not exist: saying « it is there » would tell them which addresses the company keeps (maintenance#1541)."""
+	# A row whose contact is gone is skipped (has_permission would raise on it); read by the database layer, below the
+	# rights it checks itself.
+	for name in frappe.db.get_values("Contact Email", {"email_id": email}, "parent", pluck=True, limit=20):
+		if frappe.db.exists("Contact", name) and frappe.has_permission("Contact", "read", doc=name):
+			return True, name
+	return False, None
+
+
+def _readable_record(doctype, name):
+	"""Whether `name` is a record of `doctype` (a DocType of records, not a table or a single) that the person may read:
+	one answer for a record that is not there and one that is not theirs to read."""
+	if not isinstance(doctype, str) or not isinstance(name, str) or not doctype or not name:
+		return False
+	if not frappe.db.exists("DocType", {"name": doctype, "istable": 0, "issingle": 0}):
+		return False
+	return bool(frappe.db.exists(doctype, name) and frappe.has_permission(doctype, "read", doc=name))
+
+
+def _require_desk_user():
+	"""The webmail is the desk's: a portal client (Website User) keeps no mailbox here, and has no contacts to add or
+	documents to pick through it (maintenance#1541)."""
+	user = frappe.session.user
+	if user == "Guest" or frappe.get_cached_value("User", user, "user_type") != "System User":
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+
 @frappe.whitelist()
 def search_contacts(query, limit=10):
-	"""Search contacts by name or email for autocomplete"""
-	if not query or len(query) < 2:
+	"""Search contacts by name or email for autocomplete: the contacts the person may read. It used to read every
+	contact for anyone signed in, a portal client included (maintenance#1541)."""
+	if not query or len(query) < 2 or not _may_read_contacts():
 		return []
 
 	limit = min(int(limit), 50)
 
 	# Search in Contact DocType (ERPNext standard)
 	contacts = []
+	fields = ["name", "first_name", "last_name", "full_name", "email_id", "image"]
 
 	# Search by name
-	name_results = frappe.get_all(
+	name_results = frappe.get_list(
 		"Contact",
 		filters=[
 			["Contact", "full_name", "like", f"%{query}%"],
 		],
-		fields=["name", "first_name", "last_name", "full_name", "email_id", "image"],
+		fields=fields,
 		limit=limit,
 	)
 
 	# Search by email in Contact Email child table
-	email_results = frappe.db.sql(
-		"""
-		SELECT DISTINCT
-			c.name, c.first_name, c.last_name, c.full_name, c.email_id, c.image
-		FROM `tabContact` c
-		INNER JOIN `tabContact Email` ce ON ce.parent = c.name
-		WHERE ce.email_id LIKE %(query)s
-		LIMIT %(limit)s
-		""",
-		{"query": f"%{query}%", "limit": limit},
-		as_dict=True,
+	email_results = frappe.get_list(
+		"Contact",
+		filters=[["Contact Email", "email_id", "like", f"%{query}%"]],
+		fields=fields,
+		distinct=True,
+		limit=limit,
 	)
 
 	# Combine and deduplicate
@@ -2339,21 +2373,16 @@ def search_contacts(query, limit=10):
 def get_contact_by_email(email):
 	"""Get contact details by email address: a contact the person may read, or None. It answered anyone signed in,
 	a portal client included, with any contact's phones, company and links (the class of #1531)."""
-	if not email:
+	if not email or not _may_read_contacts():
 		return None
 
-	# Search in Contact Email child table
-	contact_email = frappe.db.get_value(
-		"Contact Email",
-		{"email_id": email},
-		["parent", "is_primary"],
-		as_dict=True,
-	)
-
-	if not contact_email or not frappe.has_permission("Contact", "read", doc=contact_email.parent):
+	# A contact the person may read among all those that have the address: the first row alone said None when it was
+	# one they may not read, though they may read another.
+	found, name = _existing_contact(email)
+	if not found:
 		return None
 
-	contact = frappe.get_doc("Contact", contact_email.parent)
+	contact = frappe.get_doc("Contact", name)
 
 	# Get all emails
 	emails = [e.email_id for e in contact.email_ids]
@@ -2429,14 +2458,17 @@ def get_sender_card(email):
 
 @frappe.whitelist()
 def create_contact_from_email(email, name=None):
-	"""Create a new contact from an email address"""
+	"""Create a new contact from an email address, with the person's right to create contacts. It used to insert with
+	ignore_permissions for anyone signed in (maintenance#1541)."""
 	if not email:
 		frappe.throw(_("Email address is required"))
+	_require_desk_user()
+	frappe.has_permission("Contact", "create", throw=True)
 
 	# Check if contact with this email already exists
-	existing = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
-	if existing:
-		return {"success": False, "message": _("Contact with this email already exists"), "contact": existing}
+	known, named = _existing_contact(email)
+	if known:
+		return {"success": False, "message": _("Contact with this email already exists"), "contact": named}
 
 	# Parse name from email if not provided
 	if not name:
@@ -2460,7 +2492,7 @@ def create_contact_from_email(email, name=None):
 		}
 	)
 
-	contact.insert(ignore_permissions=True)
+	contact.insert()
 	frappe.db.commit()
 
 	return {
@@ -2515,18 +2547,18 @@ def extract_contacts_from_email(account_name, uid, folder="INBOX"):
 				if email_addr:
 					contacts.append({"email": email_addr, "name": name, "type": "cc"})
 
-		# Check which contacts already exist
+		# Check which contacts already exist (named only to whoever may read them)
 		for contact in contacts:
-			existing = frappe.db.get_value("Contact Email", {"email_id": contact["email"]}, "parent")
-			contact["exists"] = bool(existing)
-			contact["contact_name"] = existing
+			contact["exists"], contact["contact_name"] = _existing_contact(contact["email"])
 
 		return contacts
 
 
 @frappe.whitelist()
 def bulk_create_contacts(contacts_json):
-	"""Create multiple contacts from a list"""
+	"""Create multiple contacts from a list, with the person's right to create contacts (create_contact_from_email)."""
+	_require_desk_user()
+	frappe.has_permission("Contact", "create", throw=True)
 	contacts = frappe.parse_json(contacts_json)
 
 	created = []
@@ -2540,9 +2572,9 @@ def bulk_create_contacts(contacts_json):
 			continue
 
 		# Check if already exists
-		existing = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
-		if existing:
-			skipped.append({"email": email, "contact": existing})
+		known, named = _existing_contact(email)
+		if known:
+			skipped.append({"email": email, "contact": named})
 			continue
 
 		# Create contact
@@ -2562,11 +2594,13 @@ def bulk_create_contacts(contacts_json):
 
 @frappe.whitelist()
 def get_recent_contacts(limit=20):
-	"""Get recently used contacts for quick access"""
+	"""Get recently used contacts for quick access: those the person may read (maintenance#1541)."""
+	if not _may_read_contacts():
+		return []
 	limit = min(int(limit), 50)
 
 	# Get contacts ordered by modification date
-	contacts = frappe.get_all(
+	contacts = frappe.get_list(
 		"Contact",
 		filters={"email_id": ["is", "set"]},
 		fields=["name", "full_name", "email_id", "image"],
@@ -2589,12 +2623,14 @@ def get_recent_contacts(limit=20):
 def link_contact_to_document(contact_name, link_doctype, link_name):
 	"""Link a contact to a document (Customer, Supplier, etc.), with the person's own rights: writing the contact and
 	reading the document. It used to save with ignore_permissions, so anyone signed in could relink any contact."""
-	if not frappe.db.exists("Contact", contact_name):
-		frappe.throw(_("Contact not found"))
+	_require_desk_user()
+	# A record the person may not read is answered as one that does not exist: « no permission » would tell them which
+	# contacts and documents the company keeps.
+	if not _readable_record("Contact", contact_name):
+		frappe.throw(_("Contact not found"), frappe.DoesNotExistError)
 	frappe.has_permission("Contact", "write", doc=contact_name, throw=True)
-	if not frappe.db.exists(link_doctype, link_name):
+	if not _readable_record(link_doctype, link_name):
 		frappe.throw(_("{0} {1} not found").format(_(link_doctype), link_name), frappe.DoesNotExistError)
-	frappe.has_permission(link_doctype, "read", doc=link_name, throw=True)
 
 	contact = frappe.get_doc("Contact", contact_name)
 
@@ -3297,8 +3333,9 @@ def save_folder_mapping(
 
 
 def get_account(account_name):
-	"""Get and validate email account (owner or shared user)"""
-	if not frappe.db.exists("Webmail Account", account_name):
+	"""Get and validate email account (owner or shared user). A mailbox that is not the person's is answered as one that
+	does not exist: « access denied » told which addresses have a mailbox here (maintenance#1541)."""
+	if not isinstance(account_name, str) or not frappe.db.exists("Webmail Account", account_name):
 		frappe.throw(_("Account not found"))
 
 	account = frappe.get_doc("Webmail Account", account_name)
@@ -3315,7 +3352,7 @@ def get_account(account_name):
 		)
 
 	if not is_owner and not is_shared_user:
-		frappe.throw(_("Access denied"))
+		frappe.throw(_("Account not found"))
 
 	if not account.enabled:
 		frappe.throw(_("Account is disabled"))
@@ -3426,12 +3463,14 @@ def get_file_manager_files(folder="Home", start=0, page_length=20, search=None):
 	Returns:
 		dict: List of files and folders
 	"""
-	start = int(start)
-	page_length = min(int(page_length), 50)
+	_require_desk_user()
+	start = max(0, int(start))
+	page_length = max(1, min(int(page_length), 50))
 	folder = folder or "Home"
 	# A folder is browsed only by who may read it: any folder id used to list its subfolders, « Users » the private
 	# Drive folder of every person, named after their e-mail address.
-	if folder != "Home" and not frappe.has_permission("File", "read", doc=folder):
+	# One answer for a folder that is not there and one the person may not read.
+	if folder != "Home" and not _readable_record("File", folder):
 		frappe.throw(_("Access denied"), frappe.PermissionError)
 
 	filters = {"is_private": 0}  # Only public files for now
@@ -3454,18 +3493,21 @@ def get_file_manager_files(folder="Home", start=0, page_length=20, search=None):
 		if frappe.has_permission("File", "read", doc=f.name)
 	]
 
-	# Get files
-	files = frappe.get_all(
+	# Get files: those the person's rights list (frappe.get_list; get_all listed every public file to anyone signed in)
+	files = frappe.get_list(
 		"File",
 		filters={**filters, "is_folder": 0},
 		fields=["name", "file_name", "file_url", "file_size", "file_type", "folder", "is_folder", "modified"],
 		order_by="modified desc",
-		start=start,
-		page_length=page_length,
+		limit_start=start,
+		limit_page_length=page_length,
 	)
 
-	# Count total files for pagination
-	total_files = frappe.db.count("File", {**filters, "is_folder": 0})
+	# Count total files for pagination, under the same rights
+	counted = frappe.get_list(
+		"File", filters={**filters, "is_folder": 0}, fields=["count(`tabFile`.name) as total"]
+	)
+	total_files = cint(counted[0].get("total")) if counted else 0
 
 	return {
 		"folders": folders,
@@ -3488,32 +3530,31 @@ def get_file_content(file_url):
 	"""
 	if not file_url:
 		frappe.throw(_("File URL is required"))
+	_require_desk_user()
 
-	# Get file doc by URL
-	file_doc = frappe.db.get_value(
-		"File",
-		{"file_url": file_url},
-		["name", "file_name", "file_type", "is_private"],
-		as_dict=True,
+	# The File records of this address (several documents may share one file): a public one, as the web serves it, or
+	# a private one the person's rights open. Any other is answered as not there: « access denied » said it existed,
+	# and the first record alone refused a file another record let the person read.
+	rows = frappe.get_all(
+		"File", filters={"file_url": file_url, "is_folder": 0}, fields=["name", "is_private"], limit=20
 	)
-
-	if not file_doc:
-		frappe.throw(_("File not found"))
+	name = next(
+		(r.name for r in rows if not r.is_private or frappe.has_permission("File", "read", doc=r.name)), None
+	)
+	if not name:
+		frappe.throw(_("File not found"), frappe.DoesNotExistError)
 
 	# Load full doc to get content
-	file = frappe.get_doc("File", file_doc.name)
-
-	# Check permissions
-	if file.is_private:
-		# For private files, check if user has access
-		if not frappe.has_permission("File", "read", file.name):
-			frappe.throw(_("Access denied"))
+	file = frappe.get_doc("File", name)
 
 	try:
 		content = file.get_content()
 	except Exception as e:
 		frappe.log_error("File content error", f"Failed to read file {file_url}: {e!s}")
 		frappe.throw(_("Could not read file content"))
+	# A text file comes back as text (File.get_content decodes it): it is sent as its bytes.
+	if isinstance(content, str):
+		content = content.encode()
 
 	return {
 		"filename": file.file_name,
@@ -3646,6 +3687,7 @@ def get_recent_documents(doctype, limit=10):
 	"""
 	if not doctype:
 		frappe.throw(_("DocType is required"))
+	_require_desk_user()
 
 	if not frappe.has_permission(doctype, "read"):
 		frappe.throw(_("No permission to read {0}").format(doctype))
@@ -3656,8 +3698,9 @@ def get_recent_documents(doctype, limit=10):
 	meta = frappe.get_meta(doctype)
 	title_field = meta.title_field or "name"
 
-	# Get recent documents ordered by modified date
-	docs = frappe.get_all(
+	# Get recent documents ordered by modified date: those the person may read (their user permissions, the records of
+	# their own when that is all their role gives). get_all listed any (maintenance#1541).
+	docs = frappe.get_list(
 		doctype,
 		fields=["name", title_field] if title_field != "name" else ["name"],
 		order_by="modified desc",
@@ -3689,6 +3732,9 @@ def get_print_formats(doctype):
 		list: Available print formats
 	"""
 	if not doctype or not frappe.db.exists("DocType", doctype):
+		return []
+	_require_desk_user()
+	if not frappe.has_permission(doctype, "read"):
 		return []
 
 	formats = frappe.get_all(
@@ -3722,11 +3768,10 @@ def generate_document_pdf(doctype, docname, print_format=None, language=None):
 	if not doctype or not docname:
 		frappe.throw(_("DocType and document name are required"))
 
-	if not frappe.db.exists(doctype, docname):
-		frappe.throw(_("Document not found"))
-
-	if not frappe.has_permission(doctype, "read", docname):
-		frappe.throw(_("Access denied"))
+	_require_desk_user()
+	# A document the person may not read is answered as one that does not exist (« access denied » told them it was).
+	if not _readable_record(doctype, docname):
+		frappe.throw(_("Document not found"), frappe.DoesNotExistError)
 
 	try:
 		# Generate PDF using Frappe's built-in method
