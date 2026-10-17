@@ -11,6 +11,7 @@ Run with:
 """
 
 import json
+import secrets
 from contextlib import contextmanager
 from datetime import datetime
 from types import SimpleNamespace
@@ -205,6 +206,24 @@ def _user(email, desk=True):
 	user.insert(ignore_permissions=True)
 
 
+def _client(app_name):
+	"""An OAuth client that grants what the mobile sign-in asks for."""
+	return (
+		frappe.get_doc(
+			{
+				"doctype": "OAuth Client",
+				"app_name": app_name,
+				"scopes": "all openid",
+				"default_redirect_uri": "http://127.0.0.1/callback",
+				"grant_type": "Authorization Code",
+				"response_type": "Code",
+			}
+		)
+		.insert(ignore_permissions=True)
+		.name
+	)
+
+
 def eid(folder, uid, validity=VALIDITY):
 	return jmap.email_id(folder, validity, uid)
 
@@ -233,6 +252,10 @@ class TestMailCraftJmap(FrappeTestCase):
 			account.append("allowed_users", {"user": SHARED})
 			account.insert(ignore_permissions=True)
 		cls.aid = jmap.account_id(MAILBOX)
+		# The OAuth client Neodesk's bearer tokens come from, as the mobile sign-in mints them.
+		cls.client = frappe.db.get_value("OAuth Client", {"app_name": "mailcraft-jmap-test"}) or _client(
+			"mailcraft-jmap-test"
+		)
 
 	def setUp(self):
 		self.trial = patch.dict(frappe.local.conf, {"mailcraft_trial": 1})
@@ -254,7 +277,8 @@ class TestMailCraftJmap(FrappeTestCase):
 	# Who gets in -------------------------------------------------------------------------------------------------
 
 	def _authenticated(self, path, token, cmd=None, alive=True, signed_in=None, form=None):
-		"""The person a request to `path` with this token is made as, and the arguments it is left with."""
+		"""The person a request to `path` with this token is made as, and the arguments it is left with. `alive` says
+		whether the desk session the token is bound to is still there: a yes or no, or a test of the session id."""
 		frappe.set_user(signed_in or "Guest")
 		frappe.local.flags.mailcraft_jmap_user = None
 		args = frappe._dict(form or {})
@@ -264,7 +288,7 @@ class TestMailCraftJmap(FrappeTestCase):
 			patch.object(frappe.local, "request", SimpleNamespace(path=path), create=True),
 			patch.object(frappe.local, "form_dict", args),
 			patch("frappe.get_request_header", return_value=f"Bearer {token}"),
-			patch.object(jmap, "_session_alive", return_value=alive),
+			patch.object(jmap, "_session_alive", side_effect=alive if callable(alive) else lambda sid: alive),
 		):
 			jmap.authenticate()
 			kept = dict(frappe.local.form_dict)
@@ -707,8 +731,130 @@ class TestMailCraftJmap(FrappeTestCase):
 			json.loads(context.host_json)["language"], frappe.local.lang or "en", "the desk's language"
 		)
 
+	# Neodesk's hand-over, and the page's renewal ------------------------------------------------------------------
+
+	def _bearer(self, user=SHARED, status="Active", seconds=3600, client=None, scopes="all openid"):
+		"""An OAuth bearer token as Neodesk signs in with (its name is the token)."""
+		name = "mailcraft-jmap-" + secrets.token_hex(16)
+		frappe.get_doc(
+			{
+				"doctype": "OAuth Bearer Token",
+				"access_token": name,
+				"client": client or self.client,
+				"user": user,
+				"status": status,
+				"scopes": scopes,
+				"expires_in": seconds,
+				"expiration_time": frappe.utils.add_to_date(None, seconds=seconds),
+			}
+		).insert(ignore_permissions=True, ignore_links=True)
+		return name
+
+	def _hand_over(self, bearer, user=SHARED):
+		"""hand_over, for a request Frappe signed in as `user` with that bearer token in Authorization."""
+		frappe.set_user(user)
+		frappe.local.flags.mailcraft_jmap_user = None
+		with patch("frappe.get_request_header", return_value=f"Bearer {bearer}" if bearer else None):
+			return jmap.hand_over()
+
+	def test_neodesk_gets_the_mailboxes_for_its_bearer_and_they_live_with_it(self):
+		bearer = self._bearer()
+		given = self._hand_over(bearer)
+		box = next(a for a in given["accounts"] if a["email"] == MAILBOX)
+		self.assertEqual((given["product"], box["scheme"]), ("NeoMail", "bearer"))
+		self.assertTrue(given["language"])
+		self.assertEqual(
+			self._authenticated(SESSION, box["secret"], alive=False)[0],
+			SHARED,
+			"bound to the bearer token, not to a desk session",
+		)
+		frappe.db.set_value("OAuth Bearer Token", bearer, "status", "Revoked")
+		self.assertEqual(
+			self._authenticated(SESSION, box["secret"])[0], "Guest", "signed out of Neodesk: dead"
+		)
+
+	def test_an_expired_bearer_ends_its_tokens(self):
+		bearer = self._bearer()
+		secret = self._hand_over(bearer)["accounts"][0]["secret"]
+		frappe.db.set_value(
+			"OAuth Bearer Token", bearer, "expiration_time", frappe.utils.add_to_date(None, seconds=-5)
+		)
+		self.assertEqual(self._authenticated(SESSION, secret)[0], "Guest")
+
+	def test_the_hand_over_wants_the_person_s_own_live_bearer(self):
+		for bearer, user, why in (
+			(None, SHARED, "a desk cookie alone"),
+			("not-a-token", SHARED, "a token Frappe never gave"),
+			(self._bearer(user=OWNER), SHARED, "another person's token"),
+			(self._bearer(status="Revoked"), SHARED, "a revoked token"),
+			(self._bearer(seconds=-5), SHARED, "an expired token"),
+			(self._bearer(user=PORTAL), PORTAL, "a portal account"),
+		):
+			with self.assertRaises(frappe.PermissionError, msg=why):
+				self._hand_over(bearer, user)
+		with (
+			patch.dict(frappe.local.conf, {"mailcraft_trial": 0}),
+			self.assertRaises(frappe.PageDoesNotExistError),
+		):
+			self._hand_over(self._bearer())
+
+	def test_a_bearer_counts_only_as_frappe_would_take_it(self):
+		"""Its OAuth client still there and granting its scopes, and an expiry: Frappe refuses a bearer token otherwise."""
+		gone = _client("mailcraft-jmap-gone")
+		orphan = self._bearer(client=gone)
+		secret = self._hand_over(orphan)["accounts"][0]["secret"]
+		self.assertEqual(self._authenticated(SESSION, secret)[0], SHARED)
+		# Removed from the table, as Frappe's own check would then find it (the desk refuses it while tokens link to it).
+		frappe.db.delete("OAuth Client", gone)
+		self.assertEqual(self._authenticated(SESSION, secret)[0], "Guest", "its client was deleted")
+		with self.assertRaises(frappe.PermissionError):
+			self._hand_over(orphan)
+		with self.assertRaises(frappe.PermissionError, msg="a scope its client does not grant"):
+			self._hand_over(self._bearer(scopes="all openid fileshare"))
+		endless = self._bearer()
+		frappe.db.set_value("OAuth Bearer Token", endless, "expiration_time", None)
+		with self.assertRaises(frappe.PermissionError, msg="no expiry"):
+			self._hand_over(endless)
+
+	def test_the_page_renews_its_tokens_with_its_own_session_only(self):
+		frappe.set_user(SHARED)
+		page = frappe.session.sid
+		with patch("frappe.get_request_header", return_value=None):
+			fresh = jmap.renew()
+		box = next(a for a in fresh["accounts"] if a["email"] == MAILBOX)
+		self.assertEqual(
+			self._authenticated(SESSION, box["secret"], alive=lambda sid: sid == page)[0],
+			SHARED,
+			"bound to the page's own desk session",
+		)
+		self.assertEqual(
+			self._authenticated(SESSION, box["secret"], alive=False)[0], "Guest", "which has ended"
+		)
+		frappe.set_user(SHARED)
+		with (
+			patch("frappe.get_request_header", return_value="Bearer something"),
+			self.assertRaises(frappe.PermissionError),
+		):
+			jmap.renew()
+		with (
+			patch.dict(frappe.local.conf, {"mailcraft_trial": 0}),
+			patch("frappe.get_request_header", return_value=None),
+			self.assertRaises(frappe.PageDoesNotExistError),
+		):
+			jmap.renew()
+		frappe.set_user(PORTAL)
+		with patch("frappe.get_request_header", return_value=None), self.assertRaises(frappe.PermissionError):
+			jmap.renew()
+
 	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
-		for path in ("/neomail", "/mailcraft", SESSION, "/api/method/frappe_webmail.mailcraft_jmap.download"):
+		for path in (
+			"/neomail",
+			"/mailcraft",
+			SESSION,
+			"/api/method/frappe_webmail.mailcraft_jmap.download",
+			"/api/method/frappe_webmail.mailcraft_jmap.hand_over",
+			"/api/v2/method/frappe_webmail.mailcraft_jmap.renew",
+		):
 			response = SimpleNamespace(headers={})
 			jmap.no_store(response=response, request=SimpleNamespace(path=path))
 			self.assertEqual(response.headers["Cache-Control"], "no-store", path)

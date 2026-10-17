@@ -46,9 +46,10 @@ def get_context(context):
 	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
 
 
-def host_mailboxes():
+def host_mailboxes(bearer=None):
 	"""The mailboxes of the person (owned or shared, enabled) as MailCraft opens them: the JMAP session of each, and
-	a token good for the facade only, twelve hours, that MailCraft keeps in the tab's memory."""
+	a token good for the facade only, twelve hours at most, that MailCraft keeps in the tab's memory. It is bound to
+	the desk session of the request, or to Neodesk's OAuth bearer token (`bearer`, mailcraft_jmap.hand_over)."""
 	from urllib.parse import quote
 
 	from frappe_webmail.mailcraft_jmap import give_token
@@ -57,7 +58,7 @@ def host_mailboxes():
 	accounts = get_accounts()
 	if not accounts:
 		return []
-	token = give_token()
+	token = give_token(bearer=bearer)
 	base = frappe.utils.get_url() + "/api/method/frappe_webmail.mailcraft_jmap.session?account="
 	return [
 		{

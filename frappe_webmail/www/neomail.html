@@ -15,6 +15,16 @@
 		window.frappe = window.frappe || {};
 		// The person's mailboxes, language and the product's name for the framed build, which reads them from this page (same origin).
 		window.mailcraftJmap = {{ host_json | safe }};
+		// New facade tokens for this page's session, when the build's were refused (MailCraft calls it, then retries).
+		window.mailcraftJmapRenew = async function () {
+			const answer = await fetch("/api/method/frappe_webmail.mailcraft_jmap.renew", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: { Accept: "application/json", "X-Frappe-CSRF-Token": window.frappe.csrf_token || "" },
+			});
+			if (!answer.ok) return null;
+			return (await answer.json()).message || null;
+		};
 	</script>
 	<!-- csrf_token -->
 	<iframe src="{{ build_url }}" title="NeoMail"></iframe>

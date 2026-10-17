@@ -15,11 +15,12 @@ Only what the webmail has no function for is done here: the raw source, INTERNAL
 fields, appending a given message, sending a given message.
 
 Who may call it: the desk's people (System Users), on a site where `mailcraft_trial` is on, with a token and only
-with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token /neomail
-gives the person for twelve hours (and no longer than the desk session that asked for it), kept hashed in the cache,
-good for this module's four addresses only (`authenticate`, an auth hook). A desk session's cookie alone opens
-nothing here, so another page can't make a signed-in browser read or send mail (this fork's CSRF check refuses
-nothing unless a site enforces it, maintenance#310).
+with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token kept hashed in
+the cache, good for this module's four addresses only (`authenticate`, an auth hook), for twelve hours at most and no
+longer than what it was given for: the desk session of the /neomail page, or the OAuth bearer token Neodesk signs in
+with (`hand_over`; an hour, then Neodesk hands its renewed one over). A desk session's cookie alone opens nothing
+here, so another page can't make a signed-in browser read or send mail (this fork's CSRF check refuses nothing
+unless a site enforces it, maintenance#310).
 
 Ids, in JMAP's alphabet (A-Z a-z 0-9 - _):
 - account   "A" + base64url(mailbox address)
@@ -59,6 +60,8 @@ METHOD_PREFIX = "frappe_webmail.mailcraft_jmap."
 _OWN_PATH = re.compile(
 	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(session|api|download|upload)/*$"
 )
+# The two that hand tokens out, which a token never opens.
+_HANDING_OUT = re.compile(r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(hand_over|renew)/*$")
 
 TOKEN_SECONDS = 12 * 3600
 UPLOAD_SECONDS = 15 * 60
@@ -119,13 +122,62 @@ def _token_key(token):
 	return "mailcraft_jmap_token:" + hashlib.sha256(token.encode()).hexdigest()
 
 
-def give_token(user=None):
-	"""A token for the session's person: MailCraft sends it as `Authorization: Bearer`. Twelve hours at most, and
-	no longer than the desk session that asked for it (sign out, and it is dead); the cache keeps its hash only."""
+def give_token(user=None, bearer=None):
+	"""A token for the session's person: MailCraft sends it as `Authorization: Bearer`. Twelve hours at most, and no
+	longer than what asked for it: the desk session of the page, or the OAuth bearer token Neodesk signs in with
+	(`bearer`, see hand_over); sign out, and it is dead. The cache keeps hashes only."""
 	token = secrets.token_urlsafe(32)
-	kept = {"user": user or frappe.session.user, "sid": getattr(frappe.session, "sid", None)}
+	kept = {"user": user or frappe.session.user}
+	if bearer:
+		kept["oauth"] = _digest(bearer)
+	else:
+		kept["sid"] = getattr(frappe.session, "sid", None)
 	frappe.cache().set_value(_token_key(token), kept, expires_in_sec=TOKEN_SECONDS)
 	return token
+
+
+def _digest(secret):
+	return hashlib.sha256(secret.encode()).hexdigest()
+
+
+def _request_bearer():
+	"""The bearer token the request carries in `Authorization`, if any."""
+	scheme, _sep, value = (frappe.get_request_header("Authorization") or "").partition(" ")
+	return value.strip() if scheme.lower() == "bearer" and value.strip() else None
+
+
+def _bearer_alive(user, digest):
+	"""A bearer token of `user` that Frappe itself would take has this hash: active, unexpired, of an OAuth client that
+	is still there and grants the token's scopes (`frappe.oauth.OAuthWebRequestValidator.validate_bearer_token`). The
+	name of an OAuth Bearer Token is the token itself: it is compared by its hash, never kept or shown. Only the
+	person's unexpired tokens are read (the expired ones stay Active in the table for good)."""
+	for name, client, scopes in frappe.get_all(
+		"OAuth Bearer Token",
+		filters={"user": user, "status": "Active", "expiration_time": (">", frappe.utils.now_datetime())},
+		fields=["name", "client", "scopes"],
+		as_list=True,
+	):
+		if _digest(name) == digest:
+			return _client_grants(client, scopes)
+	return False
+
+
+def _client_grants(client, scopes):
+	"""The OAuth client is still there and grants every scope of the token, as Frappe requires of a bearer token."""
+	from frappe.oauth import get_url_delimiter
+
+	granted = frappe.db.get_value("OAuth Client", client, "scopes") if client else None
+	if not granted or scopes is None:
+		return False
+	delimiter = get_url_delimiter()
+	return all(scope in granted.split(delimiter) for scope in scopes.split(delimiter))
+
+
+def _binding_alive(kept):
+	"""What a token was given for is still there: the OAuth bearer token (Neodesk), or the desk session (the page)."""
+	if kept.get("oauth"):
+		return _bearer_alive(kept.get("user"), kept["oauth"])
+	return _session_alive(kept.get("sid"))
 
 
 def _is_desk_user(user):
@@ -143,10 +195,11 @@ def _session_alive(sid):
 
 
 def authenticate():
-	"""auth_hooks: a request to one of this module's four addresses that carries a token /neomail gave is made as
-	that token's person. Anything else is left alone: another address; a `cmd` (Frappe runs a `cmd` form field
-	whatever the path) other than the method the path names; a request already signed in (a desk cookie); a token
-	unknown, expired, or whose desk session ended; a person no longer enabled or no longer of the desk."""
+	"""auth_hooks: a request to one of this module's four addresses that carries a token /neomail or hand_over gave
+	is made as that token's person. Anything else is left alone: another address; a `cmd` (Frappe runs a `cmd` form
+	field whatever the path) other than the method the path names; a request already signed in (a desk cookie); a
+	token unknown, expired, or whose desk session or bearer token ended; a person no longer enabled or no longer of
+	the desk."""
 	request = getattr(frappe.local, "request", None)
 	if request is None or not frappe.conf.get("mailcraft_trial"):
 		return
@@ -168,10 +221,7 @@ def authenticate():
 		return
 	user = kept.get("user")
 	if not (
-		user
-		and frappe.db.get_value("User", user, "enabled")
-		and _is_desk_user(user)
-		and _session_alive(kept.get("sid"))
+		user and frappe.db.get_value("User", user, "enabled") and _is_desk_user(user) and _binding_alive(kept)
 	):
 		return
 	frappe.set_user(user)
@@ -189,10 +239,47 @@ def _gate():
 		raise frappe.PermissionError
 
 
+@frappe.whitelist(methods=["POST"])
+def hand_over(**kwargs):
+	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`), to a request
+	that carries an OAuth bearer token of that person, never to a desk cookie alone, which a page of another site could
+	make a browser send. The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
+	refresh revokes the old one, so Neodesk hands its renewed one over again."""
+	if not frappe.conf.get("mailcraft_trial"):
+		raise frappe.PageDoesNotExistError
+	user = frappe.session.user
+	bearer = _request_bearer()
+	# A bearer token of this very person that Frappe itself would take: the one Frappe signed the request in with, or,
+	# when a desk cookie signed it in, one Frappe would have taken all the same.
+	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
+		raise frappe.PermissionError
+	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes
+
+	language = frappe.db.get_value("User", user, "language") or frappe.local.lang or "en"
+	return {"accounts": host_mailboxes(bearer=bearer), "language": language, "product": PRODUCT}
+
+
+@frappe.whitelist(methods=["POST"])
+def renew(**kwargs):
+	"""For /neomail: fresh facade tokens for the page's own desk session, when the framed build's were refused (they die
+	with the cache, or after twelve hours), so that it carries on without a reload. A desk cookie only: Neodesk, which
+	signs in with a bearer token, asks hand_over."""
+	if not frappe.conf.get("mailcraft_trial"):
+		raise frappe.PageDoesNotExistError
+	if _request_bearer() or not _is_desk_user(frappe.session.user):
+		raise frappe.PermissionError
+	from frappe_webmail.www.neomail import host_mailboxes
+
+	return {"accounts": host_mailboxes()}
+
+
 def no_store(response=None, request=None):
-	"""after_request: /neomail holds a token and the facade's answers hold mail; no cache keeps either."""
+	"""after_request: /neomail and the answers of hand_over and renew hold tokens, the facade's answers hold mail; no
+	cache keeps any of them."""
 	path = (getattr(request, "path", "") or "") if request is not None else ""
-	if response is not None and (path.rstrip("/") in ("/neomail", "/mailcraft") or _OWN_PATH.match(path)):
+	if response is not None and (
+		path.rstrip("/") in ("/neomail", "/mailcraft") or _OWN_PATH.match(path) or _HANDING_OUT.match(path)
+	):
 		response.headers["Cache-Control"] = "no-store"
 
 
