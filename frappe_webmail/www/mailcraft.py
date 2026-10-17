@@ -9,7 +9,8 @@ is tried, maintenance#1629 and #1630): everywhere else the address does not exis
 of MailCraft (bvisible/mailcraft) that the Suite's installer puts next to the editors (suite/public/craft/mailcraft).
 It hands the build the person's mailboxes (owned or shared, as the webmail lists them), each with its JMAP session on
 the facade (mailcraft_jmap.py) and a token for it; without any mailbox, or with `?sample`, MailCraft opens its sample
-mailbox. The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
+mailbox. It hands the person's language too: MailCraft draws in it unless one is chosen in its settings (the browser's
+language is often not the desk's). The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
 methods apply their own rights. The desk's people only: a visitor signs in first, a portal account is refused, as for
 the webmail.
 """
@@ -39,7 +40,7 @@ def get_context(context):
 	mailboxes = [] if "sample" in frappe.form_dict else host_mailboxes()
 	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox.
 	context.build_url = BUILD + ("?nora" if mailboxes else "?sample&nora")
-	context.host_json = _script_json({"accounts": mailboxes})
+	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang})
 
 
 def host_mailboxes():

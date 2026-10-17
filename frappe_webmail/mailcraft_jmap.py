@@ -792,6 +792,27 @@ def _source(account, blob):
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# For another app's method
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def message_place(account_name, message):
+	"""(folder, uid) of the message MailCraft names by its email id, for another app's method that reads the message on
+	the server itself: Nora's quick_reply gets the key of the message, never its text. The webmail's rule says who may
+	(`get_account`), and the folder must still have the UIDVALIDITY the id carries, or the UID could now name another
+	message. A Python call, not an address."""
+	account = webmail.get_account(account_name)
+	place = _message_of(message) if str(message or "")[:1] == "E" else None
+	if not place:
+		frappe.throw(_("This message cannot be found."))
+	folder, validity, uid = place
+	with webmail.imap_session(account) as client:
+		if _select(client, folder) != validity:
+			frappe.throw(_("This message is no longer in its folder: refresh the list and try again."))
+	return folder, uid
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Email/set
 # ---------------------------------------------------------------------------------------------------------------
 

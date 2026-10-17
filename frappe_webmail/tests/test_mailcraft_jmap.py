@@ -614,6 +614,28 @@ class TestMailCraftJmap(FrappeTestCase):
 		sent = jmap._as_sent(b"From: a@b.c\nBcc: x@y.z,\n w@v.u\nSubject: s\r\rBody\nline\r\n")
 		self.assertEqual(sent, b"From: a@b.c\r\nSubject: s\r\n\r\nBody\r\nline\r\n")
 
+	# For Nora: the key of a message, never its text -------------------------------------------------------------
+
+	def test_the_place_nora_reads_is_checked_first(self):
+		"""quick_reply gets a message's id: its folder and UID, from a mailbox the person may open, still the same
+		message (the UIDVALIDITY the id carries)."""
+		server = FakeServer()
+		uid = server.put("INBOX", HELLO)
+		with served(server):
+			self.assertEqual(jmap.message_place(MAILBOX, eid("INBOX", uid)), ("INBOX", uid))
+			for wrong in (
+				eid("INBOX", uid, validity=VALIDITY - 1),
+				"B" + eid("INBOX", uid)[1:],
+				"nonsense",
+				None,
+			):
+				with self.assertRaises(frappe.ValidationError, msg=wrong):
+					jmap.message_place(MAILBOX, wrong)
+			self._as(STRANGER)
+			with self.assertRaises((frappe.ValidationError, frappe.PermissionError)):
+				jmap.message_place(MAILBOX, eid("INBOX", uid))
+		self.assertNotIn(b"\\Seen", server.folders["INBOX"]["messages"][uid]["flags"], "nothing read here")
+
 	def test_uploads_belong_to_their_person_and_are_capped(self):
 		def upload(data):
 			with (
@@ -655,7 +677,10 @@ class TestMailCraftJmap(FrappeTestCase):
 		with patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""})):
 			mailcraft.get_context(sample)
 		self.assertTrue(sample.build_url.endswith("?sample&nora"), "?sample opens the sample mailbox")
-		self.assertEqual(json.loads(sample.host_json), {"accounts": []})
+		self.assertEqual(json.loads(sample.host_json), {"accounts": [], "language": context.lang})
+		self.assertEqual(
+			json.loads(context.host_json)["language"], frappe.local.lang or "en", "the desk's language"
+		)
 
 	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
 		for path in ("/mailcraft", SESSION, "/api/method/frappe_webmail.mailcraft_jmap.download"):
