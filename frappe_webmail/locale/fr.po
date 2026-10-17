@@ -3702,3 +3702,19 @@ msgstr "Trop de messages envoyés en peu de temps. Réessayez dans quelques minu
 #: frappe_webmail/mailcraft_jmap.py:427
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
+
+#: frappe_webmail/mailcraft_contacts.py:373
+msgid "A contact needs a name or an address."
+msgstr "Un contact doit avoir un nom ou une adresse e-mail."
+
+#: frappe_webmail/www/neomail.html:39
+msgid "Sign in again"
+msgstr "Se reconnecter"
+
+#: frappe_webmail/www/neomail.html:38
+msgid "Your Neoffice session has ended."
+msgstr "Votre session Neoffice est terminée."
+
+#: frappe_webmail/mailcraft_contacts.py:264
+msgid "Your rights do not allow it."
+msgstr "Vos droits ne le permettent pas."

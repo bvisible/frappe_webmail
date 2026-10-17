@@ -12,7 +12,9 @@ keyword changes, moves, deletes, drafts and sending. No */changes, no threads, n
 window at each sync and searches its own cache. Every mailbox call goes through the webmail's own rules
 (`get_account`: the owner or a person the mailbox is shared with) and its pooled IMAP connection (`imap_session`).
 Only what the webmail has no function for is done here: the raw source, INTERNALDATE, UIDVALIDITY and the raw header
-fields, appending a given message, sending a given message.
+fields, appending a given message, sending a given message. The instance's contacts come as a read-only address book
+(JMAP for Contacts, RFC 9610) in one mailbox of the person: mailcraft_contacts; their own calendars likewise
+(JMAP for Calendars), where the Suite is installed: mailcraft_calendars.
 
 Who may call it: the desk's people (System Users), on a site where `mailcraft_trial` is on, with a token and only
 with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token kept hashed in
@@ -241,7 +243,8 @@ def _gate():
 
 @frappe.whitelist(methods=["POST"])
 def hand_over(**kwargs):
-	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`), to a request
+	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`, and `nora`:
+	whether the instance has Nora), to a request
 	that carries an OAuth bearer token of that person, never to a desk cookie alone, which a page of another site could
 	make a browser send. The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
 	refresh revokes the old one, so Neodesk hands its renewed one over again."""
@@ -253,10 +256,16 @@ def hand_over(**kwargs):
 	# when a desk cookie signed it in, one Frappe would have taken all the same.
 	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
 		raise frappe.PermissionError
-	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes
+	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes, nora_installed
 
 	language = frappe.db.get_value("User", user, "language") or frappe.local.lang or "en"
-	return {"accounts": host_mailboxes(bearer=bearer), "language": language, "product": PRODUCT}
+	return {
+		"accounts": host_mailboxes(bearer=bearer),
+		"language": language,
+		"product": PRODUCT,
+		# Whether NeoMail's band may call Nora: the instance has her.
+		"nora": nora_installed(),
+	}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -381,9 +390,15 @@ def _max_upload():
 
 
 def _session(address):
+	from frappe_webmail import mailcraft_calendars, mailcraft_contacts
+
 	account = webmail.get_account(address)
 	aid = account_id(account.name)
 	base = frappe.utils.get_url() + "/api/method/" + METHOD_PREFIX
+	# The instance's contacts, as an address book, and the person's own calendars, in one mailbox of the person
+	# (mailcraft_contacts, mailcraft_calendars).
+	contacts, account_contacts = _optional_parts(mailcraft_contacts.session_parts, account)
+	calendars, account_calendars = _optional_parts(mailcraft_calendars.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -398,6 +413,8 @@ def _session(address):
 			},
 			MAIL: {},
 			SUBMISSION: {},
+			**contacts,
+			**calendars,
 		},
 		"accounts": {
 			aid: {
@@ -414,16 +431,32 @@ def _session(address):
 						"mayCreateTopLevelMailbox": False,
 					},
 					SUBMISSION: {"maxDelayedSend": 0, "submissionExtensions": {}},
+					**account_contacts,
+					**account_calendars,
 				},
 			}
 		},
-		"primaryAccounts": {MAIL: aid, SUBMISSION: aid},
+		"primaryAccounts": {
+			MAIL: aid,
+			SUBMISSION: aid,
+			**{capability: aid for capability in (*contacts, *calendars)},
+		},
 		"username": frappe.session.user,
 		"apiUrl": base + "api",
 		"downloadUrl": base + "download?accountId={accountId}&blobId={blobId}&name={name}&type={type}",
 		"uploadUrl": base + "upload?accountId={accountId}",
 		"state": "0",
 	}
+
+
+def _optional_parts(parts, account):
+	"""What an optional part of the facade adds to a session (the address book, the calendars), or nothing when it fails:
+	the mailbox opens all the same (a Suite older than the calendars' reading, a table missing, a database error)."""
+	try:
+		return parts(account)
+	except Exception:
+		frappe.log_error("MailCraft JMAP: a part of the session failed", frappe.get_traceback())
+		return {}, {}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -454,7 +487,7 @@ def _api():
 			return _problem("urn:ietf:params:jmap:error:notRequest", 400, "A method call is malformed.")
 		name, args, call_id = call
 		try:
-			handler = METHODS.get(name)
+			handler = METHODS.get(name) or _more_methods().get(name)
 			if handler is None:
 				raise JmapError("unknownMethod", name)
 			out = (name, handler(_resolve(args, results)))
@@ -471,6 +504,15 @@ def _api():
 		results[call_id] = out
 		answers.append([out[0], out[1], call_id])
 	return _json({"methodResponses": answers, "sessionState": "0"})
+
+
+def _more_methods():
+	"""The address book's and the calendars' methods (mailcraft_contacts, mailcraft_calendars, which read this module:
+	imported when first asked)."""
+	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
+	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
+
+	return {**CONTACT_METHODS, **CALENDAR_METHODS}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -600,6 +642,15 @@ def _account(jmap_id):
 	if not address:
 		raise JmapError("accountNotFound", str(jmap_id)[:200])
 	return webmail.get_account(address)
+
+
+def _whole_number(value, name, default=None):
+	"""A JMAP Int argument (RFC 8620 §1.3): a JSON integer; null is its default."""
+	if value is None:
+		return default
+	if isinstance(value, bool) or not isinstance(value, int):
+		raise JmapError("invalidArguments", name)
+	return value
 
 
 def _ids(args, key="ids"):

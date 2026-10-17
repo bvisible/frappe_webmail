@@ -75,8 +75,17 @@ class TestMailCraftPage(FrappeTestCase):
 		self.assertEqual(raised.exception.http_status_code, 302)
 
 	def test_the_desk_gets_the_sample_mailbox_with_nora(self):
+		from frappe_webmail.www import neomail
+
 		frappe.set_user(STAFF)
-		context = self._context()
+		with patch.object(neomail, "nora_installed", return_value=False):
+			self.assertEqual(
+				self._context().build_url,
+				"/assets/suite/craft/mailcraft/index.html?sample",
+				"no Nora where the instance has none",
+			)
+		with patch.object(neomail, "nora_installed", return_value=True):
+			context = self._context()
 		self.assertEqual(context.build_url, "/assets/suite/craft/mailcraft/index.html?sample&nora")
 		self.assertTrue(
 			frappe.local.session.data.csrf_token, "the framed build's calls need the session's token"

@@ -41,9 +41,16 @@ def get_context(context):
 	context.no_cache = 1
 	context.lang = frappe.local.lang or "en"
 	mailboxes = [] if "sample" in frappe.form_dict else host_mailboxes()
-	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox.
-	context.build_url = BUILD + ("?nora" if mailboxes else "?sample&nora")
+	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox. Nora where the
+	# instance has her: elsewhere each of her calls would fail.
+	query = ([] if mailboxes else ["sample"]) + (["nora"] if nora_installed() else [])
+	context.build_url = BUILD + ("?" + "&".join(query) if query else "")
 	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
+
+
+def nora_installed():
+	"""Whether the instance has Nora, whom NeoMail's band calls."""
+	return "nora" in frappe.get_installed_apps()
 
 
 def host_mailboxes(bearer=None):

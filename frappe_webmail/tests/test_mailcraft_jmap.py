@@ -707,7 +707,10 @@ class TestMailCraftJmap(FrappeTestCase):
 		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
-		with patch.object(frappe.local, "form_dict", frappe._dict()):
+		with (
+			patch.object(frappe.local, "form_dict", frappe._dict()),
+			patch.object(neomail, "nora_installed", return_value=True),
+		):
 			neomail.get_context(context)
 		self.assertTrue(context.build_url.endswith("index.html?nora"))
 		self.assertNotIn("<", context.host_json)
@@ -721,7 +724,10 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(self._authenticated(SESSION, box["secret"])[0], SHARED)
 		self._as(SHARED)
 		sample = frappe._dict()
-		with patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""})):
+		with (
+			patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""})),
+			patch.object(neomail, "nora_installed", return_value=True),
+		):
 			neomail.get_context(sample)
 		self.assertTrue(sample.build_url.endswith("?sample&nora"), "?sample opens the sample mailbox")
 		self.assertEqual(
@@ -763,6 +769,9 @@ class TestMailCraftJmap(FrappeTestCase):
 		box = next(a for a in given["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual((given["product"], box["scheme"]), ("NeoMail", "bearer"))
 		self.assertTrue(given["language"])
+		self.assertEqual(
+			given["nora"], "nora" in frappe.get_installed_apps(), "Nora only where the instance has her"
+		)
 		self.assertEqual(
 			self._authenticated(SESSION, box["secret"], alive=False)[0],
 			SHARED,

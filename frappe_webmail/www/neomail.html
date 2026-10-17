@@ -8,6 +8,10 @@
 		html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f4f6; }
 		@media (prefers-color-scheme: dark) { html, body { background: #17181c; } }
 		iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+		#signin { position: fixed; top: 0; left: 0; right: 0; z-index: 2; padding: 8px 16px; font: 14px system-ui, sans-serif;
+			background: #fdf3d8; color: #4a3a12; border-bottom: 1px solid #e8d7a4; }
+		#signin a { color: inherit; font-weight: 600; margin-left: 8px; }
+		@media (prefers-color-scheme: dark) { #signin { background: #3a3220; color: #f4e8c8; border-color: #5a4a2a; } }
 	</style>
 </head>
 <body>
@@ -22,11 +26,18 @@
 				credentials: "same-origin",
 				headers: { Accept: "application/json", "X-Frappe-CSRF-Token": window.frappe.csrf_token || "" },
 			});
+			// The desk session ended: the page says so, and offers to sign in again and come back here.
+			if (answer.status === 401 || answer.status === 403) document.getElementById("signin").hidden = false;
 			if (!answer.ok) return null;
+			document.getElementById("signin").hidden = true;
 			return (await answer.json()).message || null;
 		};
 	</script>
 	<!-- csrf_token -->
+	<div id="signin" role="alert" hidden>
+		{{ _("Your Neoffice session has ended.") }}
+		<a href="/login?redirect-to=/neomail">{{ _("Sign in again") }}</a>
+	</div>
 	<iframe src="{{ build_url }}" title="NeoMail"></iframe>
 </body>
 </html>
