@@ -1610,13 +1610,36 @@ def save_draft_imap(
 
 
 def _delete_draft(client, folder, uid):
-	"""Delete one draft, and only it: UID EXPUNGE where the server has UIDPLUS, else a plain EXPUNGE."""
+	"""Delete one draft, and only it (_remove_from_folder)."""
 	client.select_folder(folder)
-	client.delete_messages([int(uid)])
-	try:
-		client.uid_expunge([int(uid)])
-	except Exception:
+	_remove_from_folder(client, [uid])
+
+
+def _remove_from_folder(client, uids):
+	"""Take these messages out of the selected folder, and only them: \\Deleted, then UID EXPUNGE (RFC 4315) where the
+	server has UIDPLUS. A plain EXPUNGE also erases every other message of the folder marked deleted, by another mail
+	client or another person of a shared mailbox (maintenance#1633); it stays the way of a server without UIDPLUS."""
+	uids = [int(uid) for uid in uids]
+	if not uids:
+		return
+	client.delete_messages(uids)
+	if b"UIDPLUS" in (client.capabilities() or ()):
+		client.uid_expunge(uids)
+	else:
 		client.expunge()
+
+
+def _move_messages(client, uids, to_folder):
+	"""Move these messages of the selected folder to `to_folder`: MOVE (RFC 6851) where the server has it, else a copy,
+	then _remove_from_folder (which touches no other message unless the server has neither MOVE nor UIDPLUS)."""
+	uids = [int(uid) for uid in uids]
+	if not uids:
+		return
+	if b"MOVE" in (client.capabilities() or ()):
+		client.move(uids, to_folder)
+	else:
+		client.copy(uids, to_folder)
+		_remove_from_folder(client, uids)
 
 
 # ============================================
@@ -1658,11 +1681,7 @@ def move_emails(account_name, uids, from_folder, to_folder):
 
 	with imap_session(account) as client:
 		client.select_folder(from_folder)
-
-		# Copy then delete
-		client.copy(uids, to_folder)
-		client.add_flags(uids, [b"\\Deleted"])
-		client.expunge()
+		_move_messages(client, uids, to_folder)
 
 		return {"success": True}
 
@@ -1811,8 +1830,7 @@ def delete_emails(account_name, uids, folder, permanent=False):
 		client.select_folder(folder)
 
 		if permanent:
-			client.add_flags(uids, [b"\\Deleted"])
-			client.expunge()
+			_remove_from_folder(client, uids)
 			return {"success": True, "action": "permanent_delete"}
 		else:
 			# Try to find trash folder
@@ -1860,15 +1878,11 @@ def delete_emails(account_name, uids, folder, permanent=False):
 			)
 
 			if trash_folder and current_folder.lower() != trash_folder.lower():
-				# Move to trash (copy then delete from source)
-				client.copy(uids, trash_folder)
-				client.add_flags(uids, [b"\\Deleted"])
-				client.expunge()
+				_move_messages(client, uids, trash_folder)
 				return {"success": True, "action": "moved_to_trash", "trash_folder": trash_folder}
 			else:
-				# No trash folder found or already in trash - mark as deleted
-				client.add_flags(uids, [b"\\Deleted"])
-				client.expunge()
+				# No trash folder found or already in trash: deleted for good
+				_remove_from_folder(client, uids)
 				return {
 					"success": True,
 					"action": "deleted",
@@ -2828,14 +2842,11 @@ def apply_filter_action(client, account, filter_doc, uid, current_folder):
 	# Main action
 	if filter_doc.action_type == "move":
 		if filter_doc.target_folder and filter_doc.target_folder != current_folder:
-			client.copy([uid], filter_doc.target_folder)
-			client.add_flags([uid], [b"\\Deleted"])
-			client.expunge()
+			_move_messages(client, [uid], filter_doc.target_folder)
 			return True
 
 	elif filter_doc.action_type == "delete":
-		client.add_flags([uid], [b"\\Deleted"])
-		client.expunge()
+		_remove_from_folder(client, [uid])
 		return True
 
 	elif filter_doc.action_type == "mark_read":

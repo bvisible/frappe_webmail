@@ -51,7 +51,8 @@ def message(subject, sender=MAILBOX, extra=""):
 class FakeServer:
 	"""An IMAP server with folders, flags, UIDs and UIDVALIDITY, answering as imapclient does (UID commands)."""
 
-	def __init__(self, sort=False):
+	def __init__(self, sort=False, uidplus=True, move=False):
+		self.uidplus, self.can_move = uidplus, move
 		self.folders = {
 			"INBOX": {"flags": (b"\\HasNoChildren",), "messages": {}},
 			"Sent": {"flags": (b"\\HasNoChildren", b"\\Sent"), "messages": {}},
@@ -75,7 +76,12 @@ class FakeServer:
 		return uid
 
 	def capabilities(self):
-		return (b"IMAP4REV1", b"UIDPLUS") + ((b"SORT",) if self.can_sort else ())
+		return (
+			(b"IMAP4REV1",)
+			+ ((b"UIDPLUS",) if self.uidplus else ())
+			+ ((b"MOVE",) if self.can_move else ())
+			+ ((b"SORT",) if self.can_sort else ())
+		)
 
 	def list_folders(self, *args, **kwargs):
 		return [(f["flags"], b"/", name) for name, f in self.folders.items()]
@@ -133,10 +139,25 @@ class FakeServer:
 			m = self._messages()[uid]
 			self.put(folder, m["raw"], m["flags"] - {b"\\Deleted"}, m["date"])
 
+	def delete_messages(self, uids):
+		self.add_flags(uids, [b"\\Deleted"])
+
 	def expunge(self, *args):
 		gone = [u for u, m in self._messages().items() if b"\\Deleted" in m["flags"]]
 		for uid in gone:
 			del self._messages()[uid]
+
+	def uid_expunge(self, uids):
+		assert self.uidplus, "UID EXPUNGE needs UIDPLUS"
+		for uid in uids:
+			if b"\\Deleted" in self._messages().get(uid, {}).get("flags", ()):
+				del self._messages()[uid]
+
+	def move(self, uids, folder):
+		assert self.can_move, "MOVE needs the MOVE capability"
+		for uid in uids:
+			m = self._messages().pop(uid)
+			self.put(folder, m["raw"], m["flags"], m["date"])
 
 	def append(self, folder, data, flags=(), msg_time=None):
 		uid = self.put(folder, data, flags)
@@ -481,6 +502,8 @@ class TestMailCraftJmap(FrappeTestCase):
 		a = server.put("INBOX", message("a"))
 		b = server.put("INBOX", message("b"))
 		c = server.put("INBOX", message("c"))
+		# Marked deleted by another mail client, not expunged: it must outlive a destroy here (maintenance#1633).
+		foreign = server.put("INBOX", message("foreign"), {b"\\Deleted"})
 		ea, eb, ec = (eid("INBOX", u) for u in (a, b, c))
 		to_trash = {
 			f"mailboxIds/{jmap.mailbox_id('INBOX')}": None,
@@ -499,7 +522,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(out["destroyed"], [ec])
 		self.assertEqual(out["notUpdated"], {})
 		inbox = server.folders["INBOX"]["messages"]
-		self.assertEqual(set(inbox), {a})
+		self.assertEqual(set(inbox), {a, foreign})
 		self.assertTrue({b"\\Seen", b"\\Flagged"} <= inbox[a]["flags"])
 		self.assertEqual([m["raw"] for m in server.folders["Trash"]["messages"].values()], [message("b")])
 
