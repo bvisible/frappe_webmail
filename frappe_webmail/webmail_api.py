@@ -270,7 +270,7 @@ def oauth_callback(code=None, state=None, error=None):
 @frappe.whitelist()
 def disconnect_oauth(account_name):
 	"""Disconnect OAuth and clear tokens"""
-	account = get_account(account_name)
+	account = _owned_account(account_name)
 
 	if account.auth_type != "OAuth2":
 		frappe.throw(_("Account is not using OAuth2"))
@@ -3305,7 +3305,7 @@ def save_folder_mapping(
 	archive_folder=None,
 ):
 	"""Save folder mapping for an account"""
-	account = get_account(account_name)
+	account = _owned_account(account_name)
 
 	# Update only non-None values
 	if inbox_folder is not None:
@@ -3357,6 +3357,15 @@ def get_account(account_name):
 	if not account.enabled:
 		frappe.throw(_("Account is disabled"))
 
+	return account
+
+
+def _owned_account(account_name):
+	"""The account, for its owner only: its settings are theirs to change, not those of the people it is shared with,
+	whose change would hold for everyone (maintenance#1654)."""
+	account = get_account(account_name)
+	if account.user != frappe.session.user:
+		frappe.throw(_("Only the owner of this mailbox can change its settings."), frappe.PermissionError)
 	return account
 
 

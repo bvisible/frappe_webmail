@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-17 13:13+0000\n"
-"PO-Revision-Date: 2026-10-17 13:13+0000\n"
+"POT-Creation-Date: 2026-10-17 16:30+0000\n"
+"PO-Revision-Date: 2026-10-17 16:30+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -52,7 +52,7 @@ msgstr ""
 msgid "1st of the month at {0}"
 msgstr ""
 
-#: frappe_webmail/mailcraft_contacts.py:373
+#: frappe_webmail/mailcraft_contacts.py:422
 msgid "A contact needs a name or an address."
 msgstr ""
 
@@ -60,11 +60,15 @@ msgstr ""
 msgid "A folder with this name already exists"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1119
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:85
+msgid "A mailbox cannot be renamed."
+msgstr ""
+
+#: frappe_webmail/mailcraft_jmap.py:1129
 msgid "A message goes into one folder."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1067
+#: frappe_webmail/mailcraft_jmap.py:1077
 msgid "A message stays in one folder."
 msgstr ""
 
@@ -85,7 +89,7 @@ msgstr ""
 #: frappe_webmail/webmail_api.py:222 frappe_webmail/webmail_api.py:2149
 #: frappe_webmail/webmail_api.py:2212 frappe_webmail/webmail_api.py:2241
 #: frappe_webmail/webmail_api.py:2749 frappe_webmail/webmail_api.py:2791
-#: frappe_webmail/webmail_api.py:3354 frappe_webmail/webmail_api.py:3472
+#: frappe_webmail/webmail_api.py:3483
 msgid "Access denied"
 msgstr ""
 
@@ -101,7 +105,7 @@ msgstr ""
 msgid "Account"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3357
+#: frappe_webmail/webmail_api.py:3358
 msgid "Account is disabled"
 msgstr ""
 
@@ -113,7 +117,7 @@ msgstr ""
 msgid "Account is not using OAuth2"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3338
+#: frappe_webmail/webmail_api.py:3339 frappe_webmail/webmail_api.py:3355
 msgid "Account not found"
 msgstr ""
 
@@ -140,7 +144,7 @@ msgstr ""
 msgid "Active on this mailbox"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1237
+#: frappe_webmail/mailcraft_jmap.py:1247
 msgid "Add at least one recipient."
 msgstr ""
 
@@ -610,7 +614,7 @@ msgstr ""
 msgid "Could not load the automations"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3552
+#: frappe_webmail/webmail_api.py:3563
 msgid "Could not read file content"
 msgstr ""
 
@@ -762,11 +766,11 @@ msgstr ""
 msgid "Disconnect OAuth"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3767
+#: frappe_webmail/webmail_api.py:3778
 msgid "DocType and document name are required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3658 frappe_webmail/webmail_api.py:3687
+#: frappe_webmail/webmail_api.py:3669 frappe_webmail/webmail_api.py:3698
 msgid "DocType is required"
 msgstr ""
 
@@ -775,7 +779,7 @@ msgstr ""
 msgid "Document"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3772
+#: frappe_webmail/webmail_api.py:3783
 msgid "Document not found"
 msgstr ""
 
@@ -1002,7 +1006,7 @@ msgstr ""
 msgid "Enter the email address to report to"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3592
+#: frappe_webmail/webmail_api.py:3603
 msgid "Entity name is required"
 msgstr ""
 
@@ -1179,7 +1183,7 @@ msgstr ""
 msgid "Failed to connect to IMAP server: {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3805
+#: frappe_webmail/webmail_api.py:3816
 msgid "Failed to generate PDF: {0}"
 msgstr ""
 
@@ -1197,11 +1201,11 @@ msgstr ""
 msgid "Failed to load files"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:194
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:221
 msgid "Failed to refresh OAuth token"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:214
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:241
 msgid "Failed to refresh OAuth token: {0}"
 msgstr ""
 
@@ -1222,11 +1226,11 @@ msgstr ""
 msgid "Failing"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3530
+#: frappe_webmail/webmail_api.py:3541
 msgid "File URL is required"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3543
+#: frappe_webmail/webmail_api.py:3554
 msgid "File not found"
 msgstr ""
 
@@ -1331,7 +1335,7 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1311
+#: frappe_webmail/mailcraft_jmap.py:1321
 msgid "Folders are managed in the webmail for now."
 msgstr ""
 
@@ -1464,7 +1468,7 @@ msgstr ""
 msgid "IMAP Password"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:79
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:103
 msgid "IMAP Password is required for Password authentication"
 msgstr ""
 
@@ -1578,7 +1582,7 @@ msgstr ""
 msgid "Infomaniak"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:71
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:95
 msgid "Invalid IMAP port number"
 msgstr ""
 
@@ -1586,11 +1590,11 @@ msgstr ""
 msgid "Invalid OAuth callback"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:73
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:97
 msgid "Invalid SMTP port number"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:66
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:90
 msgid "Invalid email address: {0}"
 msgstr ""
 
@@ -1814,7 +1818,7 @@ msgstr ""
 msgid "Message subject"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:951
+#: frappe_webmail/mailcraft_jmap.py:961
 msgid "Messages are imported, not created."
 msgstr ""
 
@@ -1859,7 +1863,7 @@ msgstr ""
 msgid "Name of the folder"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:817
+#: frappe_webmail/mailcraft_jmap.py:827
 msgid "Name the messages to read."
 msgstr ""
 
@@ -1984,7 +1988,7 @@ msgstr ""
 msgid "No match in {0}"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3661 frappe_webmail/webmail_api.py:3691
+#: frappe_webmail/webmail_api.py:3672 frappe_webmail/webmail_api.py:3702
 msgid "No permission to read {0}"
 msgstr ""
 
@@ -2104,7 +2108,7 @@ msgstr ""
 msgid "OAuth Provider"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:84
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:108
 msgid "OAuth Provider is required for OAuth2 authentication"
 msgstr ""
 
@@ -2122,7 +2126,7 @@ msgstr ""
 msgid "OAuth authentication failed"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:178
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:205
 msgid "OAuth credentials not configured for {0}"
 msgstr ""
 
@@ -2138,7 +2142,7 @@ msgstr ""
 msgid "OAuth error: {0}"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:165
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:192
 msgid "OAuth token expired. Please reconnect your account."
 msgstr ""
 
@@ -2169,16 +2173,24 @@ msgstr ""
 msgid "Only Trash and Spam folders can be emptied"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:764
+#: frappe_webmail/mailcraft_jmap.py:774
 msgid "Only a folder can be listed."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1242
+#: frappe_webmail/mailcraft_jmap.py:1252
 msgid "Only a message just written here can be sent."
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:77
+msgid "Only an administrator can give a mailbox to someone else."
 msgstr ""
 
 #: frappe_webmail/webmail_api.py:547
 msgid "Only the account owner can change the password"
+msgstr ""
+
+#: frappe_webmail/webmail_api.py:3368
+msgid "Only the owner of this mailbox can change its settings."
 msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
@@ -2519,7 +2531,7 @@ msgstr ""
 msgid "SMTP Password"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:81
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:105
 msgid "SMTP Password is required for Password authentication"
 msgstr ""
 
@@ -2836,7 +2848,7 @@ msgstr ""
 msgid "Spam Folder"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:3746
+#: frappe_webmail/webmail_api.py:3757
 msgid "Standard"
 msgstr ""
 
@@ -2944,7 +2956,7 @@ msgstr ""
 
 #: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:118
 #: frappe_webmail/attachments.py:127 frappe_webmail/drive.py:36
-#: frappe_webmail/webmail_api.py:3579 frappe_webmail/webmail_api.py:3590
+#: frappe_webmail/webmail_api.py:3590 frappe_webmail/webmail_api.py:3601
 msgid "The Drive is not installed on this instance"
 msgstr ""
 
@@ -2971,11 +2983,11 @@ msgstr ""
 msgid "The file is copied by the server, straight from the e-mail: nothing is downloaded."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:377 frappe_webmail/mailcraft_jmap.py:493
+#: frappe_webmail/mailcraft_jmap.py:377 frappe_webmail/mailcraft_jmap.py:503
 msgid "The mail server could not answer."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1269
+#: frappe_webmail/mailcraft_jmap.py:1279
 msgid "The mail server did not take the message: {0}"
 msgstr ""
 
@@ -2987,19 +2999,19 @@ msgstr ""
 msgid "The message is required"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1250
+#: frappe_webmail/mailcraft_jmap.py:1260
 msgid "The message must be from this mailbox."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1113
+#: frappe_webmail/mailcraft_jmap.py:1123
 msgid "The message to file was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1248
+#: frappe_webmail/mailcraft_jmap.py:1258
 msgid "The message to send was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1137
+#: frappe_webmail/mailcraft_jmap.py:1147
 msgid "The message was filed but cannot be found."
 msgstr ""
 
@@ -3029,7 +3041,7 @@ msgstr ""
 msgid "This folder no longer exists in the Drive"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1225 frappe_webmail/mailcraft_jmap.py:1229
+#: frappe_webmail/mailcraft_jmap.py:1235 frappe_webmail/mailcraft_jmap.py:1239
 msgid "This mailbox can only send as itself."
 msgstr ""
 
@@ -3037,11 +3049,11 @@ msgstr ""
 msgid "This message"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:935
+#: frappe_webmail/mailcraft_jmap.py:945
 msgid "This message cannot be found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:939
+#: frappe_webmail/mailcraft_jmap.py:949
 msgid "This message is no longer in its folder: refresh the list and try again."
 msgstr ""
 
@@ -3109,11 +3121,11 @@ msgstr ""
 msgid "Token Expiry"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1245
+#: frappe_webmail/mailcraft_jmap.py:1255
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:546
+#: frappe_webmail/mailcraft_jmap.py:556
 msgid "Too many messages waiting to be filed."
 msgstr ""
 
@@ -3195,7 +3207,7 @@ msgstr ""
 msgid "Underline"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:173
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:200
 #: frappe_webmail/webmail_api.py:155
 msgid "Unknown OAuth provider"
 msgstr ""
@@ -3320,7 +3332,7 @@ msgstr ""
 msgid "Your draft"
 msgstr ""
 
-#: frappe_webmail/mailcraft_contacts.py:264
+#: frappe_webmail/mailcraft_contacts.py:282
 msgid "Your rights do not allow it."
 msgstr ""
 

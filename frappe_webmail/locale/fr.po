@@ -3718,3 +3718,15 @@ msgstr "Votre session Neoffice est terminée."
 #: frappe_webmail/mailcraft_contacts.py:264
 msgid "Your rights do not allow it."
 msgstr "Vos droits ne le permettent pas."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:85
+msgid "A mailbox cannot be renamed."
+msgstr "Une boîte mail ne peut pas être renommée."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:77
+msgid "Only an administrator can give a mailbox to someone else."
+msgstr "Seul un administrateur peut attribuer une boîte mail à quelqu'un d'autre."
+
+#: frappe_webmail/webmail_api.py:3368
+msgid "Only the owner of this mailbox can change its settings."
+msgstr "Seul le propriétaire de cette boîte mail peut en modifier les paramètres."

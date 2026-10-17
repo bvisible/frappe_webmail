@@ -6,6 +6,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
+# What a person a mailbox is shared with may do with its account: read it, to use the mailbox. Its settings, its
+# secrets, its owner and whom it is shared with are the owner's to change (maintenance#1654). What the webmail keeps for
+# everyone on the account (widths, folded folders, trusted senders) goes through its own methods, which write those
+# fields alone.
+SHARED_MAY = ("read", "select")
+
 # OAuth2 provider settings
 OAUTH_PROVIDERS = {
 	"Gmail": {
@@ -53,12 +59,30 @@ PASSWORD_PROVIDERS = {
 class WebmailAccount(Document):
 	def validate(self):
 		"""Validate the account settings"""
+		self.validate_owner_change()
 		self.validate_email()
 		self.validate_ports()
 		self.validate_auth()
 		self.apply_oauth_provider_settings()
 		self.apply_password_provider_settings()
 		self.clean_allowed_users()
+
+	def validate_owner_change(self):
+		"""A mailbox goes to someone else by an administrator only: its owner handing it over would put a mailbox of
+		their making, servers included, among another person's own (maintenance#1654)."""
+		if self.is_new() or self.flags.ignore_permissions or frappe.session.user == "Administrator":
+			return
+		if self.has_value_changed("user"):
+			frappe.throw(
+				_("Only an administrator can give a mailbox to someone else."), frappe.PermissionError
+			)
+
+	def after_rename(self, old, new, merge=False):
+		"""A mailbox keeps its name, its address, by which the webmail and NeoMail find it. Frappe runs this even when the
+		rename's own checks were skipped (a client can ask for that), after the rename is written: the refusal undoes it
+		with the request (maintenance#1654)."""
+		if frappe.session.user != "Administrator":
+			frappe.throw(_("A mailbox cannot be renamed."), frappe.PermissionError)
 
 	def validate_email(self):
 		"""Validate email format"""
@@ -116,20 +140,23 @@ class WebmailAccount(Document):
 		if not self.user:
 			self.user = frappe.session.user
 
-	def has_permission(self, permtype="read", doc=None):
-		"""Check if user has permission to access this account"""
+	def has_permission(self, permtype="read", doc=None, *, debug=False, user=None):
+		"""Whether the person may do `permtype` with this account: anything when it is theirs, only read it when it is
+		shared with them (SHARED_MAY)."""
 		# Honour ignore_permissions like the base Document.has_permission does.
 		# This override shadows the base method, so without this guard a
 		# programmatic write with ignore_permissions=True (e.g. creating an
 		# account on behalf of another user) wrongly raises PermissionError.
 		if self.flags.ignore_permissions:
 			return True
-		user = frappe.session.user
+		user = user or frappe.session.user
 
 		if user == "Administrator":
 			return True
-		if self.user == user:
+		if _stored_owner(self) == user:
 			return True
+		if permtype not in SHARED_MAY:
+			return False
 
 		# Check if user is in shared access list
 		if self.allowed_users:
@@ -247,8 +274,17 @@ def get_permission_query_conditions(user):
 	return f"(`tabWebmail Account`.user = {escaped_user})"
 
 
+def _stored_owner(doc):
+	"""Whose the account is, as stored. The rights are checked on the account as it is being saved: an unsaved change of
+	its `user` must not make the person who typed it its owner (maintenance#1654)."""
+	if not doc.get("name") or (hasattr(doc, "is_new") and doc.is_new()):
+		return doc.get("user")
+	return frappe.db.get_value("Webmail Account", doc.get("name"), "user")
+
+
 def has_permission(doc, ptype="read", user=None):
-	"""Check if user can access this account"""
+	"""Whether `user` may do `ptype` with this account: anything when it is theirs, only read it when it is shared with
+	them (SHARED_MAY)."""
 	if not user:
 		user = frappe.session.user
 
@@ -256,8 +292,10 @@ def has_permission(doc, ptype="read", user=None):
 		return True
 
 	# Owner has permission
-	if doc.user == user:
+	if _stored_owner(doc) == user:
 		return True
+	if ptype not in SHARED_MAY:
+		return False
 
 	# Check shared access
 	if hasattr(doc, "allowed_users") and doc.allowed_users:
