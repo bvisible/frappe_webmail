@@ -9,6 +9,7 @@ Run with:
 """
 
 from unittest.mock import patch
+from urllib.parse import quote
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -78,15 +79,28 @@ class TestMailCraftPage(FrappeTestCase):
 		from frappe_webmail.www import neomail
 
 		frappe.set_user(STAFF)
+		named = "author=" + quote(frappe.utils.get_fullname(STAFF), safe="")
 		with patch.object(neomail, "nora_installed", return_value=False):
 			self.assertEqual(
 				self._context().build_url,
-				"/assets/suite/craft/mailcraft/index.html?sample",
+				f"/assets/suite/craft/mailcraft/index.html?sample&{named}",
 				"no Nora where the instance has none",
 			)
 		with patch.object(neomail, "nora_installed", return_value=True):
 			context = self._context()
-		self.assertEqual(context.build_url, "/assets/suite/craft/mailcraft/index.html?sample&nora")
+		self.assertEqual(context.build_url, f"/assets/suite/craft/mailcraft/index.html?sample&nora&{named}")
 		self.assertTrue(
 			frappe.local.session.data.csrf_token, "the framed build's calls need the session's token"
 		)
+
+	def test_the_build_names_the_person_signed_in(self):
+		"""The account button's initials: the person's full name, encoded so that no character of it adds a flag."""
+		from frappe_webmail.www import neomail
+
+		frappe.set_user("Administrator")
+		frappe.db.set_value("User", STAFF, {"first_name": "Jeanne & Co", "last_name": "Muster#1"})
+		frappe.local.fullnames = {}  # get_fullname keeps the names it read for the request
+		frappe.set_user(STAFF)
+		with patch.object(neomail, "nora_installed", return_value=False):
+			url = self._context().build_url
+		self.assertTrue(url.endswith("&author=Jeanne%20%26%20Co%20Muster%231"), url)

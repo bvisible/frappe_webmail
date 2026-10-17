@@ -16,6 +16,8 @@ methods apply their own rights. The desk's people only: a visitor signs in first
 the webmail.
 """
 
+from urllib.parse import quote
+
 import frappe
 from frappe import _
 
@@ -44,6 +46,11 @@ def get_context(context):
 	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox. Nora where the
 	# instance has her: elsewhere each of her calls would fail.
 	query = ([] if mailboxes else ["sample"]) + (["nora"] if nora_installed() else [])
+	# The person signed in, named as the Drive names them to the document editors: NeoMail's account button shows their
+	# initials, the same as everywhere else.
+	author = frappe.utils.get_fullname(frappe.session.user)
+	if author:
+		query.append("author=" + quote(author, safe=""))
 	context.build_url = BUILD + ("?" + "&".join(query) if query else "")
 	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
 
