@@ -3,10 +3,16 @@
 
 """
 JMAP for Calendars (draft-ietf-jmap-calendars) in MailCraft's facade (mailcraft_jmap): the person's own calendars as the
-Suite keeps them (on the mail server, or in the instance for a person without a mailbox), read-only, with the events of
-a window, each occurrence of a repeating event apart and with its start and end in UTC (`utcStart`, `utcEnd`, worked out
-here: MailCraft has no time-zone database). NeoMail's calendar is then Neoffice's (maintenance#1630, step 3 of NeoMail's
+Suite keeps them (on the mail server, or in the instance for a person without a mailbox), with the events of a window,
+each occurrence of a repeating event apart and with its start and end in UTC (`utcStart`, `utcEnd`, worked out here:
+MailCraft has no time-zone database). NeoMail's calendar is then Neoffice's (maintenance#1630, step 3 of NeoMail's
 programme; study: vault note Neoffice-Apps/20).
+
+NeoMail does with them what the desk does (Jérémy, 17.10: « elle doit pouvoir tout faire, comme dans le desk »): it
+creates, changes and deletes events, a whole series or one of its occurrences, through the Suite's own calendar functions
+(suite.calendar.doctype.calendar_event: add_calendar_event, update_calendar_event, delete_calendar_events and their
+occurrence variants), so with their rules, their rights and their invitations, and in the calendars the person may
+write (their rights on each, as the Suite reads them).
 
 Offered where the Suite is installed, in the same one mailbox of the person as the address book
 (mailcraft_contacts.contacts_mailbox). The calendar account is the person's own, chosen here and never named by the
@@ -135,7 +141,7 @@ def calendar_get(args):
 				"isVisible": calendar.get("isVisible", True) is not False,
 				"isDefault": bool(calendar.get("isDefault")),
 				"includeInAvailability": "none",
-				"myRights": dict(_READ_ONLY),
+				"myRights": _rights(calendar.get("myRights")),
 			}
 		)
 	found = {c["id"] for c in listed}
@@ -256,21 +262,465 @@ def event_get(args):
 	return {"accountId": aid, "state": "0", "list": listed, "notFound": [i for i in ids if i not in found]}
 
 
+def _rights(given):
+	"""A calendar's rights as JMAP names them, from the Suite's (the mail server's for its calendars, all of them for a
+	calendar kept in the instance); read-only when it says none."""
+	if not isinstance(given, dict):
+		return dict(_READ_ONLY)
+	return {key: bool(given.get(key, False)) for key in _READ_ONLY}
+
+
+def _writable(rights):
+	"""Whether events may be written there, as the desk reads it (`mayWriteAll`)."""
+	return bool(rights.get("mayWriteAll"))
+
+
+# A batch's events are written one by one through the desk's rate-limited functions, whose limits the whole office
+# shares: at most this many in one call, the others answered « rateLimit » (tried again later by the client).
+MAX_EVENTS_PER_SET = 50
+
+
 def event_set(args):
-	"""The calendars are read-only for now: every change is refused, said for each."""
-	aid, _suite_account = _calendar_account(args)
+	"""Events created, changed and deleted in the person's own calendars, as the desk does it (see the module's text).
+	A whole property replaces it; an occurrence of a series is changed or deleted alone. Invitations go out when the
+	client asks (`sendSchedulingMessages`) and the person organizes the event, never for a draft, as in the desk. Each
+	refusal is said for its event; what a refused one had begun to write in the instance is undone (a savepoint per
+	event: the instance's own records, not what a mail server already did)."""
+	aid, suite_account = _calendar_account(args)
 	creates, updates, destroys = args.get("create") or {}, args.get("update") or {}, args.get("destroy") or []
 	if not isinstance(creates, dict) or not isinstance(updates, dict) or not isinstance(destroys, list):
 		raise jmap.JmapError("invalidArguments", "create, update, destroy")
-	refused = {"type": "forbidden", "description": "The calendars are read-only."}
+	if len(creates) + len(updates) + len(destroys) > jmap.MAX_OBJECTS:
+		raise jmap.JmapError("requestTooLarge", "maxObjectsInSet")
+	if args.get("ifInState") is not None:
+		raise jmap.JmapError("invalidArguments", "ifInState")
+	notify = args.get("sendSchedulingMessages") is True
+	from suite.calendar.jmap_events import get_calendars
+
+	client = _client(suite_account)
+	calendars = {c.get("id"): c for c in _reading(lambda: get_calendars(client))}
+	created, updated, destroyed = {}, {}, []
+	not_created, not_updated, not_destroyed = {}, {}, {}
+	budget = [MAX_EVENTS_PER_SET]
+
+	def written(write):
+		if budget[0] <= 0:
+			return {"type": "rateLimit", "description": "Too many events at once: try again in a minute."}
+		budget[0] -= 1
+		return _one_event(write)
+
+	for key, event in creates.items():
+		outcome = written(lambda event=event: _create_event(suite_account, client, calendars, event, notify))
+		if isinstance(outcome, tuple):
+			created[key] = {"id": _event_id(outcome[0]), "uid": outcome[1]}
+		else:
+			not_created[key] = outcome
+	for vid, patch in updates.items():
+		outcome = written(
+			lambda vid=vid, patch=patch: _update_event(suite_account, client, calendars, vid, patch, notify)
+		)
+		if isinstance(outcome, dict):
+			not_updated[vid] = outcome
+		else:
+			updated[vid] = None
+	for vid in destroys:
+		if not isinstance(vid, str):
+			continue
+		outcome = written(lambda vid=vid: _destroy_event(suite_account, client, calendars, vid, notify))
+		if isinstance(outcome, dict):
+			not_destroyed[vid] = outcome
+		else:
+			destroyed.append(vid)
 	return {
 		"accountId": aid,
 		"oldState": "0",
 		"newState": "0",
-		"notCreated": {k: refused for k in creates},
-		"notUpdated": {k: refused for k in updates},
-		"notDestroyed": {k: refused for k in destroys if isinstance(k, str)},
+		"created": created,
+		"updated": updated,
+		"destroyed": destroyed,
+		"notCreated": not_created,
+		"notUpdated": not_updated,
+		"notDestroyed": not_destroyed,
 	}
+
+
+EVENT_SAVEPOINT = "mailcraft_event"
+# What a client may write of an event (JSCalendar, RFC 8984), as the desk's form does.
+WRITABLE_EVENT = {
+	"calendarIds",
+	"title",
+	"description",
+	"start",
+	"duration",
+	"timeZone",
+	"showWithoutTime",
+	"status",
+	"privacy",
+	"freeBusyStatus",
+	"recurrenceRule",
+	"locations",
+	"links",
+	"alerts",
+	"useDefaultAlerts",
+	"participants",
+}
+# What a client may send back as it read it, and the server sets or keeps for itself: left as it is. The organizer
+# and the draft state are the event's own (checked below: a client never changes them here, as in the desk).
+SERVER_SET = {
+	"@type",
+	"id",
+	"uid",
+	"created",
+	"updated",
+	"sequence",
+	"prodId",
+	"method",
+	"utcStart",
+	"utcEnd",
+	"baseEventId",
+	"recurrenceIdTimeZone",
+	"isOrigin",
+	"mayInviteSelf",
+	"mayInviteOthers",
+	"hideAttendees",
+	"organizerCalendarAddress",
+	"isDraft",
+}
+# Fields an occurrence of a series never takes, as the desk keeps them off its patches: a zone there would move the
+# exception away from its occurrence, and an occurrence does not change calendar alone.
+NOT_FOR_AN_OCCURRENCE = ("time_zone", "calendar_ids")
+
+
+def _one_event(write):
+	"""Runs the write of one event: its answer, or its SetError (a dict) after undoing what it had begun."""
+	frappe.db.savepoint(EVENT_SAVEPOINT)
+	try:
+		return write() or True
+	except Exception as e:
+		frappe.db.rollback(save_point=EVENT_SAVEPOINT)
+		return _event_refusal(e)
+
+
+def _event_refusal(error):
+	"""A JMAP SetError for what stopped an event (the Suite's own messages, without their markup)."""
+	from frappe.utils import strip_html
+
+	described = strip_html(str(error)).strip()[:200]
+	if isinstance(error, jmap.JmapError):
+		# A read of the Suite on the way (_reading): refused, or the server not answering.
+		return {
+			"type": "forbidden" if error.type == "forbidden" else "serverFail",
+			"description": error.description,
+		}
+	if isinstance(error, frappe.PermissionError):
+		return {"type": "forbidden", "description": described or "Your rights do not allow it."}
+	if isinstance(error, frappe.DoesNotExistError):
+		return {"type": "notFound"}
+	if isinstance(error, frappe.RateLimitExceededError):
+		# The desk's limits (shared with the office): not the event's fault, tried again later.
+		return {"type": "rateLimit", "description": described}
+	if (
+		isinstance(error, frappe.ValidationError | ValueError | TypeError)
+		or type(error).__name__ == "ValidationError"
+	):
+		return {"type": "invalidProperties", "description": described}
+	frappe.log_error("MailCraft calendars: an event could not be written", frappe.get_traceback())
+	return {"type": "serverFail"}
+
+
+def _map(event, key):
+	"""A JSCalendar map property (`locations`, `alerts`…): its entries that are objects; null is none."""
+	value = event.get(key)
+	if value is None:
+		return {}
+	if not isinstance(value, dict):
+		raise ValueError(f"{key} must be an object.")
+	return {uid: entry for uid, entry in value.items() if isinstance(entry, dict)}
+
+
+def _address(value):
+	return str(value or "").strip().removeprefix("mailto:").removeprefix("MAILTO:")
+
+
+def _participant_address(entry):
+	"""A participant's address: its calendar address, else where invitations go to it (a room known by its sendTo)."""
+	send_to = entry.get("sendTo") if isinstance(entry.get("sendTo"), dict) else {}
+	return _address(
+		entry.get("calendarAddress") or entry.get("email") or send_to.get("imip") or entry.get("scheduleId")
+	)
+
+
+def _event_fields(event, calendars):
+	"""The fields the Suite's calendar functions take (snake_case, as the desk's form sends them) of a JSCalendar event
+	or a patch of whole properties, for the properties it names only."""
+	if not isinstance(event, dict):
+		raise ValueError("An event must be an object.")
+	if any("/" in key for key in event):
+		raise ValueError("A whole property replaces it: no patch of a part.")
+	unknown = set(event) - WRITABLE_EVENT - SERVER_SET
+	if unknown:
+		raise ValueError("Not written here: " + ", ".join(sorted(unknown)))
+	out = {}
+	if "calendarIds" in event:
+		named = event["calendarIds"]
+		if not isinstance(named, dict) or not any(named.values()):
+			raise ValueError("An event goes in one of your calendars.")
+		raws = [_raw(cid, "C") for cid, on in named.items() if on]
+		if any(raw not in calendars for raw in raws):
+			raise ValueError("An event goes in one of your calendars.")
+		if not all(_writable(_rights(calendars[raw].get("myRights"))) for raw in raws):
+			raise frappe.PermissionError
+		out["calendar_ids"] = raws
+	for given, field in (
+		("title", "title"),
+		("description", "description"),
+		("start", "start"),
+		("duration", "duration"),
+		("timeZone", "time_zone"),
+	):
+		if given in event:
+			out[field] = None if event[given] is None else str(event[given])
+	if "showWithoutTime" in event:
+		out["show_without_time"] = bool(event["showWithoutTime"])
+	if "useDefaultAlerts" in event:
+		out["use_default_alerts"] = bool(event["useDefaultAlerts"])
+	if "status" in event:
+		out["status"] = str(event["status"] or "confirmed")
+	if "privacy" in event:
+		out["privacy"] = event["privacy"]
+	if "freeBusyStatus" in event:
+		out["free_busy_status"] = event["freeBusyStatus"]
+	if "recurrenceRule" in event:
+		rule = event["recurrenceRule"]
+		if rule is not None and not isinstance(rule, dict):
+			raise ValueError("recurrenceRule must be an object.")
+		out["recurrence_rule"] = rule
+	if "locations" in event:
+		out["locations"] = [
+			{"uid": uid, "name": entry.get("name")} for uid, entry in _map(event, "locations").items()
+		]
+	if "links" in event:
+		out["links"] = [
+			{"uid": uid, "href": entry.get("href"), "content_type": entry.get("contentType")}
+			for uid, entry in _map(event, "links").items()
+		]
+	if "alerts" in event:
+		alerts = []
+		for uid, entry in _map(event, "alerts").items():
+			trigger = entry.get("trigger") if isinstance(entry.get("trigger"), dict) else {}
+			action = entry.get("action") or "display"
+			if trigger.get("@type") == "AbsoluteTrigger":
+				alerts.append(
+					{"type": "AbsoluteTrigger", "uid": uid, "action": action, "when": trigger.get("when")}
+				)
+			elif trigger.get("@type", "OffsetTrigger") == "OffsetTrigger":
+				alerts.append(
+					{
+						"type": "OffsetTrigger",
+						"uid": uid,
+						"action": action,
+						"offset": trigger.get("offset") or "-PT15M",
+						"relative_to": trigger.get("relativeTo") or "start",
+					}
+				)
+		out["alerts"] = alerts
+	if "participants" in event:
+		out["participants"] = [
+			{
+				"uid": uid,
+				"name": entry.get("name"),
+				"email": _participant_address(entry),
+				"kind": entry.get("kind"),
+				"roles": entry.get("roles"),
+				"participation_status": entry.get("participationStatus"),
+				# Someone added is asked for an answer, as the desk asks every participant it adds (JSCalendar's
+				# default is « no reply expected »); the organizer is not.
+				"expect_reply": bool(
+					entry["expectReply"]
+					if "expectReply" in entry
+					else not (isinstance(entry.get("roles"), dict) and entry["roles"].get("owner"))
+				),
+				"description": entry.get("description"),
+				"comment": entry.get("comment"),
+				"schedule_agent": entry.get("scheduleAgent"),
+				"schedule_id": entry.get("scheduleId"),
+				"send_to": entry.get("sendTo"),
+				"member_of": entry.get("memberOf"),
+			}
+			for uid, entry in _map(event, "participants").items()
+			if _participant_address(entry)
+		]
+	return out
+
+
+def _keep_own(event, stored=None):
+	"""The organizer and the draft state stay the event's: a client sends them back as they are, or not at all."""
+	if "organizerCalendarAddress" in event:
+		given = _address(event["organizerCalendarAddress"]).lower()
+		kept = _address((stored or {}).get("organizerCalendarAddress")).lower()
+		if stored is not None and given != kept:
+			raise frappe.PermissionError("The organizer of an event is not changed here.")
+	if "isDraft" in event and bool(event["isDraft"]) != bool((stored or {}).get("isDraft")):
+		raise ValueError("A draft is sent from the desk.")
+
+
+def _event_uid_key(uid):
+	return f"mailcraft_event_uid:{frappe.session.user}:" + hashlib.sha256(uid.encode()).hexdigest()
+
+
+def _stored(client, raw):
+	from suite.calendar.jmap_events import get_events
+
+	found = _reading(lambda: get_events(client, [raw])) if raw else []
+	return found[0] if found else None
+
+
+def _organizes(suite_account, stored):
+	"""Whether the person organizes the event (one of their own identities), as the desk's invitations check it."""
+	from suite.calendar.doctype.calendar_event.invitations import acting_as_organizer
+
+	return acting_as_organizer(suite_account, _address(stored.get("organizerCalendarAddress")) or None)
+
+
+def _create_event(suite_account, client, calendars, event, notify):
+	"""A new event, by the desk's add_calendar_event: (its id, its uid). The organizer is the person's own identity
+	(the account's, or one of theirs the client names). One sent again (its answer lost on the way) comes back to the
+	event it made, by the client's uid. An occurrence's own object (`recurrenceId`) is not made here: it is a change of
+	its series."""
+	from suite.calendar.doctype.calendar_event.calendar_event import add_calendar_event
+	from suite.calendar.doctype.calendar_event.invitations import acting_as_organizer
+
+	if isinstance(event, dict) and event.get("recurrenceId") is not None:
+		raise ValueError("An occurrence is changed through its series, not created.")
+	_keep_own(event)
+	organizer = _address(event.get("organizerCalendarAddress")) if isinstance(event, dict) else ""
+	if organizer and not acting_as_organizer(suite_account, organizer):
+		raise frappe.PermissionError("An event is organized by one of your own addresses.")
+	fields = _event_fields(event, calendars)
+	if not fields.get("start") or not fields.get("duration"):
+		raise ValueError("An event needs its start and its duration.")
+	uid = str(event.get("uid") or "")[:255]
+	if uid:
+		kept = frappe.cache().get_value(_event_uid_key(uid))
+		if isinstance(kept, dict) and kept.get("account") == suite_account:
+			again = _stored(client, kept.get("id"))
+			if again:
+				return again["id"], again.get("uid")
+	if "calendar_ids" not in fields:
+		writable = [
+			raw for raw, calendar in calendars.items() if _writable(_rights(calendar.get("myRights")))
+		]
+		default = next(
+			(raw for raw in writable if calendars[raw].get("isDefault")), writable[0] if writable else None
+		)
+		if not default:
+			raise frappe.PermissionError
+		fields["calendar_ids"] = [default]
+	raw = add_calendar_event(
+		account=suite_account, organizer=organizer or None, send_scheduling_messages=notify, **fields
+	)
+	# Kept before anything else can fail: the event is made (on the mail server too), and a resend must find it.
+	if uid:
+		frappe.cache().set_value(
+			_event_uid_key(uid), {"account": suite_account, "id": raw}, expires_in_sec=7 * 24 * 3600
+		)
+	try:
+		made = _stored(client, raw) or {}
+	except Exception:
+		made = {}
+	return raw, made.get("uid")
+
+
+def _update_event(suite_account, client, calendars, vid, patch, notify):
+	"""An event changed, by the desk's update_calendar_event: the properties the patch names replace the stored ones,
+	the others stay, its organizer and draft state among them. An occurrence of a series is changed alone
+	(update_calendar_event_instance). Invitations go out only from the organizer, never for a draft."""
+	from suite.calendar.doctype.calendar_event.calendar_event import (
+		update_calendar_event,
+		update_calendar_event_instance,
+	)
+	from suite.calendar.doctype.calendar_event.fields import EventFields
+
+	raw = _raw(vid, "V")
+	stored = _stored(client, raw)
+	if not stored:
+		raise frappe.DoesNotExistError
+	_check_writable(stored, calendars)
+	_keep_own(patch if isinstance(patch, dict) else {}, stored)
+	fields = _event_fields(patch, calendars)
+	draft = bool(stored.get("isDraft"))
+	notify = notify and not draft and _organizes(suite_account, stored)
+	if stored.get("recurrenceId"):
+		for key in NOT_FOR_AN_OCCURRENCE:
+			fields.pop(key, None)
+		# Checked and written as the desk's form gives them (lower-case enumerations), the fields named only.
+		service = EventFields.model_validate(fields).for_service()
+		update_calendar_event_instance(
+			account=suite_account,
+			master_id=_master_of(client, raw),
+			recurrence_id=stored["recurrenceId"],
+			patch={key: service[key] for key in fields if key in service},
+			send_scheduling_messages=notify,
+		)
+		return True
+	whole = {key: value for key, value in stored.items() if key in WRITABLE_EVENT}
+	whole["calendarIds"] = {
+		_calendar_id(k): True for k, on in (stored.get("calendarIds") or {}).items() if on
+	}
+	merged = _event_fields(whole, calendars) | fields
+	update_calendar_event(
+		account=suite_account,
+		id=raw,
+		uid=stored.get("uid"),
+		organizer=_address(stored.get("organizerCalendarAddress")) or None,
+		draft=draft,
+		send_scheduling_messages=notify,
+		**merged,
+	)
+	return True
+
+
+def _destroy_event(suite_account, client, calendars, vid, notify):
+	"""An event deleted, by the desk's delete_calendar_events; an occurrence of a series alone
+	(delete_calendar_event_instance). Cancellations go out only from the organizer, never for a draft (nobody was
+	invited); an attendee's copy deleted tells nobody, as in the desk."""
+	from suite.calendar.doctype.calendar_event.calendar_event import (
+		delete_calendar_event_instance,
+		delete_calendar_events,
+	)
+
+	raw = _raw(vid, "V")
+	stored = _stored(client, raw)
+	if not stored:
+		raise frappe.DoesNotExistError
+	_check_writable(stored, calendars)
+	notify = notify and not stored.get("isDraft") and _organizes(suite_account, stored)
+	if stored.get("recurrenceId"):
+		delete_calendar_event_instance(
+			account=suite_account,
+			master_id=_master_of(client, raw),
+			recurrence_id=stored["recurrenceId"],
+			send_scheduling_messages=notify,
+		)
+	else:
+		delete_calendar_events(account=suite_account, ids=[raw], send_scheduling_messages=notify)
+	return True
+
+
+def _check_writable(stored, calendars):
+	"""An event of a calendar the person may not write is not theirs to change (one of another account is not there)."""
+	held = [k for k, on in (stored.get("calendarIds") or {}).items() if on]
+	if not held or any(k not in calendars for k in held):
+		raise frappe.DoesNotExistError
+	if not all(_writable(_rights(calendars[k].get("myRights"))) for k in held):
+		raise frappe.PermissionError
+
+
+def _master_of(client, raw):
+	"""The series an occurrence belongs to (its own id when the server knows no other)."""
+	from suite.calendar.jmap_events import get_base_event_ids
+
+	return _reading(lambda: get_base_event_ids(client, [raw])).get(raw, raw)
 
 
 def _string_ids(args):

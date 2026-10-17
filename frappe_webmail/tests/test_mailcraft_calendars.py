@@ -6,7 +6,8 @@
 Read on the calendar the Suite keeps in the instance for a person without a mailbox server account (the clone's
 mailboxes have no password, so their calendars cannot be reached): its events of a window, each occurrence apart, with
 their start and end in UTC worked out from their zone, summer time included. Only the person's own calendar, chosen
-by the facade; read-only.
+by the facade. NeoMail does what the desk does (Jérémy, 17.10): events created, changed and deleted there, a series or
+one of its occurrences, through the Suite's own calendar functions.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_calendars
@@ -123,7 +124,11 @@ class TestMailCraftCalendars(FrappeTestCase):
 				"methodCalls": [[name, args, f"c{n}"] for n, (name, args) in enumerate(calls)],
 			}
 		).encode()
-		with patch.object(frappe.local, "request", SimpleNamespace(get_data=lambda: body), create=True):
+		# A request as the facade reads it, with the headers the Suite's rate limit reads when an event is written.
+		request = SimpleNamespace(
+			get_data=lambda: body, headers={}, method="POST", path="/api/method/" + jmap.METHOD_PREFIX + "api"
+		)
+		with patch.object(frappe.local, "request", request, create=True):
 			answer = jmap.api()
 		self.assertEqual(answer.status_code, 200, answer.get_data())
 		return json.loads(answer.get_data())["methodResponses"]
@@ -148,7 +153,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertEqual(session["primaryAccounts"][calendars.CALENDARS], aid)
 		listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
 		self.assertTrue(listed and all(c["id"].startswith("C") for c in listed))
-		self.assertFalse(listed[0]["myRights"]["mayWriteOwn"], "read-only")
+		self.assertTrue(listed[0]["myRights"]["mayWriteOwn"], "the person's own calendar, as in the desk")
 
 	def test_without_a_calendar_none_is_offered(self):
 		self._as(NOBODY)
@@ -200,7 +205,10 @@ class TestMailCraftCalendars(FrappeTestCase):
 		changed = self._calls(("CalendarEvent/set", {"accountId": aid, "create": {"k": {"title": "x"}}}))[0][
 			1
 		]
-		self.assertEqual(changed["notCreated"]["k"]["type"], "forbidden")
+		self.assertEqual(
+			changed["notCreated"]["k"]["type"], "invalidProperties", "an event needs its start and length"
+		)
+		self.assertIn("start and its duration", changed["notCreated"]["k"]["description"])
 
 	def test_the_queries_follow_rfc_8620(self):
 		self._as(PERSON)
@@ -249,3 +257,288 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertEqual((listed[0], listed[1]["list"]), ("Calendar/get", []))
 		self.assertEqual((got[0], got[1]["list"], got[1]["notFound"]), ("CalendarEvent/get", [], ["Vbm9uZQ"]))
 		self.assertEqual((changed[0], list(changed[1]["notDestroyed"])), ("CalendarEvent/set", ["Vbm9uZQ"]))
+
+	def _set(self, **changes):
+		aid = jmap.account_id(BOX)
+		answer = self._calls(("CalendarEvent/set", {"accountId": aid, **changes}))[0]
+		self.assertEqual(answer[0], "CalendarEvent/set", answer)
+		return answer[1]
+
+	def _calendar(self):
+		aid = jmap.account_id(BOX)
+		return self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"][0]["id"]
+
+	def test_an_event_is_created_changed_and_deleted_as_in_the_desk(self):
+		self._as(PERSON)
+		calendar = self._calendar()
+		uid = f"mc-test-{frappe.generate_hash(length=10)}"
+		event = {
+			"@type": "Event",
+			"uid": uid,
+			"calendarIds": {calendar: True},
+			"title": "Visite de chantier",
+			"start": "2030-03-04T10:00:00",
+			"duration": "PT2H",
+			"timeZone": "Europe/Zurich",
+			"showWithoutTime": False,
+			"description": "Avec le maître d'ouvrage",
+			"locations": {"l1": {"@type": "Location", "name": "Rue du Lac 12, Vevey"}},
+		}
+		made = self._set(create={"k": event})
+		self.assertEqual(made["notCreated"], {})
+		vid = made["created"]["k"]["id"]
+		march = {"after": "2030-03-01T00:00:00Z", "before": "2030-04-01T00:00:00Z"}
+		found = next(e for e in self._window(march) if e["id"] == vid)
+		self.assertEqual(
+			(found["title"], found["utcStart"], found["utcEnd"]),
+			("Visite de chantier", "2030-03-04T09:00:00Z", "2030-03-04T11:00:00Z"),
+		)
+		self.assertEqual([place["name"] for place in found["locations"].values()], ["Rue du Lac 12, Vevey"])
+		# Sent again (its answer lost on the way): the same event, not a second one.
+		again = self._set(create={"k2": event})
+		self.assertEqual(again["created"]["k2"]["id"], vid)
+		self.assertEqual(sum(1 for e in self._window(march) if e.get("title") == "Visite de chantier"), 1)
+		# Changed: the properties named replace the stored ones, the others stay.
+		changed = self._set(
+			update={vid: {"title": "Visite de chantier (déplacée)", "start": "2030-03-05T14:00:00"}}
+		)
+		self.assertEqual((changed["updated"], changed["notUpdated"]), ({vid: None}, {}))
+		moved = next(e for e in self._window(march) if e["id"] == vid)
+		self.assertEqual(
+			(moved["title"], moved["utcStart"], moved["duration"]),
+			("Visite de chantier (déplacée)", "2030-03-05T13:00:00Z", "PT2H"),
+		)
+		self.assertEqual(moved["description"], "Avec le maître d'ouvrage")
+		# Deleted, as in the desk.
+		gone = self._set(destroy=[vid])
+		self.assertEqual((gone["destroyed"], gone["notDestroyed"]), ([vid], {}))
+		self.assertFalse(any(e["id"] == vid for e in self._window(march)))
+
+	def test_one_occurrence_of_a_series_is_changed_or_deleted_alone(self):
+		self._as(PERSON)
+		series = {
+			"@type": "Event",
+			"calendarIds": {self._calendar(): True},
+			"title": "Réunion d'équipe",
+			"start": "2030-05-06T08:30:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+			"recurrenceRule": {"@type": "RecurrenceRule", "frequency": "weekly", "count": 3},
+		}
+		self.assertEqual(self._set(create={"s": series})["notCreated"], {})
+		may = {"after": "2030-05-01T00:00:00Z", "before": "2030-06-01T00:00:00Z"}
+
+		def occurrences():
+			return sorted(
+				(e for e in self._window(may) if e.get("title", "").startswith("Réunion d'équipe")),
+				key=lambda e: e["utcStart"],
+			)
+
+		weekly = occurrences()
+		self.assertEqual(
+			[e["utcStart"] for e in weekly],
+			["2030-05-06T06:30:00Z", "2030-05-13T06:30:00Z", "2030-05-20T06:30:00Z"],
+		)
+		second, third = weekly[1]["id"], weekly[2]["id"]
+		self.assertTrue(
+			weekly[1].get("recurrenceId"), "an occurrence says which one it is (the desk's instance path)"
+		)
+		self.assertEqual(self._set(update={third: {"title": "Réunion d'équipe (salle B)"}})["notUpdated"], {})
+		self.assertEqual(self._set(destroy=[second])["notDestroyed"], {})
+		after = occurrences()
+		self.assertEqual([e["utcStart"] for e in after], ["2030-05-06T06:30:00Z", "2030-05-20T06:30:00Z"])
+		self.assertEqual([e["title"] for e in after], ["Réunion d'équipe", "Réunion d'équipe (salle B)"])
+
+	def test_what_cannot_be_written_is_refused_and_says_why(self):
+		self._as(PERSON)
+		calendar = self._calendar()
+		base = {"start": "2030-03-04T10:00:00", "duration": "PT1H", "title": "x"}
+		refused = self._set(
+			create={
+				"elsewhere": {**base, "calendarIds": {"Cbm9uZQ": True}},
+				"unknown": {**base, "calendarIds": {calendar: True}, "virtualLocations": {"v": {"uri": "x"}}},
+				"shape": {**base, "calendarIds": {calendar: True}, "locations": ["Vevey"]},
+			},
+			update={"Vbm9uZQ": {"title": "y"}},
+			destroy=["Vbm9uZQ"],
+		)
+		weekly = next(e for e in self._window(JANUARY) if e.get("uid") == "mc-cal-weekly")
+		part = self._set(update={weekly["id"]: {"locations/l1/name": "Vevey"}})
+		self.assertEqual(
+			part["notUpdated"][weekly["id"]]["type"], "invalidProperties", "a whole property, no part"
+		)
+		self.assertIn("whole property", part["notUpdated"][weekly["id"]]["description"])
+		self.assertEqual(
+			{key: error["type"] for key, error in refused["notCreated"].items()},
+			{"elsewhere": "invalidProperties", "unknown": "invalidProperties", "shape": "invalidProperties"},
+		)
+		self.assertEqual(refused["notUpdated"]["Vbm9uZQ"]["type"], "notFound")
+		self.assertEqual(refused["notDestroyed"]["Vbm9uZQ"]["type"], "notFound")
+		self.assertEqual(refused["created"], {})
+
+	def test_a_calendar_the_person_may_only_read_is_not_written(self):
+		"""The rights the Suite reads on each calendar (a mail server's shared calendar may be read-only) hold."""
+		from suite.calendar import jmap_events
+
+		self._as(PERSON)
+		real = jmap_events.get_calendars
+
+		def read_only(client, ids=None):
+			return [{**c, "myRights": {"mayReadItems": True}} for c in real(client, ids)]
+
+		weekly = next(e for e in self._window(JANUARY) if e.get("uid") == "mc-cal-weekly")
+		calendar = self._calendar()
+		with patch.object(jmap_events, "get_calendars", side_effect=read_only):
+			aid = jmap.account_id(BOX)
+			listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
+			self.assertFalse(listed[0]["myRights"]["mayWriteOwn"])
+			refused = self._set(
+				create={
+					"k": {
+						"calendarIds": {calendar: True},
+						"title": "x",
+						"start": "2030-03-04T10:00:00",
+						"duration": "PT1H",
+					}
+				},
+				update={weekly["id"]: {"title": "y"}},
+				destroy=[weekly["id"]],
+			)
+		self.assertEqual(refused["notCreated"]["k"]["type"], "forbidden")
+		self.assertEqual(refused["notUpdated"][weekly["id"]]["type"], "forbidden")
+		self.assertEqual(refused["notDestroyed"][weekly["id"]]["type"], "forbidden")
+		self.assertIn("mc-cal-weekly", {e.get("uid") for e in self._window(JANUARY)}, "nothing deleted")
+
+	def _make(self, **over):
+		event = {
+			"@type": "Event",
+			"calendarIds": {self._calendar(): True},
+			"title": "Revue",
+			"start": "2030-04-08T10:00:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+			**over,
+		}
+		made = self._set(create={"k": event})
+		self.assertEqual(made["notCreated"], {}, made)
+		return made["created"]["k"]["id"]
+
+	def _get(self, vid):
+		aid = jmap.account_id(BOX)
+		return self._calls(("CalendarEvent/get", {"accountId": aid, "ids": [vid]}))[0][1]["list"][0]
+
+	def test_the_organizer_and_the_draft_state_are_the_events_own(self):
+		"""The desk never changes who organizes an event, nor sends a draft by an edit: neither does NeoMail."""
+		self._as(PERSON)
+		vid = self._make()
+		stored = self._get(vid)
+		organizer = stored.get("organizerCalendarAddress")
+		# Sent back as it was: accepted.
+		same = self._set(update={vid: {"title": "Revue (bis)", "organizerCalendarAddress": organizer}})
+		self.assertEqual(same["notUpdated"], {})
+		# Another organizer, or none: refused, nothing changed.
+		for other in ("mailto:boss@example.com", None):
+			refused = self._set(update={vid: {"organizerCalendarAddress": other, "title": "x"}})
+			self.assertEqual(refused["notUpdated"][vid]["type"], "forbidden", other)
+		self.assertEqual(self._get(vid)["title"], "Revue (bis)")
+		# A create names one of the person's own addresses, or none.
+		elsewhere = self._set(
+			create={
+				"k": {
+					"calendarIds": {self._calendar(): True},
+					"title": "x",
+					"start": "2030-04-09T10:00:00",
+					"duration": "PT1H",
+					"organizerCalendarAddress": "mailto:boss@example.com",
+				}
+			}
+		)
+		self.assertEqual(elsewhere["notCreated"]["k"]["type"], "forbidden")
+		# A draft stays a draft, and is not sent by NeoMail.
+		self.assertEqual(
+			self._set(update={vid: {"isDraft": True}})["notUpdated"][vid]["type"], "invalidProperties"
+		)
+
+	def test_a_draft_made_in_the_desk_stays_a_draft(self):
+		from suite.calendar.doctype.calendar_event.calendar_event import add_calendar_event
+
+		self._as(PERSON)
+		raw = add_calendar_event(
+			account=self.account,
+			calendar_ids=[calendars._raw(self._calendar(), "C")],
+			draft=True,
+			title="Brouillon",
+			start="2030-04-10T09:00:00",
+			duration="PT30M",
+			time_zone="Europe/Zurich",
+		)
+		vid = calendars._event_id(raw)
+		self.assertEqual(self._set(update={vid: {"title": "Brouillon (renommé)"}})["notUpdated"], {})
+		after = self._get(vid)
+		self.assertEqual((after["title"], bool(after.get("isDraft"))), ("Brouillon (renommé)", True))
+
+	def test_what_the_suite_does_not_keep_is_refused_not_dropped(self):
+		self._as(PERSON)
+		vid = self._make()
+		for change in (
+			{"recurrenceOverrides": {"2030-04-15T10:00:00": {"excluded": True}}},
+			{"keywords": {"x": True}},
+			{"color": "red"},
+			{"excludedRecurrenceRules": []},
+		):
+			refused = self._set(update={vid: change})
+			self.assertEqual(refused["notUpdated"][vid]["type"], "invalidProperties", change)
+		occurrence = self._set(
+			create={
+				"k": {
+					"calendarIds": {self._calendar(): True},
+					"title": "x",
+					"start": "2030-04-08T10:00:00",
+					"duration": "PT1H",
+					"recurrenceId": "2030-04-08T10:00:00",
+				}
+			}
+		)
+		self.assertEqual(occurrence["notCreated"]["k"]["type"], "invalidProperties")
+
+	def test_an_occurrence_keeps_its_zone_and_its_calendar(self):
+		self._as(PERSON)
+		self._make(
+			title="Atelier", recurrenceRule={"@type": "RecurrenceRule", "frequency": "weekly", "count": 2}
+		)
+		april = {"after": "2030-04-01T00:00:00Z", "before": "2030-05-01T00:00:00Z"}
+		first = next(
+			e for e in sorted(self._window(april), key=lambda e: e["utcStart"]) if e.get("title") == "Atelier"
+		)
+		self.assertEqual(
+			self._set(update={first["id"]: {"title": "Atelier (A)", "timeZone": "America/New_York"}})[
+				"notUpdated"
+			],
+			{},
+		)
+		moved = next(e for e in self._window(april) if e.get("title") == "Atelier (A)")
+		self.assertEqual(
+			moved["utcStart"], first["utcStart"], "the zone of an occurrence is not changed alone"
+		)
+
+	def test_the_desks_limits_and_a_batch_too_big_are_said_as_rate_limits(self):
+		from suite.calendar.doctype.calendar_event import calendar_event
+
+		self._as(PERSON)
+		event = {
+			"calendarIds": {self._calendar(): True},
+			"title": "x",
+			"start": "2030-04-08T10:00:00",
+			"duration": "PT1H",
+		}
+		with patch.object(
+			calendar_event,
+			"add_calendar_event",
+			side_effect=frappe.RateLimitExceededError("Too many requests"),
+		):
+			limited = self._set(create={"k": event})
+		self.assertEqual(limited["notCreated"]["k"]["type"], "rateLimit")
+		many = self._set(create={f"k{n}": {"title": "x"} for n in range(calendars.MAX_EVENTS_PER_SET + 1)})
+		kinds = sorted(error["type"] for error in many["notCreated"].values())
+		self.assertEqual(kinds.count("rateLimit"), 1, "one past the limit waits")
+		self.assertEqual(kinds.count("invalidProperties"), calendars.MAX_EVENTS_PER_SET)

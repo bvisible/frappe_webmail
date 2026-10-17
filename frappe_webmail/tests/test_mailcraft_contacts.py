@@ -4,8 +4,9 @@
 """The instance's contacts as NeoMail's address book (mailcraft_contacts, JMAP for Contacts; maintenance#1630).
 
 One mailbox of the person offers it; its cards are the contacts the person may read, with their addresses, phone
-numbers, company and title. NeoMail creates and changes contacts with the person's own rights (Jérémy, 17.10), never
-deletes one; a create sent again (its answer lost) comes back to the same contact by its card's uid. The queries follow
+numbers, company and title. NeoMail does what the desk does (Jérémy, 17.10): it creates, changes and deletes contacts with
+the person's own rights and by the desk's rules (a contact a document names stays; a deleted one can be restored); a
+create sent again (its answer lost) comes back to the same contact by its card's uid. The queries follow
 RFC 8620 §5.5 (a limit of 0, a position from the end, the total when asked).
 
 Run with:
@@ -28,10 +29,14 @@ READER = (
 )
 LIMITED = "mailcraft_contacts_limited@example.com"  # Sales User, its contacts restricted to Alpha
 PLAIN = "mailcraft_contacts_plain@example.com"  # of the desk, no right to contacts
+DELETER = (
+	"mailcraft_contacts_deleter@example.com"  # Sales User and Sales Master Manager: also deletes contacts
+)
 BOX = "mailcraft_contacts_box@webmail.test"
 SHARED_BOX = "mailcraft_contacts_shared@webmail.test"
 LIMITED_BOX = "mailcraft_contacts_limited@webmail.test"
 PLAIN_BOX = "mailcraft_contacts_plain@webmail.test"
+DELETER_BOX = "mailcraft_contacts_deleter@webmail.test"
 
 
 def _user(email, roles):
@@ -93,10 +98,12 @@ class TestMailCraftContacts(FrappeTestCase):
 		_user(READER, ["Sales User"])
 		_user(LIMITED, ["Sales User"])
 		_user(PLAIN, ["Blogger"])
+		_user(DELETER, ["Sales User", "Sales Master Manager"])
 		_mailbox(BOX, READER)
 		_mailbox(SHARED_BOX, PLAIN, shared_with=[READER])
 		_mailbox(LIMITED_BOX, LIMITED)
 		_mailbox(PLAIN_BOX, PLAIN)
+		_mailbox(DELETER_BOX, DELETER)
 		cls.alpha = _contact(
 			"Alpha", "Contactsperm", "alpha@contacts.test", "+41 79 111 11 11", "Example SA", "Comptable"
 		)
@@ -182,7 +189,13 @@ class TestMailCraftContacts(FrappeTestCase):
 				("AddressBook/get", {"accountId": jmap.account_id(box), "ids": [contacts.BOOK]})
 			)[0]
 			self.assertEqual(book[1]["list"][0]["myRights"]["mayWrite"], writes, user)
-			self.assertFalse(book[1]["list"][0]["myRights"]["mayDelete"], user)
+			self.assertFalse(book[1]["list"][0]["myRights"]["mayRemoveItems"], user)
+			self.assertFalse(book[1]["list"][0]["myRights"]["mayDelete"], "the book itself is never deleted")
+		self._as(DELETER)
+		book = self._calls(("AddressBook/get", {"accountId": jmap.account_id(DELETER_BOX), "ids": None}))[0]
+		rights = book[1]["list"][0]["myRights"]
+		self.assertTrue(rights["mayRemoveItems"], "the right to delete contacts, as in the desk")
+		self.assertFalse(rights["mayDelete"])
 
 	def test_the_cards_are_the_contacts_with_what_neomail_shows(self):
 		# By the ids asked: a client reads them as many at a time as maxObjectsInGet allows (the clone has more).
@@ -217,7 +230,7 @@ class TestMailCraftContacts(FrappeTestCase):
 		_, asked = self._cards(PLAIN, PLAIN_BOX, ids=[self.alpha])
 		self.assertEqual((asked["list"], asked["notFound"]), ([], [self.alpha]))
 
-	def test_nothing_is_deleted_and_asked_properties_only_come_back(self):
+	def test_a_reader_without_the_right_deletes_nothing_and_asked_properties_only_come_back(self):
 		self._as(READER)
 		aid = jmap.account_id(BOX)
 		changed, got = self._calls(
@@ -471,3 +484,38 @@ class TestMailCraftContacts(FrappeTestCase):
 		frappe.cache().set_value(key, {**kept, "creation": "2000-01-01 00:00:00"})
 		second = self._set(READER, BOX, create={"k": card})[1]["created"]["k"]["id"]
 		self.assertNotEqual(second, first)
+
+	def test_a_contact_is_deleted_as_in_the_desk(self):
+		frappe.set_user("Administrator")
+		theta = _contact("Theta", "Contactsperm", "theta@contacts.test")
+		iota = _contact("Iota", "Contactsperm", "iota@contacts.test")
+		refused = self._set(READER, BOX, destroy=[theta])[1]
+		self.assertEqual(
+			refused["notDestroyed"][theta]["type"], "forbidden", "a Sales User may not delete one"
+		)
+		self.assertTrue(frappe.db.exists("Contact", theta))
+		# A contact a document names stays when Frappe's link check refuses (the apps' own hooks clear some links first,
+		# as in the desk): its refusal, said for the card. Made here, so that the mapping is what is tested.
+		real = frappe.delete_doc
+
+		def linked(doctype, name, *args, **kwargs):
+			if name == iota:
+				raise frappe.LinkExistsError(
+					f"Cannot delete or cancel because Contact {iota} is linked with Issue ISS-0001"
+				)
+			return real(doctype, name, *args, **kwargs)
+
+		with patch.object(contacts.frappe, "delete_doc", side_effect=linked):
+			answer = self._set(DELETER, DELETER_BOX, destroy=[theta, iota, "mc-test-no-such-contact"])[1]
+		self.assertEqual(answer["destroyed"], [theta])
+		self.assertFalse(frappe.db.exists("Contact", theta))
+		self.assertTrue(
+			frappe.db.exists("Deleted Document", {"deleted_doctype": "Contact", "deleted_name": theta}),
+			"it can be restored, as in the desk",
+		)
+		self.assertEqual(
+			answer["notDestroyed"][iota]["type"], "forbidden", "a contact a document names stays"
+		)
+		self.assertIn("linked with Issue", answer["notDestroyed"][iota]["description"])
+		self.assertTrue(frappe.db.exists("Contact", iota))
+		self.assertEqual(answer["notDestroyed"]["mc-test-no-such-contact"]["type"], "notFound")

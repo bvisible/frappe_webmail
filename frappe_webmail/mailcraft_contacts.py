@@ -5,8 +5,9 @@
 JMAP for Contacts (RFC 9610) in MailCraft's facade (mailcraft_jmap): the instance's contacts (Contact, with their
 addresses and phone numbers) as one address book, with the rights of the person the token is for. NeoMail's address
 book, its completion of recipients and its person card are then Neoffice's (maintenance#1630, step 2 of NeoMail's
-programme). NeoMail creates and changes contacts, never deletes one (Jérémy, 17.10): what it writes goes through the
-person's own rights, as in the desk.
+programme). NeoMail does what the desk does (Jérémy, 17.10: « elle doit pouvoir tout faire, comme dans le desk »): it
+creates, changes and deletes contacts with the person's own rights, and by the desk's rules (Frappe's link check and
+the apps' own hooks on a deletion; a deleted one can be restored from the Deleted Documents).
 
 The contacts are the instance's, not a mailbox's, and MailCraft keeps an address book per account: one mailbox of the
 person offers them, their own first (by name), else the first shared with them, so that they are not listed twice.
@@ -76,6 +77,9 @@ def address_book_get(args):
 	aid = _book_account(args)
 	ids = jmap._ids(args)
 	writes = _may_write()
+	# RFC 9610: `mayDelete` is the book itself (never, here), and destroying cards falls under `mayWrite`. Someone who
+	# may write contacts but not delete them (a Sales User) is said by `mayRemoveItems`, as JMAP's mailboxes say it.
+	removes = bool(writes and frappe.has_permission("Contact", "delete"))
 	book = {
 		"id": BOOK,
 		"name": "Neoffice",
@@ -84,7 +88,13 @@ def address_book_get(args):
 		"isDefault": True,
 		"isSubscribed": True,
 		"shareWith": None,
-		"myRights": {"mayRead": True, "mayWrite": writes, "mayShare": False, "mayDelete": False},
+		"myRights": {
+			"mayRead": True,
+			"mayWrite": writes,
+			"mayShare": False,
+			"mayDelete": False,
+			"mayRemoveItems": removes,
+		},
 	}
 	return {
 		"accountId": aid,
@@ -199,8 +209,8 @@ def card_get(args):
 
 
 def card_set(args):
-	"""Contacts created and changed with the person's rights (a full property replaces it: `name`, `emails`, `phones`,
-	`organizations`, `titles`); never destroyed from NeoMail. Each refusal is said for its card, and what a refused card
+	"""Contacts created, changed and deleted with the person's rights (a full property replaces it: `name`, `emails`,
+	`phones`, `organizations`, `titles`), as the desk does. Each refusal is said for its card, and what a refused card
 	had begun to write is undone (a savepoint per card), so the others still go through."""
 	aid = _book_account(args)
 	creates, updates = args.get("create") or {}, args.get("update") or {}
@@ -225,17 +235,25 @@ def card_set(args):
 			not_updated[name] = refusal
 		else:
 			updated[name] = None
-	never = {"type": "forbidden", "description": "NeoMail does not delete contacts."}
+	destroyed, not_destroyed = [], {}
+	for name in destroys:
+		if not isinstance(name, str):
+			continue
+		refusal = _one_card(lambda name=name: _destroy(name))
+		if isinstance(refusal, dict):
+			not_destroyed[name] = refusal
+		else:
+			destroyed.append(name)
 	return {
 		"accountId": aid,
 		"oldState": old_state,
 		"newState": _state(),
 		"created": created,
 		"updated": updated,
-		"destroyed": [],
+		"destroyed": destroyed,
 		"notCreated": not_created,
 		"notUpdated": not_updated,
-		"notDestroyed": {k: never for k in destroys if isinstance(k, str)},
+		"notDestroyed": not_destroyed,
 	}
 
 
@@ -264,6 +282,9 @@ def _refusal(error):
 		return {"type": "forbidden", "description": _("Your rights do not allow it.")}
 	if isinstance(error, frappe.DoesNotExistError):
 		return {"type": "notFound"}
+	if isinstance(error, frappe.LinkExistsError):
+		# The desk's rule: a contact that documents name is not deleted (Frappe says which).
+		return {"type": "forbidden", "description": strip_html(str(error)).strip()[:200]}
 	if isinstance(error, frappe.ValidationError | ValueError | TypeError):
 		# NeoMail shows it as it is: Frappe's messages carry markup (« Only one <strong>Email ID</strong>… »).
 		return {"type": "invalidProperties", "description": strip_html(str(error)).strip()[:200]}
@@ -452,6 +473,17 @@ def _update(name, patch):
 		]
 		doc.set("phone_nos", _phone_rows(fields["phones"], old))
 	doc.save()
+
+
+def _destroy(name):
+	"""Deletes a contact as the desk does: the person's right to delete it, the documents linked to it (Frappe refuses
+	to delete one that documents name), and a copy kept in the Deleted Documents, from where it can be restored. One the
+	person may not read is not there."""
+	if not isinstance(name, str) or not frappe.db.exists("Contact", name):
+		raise frappe.DoesNotExistError
+	if not frappe.has_permission("Contact", "read", doc=name):
+		raise frappe.DoesNotExistError
+	frappe.delete_doc("Contact", name)
 
 
 def _card(row, emails, phones, wanted=None):
