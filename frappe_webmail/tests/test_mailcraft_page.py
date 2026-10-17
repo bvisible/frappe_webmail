@@ -1,8 +1,8 @@
 # Copyright (c) 2026, Neoservice and contributors
 # For license information, please see license.txt
 
-"""The /mailcraft address (MailCraft's trial with Nora, maintenance#1629): off unless the site says so, and
-for the desk's people only.
+"""The /neomail address (NeoMail, the trial of our MailCraft fork with Nora, maintenance#1629, #1630): off unless the
+site says so, and for the desk's people only; the former /mailcraft address redirects to it.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_page
@@ -42,11 +42,11 @@ class TestMailCraftPage(FrappeTestCase):
 		frappe.set_user("Administrator")
 
 	def _context(self, trial=1):
-		from frappe_webmail.www import mailcraft
+		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
 		with patch.dict(frappe.local.conf, {"mailcraft_trial": trial}):
-			mailcraft.get_context(context)
+			neomail.get_context(context)
 		return context
 
 	def test_the_address_does_not_exist_unless_the_site_says_so(self):
@@ -58,12 +58,21 @@ class TestMailCraftPage(FrappeTestCase):
 		frappe.set_user("Guest")
 		with self.assertRaises(frappe.Redirect):
 			self._context()
-		self.assertEqual(frappe.local.flags.redirect_location, "/login?redirect-to=/mailcraft")
+		self.assertEqual(frappe.local.flags.redirect_location, "/login?redirect-to=/neomail")
 
 	def test_a_portal_account_is_refused(self):
 		frappe.set_user(PORTAL)
 		with self.assertRaises(frappe.PermissionError):
 			self._context()
+
+	def test_the_former_address_leads_here_and_no_browser_keeps_it(self):
+		from frappe.website.path_resolver import resolve_redirect
+
+		frappe.cache.hdel("website_redirects", "default:mailcraft")
+		with self.assertRaises(frappe.Redirect) as raised:
+			resolve_redirect("mailcraft")
+		self.assertEqual(frappe.local.flags.redirect_location, "/neomail")
+		self.assertEqual(raised.exception.http_status_code, 302)
 
 	def test_the_desk_gets_the_sample_mailbox_with_nora(self):
 		frappe.set_user(STAFF)

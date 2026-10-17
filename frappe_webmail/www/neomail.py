@@ -2,7 +2,8 @@
 # For license information, please see license.txt
 
 """
-The /mailcraft address: the trial of MailCraft with Nora, on the person's own mailboxes.
+The /neomail address: NeoMail (the browser build of our MailCraft fork, under the name the person reads) with Nora, on
+the person's own mailboxes. The former /mailcraft address redirects here (hooks.py, website_redirects).
 
 Off unless the site's configuration says `mailcraft_trial: 1` (osiris, while the plan that brings Nora into MailCraft
 is tried, maintenance#1629 and #1630): everywhere else the address does not exist. The page frames the browser build
@@ -19,7 +20,9 @@ import frappe
 from frappe import _
 
 BUILD = "/assets/suite/craft/mailcraft/index.html"
-ROUTE = "/mailcraft"
+ROUTE = "/neomail"
+# The name the person reads; the build, a fork of MailCraft, shows it in place of its own.
+PRODUCT = "NeoMail"
 
 no_cache = 1
 
@@ -40,7 +43,7 @@ def get_context(context):
 	mailboxes = [] if "sample" in frappe.form_dict else host_mailboxes()
 	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox.
 	context.build_url = BUILD + ("?nora" if mailboxes else "?sample&nora")
-	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang})
+	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
 
 
 def host_mailboxes():

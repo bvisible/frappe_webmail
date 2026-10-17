@@ -226,10 +226,10 @@ user_data_fields = [
 # Authentication and authorization
 # --------------------------------
 
-# MailCraft's JMAP facade (mailcraft_jmap.py): a request to its four addresses carrying the Bearer token /mailcraft
+# MailCraft's JMAP facade (mailcraft_jmap.py): a request to its four addresses carrying the Bearer token /neomail
 # gave is made as that token's person; nothing else is touched.
 auth_hooks = ["frappe_webmail.mailcraft_jmap.authenticate"]
-# /mailcraft holds that token and the facade's answers hold mail: no cache keeps them.
+# /neomail holds that token and the facade's answers hold mail: no cache keeps them.
 after_request = ["frappe_webmail.mailcraft_jmap.no_store"]
 
 # Automatically update python controller files with type annotations for this app.
@@ -241,6 +241,9 @@ export_python_type_annotations = True
 
 # Website Route Rules
 # -------------------
+# NeoMail's former address, while links to it may still exist; a 302, so that no browser keeps it.
+website_redirects = [{"source": "/mailcraft", "target": "/neomail", "redirect_http_status": 302}]
+
 website_route_rules = [
 	{"from_route": "/webmail", "to_route": "webmail"},
 	{"from_route": "/webmail/<path:app_path>", "to_route": "webmail"},

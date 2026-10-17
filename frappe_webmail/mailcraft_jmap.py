@@ -3,7 +3,7 @@
 
 """
 MailCraft's way into the webmail: a thin JMAP server (RFC 8620 core, RFC 8621 mail) over the webmail's own
-functions, for the browser build of MailCraft (bvisible/mailcraft) framed by /mailcraft (maintenance#1630, step 2
+functions, for the browser build of MailCraft (bvisible/mailcraft), named NeoMail, framed by /neomail (maintenance#1630, step 2
 of the plan that brings Nora into MailCraft).
 
 It serves what MailCraft's browser build asks for and reads, nothing more: the folders, a window of the newest
@@ -15,7 +15,7 @@ Only what the webmail has no function for is done here: the raw source, INTERNAL
 fields, appending a given message, sending a given message.
 
 Who may call it: the desk's people (System Users), on a site where `mailcraft_trial` is on, with a token and only
-with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token /mailcraft
+with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token /neomail
 gives the person for twelve hours (and no longer than the desk session that asked for it), kept hashed in the cache,
 good for this module's four addresses only (`authenticate`, an auth hook). A desk session's cookie alone opens
 nothing here, so another page can't make a signed-in browser read or send mail (this fork's CSRF check refuses
@@ -143,7 +143,7 @@ def _session_alive(sid):
 
 
 def authenticate():
-	"""auth_hooks: a request to one of this module's four addresses that carries a token /mailcraft gave is made as
+	"""auth_hooks: a request to one of this module's four addresses that carries a token /neomail gave is made as
 	that token's person. Anything else is left alone: another address; a `cmd` (Frappe runs a `cmd` form field
 	whatever the path) other than the method the path names; a request already signed in (a desk cookie); a token
 	unknown, expired, or whose desk session ended; a person no longer enabled or no longer of the desk."""
@@ -190,9 +190,9 @@ def _gate():
 
 
 def no_store(response=None, request=None):
-	"""after_request: /mailcraft holds a token and the facade's answers hold mail; no cache keeps either."""
+	"""after_request: /neomail holds a token and the facade's answers hold mail; no cache keeps either."""
 	path = (getattr(request, "path", "") or "") if request is not None else ""
-	if response is not None and (path.rstrip("/") == "/mailcraft" or _OWN_PATH.match(path)):
+	if response is not None and (path.rstrip("/") in ("/neomail", "/mailcraft") or _OWN_PATH.match(path)):
 		response.headers["Cache-Control"] = "no-store"
 
 

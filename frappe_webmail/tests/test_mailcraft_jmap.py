@@ -680,11 +680,11 @@ class TestMailCraftJmap(FrappeTestCase):
 	# The page that hands MailCraft the mailboxes -----------------------------------------------------------------
 
 	def test_the_page_gives_the_mailboxes_and_a_token_that_works(self):
-		from frappe_webmail.www import mailcraft
+		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
 		with patch.object(frappe.local, "form_dict", frappe._dict()):
-			mailcraft.get_context(context)
+			neomail.get_context(context)
 		self.assertTrue(context.build_url.endswith("index.html?nora"))
 		self.assertNotIn("<", context.host_json)
 		box = next(a for a in json.loads(context.host_json)["accounts"] if a["email"] == MAILBOX)
@@ -698,15 +698,17 @@ class TestMailCraftJmap(FrappeTestCase):
 		self._as(SHARED)
 		sample = frappe._dict()
 		with patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""})):
-			mailcraft.get_context(sample)
+			neomail.get_context(sample)
 		self.assertTrue(sample.build_url.endswith("?sample&nora"), "?sample opens the sample mailbox")
-		self.assertEqual(json.loads(sample.host_json), {"accounts": [], "language": context.lang})
+		self.assertEqual(
+			json.loads(sample.host_json), {"accounts": [], "language": context.lang, "product": "NeoMail"}
+		)
 		self.assertEqual(
 			json.loads(context.host_json)["language"], frappe.local.lang or "en", "the desk's language"
 		)
 
 	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
-		for path in ("/mailcraft", SESSION, "/api/method/frappe_webmail.mailcraft_jmap.download"):
+		for path in ("/neomail", "/mailcraft", SESSION, "/api/method/frappe_webmail.mailcraft_jmap.download"):
 			response = SimpleNamespace(headers={})
 			jmap.no_store(response=response, request=SimpleNamespace(path=path))
 			self.assertEqual(response.headers["Cache-Control"], "no-store", path)
