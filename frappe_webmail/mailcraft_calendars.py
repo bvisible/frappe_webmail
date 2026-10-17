@@ -22,6 +22,7 @@ the ERP's dates (`erp:`), whose titles carry customers, amounts and leaves that 
 """
 
 import hashlib
+import json
 import re
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -114,6 +115,120 @@ def _calendar_id(raw):
 
 def _event_id(raw):
 	return "V" + jmap._b64(str(raw))
+
+
+def _occurrence_id(series, recurrence_id):
+	"""The facade id of an occurrence of a series: its series and its start, both kept by the mail server, where the
+	occurrence's own id is renumbered the moment it gets an override of its own (an edit, an answer: an id that stops
+	resolving, as the Suite's calendar API says). "O" and the two, JSON, base64url."""
+	return "O" + jmap._b64(json.dumps([str(series), str(recurrence_id)]))
+
+
+def _occurrence_of(jmap_id):
+	"""(series, start) an occurrence's facade id names; None for another id."""
+	if not (isinstance(jmap_id, str) and jmap_id[:1] == "O"):
+		return None
+	try:
+		series, start = json.loads(jmap._unb64(jmap_id[1:]))
+	except (ValueError, TypeError):
+		return None
+	return (series, start) if isinstance(series, str) and isinstance(start, str) else None
+
+
+def _facade_id(event):
+	"""The facade id of an event the Suite read: an occurrence's by its series and its start, another's by its own. Not an
+	occurrence of a series without a uid (the mail server accepts one): it is found again by its uid (`_occurrences_now`),
+	so it keeps its own id."""
+	if event.get("recurrenceId") and event.get("baseEventId") and event.get("uid"):
+		return _occurrence_id(event["baseEventId"], event["recurrenceId"])
+	return _event_id(event.get("id"))
+
+
+def _with_series(client, events):
+	"""`events` as the Suite read them, each occurrence (`recurrenceId`) with the series it belongs to (`baseEventId`):
+	the mail server gives it only when it is asked for by name (Stalwart's `CalendarEvent/get`), which the Suite's get
+	doesn't do; its `get_base_event_ids` does. Without it, an occurrence would be named by its own id, which the server
+	renumbers."""
+	from suite.calendar.jmap_events import get_base_event_ids
+
+	needing = [e["id"] for e in events if e.get("recurrenceId") and not e.get("baseEventId") and e.get("id")]
+	if needing:
+		bases = _reading(lambda: get_base_event_ids(client, needing))
+		for event in events:
+			base = bases.get(event.get("id"))
+			if base and base != event.get("id") and not event.get("baseEventId"):
+				event["baseEventId"] = base
+	return events
+
+
+def _request_events():
+	"""The events this JMAP request read (`CalendarEvent/query` with its occurrences), by facade id: its
+	`CalendarEvent/get` most often follows in the same request, and reads nothing again. Tied to the request, never
+	longer: a write empties it."""
+	request = getattr(frappe.local, "request", None)
+	kept = getattr(frappe.local, "mailcraft_calendar_events", None)
+	if not kept or kept[0] is not request:
+		kept = (request, {})
+		frappe.local.mailcraft_calendar_events = kept
+	return kept[1]
+
+
+def _occurrences_now(suite_account, wanted):
+	"""{(series, start): event} for the occurrences named, as the mail server holds them now, whatever their own ids
+	became: one query per series, around each start (where an override moved it, around its new start)."""
+	from suite.calendar.jmap_events import get_events, query_events
+
+	client = _reading(lambda: _client(suite_account))
+	starts: dict[str, set[str]] = {}
+	for series, start in wanted:
+		starts.setdefault(series, set()).add(start)
+	found = {}
+	for series, asked in starts.items():
+		master = _stored(client, series)
+		if not master or not master.get("uid"):
+			continue
+		try:
+			zone = ZoneInfo(master["timeZone"]) if master.get("timeZone") else _person_zone()
+		except (ZoneInfoNotFoundError, ValueError):
+			zone = _person_zone()
+		overrides = master.get("recurrenceOverrides") or {}
+		moments = []
+		for start in asked:
+			moved = (
+				(overrides.get(start) or {}).get("start") if isinstance(overrides.get(start), dict) else None
+			)
+			for local in filter(None, (start, moved)):
+				try:
+					moments.append(
+						datetime.fromisoformat(str(local)).replace(tzinfo=zone).astimezone(timezone.utc)
+					)
+				except (TypeError, ValueError):
+					continue
+		if not moments:
+			continue
+		window = {
+			"operator": "AND",
+			"conditions": [
+				{"uid": master["uid"]},
+				{"after": (min(moments) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")},
+				{"before": (max(moments) + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")},
+			],
+		}
+		ids = _reading(
+			lambda window=window: query_events(
+				client, filter=window, limit=MAX_EVENTS, time_zone=_person_zone().key, expand_recurrences=True
+			)
+		).get("ids")
+		read = [
+			e
+			for e in _reading(lambda ids=ids: get_events(client, list(ids or [])))
+			if e.get("recurrenceId") in asked
+		]
+		for event in _with_series(client, read):
+			key = (event.get("baseEventId"), event.get("recurrenceId"))
+			if key[0] == series and key[1] in asked:
+				found[key] = event
+	return found
 
 
 def _raw(jmap_id, prefix):
@@ -226,7 +341,11 @@ def event_query(args):
 		total = cint(read(0, 1).get("total"))
 		position = max(0, total + position) if position < 0 else position
 	found = read(position, used) if used else {"ids": [], "total": total}
-	ids = [_event_id(i) for i in found.get("ids") or []]
+	raws = found.get("ids") or []
+	if args.get("expandRecurrences") and raws:
+		ids = _named_by_series(suite_account, raws)
+	else:
+		ids = [_event_id(i) for i in raws]
 	if total is None and found.get("total") is not None:
 		total = cint(found["total"])
 	answer.update(
@@ -235,6 +354,25 @@ def event_query(args):
 	if asked_total:
 		answer["total"] = total if total is not None else position + len(ids)
 	return answer
+
+
+def _named_by_series(suite_account, raws):
+	"""The facade ids of the events a query found, each occurrence by its series and its start; what was read for it is
+	kept for the request's `CalendarEvent/get`."""
+	from suite.calendar.jmap_events import get_events
+
+	client = _reading(lambda: _client(suite_account))
+	read = {e.get("id"): e for e in _with_series(client, _reading(lambda: get_events(client, list(raws))))}
+	kept = _request_events()
+	kept.clear()
+	ids = []
+	for raw in raws:
+		event = read.get(raw)
+		facade = _facade_id(event) if event else _event_id(raw)
+		if event:
+			kept[facade] = event
+		ids.append(facade)
+	return ids
 
 
 def event_get(args):
@@ -252,13 +390,21 @@ def event_get(args):
 	raws = {r: i for i, r in ((i, _raw(i, "V")) for i in ids) if r}
 	from suite.calendar.jmap_events import get_events
 
-	events = _reading(lambda: get_events(_client(suite_account), list(raws))) if raws else []
-	listed = []
-	for event in events:
-		if event.get("id") not in raws:
-			continue
-		listed.append(_facade_event(event, properties))
-	found = {e["id"] for e in listed}
+	found = {}
+	client = _reading(lambda: _client(suite_account)) if raws else None
+	for event in _with_series(client, _reading(lambda: get_events(client, list(raws)))) if raws else []:
+		if event.get("id") in raws:
+			found[raws[event["id"]]] = event
+	# An occurrence by its series and its start: from what this request's query read, else as the server holds it now.
+	kept = _request_events()
+	occurrences = {i: o for i, o in ((i, _occurrence_of(i)) for i in ids) if o}
+	missing = {o: i for i, o in occurrences.items() if i not in kept}
+	now = _occurrences_now(suite_account, list(missing)) if missing else {}
+	for i, o in occurrences.items():
+		event = kept.get(i) or now.get(o)
+		if event:
+			found[i] = event
+	listed = [_facade_event(found[i], properties, as_id=i) for i in ids if i in found]
 	return {"accountId": aid, "state": "0", "list": listed, "notFound": [i for i in ids if i not in found]}
 
 
@@ -299,6 +445,8 @@ def event_set(args):
 
 	client = _client(suite_account)
 	calendars = {c.get("id"): c for c in _reading(lambda: get_calendars(client))}
+	# What this request read is no longer what the server holds once it writes.
+	_request_events().clear()
 	created, updated, destroyed = {}, {}, []
 	not_created, not_updated, not_destroyed = {}, {}, {}
 	budget = [MAX_EVENTS_PER_SET]
@@ -641,24 +789,21 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 	)
 	from suite.calendar.doctype.calendar_event.fields import EventFields
 
-	raw = _raw(vid, "V")
-	stored = _stored(client, raw)
-	if not stored:
-		raise frappe.DoesNotExistError
+	raw, stored, series, recurrence_id = _addressed(suite_account, client, vid)
 	_check_writable(stored, calendars)
 	_keep_own(patch if isinstance(patch, dict) else {}, stored)
 	fields = _event_fields(patch, calendars)
 	draft = bool(stored.get("isDraft"))
 	notify = notify and not draft and _organizes(suite_account, stored)
-	if stored.get("recurrenceId"):
+	if recurrence_id:
 		for key in NOT_FOR_AN_OCCURRENCE:
 			fields.pop(key, None)
 		# Checked and written as the desk's form gives them (lower-case enumerations), the fields named only.
 		service = EventFields.model_validate(fields).for_service()
 		update_calendar_event_instance(
 			account=suite_account,
-			master_id=_master_of(client, raw),
-			recurrence_id=stored["recurrenceId"],
+			master_id=series,
+			recurrence_id=recurrence_id,
 			patch={key: service[key] for key in fields if key in service},
 			send_scheduling_messages=notify,
 		)
@@ -689,22 +834,39 @@ def _destroy_event(suite_account, client, calendars, vid, notify):
 		delete_calendar_events,
 	)
 
-	raw = _raw(vid, "V")
-	stored = _stored(client, raw)
-	if not stored:
-		raise frappe.DoesNotExistError
+	raw, stored, series, recurrence_id = _addressed(suite_account, client, vid)
 	_check_writable(stored, calendars)
 	notify = notify and not stored.get("isDraft") and _organizes(suite_account, stored)
-	if stored.get("recurrenceId"):
+	if recurrence_id:
 		delete_calendar_event_instance(
 			account=suite_account,
-			master_id=_master_of(client, raw),
-			recurrence_id=stored["recurrenceId"],
+			master_id=series,
+			recurrence_id=recurrence_id,
 			send_scheduling_messages=notify,
 		)
 	else:
 		delete_calendar_events(account=suite_account, ids=[raw], send_scheduling_messages=notify)
 	return True
+
+
+def _addressed(suite_account, client, vid):
+	"""(raw id, the event as stored, its series, its start) of the event a facade id names; series and start are None
+	for an event that is not an occurrence. An occurrence named by its series and start is checked against its series
+	(its calendar, its organizer, its draft state are the series'), after making sure it is still one of it."""
+	occurrence = _occurrence_of(vid)
+	if occurrence:
+		series, recurrence_id = occurrence
+		stored = _stored(client, series)
+		if not stored or not _occurrences_now(suite_account, [occurrence]):
+			raise frappe.DoesNotExistError
+		return series, stored, series, recurrence_id
+	raw = _raw(vid, "V")
+	stored = _stored(client, raw)
+	if not stored:
+		raise frappe.DoesNotExistError
+	if stored.get("recurrenceId"):
+		return raw, stored, _master_of(client, raw), stored["recurrenceId"]
+	return raw, stored, None, None
 
 
 def _check_writable(stored, calendars):
@@ -770,9 +932,9 @@ def _utc_times(event):
 	return stamp(start), stamp(end)
 
 
-def _facade_event(event, properties=None):
+def _facade_event(event, properties=None, as_id=None):
 	out = dict(event)
-	out["id"] = _event_id(event.get("id"))
+	out["id"] = as_id or _facade_id(event)
 	out["calendarIds"] = {_calendar_id(k): True for k, on in (event.get("calendarIds") or {}).items() if on}
 	if event.get("baseEventId"):
 		out["baseEventId"] = _event_id(event["baseEventId"])

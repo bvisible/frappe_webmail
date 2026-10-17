@@ -173,7 +173,12 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertEqual(
 			weekly[0]["utcEnd"], "2030-01-14T09:30:00Z", "an hour and a half, winter time (UTC+1)"
 		)
-		self.assertTrue(all(e["id"].startswith("V") for e in weekly))
+		# An occurrence is named by its series and its start (the mail server renumbers its own id), its series by its own.
+		self.assertTrue(all(e["id"].startswith("O") and e["baseEventId"].startswith("V") for e in weekly))
+		self.assertEqual(
+			{calendars._occurrence_of(e["id"]) for e in weekly},
+			{(calendars._raw(e["baseEventId"], "V"), e["recurrenceId"]) for e in weekly},
+		)
 		self.assertTrue(
 			all(set(e["calendarIds"]) and all(k.startswith("C") for k in e["calendarIds"]) for e in weekly)
 		)
@@ -313,6 +318,109 @@ class TestMailCraftCalendars(FrappeTestCase):
 		gone = self._set(destroy=[vid])
 		self.assertEqual((gone["destroyed"], gone["notDestroyed"]), ([vid], {}))
 		self.assertFalse(any(e["id"] == vid for e in self._window(march)))
+
+	def test_an_occurrence_is_still_reached_after_the_server_renumbers_it(self):
+		"""The mail server gives an occurrence a new id of its own as soon as it gets an override (an edit, an answer): a
+		change or a deletion made from an older read still reaches it, by its series and its start."""
+		from suite.calendar import jmap_events
+		from suite.calendar.local import instance_id
+
+		self._as(PERSON)
+		series = {
+			"@type": "Event",
+			"calendarIds": {self._calendar(): True},
+			"title": "Atelier (renuméroté)",
+			"start": "2030-06-03T09:00:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+			"recurrenceRule": {"@type": "RecurrenceRule", "frequency": "weekly", "count": 3},
+		}
+		made = self._set(create={"s": series})
+		self.assertEqual(made["notCreated"], {})
+		base, uid = calendars._raw(made["created"]["s"]["id"], "V"), made["created"]["s"]["uid"]
+		june = {"after": "2030-06-01T00:00:00Z", "before": "2030-07-01T00:00:00Z"}
+
+		def ours():
+			return sorted((e for e in self._window(june) if e.get("uid") == uid), key=lambda e: e["utcStart"])
+
+		_, second, third = ours()
+		# The server renumbers the second and the third occurrence: their former ids name nothing any more.
+		renumbered = {
+			instance_id(base, second["recurrenceId"]): "renumbered-2",
+			instance_id(base, third["recurrenceId"]): "renumbered-3",
+		}
+		former = {new: old for old, new in renumbered.items()}
+		real_query, real_get = jmap_events.query_events, jmap_events.get_events
+
+		def query(client, **arguments):
+			answer = real_query(client, **arguments)
+			return {**answer, "ids": [renumbered.get(i, i) for i in answer.get("ids") or []]}
+
+		def get(client, ids=None):
+			asked = [former.get(i, i) for i in ids or [] if i not in renumbered]
+			events = real_get(client, asked)
+			return [{**e, "id": renumbered.get(e["id"], e["id"])} for e in events]
+
+		with patch.object(jmap_events, "query_events", query), patch.object(jmap_events, "get_events", get):
+			changed = self._set(update={third["id"]: {"title": "Atelier (renuméroté, salle B)"}})
+			self.assertEqual(changed["notUpdated"], {})
+			gone = self._set(destroy=[second["id"]])
+			self.assertEqual(gone["notDestroyed"], {})
+			alone = self._calls(
+				("CalendarEvent/get", {"accountId": jmap.account_id(BOX), "ids": [third["id"]]})
+			)
+			self.assertEqual([e["title"] for e in alone[0][1]["list"]], ["Atelier (renuméroté, salle B)"])
+			self.assertEqual(
+				[e["utcStart"] for e in ours()],
+				["2030-06-03T07:00:00Z", "2030-06-17T07:00:00Z"],
+				"the second is gone, the third changed, each by its series and its start",
+			)
+
+	def test_an_occurrence_keeps_its_series_where_the_server_names_it_only_when_asked(self):
+		"""The mail server (Stalwart) gives an occurrence's series (`baseEventId`) only when it is asked for by name: the
+		facade asks, and an occurrence is still named by its series and its start, says its series, and is reached by it."""
+		from suite.calendar import jmap_events
+		from suite.calendar.local import instance_id
+
+		self._as(PERSON)
+		series = {
+			"@type": "Event",
+			"calendarIds": {self._calendar(): True},
+			"title": "Atelier (série)",
+			"start": "2030-09-02T09:00:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+			"recurrenceRule": {"@type": "RecurrenceRule", "frequency": "weekly", "count": 3},
+		}
+		made = self._set(create={"s": series})
+		self.assertEqual(made["notCreated"], {})
+		vid, uid = made["created"]["s"]["id"], made["created"]["s"]["uid"]
+		september = {"after": "2030-09-01T00:00:00Z", "before": "2030-10-01T00:00:00Z"}
+		real_get = jmap_events.get_events
+
+		def get(client, ids=None):
+			# As the server's get that names no property: no baseEventId.
+			return [{k: v for k, v in e.items() if k != "baseEventId"} for e in real_get(client, ids)]
+
+		def ours():
+			return sorted(
+				(e for e in self._window(september) if e.get("uid") == uid), key=lambda e: e["utcStart"]
+			)
+
+		with patch.object(jmap_events, "get_events", get):
+			weekly = ours()
+			self.assertEqual(len(weekly), 3)
+			self.assertTrue(all(e["id"][:1] == "O" for e in weekly), [e["id"] for e in weekly])
+			self.assertEqual({e.get("baseEventId") for e in weekly}, {vid}, "each says its series")
+			changed = self._set(update={weekly[1]["id"]: {"title": "Atelier (salle C)"}})
+			self.assertEqual(changed["notUpdated"], {})
+			self.assertEqual(
+				[e["title"] for e in ours()], ["Atelier (série)", "Atelier (salle C)", "Atelier (série)"]
+			)
+			# Asked for by the server's own id (an older read's), an occurrence says its series too.
+			own = calendars._event_id(instance_id(calendars._raw(vid, "V"), weekly[2]["recurrenceId"]))
+			got = self._calls(("CalendarEvent/get", {"accountId": jmap.account_id(BOX), "ids": [own]}))
+			self.assertEqual([e.get("baseEventId") for e in got[0][1]["list"]], [vid])
 
 	def test_one_occurrence_of_a_series_is_changed_or_deleted_alone(self):
 		self._as(PERSON)
