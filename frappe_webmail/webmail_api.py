@@ -26,7 +26,7 @@ from frappe_webmail.conversations import conversation_of, message_id_of, one_per
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
 from frappe_webmail.documents import list_attachable_documents
-from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, to_parts
+from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, files_inlined, to_parts
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
 from frappe_webmail.replies import appended_uid, reply_recipients
@@ -1282,6 +1282,13 @@ def send_email(
 			strip=True,
 		)
 
+	# A picture of the instance (a signature's logo) leaves as a part too, in the message only: the copy for the
+	# document's timeline keeps its address, which the desk shows (maintenance#1650)
+	mail_html, file_parts = to_parts(
+		files_inlined(html_content), (account.email or "webmail.local").split("@")[-1]
+	)
+	inline_parts = inline_parts + file_parts
+
 	# Build message
 	msg = MIMEMultipart("mixed")
 	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
@@ -1314,7 +1321,7 @@ def send_email(
 	body.attach(MIMEText(text_content, "plain", "utf-8"))
 
 	# HTML version
-	body.attach(MIMEText(html_content, "html", "utf-8"))
+	body.attach(MIMEText(mail_html, "html", "utf-8"))
 	msg.attach(body_with(body, inline_parts))
 
 	# Attachments: the files the person joined (base64), then the forwarded message's they kept

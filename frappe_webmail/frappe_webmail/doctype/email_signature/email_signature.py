@@ -65,15 +65,17 @@ class EmailSignature(Document):
 				"Webmail Account", account_name, "default_signature", None, update_modified=False
 			)
 
-	def has_permission(self, permtype="read", doc=None):
-		"""Check if user has permission to access this signature"""
+	def has_permission(self, permtype="read", doc=None, *, debug=False, user=None):
+		"""Check if user has permission to access this signature. Frappe passes `debug` and `user` (the File of a pasted
+		logo asks its signature with them): without them, a colleague's look at that File raised a TypeError."""
 		# Honour ignore_permissions like the base Document.has_permission does;
 		# this override otherwise shadows it and breaks programmatic writes.
 		if self.flags.ignore_permissions:
 			return True
-		if frappe.session.user == "Administrator":
+		user = user or frappe.session.user
+		if user == "Administrator":
 			return True
-		if self.user == frappe.session.user:
+		if self.user == user:
 			return True
 		return False
 
