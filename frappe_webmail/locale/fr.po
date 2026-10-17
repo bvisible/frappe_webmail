@@ -3626,3 +3626,79 @@ msgstr "Corbeille"
 
 msgid "{0} filter(s) applied to {1} emails"
 msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
+
+#: frappe_webmail/mailcraft_jmap.py:991
+msgid "A message goes into one folder."
+msgstr "Un message va dans un seul dossier."
+
+#: frappe_webmail/mailcraft_jmap.py:939
+msgid "A message stays in one folder."
+msgstr "Un message reste dans un seul dossier."
+
+#: frappe_webmail/mailcraft_jmap.py:1109
+msgid "Add at least one recipient."
+msgstr "Ajoutez au moins un destinataire."
+
+#: frappe_webmail/mailcraft_jmap.py:1183
+msgid "Folders are managed in the webmail for now."
+msgstr "Les dossiers se gèrent pour l'instant dans la messagerie."
+
+#: frappe_webmail/mailcraft_jmap.py:823
+msgid "Messages are imported, not created."
+msgstr "Les messages sont importés, et non créés."
+
+#: frappe_webmail/mailcraft_jmap.py:689
+msgid "Name the messages to read."
+msgstr "Indiquez les messages à lire."
+
+#: frappe_webmail/mailcraft_jmap.py:636
+msgid "Only a folder can be listed."
+msgstr "Seul un dossier peut être listé."
+
+#: frappe_webmail/mailcraft_jmap.py:1114
+msgid "Only a message just written here can be sent."
+msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
+
+#: frappe_webmail/mailcraft_jmap.py:281 frappe_webmail/mailcraft_jmap.py:383
+msgid "The mail server could not answer."
+msgstr "Le serveur de messagerie n'a pas pu répondre."
+
+#: frappe_webmail/mailcraft_jmap.py:1141
+msgid "The mail server did not take the message: {0}"
+msgstr "Le serveur de messagerie n'a pas accepté le message : {0}"
+
+#: frappe_webmail/mailcraft_jmap.py:1122
+msgid "The message must be from this mailbox."
+msgstr "Le message doit provenir de cette boîte."
+
+#: frappe_webmail/mailcraft_jmap.py:985
+msgid "The message to file was not found."
+msgstr "Le message à classer est introuvable."
+
+#: frappe_webmail/mailcraft_jmap.py:1120
+msgid "The message to send was not found."
+msgstr "Le message à envoyer est introuvable."
+
+#: frappe_webmail/mailcraft_jmap.py:1009
+msgid "The message was filed but cannot be found."
+msgstr "Le message a été classé, mais il est introuvable."
+
+#: frappe_webmail/mailcraft_jmap.py:1097 frappe_webmail/mailcraft_jmap.py:1101
+msgid "This mailbox can only send as itself."
+msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
+
+#: frappe_webmail/mailcraft_jmap.py:807
+msgid "This message cannot be found."
+msgstr "Ce message est introuvable."
+
+#: frappe_webmail/mailcraft_jmap.py:811
+msgid "This message is no longer in its folder: refresh the list and try again."
+msgstr "Ce message ne se trouve plus dans son dossier : actualisez la liste et réessayez."
+
+#: frappe_webmail/mailcraft_jmap.py:1117
+msgid "Too many messages sent in a short time; try again in a few minutes."
+msgstr "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
+
+#: frappe_webmail/mailcraft_jmap.py:427
+msgid "Too many messages waiting to be filed."
+msgstr "Trop de messages en attente de classement."
