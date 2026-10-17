@@ -737,6 +737,121 @@ class TestMailCraftJmap(FrappeTestCase):
 			json.loads(context.host_json)["language"], frappe.local.lang or "en", "the desk's language"
 		)
 
+	def _signature(self, user, content, default=True):
+		"""An Email Signature of `user`, removed after the test (which also clears it from the mailbox)."""
+		doc = frappe.get_doc(
+			{
+				"doctype": "Email Signature",
+				"user": user,
+				"signature_name": "mailcraft-jmap-" + secrets.token_hex(4),
+				"is_default": int(default),
+				"content": content,
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "Email Signature", doc.name, force=True, ignore_permissions=True)
+		return doc.name
+
+	def test_each_mailbox_carries_its_signature_or_the_person_s_own(self):
+		from frappe_webmail.www import neomail
+
+		def handed():
+			return next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX).get("signature")
+
+		frappe.db.delete("Email Signature", {"user": SHARED})
+		frappe.db.set_value("Webmail Account", MAILBOX, "default_signature", None)
+		self.assertIsNone(handed(), "no signature anywhere: none handed over")
+		own = '<div class="ql-editor read-mode"><p>Camille Favre</p><p><strong>Atelier</strong>&nbsp;&amp; Co</p></div>'
+		self._signature(SHARED, own)
+		self.assertEqual(
+			handed(),
+			{"html": own, "text": "Camille Favre\nAtelier & Co"},
+			"the person's default, as the webmail",
+		)
+		team = self._signature(OWNER, "<p>Le service client</p>", default=False)
+		frappe.db.set_value("Webmail Account", MAILBOX, "default_signature", team)
+		self.addCleanup(frappe.db.set_value, "Webmail Account", MAILBOX, "default_signature", None)
+		self.assertEqual(
+			handed()["text"], "Le service client", "the mailbox's own first, for whoever writes from it"
+		)
+		logo = '<p>Camille</p><p><img src="data:image/png;base64,iVBORw0KGgo="></p>'
+		frappe.db.set_value(
+			"Webmail Account", MAILBOX, "default_signature", self._signature(OWNER, logo, False)
+		)
+		given = handed()
+		self.assertEqual(given["text"], "Camille")
+		self.assertIn(
+			'src="/private/files/', given["html"], "Frappe keeps a pasted picture as a file of the instance"
+		)
+
+	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
+		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
+		from frappe_webmail.www import neomail
+
+		frappe.db.delete("Email Signature", {"user": ["in", (OWNER, SHARED)]})
+		someone_else = self._signature(STRANGER, "<p>Private to the stranger</p>", default=False)
+		frappe.db.set_value("Webmail Account", MAILBOX, "default_signature", someone_else)
+		self.addCleanup(frappe.db.set_value, "Webmail Account", MAILBOX, "default_signature", None)
+		for person in (SHARED, OWNER):
+			self._as(person)
+			box = next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)
+			self.assertNotIn("signature", box, person)
+		self._signature(SHARED, "<p>Camille</p>")
+		self._as(SHARED)
+		box = next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)
+		self.assertEqual(box["signature"]["text"], "Camille", "the person's own instead")
+
+	def test_a_signature_reads_as_text_the_way_it_shows(self):
+		from frappe_webmail.www.neomail import (
+			MAX_SIGNATURE_HTML,
+			MAX_SIGNATURE_SOURCE,
+			MAX_SIGNATURE_TEXT,
+			handed_signature,
+			signature_text,
+		)
+
+		for html, text in (
+			("<p>Camille</p><p><br></p><p>Favre</p><p><br></p>", "Camille\n\nFavre"),
+			("<p>Camille<br>Favre<br></p>", "Camille\nFavre"),
+			("<div><p>Camille</p></div>\n  <div><p>  Favre\n  SA</p></div>", "Camille\nFavre SA"),
+			(
+				'<p><a href="https://example.ch/team">Notre équipe</a></p>',
+				"Notre équipe <https://example.ch/team>",
+			),
+			('<p><a href="https://www.example.ch/">www.example.ch</a></p>', "www.example.ch"),
+			('<p><a href="mailto:camille@example.ch">Écrire</a></p>', "Écrire"),
+			('<p><a href="https://example.ch"><img src="logo.png" alt="Logo"></a>Camille</p>', "Camille"),
+			("<style>p { color: red }</style><!--[if mso]>x<![endif]--><p>Camille</p>", "Camille"),
+			(
+				"<table><tr><td>Tél.</td><td>+41 21 000 00 00</td></tr><tr><td>Web</td><td>example.ch</td></tr></table>",
+				"Tél. +41 21 000 00 00\nWeb example.ch",
+			),
+			("<p>Camille</p><p>&nbsp;</p><p>Favre</p>", "Camille\n\nFavre"),
+			("<p>&nbsp;</p><p>Camille</p><p>&nbsp;</p>", "Camille"),
+			("<div>" * 5000 + "Camille" + "</div>" * 5000, "Camille"),
+		):
+			self.assertEqual(signature_text(html), text, html)
+		self.assertIsNone(handed_signature("<p><br></p>"), "emptied: nothing to show")
+		self.assertIsNone(handed_signature(None))
+		self.assertEqual(
+			handed_signature('<p><img src="logo.png"></p>')["text"], "", "a logo alone still counts"
+		)
+		heavy = '<p>Camille</p><img src="data:image/png;base64,' + "A" * MAX_SIGNATURE_HTML + '">'
+		self.assertEqual(
+			handed_signature(heavy), {"html": "", "text": "Camille"}, "too heavy: its text alone"
+		)
+		self.assertEqual(
+			len(handed_signature("<p>" + "x" * (MAX_SIGNATURE_TEXT + 9) + "</p>")["text"]), MAX_SIGNATURE_TEXT
+		)
+		heavy_logo = '<p><img src="data:image/png;base64,' + "A" * MAX_SIGNATURE_HTML + '"></p>'
+		self.assertIsNone(handed_signature(heavy_logo), "too heavy and no words: nothing to show")
+		self.assertIsNone(handed_signature("<p>" + "x" * MAX_SIGNATURE_SOURCE + "</p>"), "not read at all")
+		with (
+			patch("bs4.BeautifulSoup", side_effect=RuntimeError("unreadable")),
+			patch.object(frappe, "log_error") as log_error,
+		):
+			self.assertIsNone(handed_signature("<p>Camille</p>"), "left out, the mailboxes still open")
+		self.assertEqual(log_error.call_args.args[0], "NeoMail: a signature could not be read as text")
+
 	# Neodesk's hand-over, and the page's renewal ------------------------------------------------------------------
 
 	def _bearer(self, user=SHARED, status="Active", seconds=3600, client=None, scopes="all openid"):
