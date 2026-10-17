@@ -349,16 +349,39 @@ class TestMailCraftContacts(FrappeTestCase):
 			frappe.db.get_value("Contact", name, "first_name"), "Delta", "a contact keeps a name"
 		)
 
+	def _desk_may_create(self, user):
+		"""Whether the desk lets `user` make a contact, as this site's permissions say (a site of Frappe alone lets anyone
+		make one of their own; an ERP's rules may not): the rule NeoMail follows."""
+		frappe.set_user(user)
+		frappe.db.savepoint("desk_create")
+		try:
+			frappe.get_doc({"doctype": "Contact", "first_name": "Desk", "last_name": "Probe"}).insert()
+			return True
+		except frappe.PermissionError:
+			return False
+		finally:
+			frappe.db.rollback(save_point="desk_create")
+			frappe.set_user("Administrator")
+
 	def test_writing_follows_the_persons_rights(self):
 		card = {
 			"name": {"full": "Epsilon Contactsperm"},
 			"emails": {"e1": {"address": "epsilon@contacts.test"}},
 		}
 		for user, box in ((PLAIN, PLAIN_BOX), (LIMITED, LIMITED_BOX)):
+			may = self._desk_may_create(user)
 			answer = self._set(
 				user, box, create={"k": card}, update={self.beta: {"titles": {"t1": {"name": "x"}}}}
 			)[1]
-			self.assertEqual(answer["notCreated"]["k"]["type"], "forbidden", user)
+			if may:
+				made = answer["created"]["k"]["id"]
+				frappe.set_user("Administrator")
+				self.assertEqual(
+					frappe.db.get_value("Contact", made, "owner"), user, "made with the person's rights"
+				)
+				frappe.delete_doc("Contact", made, force=True, ignore_permissions=True)
+			else:
+				self.assertEqual(answer["notCreated"]["k"]["type"], "forbidden", user)
 			self.assertEqual(
 				answer["notUpdated"][self.beta]["type"], "notFound", f"{user}: another's contact is not there"
 			)

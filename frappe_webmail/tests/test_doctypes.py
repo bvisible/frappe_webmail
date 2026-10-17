@@ -356,7 +356,9 @@ class TestWebmailAccount(FrappeTestCase):
 		name = doc.name
 		frappe.db.savepoint("before_rename")
 		try:
-			with self.assertRaises(frappe.PermissionError):
+			# Refused by Frappe itself where its whitelisted rename keeps its checks (upstream 22da8e41a3, in our fork),
+			# else by the mailbox's own rule.
+			with self.assertRaises((frappe.PermissionError, frappe.ValidationError)):
 				doc.rename("renamed_doctype_test@webmail.test", validate_rename=False)
 		finally:
 			frappe.db.rollback(save_point="before_rename")
