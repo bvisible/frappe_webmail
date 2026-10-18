@@ -42,13 +42,14 @@ class TestMailCraftPage(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
-	def _context(self, off=0, build=True):
+	def _context(self, off=0, build=True, sample=False):
 		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
 		with (
 			patch.dict(frappe.local.conf, {"neomail_disabled": off}),
 			patch.object(neomail, "build_installed", return_value=build),
+			patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""} if sample else {})),
 		):
 			neomail.get_context(context)
 		return context
@@ -100,19 +101,22 @@ class TestMailCraftPage(FrappeTestCase):
 		self.assertEqual(frappe.local.flags.redirect_location, "/neomail")
 		self.assertEqual(raised.exception.http_status_code, 302)
 
-	def test_the_desk_gets_the_sample_mailbox_with_nora(self):
+	def test_without_a_mailbox_the_page_says_so_and_the_sample_opens_when_asked(self):
 		from frappe_webmail.www import neomail
 
 		frappe.set_user(STAFF)
+		# Made-up mail would pass for theirs: the page says there is no mailbox yet, and frames nothing.
+		self.assertTrue(self._context().no_mailbox)
 		named = "author=" + quote(frappe.utils.get_fullname(STAFF), safe="")
 		with patch.object(neomail, "nora_installed", return_value=False):
 			self.assertEqual(
-				self._context().build_url,
+				self._context(sample=True).build_url,
 				f"/assets/suite/craft/mailcraft/index.html?sample&{named}",
 				"no Nora where the instance has none",
 			)
 		with patch.object(neomail, "nora_installed", return_value=True):
-			context = self._context()
+			context = self._context(sample=True)
+		self.assertFalse(context.no_mailbox)
 		self.assertEqual(context.build_url, f"/assets/suite/craft/mailcraft/index.html?sample&nora&{named}")
 		self.assertTrue(
 			frappe.local.session.data.csrf_token, "the framed build's calls need the session's token"
@@ -127,5 +131,5 @@ class TestMailCraftPage(FrappeTestCase):
 		frappe.local.fullnames = {}  # get_fullname keeps the names it read for the request
 		frappe.set_user(STAFF)
 		with patch.object(neomail, "nora_installed", return_value=False):
-			url = self._context().build_url
+			url = self._context(sample=True).build_url
 		self.assertTrue(url.endswith("&author=Jeanne%20%26%20Co%20Muster%231"), url)

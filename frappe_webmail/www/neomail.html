@@ -12,6 +12,10 @@
 			background: #fdf3d8; color: #4a3a12; border-bottom: 1px solid #e8d7a4; }
 		#signin a { color: inherit; font-weight: 600; margin-left: 8px; }
 		@media (prefers-color-scheme: dark) { #signin { background: #3a3220; color: #f4e8c8; border-color: #5a4a2a; } }
+		#none { max-width: 36rem; margin: 18vh auto 0; padding: 0 24px; font: 15px/1.5 system-ui, sans-serif; color: #2a2d33; }
+		#none h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; }
+		#none a { color: #1d7f8c; font-weight: 600; }
+		@media (prefers-color-scheme: dark) { #none { color: #e6e7ea; } #none a { color: #5cc3d0; } }
 	</style>
 </head>
 <body>
@@ -34,10 +38,18 @@
 		};
 	</script>
 	<!-- csrf_token -->
+	{% if no_mailbox %}
+	<main id="none">
+		<h1>NeoMail</h1>
+		<p>{{ _("You have no mailbox in Neoffice yet.") }}</p>
+		<p><a href="/app/webmail">{{ _("Open the webmail to add one") }}</a></p>
+	</main>
+	{% else %}
 	<div id="signin" role="alert" hidden>
 		{{ _("Your Neoffice session has ended.") }}
 		<a href="/login?redirect-to=/neomail">{{ _("Sign in again") }}</a>
 	</div>
 	<iframe src="{{ build_url }}" title="NeoMail"></iframe>
+	{% endif %}
 </body>
 </html>

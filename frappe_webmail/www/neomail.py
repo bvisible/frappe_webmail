@@ -58,10 +58,13 @@ def get_context(context):
 	frappe.sessions.get_csrf_token()
 	context.no_cache = 1
 	context.lang = frappe.local.lang or "en"
-	mailboxes = [] if "sample" in frappe.form_dict else host_mailboxes()
-	# The person's mailboxes, through the JMAP facade (maintenance#1630); without any, the sample mailbox. Nora where the
-	# instance has her: elsewhere each of her calls would fail.
-	query = ([] if mailboxes else ["sample"]) + (["nora"] if nora_installed() else [])
+	sample = "sample" in frappe.form_dict
+	mailboxes = [] if sample else host_mailboxes()
+	# The person's mailboxes, through the JMAP facade (maintenance#1630). Without any, the page says so (made-up mail would
+	# pass for theirs); `?sample` opens the sample mailbox, for a demonstration. Nora where the instance has her: elsewhere
+	# each of her calls would fail.
+	context.no_mailbox = not mailboxes and not sample
+	query = (["sample"] if sample else []) + (["nora"] if nora_installed() else [])
 	# The person signed in, named as the Drive names them to the document editors: NeoMail's account button shows their
 	# initials, the same as everywhere else.
 	author = frappe.utils.get_fullname(frappe.session.user)
