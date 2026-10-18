@@ -3730,3 +3730,11 @@ msgstr "Seul un administrateur peut attribuer une boîte mail à quelqu'un d'aut
 #: frappe_webmail/webmail_api.py:3368
 msgid "Only the owner of this mailbox can change its settings."
 msgstr "Seul le propriétaire de cette boîte mail peut en modifier les paramètres."
+
+#: frappe_webmail/www/neomail.html:45
+msgid "Open the webmail to add one"
+msgstr "Ouvrir le webmail pour en ajouter une"
+
+#: frappe_webmail/www/neomail.html:44
+msgid "You have no mailbox in Neoffice yet."
+msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
