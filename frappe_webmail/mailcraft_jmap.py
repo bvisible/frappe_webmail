@@ -16,7 +16,7 @@ fields, appending a given message, sending a given message. The instance's conta
 (JMAP for Contacts, RFC 9610) in one mailbox of the person: mailcraft_contacts; their own calendars likewise
 (JMAP for Calendars), where the Suite is installed: mailcraft_calendars.
 
-Who may call it: the desk's people (System Users), on a site where `mailcraft_trial` is on, with a token and only
+Who may call it: the desk's people (System Users), on a site where NeoMail is on (`neomail_enabled`), with a token and only
 with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token kept hashed in
 the cache, good for this module's four addresses only (`authenticate`, an auth hook), for twelve hours at most and no
 longer than what it was given for: the desk session of the /neomail page, or the OAuth bearer token Neodesk signs in
@@ -196,6 +196,13 @@ def _session_alive(sid):
 	return bool(frappe.db.sql("select 1 from `tabSessions` where sid=%s", sid))
 
 
+def neomail_enabled():
+	"""Whether NeoMail is on: on every instance since it went to all of them, unless the site's configuration switches it
+	off (`neomail_disabled: 1`). While it was tried, only where the configuration said `mailcraft_trial` (osiris,
+	maintenance#1629, #1630)."""
+	return not frappe.conf.get("neomail_disabled")
+
+
 def authenticate():
 	"""auth_hooks: a request to one of this module's four addresses that carries a token /neomail or hand_over gave
 	is made as that token's person. Anything else is left alone: another address; a `cmd` (Frappe runs a `cmd` form
@@ -203,7 +210,7 @@ def authenticate():
 	token unknown, expired, or whose desk session or bearer token ended; a person no longer enabled or no longer of
 	the desk."""
 	request = getattr(frappe.local, "request", None)
-	if request is None or not frappe.conf.get("mailcraft_trial"):
+	if request is None or not neomail_enabled():
 		return
 	match = _OWN_PATH.match(getattr(request, "path", "") or "")
 	if not match:
@@ -233,8 +240,8 @@ def authenticate():
 
 
 def _gate():
-	"""The trial is on, and the request came with a token (see `authenticate`) for the session's person."""
-	if not frappe.conf.get("mailcraft_trial"):
+	"""NeoMail is on, and the request came with a token (see `authenticate`) for the session's person."""
+	if not neomail_enabled():
 		raise frappe.PageDoesNotExistError
 	user = frappe.session.user
 	if frappe.local.flags.get("mailcraft_jmap_user") != user or not _is_desk_user(user):
@@ -246,9 +253,10 @@ def hand_over(**kwargs):
 	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`, and `nora`:
 	whether the instance has Nora), to a request
 	that carries an OAuth bearer token of that person, never to a desk cookie alone, which a page of another site could
-	make a browser send. The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
+	make a browser send. Wherever NeoMail is on, the build installed here or not: Neodesk brings its own (pinned in its
+	desktop/src/editors/manifest.json and the Suite's craft_editors.json). The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
 	refresh revokes the old one, so Neodesk hands its renewed one over again."""
-	if not frappe.conf.get("mailcraft_trial"):
+	if not neomail_enabled():
 		raise frappe.PageDoesNotExistError
 	user = frappe.session.user
 	bearer = _request_bearer()
@@ -272,8 +280,10 @@ def hand_over(**kwargs):
 def renew(**kwargs):
 	"""For /neomail: fresh facade tokens for the page's own desk session, when the framed build's were refused (they die
 	with the cache, or after twelve hours), so that it carries on without a reload. A desk cookie only: Neodesk, which
-	signs in with a bearer token, asks hand_over."""
-	if not frappe.conf.get("mailcraft_trial"):
+	signs in with a bearer token, asks hand_over. Only where the page can be opened: nothing else calls it."""
+	from frappe_webmail.www.neomail import available
+
+	if not available():
 		raise frappe.PageDoesNotExistError
 	if _request_bearer() or not _is_desk_user(frappe.session.user):
 		raise frappe.PermissionError

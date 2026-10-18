@@ -5,9 +5,10 @@
 The /neomail address: NeoMail (the browser build of our MailCraft fork, under the name the person reads) with Nora, on
 the person's own mailboxes. The former /mailcraft address redirects here (hooks.py, website_redirects).
 
-Off unless the site's configuration says `mailcraft_trial: 1` (osiris, while the plan that brings Nora into MailCraft
-is tried, maintenance#1629 and #1630): everywhere else the address does not exist. The page frames the browser build
-of MailCraft (bvisible/mailcraft) that the Suite's installer puts next to the editors (suite/public/craft/mailcraft).
+On wherever the browser build of MailCraft (bvisible/mailcraft) is installed, unless the site's configuration switches
+NeoMail off (`neomail_disabled: 1`): elsewhere the address does not exist. The page frames that build, which the
+Suite's installer puts next to the editors (suite/public/craft/mailcraft) as craft_editors.json pins it. It was on
+osiris only (`mailcraft_trial`) while the plan that brings Nora into MailCraft was tried (maintenance#1629, #1630).
 It hands the build the person's mailboxes (owned or shared, as the webmail lists them), each with its JMAP session on
 the facade (mailcraft_jmap.py) and a token for it; without any mailbox, or with `?sample`, MailCraft opens its sample
 mailbox. It hands the person's language too: MailCraft draws in it unless one is chosen in its settings (the browser's
@@ -16,10 +17,13 @@ methods apply their own rights. The desk's people only: a visitor signs in first
 the webmail.
 """
 
+import os
 from urllib.parse import quote
 
 import frappe
 from frappe import _
+
+from frappe_webmail.mailcraft_jmap import neomail_enabled
 
 BUILD = "/assets/suite/craft/mailcraft/index.html"
 ROUTE = "/neomail"
@@ -29,8 +33,20 @@ PRODUCT = "NeoMail"
 no_cache = 1
 
 
+def build_installed():
+	"""The browser build is where the page frames it: the Suite's installer put it there (craft_editors.json)."""
+	if "suite" not in frappe.get_installed_apps():
+		return False
+	return os.path.isfile(frappe.get_app_path("suite", "public", "craft", "mailcraft", "index.html"))
+
+
+def available():
+	"""NeoMail can be opened here: it is on, and its build is installed."""
+	return neomail_enabled() and build_installed()
+
+
 def get_context(context):
-	if not frappe.conf.get("mailcraft_trial"):
+	if not available():
 		raise frappe.PageDoesNotExistError
 	if frappe.session.user == "Guest":
 		_redirect("/login?redirect-to=" + ROUTE)

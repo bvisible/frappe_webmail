@@ -1,8 +1,8 @@
 # Copyright (c) 2026, Neoservice and contributors
 # For license information, please see license.txt
 
-"""The /neomail address (NeoMail, the trial of our MailCraft fork with Nora, maintenance#1629, #1630): off unless the
-site says so, and for the desk's people only; the former /mailcraft address redirects to it.
+"""The /neomail address (NeoMail, our MailCraft fork with Nora, maintenance#1629, #1630): where its build is installed,
+unless the site switches NeoMail off, and for the desk's people only; the former /mailcraft address redirects to it.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_page
@@ -42,18 +42,43 @@ class TestMailCraftPage(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
-	def _context(self, trial=1):
+	def _context(self, off=0, build=True):
 		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
-		with patch.dict(frappe.local.conf, {"mailcraft_trial": trial}):
+		with (
+			patch.dict(frappe.local.conf, {"neomail_disabled": off}),
+			patch.object(neomail, "build_installed", return_value=build),
+		):
 			neomail.get_context(context)
 		return context
 
-	def test_the_address_does_not_exist_unless_the_site_says_so(self):
+	def test_the_address_does_not_exist_where_neomail_is_off_or_its_build_missing(self):
 		frappe.set_user(STAFF)
 		with self.assertRaises(frappe.PageDoesNotExistError):
-			self._context(trial=0)
+			self._context(off=1)
+		with self.assertRaises(frappe.PageDoesNotExistError):
+			self._context(build=False)
+
+	def test_the_build_is_where_the_suite_s_installer_puts_it(self):
+		import os
+		import tempfile
+
+		from frappe_webmail.www import neomail
+
+		with tempfile.TemporaryDirectory() as root:
+			public = os.path.join(root, "public", "craft", "mailcraft")
+			os.makedirs(public)
+			with (
+				patch("frappe.get_installed_apps", return_value=["frappe", "suite", "frappe_webmail"]),
+				patch("frappe.get_app_path", side_effect=lambda app, *parts: os.path.join(root, *parts)),
+			):
+				self.assertFalse(neomail.build_installed(), "the folder alone is no build")
+				with open(os.path.join(public, "index.html"), "w") as handle:
+					handle.write("<!doctype html>")
+				self.assertTrue(neomail.build_installed())
+			with patch("frappe.get_installed_apps", return_value=["frappe", "frappe_webmail"]):
+				self.assertFalse(neomail.build_installed(), "no Suite, no build")
 
 	def test_a_visitor_signs_in_first(self):
 		frappe.set_user("Guest")

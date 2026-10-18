@@ -120,7 +120,7 @@ class TestMailCraftContacts(FrappeTestCase):
 			).insert(ignore_permissions=True)
 
 	def setUp(self):
-		self.trial = patch.dict(frappe.local.conf, {"mailcraft_trial": 1})
+		self.trial = patch.dict(frappe.local.conf, {"neomail_disabled": 0})
 		self.trial.start()
 
 	def tearDown(self):

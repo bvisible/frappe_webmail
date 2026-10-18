@@ -259,7 +259,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		)
 
 	def setUp(self):
-		self.trial = patch.dict(frappe.local.conf, {"mailcraft_trial": 1})
+		self.trial = patch.dict(frappe.local.conf, {"neomail_disabled": 0})
 		self.trial.start()
 		self._as(SHARED)
 		for key in (jmap._uploads_key(SHARED), jmap._sends_key()):
@@ -309,8 +309,8 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(
 			self._authenticated(API, token, alive=False)[0], "Guest", "the desk session that asked ended"
 		)
-		with patch.dict(frappe.local.conf, {"mailcraft_trial": 0}):
-			self.assertEqual(self._authenticated(API, token)[0], "Guest", "the trial is off")
+		with patch.dict(frappe.local.conf, {"neomail_disabled": 1}):
+			self.assertEqual(self._authenticated(API, token)[0], "Guest", "NeoMail is off")
 
 	def test_a_cmd_runs_only_the_method_the_address_names(self):
 		"""Frappe runs a `cmd` form field whatever the path: a token must not open another method that way."""
@@ -711,6 +711,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		with (
 			patch.object(frappe.local, "form_dict", frappe._dict()),
 			patch.object(neomail, "nora_installed", return_value=True),
+			patch.object(neomail, "build_installed", return_value=True),
 		):
 			neomail.get_context(context)
 		# The build is told who is signed in, for the initials of its account button
@@ -730,6 +731,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		with (
 			patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""})),
 			patch.object(neomail, "nora_installed", return_value=True),
+			patch.object(neomail, "build_installed", return_value=True),
 		):
 			neomail.get_context(sample)
 		shared = "author=" + quote(frappe.utils.get_fullname(SHARED), safe="")
@@ -923,7 +925,7 @@ class TestMailCraftJmap(FrappeTestCase):
 			with self.assertRaises(frappe.PermissionError, msg=why):
 				self._hand_over(bearer, user)
 		with (
-			patch.dict(frappe.local.conf, {"mailcraft_trial": 0}),
+			patch.dict(frappe.local.conf, {"neomail_disabled": 1}),
 			self.assertRaises(frappe.PageDoesNotExistError),
 		):
 			self._hand_over(self._bearer())
@@ -946,7 +948,32 @@ class TestMailCraftJmap(FrappeTestCase):
 		with self.assertRaises(frappe.PermissionError, msg="no expiry"):
 			self._hand_over(endless)
 
+	def test_neodesk_s_hand_over_needs_no_build_here_and_the_page_s_renewal_does(self):
+		"""Neodesk brings its own build of NeoMail: hand_over answers wherever NeoMail is on. renew serves the page
+		only, which opens where the build is installed."""
+		from frappe_webmail.www import neomail
+
+		with patch.object(neomail, "build_installed", return_value=False):
+			given = self._hand_over(self._bearer())
+			self.assertIn(MAILBOX, [a["email"] for a in given["accounts"]])
+			frappe.set_user(SHARED)
+			with (
+				patch("frappe.get_request_header", return_value=None),
+				self.assertRaises(frappe.PageDoesNotExistError),
+			):
+				jmap.renew()
+
+	def test_neomail_switched_off_closes_the_facade_to_a_token_too(self):
+		self._as(SHARED)
+		with patch.dict(frappe.local.conf, {"neomail_disabled": 1}):
+			self.assertEqual(jmap.session(MAILBOX).status_code, 404)
+
 	def test_the_page_renews_its_tokens_with_its_own_session_only(self):
+		from frappe_webmail.www import neomail
+
+		built = patch.object(neomail, "build_installed", return_value=True)
+		built.start()
+		self.addCleanup(built.stop)
 		frappe.set_user(SHARED)
 		page = frappe.session.sid
 		with patch("frappe.get_request_header", return_value=None):
@@ -967,7 +994,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		):
 			jmap.renew()
 		with (
-			patch.dict(frappe.local.conf, {"mailcraft_trial": 0}),
+			patch.dict(frappe.local.conf, {"neomail_disabled": 1}),
 			patch("frappe.get_request_header", return_value=None),
 			self.assertRaises(frappe.PageDoesNotExistError),
 		):
