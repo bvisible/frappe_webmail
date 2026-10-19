@@ -204,6 +204,7 @@ import ContactAutocomplete from "./ContactAutocomplete.vue";
 import AttachmentPicker from "./AttachmentPicker.vue";
 import NoraBar from "./NoraBar.vue";
 import { joinQuote, splitQuote } from "../quoteSplit";
+import { SignatureBlock, signatureBlock } from "../signatureBlock";
 import {
 	X,
 	Paperclip,
@@ -361,13 +362,15 @@ export default {
 			let initialContent = "";
 
 			if (this.signature) {
-				initialContent = `<p></p><br><p>--</p>${this.signature}`;
+				initialContent = `<p></p><br><p>--</p>${signatureBlock(this.signature)}`;
 			}
 
 			this.editor = new Editor({
 				content: initialContent,
 				onUpdate: () => this.markDirty(),
 				extensions: [
+					// The signature as it came, its table and logo kept (signatureBlock.js)
+					SignatureBlock,
 					StarterKit,
 					Underline,
 					Link.configure({ openOnClick: false }),
@@ -461,7 +464,7 @@ export default {
 			// Use Nora-generated draft if available (from Quick Reply)
 			let content = reply.noraDraftHtml || "<p></p>";
 			if (this.signature) {
-				content += `<br><p>--</p>${this.signature}`;
+				content += `<br><p>--</p>${signatureBlock(this.signature)}`;
 			}
 			content += quoteContent;
 
@@ -489,7 +492,7 @@ export default {
 
 			let content = "<p></p>";
 			if (this.signature) {
-				content += `<br><p>--</p>${this.signature}`;
+				content += `<br><p>--</p>${signatureBlock(this.signature)}`;
 			}
 			content += forwardContent;
 
@@ -519,7 +522,11 @@ export default {
 
 		insertSignature() {
 			if (this.signature) {
-				this.editor.chain().focus().insertContent(`<br><p>--</p>${this.signature}`).run();
+				this.editor
+					.chain()
+					.focus()
+					.insertContent(`<br><p>--</p>${signatureBlock(this.signature)}`)
+					.run();
 			}
 		},
 
@@ -1101,6 +1108,17 @@ export default {
 	flex: 1;
 	min-height: 200px;
 	outline: none;
+}
+
+/* The signature is one block, shown as it will leave: not written in, taken out whole (selected, then deleted). */
+.editor-container :deep(.webmail-signature-block) {
+	cursor: default;
+	border-radius: 4px;
+}
+
+.editor-container :deep(.webmail-signature-block.ProseMirror-selectednode) {
+	outline: 2px solid var(--primary-color, #2490ef);
+	outline-offset: 2px;
 }
 
 .editor-container :deep(.ProseMirror p.is-editor-empty:first-child::before) {

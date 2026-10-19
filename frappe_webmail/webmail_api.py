@@ -20,14 +20,15 @@ from email.utils import formatdate, make_msgid
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import cint
 
 from frappe_webmail.conversations import conversation_of, message_id_of, one_per_message, references_for
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
 from frappe_webmail.documents import list_attachable_documents
+from frappe_webmail.email_html import clean_sent_html
 from frappe_webmail.inline_images import (
-	SAFE_PROTOCOLS,
 	body_with,
 	files_inlined,
 	logo_sized,
@@ -1291,59 +1292,8 @@ def send_email(
 	# Images written in the text leave as parts of the message, before the cleaning (it would drop a `data:` image)
 	html_content, inline_parts = to_parts(html_content, (account.email or "webmail.local").split("@")[-1])
 
-	# Sanitize HTML content if bleach is available
-	if bleach:
-		# Allow safe HTML tags for email
-		allowed_tags = [
-			"a",
-			"abbr",
-			"acronym",
-			"b",
-			"blockquote",
-			"br",
-			"code",
-			"div",
-			"em",
-			"h1",
-			"h2",
-			"h3",
-			"h4",
-			"h5",
-			"h6",
-			"hr",
-			"i",
-			"img",
-			"li",
-			"ol",
-			"p",
-			"pre",
-			"span",
-			"strong",
-			"table",
-			"tbody",
-			"td",
-			"th",
-			"thead",
-			"tr",
-			"u",
-			"ul",
-		]
-		allowed_attributes = {
-			"*": ["class", "style"],
-			"a": ["href", "title", "target", "rel"],
-			"img": ["src", "alt", "width", "height"],
-			"table": ["border", "cellpadding", "cellspacing", "width"],
-			"td": ["colspan", "rowspan", "width", "valign", "align"],
-			"th": ["colspan", "rowspan", "width", "valign", "align"],
-		}
-		html_content = bleach.clean(
-			html_content,
-			tags=allowed_tags,
-			attributes=allowed_attributes,
-			protocols=SAFE_PROTOCOLS,
-			css_sanitizer=email_css_sanitizer(),
-			strip=True,
-		)
+	# What a message sent may carry (email_html.py: the signature manager previews a pasted signature by the same rules)
+	html_content = clean_sent_html(html_content)
 
 	# A picture of the instance (a signature's logo) leaves as a part too, in the message only: the copy for the
 	# document's timeline keeps its address, which the desk shows (maintenance#1650). The company's logo first gets
@@ -2332,6 +2282,22 @@ def get_signatures():
 		fields=["name", "signature_name", "content", "is_default"],
 		order_by="is_default desc, signature_name asc",
 	)
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=120, seconds=60)
+def clean_signature(html=None):
+	"""A signature pasted as HTML as it will be kept and sent (email_html.clean_signature_html), for the signature
+	manager's preview: what goes, goes before the person saves, not after. The desk's people only (the webmail is
+	theirs), and so many a minute: up to a megabyte of HTML read twice is work for the server."""
+	from frappe_webmail.email_html import MAX_SIGNATURE_SOURCE, clean_signature_html
+
+	if frappe.get_cached_value("User", frappe.session.user, "user_type") != "System User":
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	html = html if isinstance(html, str) else ""
+	if len(html) > MAX_SIGNATURE_SOURCE:
+		frappe.throw(_("This signature is too large."))
+	return {"html": clean_signature_html(html)}
 
 
 @frappe.whitelist()

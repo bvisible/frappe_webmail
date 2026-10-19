@@ -46,8 +46,45 @@
 					</label>
 				</div>
 
+				<!-- Written in the editor, or pasted as HTML (a signature generator, Outlook, a designer) -->
+				<div class="mode-switch">
+					<button
+						type="button"
+						:class="{ active: mode === 'editor' }"
+						@click="useEditor"
+					>
+						{{ __("Editor") }}
+					</button>
+					<button type="button" :class="{ active: mode === 'html' }" @click="useHtml">
+						{{ __("HTML") }}
+					</button>
+				</div>
+
+				<div v-if="mode === 'html'" class="html-mode">
+					<textarea
+						v-model="htmlSource"
+						class="html-source"
+						spellcheck="false"
+						:placeholder="__('Paste the HTML of your signature here')"
+					></textarea>
+					<div class="preview-label">{{ __("As it will be sent") }}</div>
+					<iframe
+						class="html-preview"
+						sandbox="allow-same-origin"
+						:srcdoc="previewDocument"
+						:title="__('As it will be sent')"
+					></iframe>
+					<p class="html-note">
+						{{
+							__(
+								"Scripts, forms and style sheets are taken out. Pictures must be on the web (https) or in Neoffice."
+							)
+						}}
+					</p>
+				</div>
+
 				<!-- Editor Toolbar -->
-				<div class="editor-toolbar" v-if="editor">
+				<div class="editor-toolbar" v-if="mode === 'editor' && editor">
 					<button
 						@click="editor.chain().focus().toggleBold().run()"
 						:class="{ active: editor.isActive('bold') }"
@@ -78,7 +115,7 @@
 				</div>
 
 				<!-- Editor -->
-				<div class="editor-container">
+				<div class="editor-container" v-if="mode === 'editor'">
 					<editor-content :editor="editor" />
 				</div>
 
@@ -143,7 +180,33 @@ export default {
 			editingSignature: null,
 			editor: null,
 			saving: false,
+			// "editor": written here; "html": pasted as HTML, kept as it came once cleaned
+			mode: "editor",
+			htmlSource: "",
+			// The pasted HTML as the server keeps it (clean_signature), and the request it answers
+			previewHtml: "",
+			previewTimer: null,
+			previewAsked: 0,
 		};
+	},
+
+	computed: {
+		// What the preview frame shows: the cleaned signature on the white of most mail programs
+		previewDocument() {
+			return (
+				'<!doctype html><html><head><meta charset="utf-8"><base target="_blank">' +
+				"<style>body{margin:12px;font:14px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+				"color:#1f272e;background:#fff}</style></head><body>" +
+				this.previewHtml +
+				"</body></html>"
+			);
+		},
+	},
+
+	watch: {
+		htmlSource() {
+			if (this.mode === "html") this.schedulePreview();
+		},
 	},
 
 	mounted() {
@@ -151,6 +214,7 @@ export default {
 	},
 
 	beforeUnmount() {
+		clearTimeout(this.previewTimer);
 		if (this.editor) {
 			this.editor.destroy();
 		}
@@ -171,7 +235,14 @@ export default {
 		selectSignature(sig) {
 			this.selectedSignature = sig;
 			this.editingSignature = { ...sig };
-			this.initEditor(sig.content);
+			this.htmlSource = sig.content || "";
+			// A layout the editor can't hold (a table, colours, fonts) opens as HTML: the editor would lose it
+			if (this.keepsLayout(sig.content)) {
+				this.showHtml();
+			} else {
+				this.mode = "editor";
+				this.initEditor(sig.content);
+			}
 		},
 
 		createNew() {
@@ -181,7 +252,65 @@ export default {
 				content: "",
 				is_default: this.signatures.length === 0,
 			};
+			this.htmlSource = "";
+			this.mode = "editor";
 			this.initEditor("");
+		},
+
+		// Whether a signature has what only the HTML keeps: tables, styles, fonts, background colours
+		keepsLayout(html) {
+			return /<(table|font|center|style)\b|\sstyle\s*=|\sbgcolor\s*=/i.test(html || "");
+		},
+
+		showHtml() {
+			this.mode = "html";
+			if (this.editor) {
+				this.editor.destroy();
+				this.editor = null;
+			}
+			this.schedulePreview(0);
+		},
+
+		useHtml() {
+			if (this.mode === "html") return;
+			if (this.editor) this.htmlSource = this.editor.getHTML();
+			this.showHtml();
+		},
+
+		useEditor() {
+			if (this.mode === "editor") return;
+			if (
+				this.keepsLayout(this.htmlSource) &&
+				!confirm(
+					this.__(
+						"The editor keeps text, links and pictures only: this signature's layout and colours would be lost. Open it in the editor anyway?"
+					)
+				)
+			) {
+				return;
+			}
+			this.mode = "editor";
+			this.initEditor(this.htmlSource);
+		},
+
+		schedulePreview(delay = 400) {
+			clearTimeout(this.previewTimer);
+			this.previewTimer = setTimeout(() => this.refreshPreview(), delay);
+		},
+
+		async refreshPreview() {
+			const asked = ++this.previewAsked;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.api.clean_signature",
+					args: { html: this.htmlSource },
+				});
+				// Only the answer to the latest text: an older one may come back last
+				if (asked === this.previewAsked)
+					this.previewHtml = (response.message || {}).html || "";
+			} catch (error) {
+				if (asked === this.previewAsked) this.previewHtml = "";
+			}
 		},
 
 		initEditor(content) {
@@ -223,7 +352,8 @@ export default {
 			this.saving = true;
 
 			try {
-				const content = this.editor.getHTML();
+				// Pasted as HTML: as it came (the server cleans it on save, as the preview showed)
+				const content = this.mode === "html" ? this.htmlSource : this.editor.getHTML();
 
 				if (this.editingSignature.name) {
 					// Update existing
@@ -291,6 +421,10 @@ export default {
 		cancelEdit() {
 			this.editingSignature = null;
 			this.selectedSignature = null;
+			this.mode = "editor";
+			this.htmlSource = "";
+			this.previewHtml = "";
+			clearTimeout(this.previewTimer);
 			if (this.editor) {
 				this.editor.destroy();
 				this.editor = null;
@@ -421,6 +555,69 @@ export default {
 	padding: 8px;
 	border: 1px solid var(--border-color, #e5e5e5);
 	border-radius: 4px;
+}
+
+.mode-switch {
+	display: inline-flex;
+	align-self: flex-start;
+	margin-bottom: 12px;
+	border: 1px solid var(--border-color, #e5e5e5);
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.mode-switch button {
+	padding: 4px 14px;
+	border: none;
+	background: transparent;
+	color: var(--text-color, #1f272e);
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.mode-switch button + button {
+	border-left: 1px solid var(--border-color, #e5e5e5);
+}
+
+.mode-switch button.active {
+	background: var(--subtle-accent, rgba(36, 144, 239, 0.15));
+	font-weight: 600;
+}
+
+.html-mode {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	overflow-y: auto;
+}
+
+.html-source {
+	min-height: 140px;
+	padding: 8px;
+	border: 1px solid var(--border-color, #e5e5e5);
+	border-radius: 4px;
+	font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+	resize: vertical;
+}
+
+.preview-label {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.html-preview {
+	min-height: 180px;
+	border: 1px solid var(--border-color, #e5e5e5);
+	border-radius: 4px;
+	background: #fff;
+}
+
+.html-note {
+	margin: 0;
+	font-size: 12px;
+	color: var(--text-muted, #8d99a6);
 }
 
 .editor-toolbar {

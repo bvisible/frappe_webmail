@@ -23,7 +23,24 @@ class EmailSignature(Document):
 
 	def validate(self):
 		"""Validate and handle default signature logic"""
+		self.clean_content()
 		self.handle_default_signature()
+
+	def clean_content(self):
+		"""The signature as a recipient may be shown it (email_html.clean_signature_html): written in the editor or
+		pasted as HTML, what a mail client never shows or runs goes, the rest stays as it was written. Frappe's own
+		cleaning is left out (the field ignores its XSS filter): it would also take the pictures written into the
+		signature and its phone links."""
+		from frappe_webmail.email_html import MAX_SIGNATURE_SOURCE, clean_signature_html
+
+		if not self.content:
+			# Said by Frappe: the content is mandatory.
+			return
+		if len(self.content) > MAX_SIGNATURE_SOURCE:
+			frappe.throw(_("This signature is too large."))
+		self.content = clean_signature_html(self.content)
+		if not self.content:
+			frappe.throw(_("This signature has nothing a recipient could be shown."))
 
 	def handle_default_signature(self):
 		"""Ensure only one default signature per user"""

@@ -31,8 +31,8 @@ _DATA_IMAGE = re.compile(
 	re.IGNORECASE,
 )
 
-# What the cleaning of a message lets through in an address: the web's and mail's, and its own parts'
-SAFE_PROTOCOLS = ["http", "https", "mailto", "cid"]
+# What the cleaning of a message lets through in an address: the web's, mail's and the phone's, and its own parts'
+SAFE_PROTOCOLS = ["http", "https", "mailto", "tel", "cid"]
 # <img … src="/private/files/logo.png">, or the same address with this site's name in front: the quote kept, the address read
 _FILE_IMAGE = re.compile(r"""(<img\b[^>]*?\bsrc\s*=\s*)(["'])([^"']+)\2""", re.IGNORECASE)
 # The pictures a file of the instance may be written in as: the ones every mail client shows (an SVG stays an address)
