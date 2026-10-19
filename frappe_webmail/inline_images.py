@@ -77,15 +77,22 @@ def body_with(alternative: MIMEMultipart, parts: list[MIMEImage]) -> MIMEMultipa
 	return related
 
 
-def files_inlined(html: str | None) -> str:
+def files_inlined(html: str | None, logo: str | None = None) -> str:
 	"""The HTML with each picture of the instance written in as a `data:` image, which `to_parts` then turns into a part
-	of the message: a public file (`/files/…`), or a private one (`/private/files/…`) attached to a signature of the
-	person sending (Frappe keeps a signature's pasted logo as a private file of that signature). Anything else is left as
-	it was: a private file the person may well read, but which a message they reply to may name (a quoted address must
-	not bring the file along), a picture too big, of a type mail clients do not show, missing on the disk, or of another
-	site."""
+	of the message: a public file (`/files/…`), a private one (`/private/files/…`) attached to a signature of the
+	person sending (Frappe keeps a signature's pasted logo as a private file of that signature), or the logo of their
+	company (`logo`, sender_logo, worked out here the first time it is needed when the caller doesn't give it). Anything
+	else is left as it was: a private file the person may well read, but which a message they reply to may name (a
+	quoted address must not bring the file along), a picture too big, of a type mail clients do not show, missing on the
+	disk, or of another site."""
 	left = MAX_FILE_IMAGES
 	found: dict[str, tuple[str, bytes] | None] = {}
+	known = {"logo": logo}
+
+	def the_logo() -> str:
+		if known["logo"] is None:
+			known["logo"] = sender_logo()
+		return known["logo"]
 
 	def swap(match: re.Match) -> str:
 		nonlocal left
@@ -94,7 +101,7 @@ def files_inlined(html: str | None) -> str:
 			return match.group(0)
 		if path not in found:
 			# At most this many different files of the instance looked up per message: past them, the addresses stay.
-			found[path] = _picture(path) if len(found) < MAX_FILES_LOOKED_UP else None
+			found[path] = _picture(path, the_logo()) if len(found) < MAX_FILES_LOOKED_UP else None
 		picture = found[path]
 		if not picture or len(picture[1]) > left:
 			return match.group(0)
@@ -130,30 +137,124 @@ def _local_path(address: str) -> str | None:
 	return path if mimetypes.guess_type(path)[0] in _FILE_IMAGE_TYPES else None
 
 
-def _picture(path: str) -> tuple[str, bytes] | None:
+def _picture(path: str, logo: str = "") -> tuple[str, bytes] | None:
 	"""(type, bytes) of the instance's file at `path` when it may go in (`files_inlined`); None otherwise. Whether it is
-	private follows its address, as Frappe serves it: a `/private/files/` one only from a signature of the person."""
+	private follows its address, as Frappe serves it: a `/private/files/` one only from a signature of the person, or
+	when it is the logo of their company (`logo`: the company signature draws it for everyone, signatures.py)."""
 	import mimetypes
 
 	import frappe
 
+	is_logo = bool(logo) and path == logo
 	filters: dict = {"file_url": path, "is_folder": 0}
-	if path.startswith("/private/files/"):
+	if path.startswith("/private/files/") and not is_logo:
 		signatures = frappe.get_all("Email Signature", filters={"user": frappe.session.user}, pluck="name")
 		if not signatures:
 			return None
 		# In the query, not after it: one logo pasted by many shares one address, one row each.
 		filters |= {"attached_to_doctype": "Email Signature", "attached_to_name": ["in", signatures]}
-	name = frappe.db.get_value("File", filters, "name")
-	if not name:
-		return None
-	try:
-		content = frappe.get_doc("File", name).get_content()
-	except Exception:
-		# Its row is there, its bytes are not (a file gone from the disk): the address stays.
+	# The database compares addresses without case or accents: only a row of this very address is this file.
+	rows = frappe.get_all("File", filters=filters, fields=["name", "file_url"], limit=20)
+	name = next((row.name for row in rows if row.file_url == path), None)
+	if name:
+		try:
+			content = frappe.get_doc("File", name).get_content()
+		except Exception:
+			# Its row is there, its bytes are not (a file gone from the disk): the address stays.
+			return None
+	elif is_logo and path.startswith("/files/"):
+		# A logo written straight into the site's public files (the setup wizard does), with no File row.
+		content = _public_file(path)
+	else:
 		return None
 	if isinstance(content, str):
 		content = content.encode()
-	if not 0 < len(content) <= MAX_FILE_IMAGE:
+	if not content or not 0 < len(content) <= MAX_FILE_IMAGE:
 		return None
 	return mimetypes.guess_type(path)[0], content
+
+
+def sender_logo() -> str:
+	"""The logo of the company of the person sending, as stored ('' when there is none): the one the company signature
+	draws (signatures.py), which may leave in their message whether its file is public or private. Never another
+	company's, nor any other private file a message names. Only for the desk's people, as the company signature is: a
+	portal account is told nothing of the company. A person without an Employee chooses their company themselves (their
+	default one, signatures.company_of_user), but a company's logo is on everything it sends: it is no secret."""
+	import frappe
+
+	from frappe_webmail.signatures import company_of_user
+
+	user = frappe.session.user
+	try:
+		if frappe.db.get_value("User", user, "user_type") != "System User":
+			return ""
+		company = company_of_user(user)
+		if not company or not frappe.db.table_exists("Company"):
+			return ""
+		return (frappe.db.get_value("Company", company, "company_logo") or "").strip()
+	except Exception:
+		return ""
+
+
+def _public_file(path: str) -> bytes | None:
+	"""The bytes of a file of the site's public files at `path` (`/files/…`), read from the disk; None when it is not one
+	(an address that climbs out of the folder, a link, a file too large, missing or unreadable). Never raises: a picture
+	that can't be read leaves the message as it was."""
+	import os
+
+	import frappe
+
+	try:
+		folder = os.path.realpath(frappe.get_site_path("public", "files"))
+		# `path` is already decoded (_local_path)
+		target = os.path.realpath(frappe.get_site_path("public", path.lstrip("/")))
+		if not target.startswith(folder + os.sep) or not os.path.isfile(target):
+			return None
+		if not 0 < os.path.getsize(target) <= MAX_FILE_IMAGE:
+			return None
+		with open(target, "rb") as handle:
+			return handle.read(MAX_FILE_IMAGE + 1)
+	except (OSError, ValueError):
+		return None
+
+
+# <img …> as a whole, to tell whether it says its width
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_HAS_WIDTH = re.compile(r"\swidth\s*=", re.IGNORECASE)
+
+
+def logo_sized(html: str | None, logo: str | None = None) -> str:
+	"""The HTML with the sender's company logo (`logo`, sender_logo when the caller doesn't give it) given the width its
+	signature template draws it at, where the tag says none: the desk's editor keeps a picture's address but not its
+	size, and a logo would otherwise leave at the size of its file (a picture of 1200 pixels across)."""
+	html = html or ""
+	if "<img" not in html.lower():
+		return html
+	logo = sender_logo() if logo is None else logo
+	if not logo or logo not in html:
+		return html
+	width = _logo_width()
+
+	def sized(match: re.Match) -> str:
+		tag = match.group(0)
+		source = _FILE_IMAGE.search(tag)
+		if not source or _HAS_WIDTH.search(tag) or _local_path(source.group(3)) != logo:
+			return tag
+		return tag[:4] + f' width="{width}"' + tag[4:]
+
+	return _IMG_TAG.sub(sized, html)
+
+
+def _logo_width() -> int:
+	"""The width the template that applies to the sender draws the logo at, else the default."""
+	import frappe
+
+	from frappe_webmail import signatures
+
+	try:
+		template = signatures.template_for(frappe.session.user)
+	except Exception:
+		template = None
+	return signatures._number(
+		template.get("logo_width") if template else None, signatures.LOGO_WIDTH, signatures.DEFAULT_LOGO_WIDTH
+	)

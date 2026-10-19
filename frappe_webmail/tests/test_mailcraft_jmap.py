@@ -806,6 +806,11 @@ class TestMailCraftJmap(FrappeTestCase):
 	def test_each_mailbox_carries_its_signature_or_the_person_s_own(self):
 		from frappe_webmail.www import neomail
 
+		# The signatures people wrote, as before any company signature: none applies here (a site may hold one)
+		no_template = patch("frappe_webmail.signatures.template_for", return_value=None)
+		no_template.start()
+		self.addCleanup(no_template.stop)
+
 		def handed():
 			return next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX).get("signature")
 
@@ -838,6 +843,10 @@ class TestMailCraftJmap(FrappeTestCase):
 	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
 		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
 		from frappe_webmail.www import neomail
+
+		no_template = patch("frappe_webmail.signatures.template_for", return_value=None)
+		no_template.start()
+		self.addCleanup(no_template.stop)
 
 		frappe.db.delete("Email Signature", {"user": ["in", (OWNER, SHARED)]})
 		someone_else = self._signature(STRANGER, "<p>Private to the stranger</p>", default=False)

@@ -85,11 +85,13 @@ def host_mailboxes(bearer=None):
 	the desk session of the request, or to Neodesk's OAuth bearer token (`bearer`, mailcraft_jmap.hand_over).
 
 	Each carries the signature MailCraft puts under a message written from it (`signature`, {html, text}, left out
-	without any): the mailbox's own (its Webmail Account's default signature, when it is one of its owner's), else
-	the person's default one, the one the webmail puts under every message."""
+	without any): the company's, written for the person, when an Email Signature Template applies to them and does not
+	leave them their own; else the mailbox's own (its Webmail Account's default signature, when it is one of its
+	owner's), else the person's default one, the one the webmail puts under every message (signatures.signature_for)."""
 	from urllib.parse import quote
 
 	from frappe_webmail.mailcraft_jmap import give_token
+	from frappe_webmail.signatures import signature_for
 	from frappe_webmail.webmail_api import get_accounts
 
 	accounts = get_accounts()
@@ -97,11 +99,9 @@ def host_mailboxes(bearer=None):
 		return []
 	token = give_token(bearer=bearer)
 	base = frappe.utils.get_url() + "/api/method/frappe_webmail.mailcraft_jmap.session?account="
-	# The person's own default signature, the one the webmail puts under every message: read and turned once.
-	own = handed_signature(
-		frappe.db.get_value("Email Signature", {"user": frappe.session.user, "is_default": 1}, "content")
-	)
 	mailboxes = []
+	# The template and the person are worked out once for every mailbox of the page (signatures.signature_for)
+	memo = {}
 	for a in accounts:
 		mailbox = {
 			"email": a["email"],
@@ -111,24 +111,12 @@ def host_mailboxes(bearer=None):
 			"secret": token,
 			"scheme": "bearer",
 		}
-		signature = _mailbox_signature(a) or own
+		chosen = signature_for(frappe.session.user, a, memo) or {}
+		signature = handed_signature(chosen.get("html"), chosen.get("text"))
 		if signature:
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
-
-
-def _mailbox_signature(account):
-	"""The signature a mailbox names as its own, handed over, when it is one of its owner's. Read below the rights: it goes
-	under every message sent from the mailbox, by whoever it is shared with. But the Link can be pointed at anyone's
-	signature (Frappe checks only that it exists, and a mailbox is written by its owner and those it is shared with):
-	another person's stays theirs."""
-	if not account.get("default_signature") or not account.get("user"):
-		return None
-	html = frappe.db.get_value(
-		"Email Signature", {"name": account["default_signature"], "user": account["user"]}, "content"
-	)
-	return handed_signature(html)
 
 
 # A signature is a few lines and perhaps a logo. A bigger one goes as its text alone (the page carries every mailbox's
@@ -143,16 +131,19 @@ _LINE_ELEMENTS = frozenset(
 )
 
 
-def handed_signature(html):
+def handed_signature(html, text=None):
 	"""A signature as MailCraft takes it, {html, text}: None when there is nothing to show (no words, no picture).
 
 	The HTML is the signature as stored: a picture in it is a file of the instance (Frappe saves a pasted one under
-	/private/files/), which only the instance's own pages can show. MailCraft writes the text."""
+	/private/files/), which only the instance's own pages can show. MailCraft writes the text: `text` when the signature
+	comes with its own (the company's, written line for line), else the HTML read as text."""
 	html = (html or "").strip()
 	if not html or len(html) > MAX_SIGNATURE_SOURCE:
 		return None
 	try:
-		text = signature_text(html)[:MAX_SIGNATURE_TEXT].rstrip()
+		text = (text.strip() if isinstance(text, str) and text.strip() else signature_text(html))[
+			:MAX_SIGNATURE_TEXT
+		].rstrip()
 	except Exception:
 		# A signature never keeps the mailboxes from opening: one that cannot be read is left out, and the log says why.
 		frappe.log_error("NeoMail: a signature could not be read as text", frappe.get_traceback())

@@ -1,0 +1,326 @@
+{
+ "actions": [],
+ "autoname": "field:template_name",
+ "creation": "2026-10-19 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "template_name",
+  "enabled",
+  "sb_scope",
+  "applies_to",
+  "company",
+  "department",
+  "cb_scope",
+  "allow_personal",
+  "sb_layout",
+  "layout",
+  "sb_show",
+  "show_full_name",
+  "show_job_title",
+  "show_department",
+  "show_phone",
+  "show_mobile",
+  "show_email",
+  "cb_show",
+  "show_website",
+  "show_company_name",
+  "show_company_address",
+  "show_logo",
+  "show_social_links",
+  "show_disclaimer",
+  "sb_look",
+  "font",
+  "accent_color",
+  "cb_look",
+  "font_size",
+  "logo_width",
+  "sb_social_links",
+  "social_links",
+  "sb_addons",
+  "disclaimer",
+  "cb_addons",
+  "cta_label",
+  "cta_url",
+  "sb_preview",
+  "preview_user",
+  "preview_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Template Name",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "description": "A template that is not enabled is not used: people keep the signature they have.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "sb_scope",
+   "fieldtype": "Section Break",
+   "label": "Who it applies to"
+  },
+  {
+   "default": "Everyone",
+   "description": "The most specific template wins: the one for a person's department, else the one for their company, else the one for everyone.",
+   "fieldname": "applies_to",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Applies To",
+   "options": "Everyone\nCompany\nDepartment",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.applies_to=='Company'",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "mandatory_depends_on": "eval:doc.applies_to=='Company'",
+   "options": "Company"
+  },
+  {
+   "depends_on": "eval:doc.applies_to=='Department'",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Department",
+   "mandatory_depends_on": "eval:doc.applies_to=='Department'",
+   "options": "Department"
+  },
+  {
+   "fieldname": "cb_scope",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "A person who has written a signature of their own keeps it. The others get this template.",
+   "fieldname": "allow_personal",
+   "fieldtype": "Check",
+   "label": "People may use their own signature instead"
+  },
+  {
+   "fieldname": "sb_layout",
+   "fieldtype": "Section Break",
+   "label": "Layout"
+  },
+  {
+   "default": "Text only",
+   "fieldname": "layout",
+   "fieldtype": "Select",
+   "label": "Layout",
+   "options": "Text only\nLogo left\nLogo above\nCompact",
+   "reqd": 1
+  },
+  {
+   "description": "A line is left out when the person has nothing to put in it.",
+   "fieldname": "sb_show",
+   "fieldtype": "Section Break",
+   "label": "What to show"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_full_name",
+   "fieldtype": "Check",
+   "label": "Full name"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_job_title",
+   "fieldtype": "Check",
+   "label": "Job title"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_department",
+   "fieldtype": "Check",
+   "label": "Department"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_phone",
+   "fieldtype": "Check",
+   "label": "Phone",
+   "description": "The User's phone, else the company's main number."
+  },
+  {
+   "default": "0",
+   "fieldname": "show_mobile",
+   "fieldtype": "Check",
+   "label": "Mobile",
+   "description": "The Employee's cell number, else the User's mobile: often a private number, so it is off unless the company wants it."
+  },
+  {
+   "default": "1",
+   "fieldname": "show_email",
+   "fieldtype": "Check",
+   "label": "Email"
+  },
+  {
+   "fieldname": "cb_show",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_website",
+   "fieldtype": "Check",
+   "label": "Website"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_company_name",
+   "fieldtype": "Check",
+   "label": "Company name"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_company_address",
+   "fieldtype": "Check",
+   "label": "Company address"
+  },
+  {
+   "default": "1",
+   "description": "Not in the Compact layout.",
+   "fieldname": "show_logo",
+   "fieldtype": "Check",
+   "label": "Logo"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_social_links",
+   "fieldtype": "Check",
+   "label": "Social links"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_disclaimer",
+   "fieldtype": "Check",
+   "label": "Disclaimer"
+  },
+  {
+   "fieldname": "sb_look",
+   "fieldtype": "Section Break",
+   "label": "Look"
+  },
+  {
+   "default": "Arial",
+   "fieldname": "font",
+   "fieldtype": "Select",
+   "label": "Font",
+   "options": "Arial\nHelvetica\nVerdana\nGeorgia\nTahoma\nTrebuchet MS"
+  },
+  {
+   "default": "#1f3a5f",
+   "description": "Colours the name, the links and the rule between the logo and the details.",
+   "fieldname": "accent_color",
+   "fieldtype": "Color",
+   "label": "Accent Colour"
+  },
+  {
+   "fieldname": "cb_look",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "13",
+   "description": "In pixels, from 11 to 16.",
+   "fieldname": "font_size",
+   "fieldtype": "Int",
+   "label": "Base Font Size"
+  },
+  {
+   "default": "120",
+   "description": "In pixels, from 60 to 240.",
+   "fieldname": "logo_width",
+   "fieldtype": "Int",
+   "label": "Logo Width"
+  },
+  {
+   "fieldname": "sb_social_links",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "social_links",
+   "fieldtype": "Table",
+   "label": "Social Links",
+   "options": "Email Signature Social Link"
+  },
+  {
+   "fieldname": "sb_addons",
+   "fieldtype": "Section Break",
+   "label": "Add-ons"
+  },
+  {
+   "description": "Shown under the signature, in small print, when Disclaimer is ticked above.",
+   "fieldname": "disclaimer",
+   "fieldtype": "Small Text",
+   "label": "Disclaimer"
+  },
+  {
+   "fieldname": "cb_addons",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "A link shown under the details. It needs both its label and its https:// address.",
+   "fieldname": "cta_label",
+   "fieldtype": "Data",
+   "label": "Call to Action Label"
+  },
+  {
+   "fieldname": "cta_url",
+   "fieldtype": "Data",
+   "label": "Call to Action URL",
+   "length": 1000,
+   "options": "URL"
+  },
+  {
+   "fieldname": "sb_preview",
+   "fieldtype": "Section Break",
+   "label": "Preview"
+  },
+  {
+   "description": "The person whose details the preview is written with. It changes nothing in the template.",
+   "fieldname": "preview_user",
+   "fieldtype": "Link",
+   "label": "Preview As",
+   "no_copy": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "preview_html",
+   "fieldtype": "HTML",
+   "label": "Preview"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-19 14:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Webmail",
+ "name": "Email Signature Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "template_name",
+ "track_changes": 1
+}

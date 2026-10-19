@@ -1,0 +1,21 @@
+{#- Logo left: the logo in a column of its own, the details at its right, a thin vertical rule between the two. Without a
+	logo to show it is the text-only arrangement: no empty column, no rule on its own; with a logo and nothing else, the
+	logo alone. The logo's column has the width of the logo: a long disclaimer under the table widens it, and the extra
+	width goes to the details, not to a gap before the rule. -#}
+{% from "_blocks.html" import details, disclaimer, logo %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if card.logo and card.has_details %}
+<tr>
+<td valign="top" width="{{ card.logo.width }}" style="{{ look.cell }}padding:0 16px 0 0;">{{ logo(card.logo) }}</td>
+<td valign="top" style="{{ look.cell }}padding:0 0 0 16px;{{ look.rule }}">{{ details(card, look) }}</td>
+</tr>
+{{ disclaimer(card, look, 2) }}
+{% else %}
+{% if card.logo %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ logo(card.logo) }}</td></tr>
+{% elif card.has_details %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ details(card, look) }}</td></tr>
+{% endif %}
+{{ disclaimer(card, look) }}
+{% endif %}
+</table>

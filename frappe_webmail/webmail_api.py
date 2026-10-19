@@ -26,7 +26,14 @@ from frappe_webmail.conversations import conversation_of, message_id_of, one_per
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
 from frappe_webmail.documents import list_attachable_documents
-from frappe_webmail.inline_images import SAFE_PROTOCOLS, body_with, files_inlined, to_parts
+from frappe_webmail.inline_images import (
+	SAFE_PROTOCOLS,
+	body_with,
+	files_inlined,
+	logo_sized,
+	sender_logo,
+	to_parts,
+)
 from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
 from frappe_webmail.replies import appended_uid, reply_recipients
@@ -35,6 +42,61 @@ try:
 	import bleach
 except ImportError:
 	bleach = None
+
+# The styles a message sent may carry: the properties that Frappe keeps when it cleans a mail it receives
+# (frappe.utils.html_utils.clean_email_html), and the two that Outlook reads to leave the sides of a table alone. None
+# of them fetches anything (no background image, no url()) or positions an element (no position, no float); they style
+# text and boxes, and a sender can hide or shift their own text with them as in any mail. Without a sanitizer for them,
+# bleach 6 empties every style attribute it is told to keep, and the company's signature (tables, fonts, colours:
+# signatures.py) would leave as bare cells.
+EMAIL_CSS_PROPERTIES = [
+	"color",
+	"border-color",
+	"width",
+	"height",
+	"max-width",
+	"background-color",
+	"border-collapse",
+	"border-radius",
+	"border",
+	"border-top",
+	"border-bottom",
+	"border-left",
+	"border-right",
+	"margin",
+	"margin-top",
+	"margin-bottom",
+	"margin-left",
+	"margin-right",
+	"padding",
+	"padding-top",
+	"padding-bottom",
+	"padding-left",
+	"padding-right",
+	"font-size",
+	"font-weight",
+	"font-family",
+	"text-decoration",
+	"line-height",
+	"text-align",
+	"vertical-align",
+	"display",
+	"mso-table-lspace",
+	"mso-table-rspace",
+]
+
+
+def email_css_sanitizer():
+	"""The sanitizer for the style attributes of a message sent. None where bleach is without its CSS extra (tinycss2,
+	which Frappe depends on): the styles are then dropped, as they were before."""
+	try:
+		from bleach.css_sanitizer import CSSSanitizer
+	except ImportError:
+		return None
+	# No SVG property either (bleach keeps a list of its own by default, some of which take a url()): a message sent
+	# carries no SVG.
+	return CSSSanitizer(allowed_css_properties=EMAIL_CSS_PROPERTIES, allowed_svg_properties=[])
+
 
 try:
 	from imapclient import IMAPClient
@@ -1279,13 +1341,16 @@ def send_email(
 			tags=allowed_tags,
 			attributes=allowed_attributes,
 			protocols=SAFE_PROTOCOLS,
+			css_sanitizer=email_css_sanitizer(),
 			strip=True,
 		)
 
 	# A picture of the instance (a signature's logo) leaves as a part too, in the message only: the copy for the
-	# document's timeline keeps its address, which the desk shows (maintenance#1650)
+	# document's timeline keeps its address, which the desk shows (maintenance#1650). The company's logo first gets
+	# back the width its template draws it at, which the desk's editor doesn't keep; it is worked out once for both.
+	logo = sender_logo() if "<img" in (html_content or "").lower() else ""
 	mail_html, file_parts = to_parts(
-		files_inlined(html_content), (account.email or "webmail.local").split("@")[-1]
+		files_inlined(logo_sized(html_content, logo), logo), (account.email or "webmail.local").split("@")[-1]
 	)
 	inline_parts = inline_parts + file_parts
 
@@ -2270,10 +2335,26 @@ def get_signatures():
 
 
 @frappe.whitelist()
-def get_default_signature():
-	"""Get default signature content"""
-	sig = frappe.db.get_value("Email Signature", {"user": frappe.session.user, "is_default": 1}, "content")
-	return sig or ""
+def get_default_signature(account_name=None):
+	"""Get default signature content: the company's, written for the person, when an Email Signature Template applies
+	to them and does not leave them their own (never to a portal account: signatures.template_for); else the signature
+	they have set as their default one. Empty when there is none.
+
+	For a mailbox (`account_name`, one the person owns or is shared, get_account refusing any other), the signature a
+	message written from it starts with: the mailbox's own, and a mailbox shared with them signs as the mailbox, never
+	with their numbers (signatures.signature_for)."""
+	from frappe_webmail.signatures import signature_for
+
+	account = None
+	if account_name:
+		mailbox = get_account(account_name)
+		account = {
+			"user": mailbox.user,
+			"email": mailbox.email,
+			"sender_name": mailbox.sender_name,
+			"default_signature": mailbox.default_signature,
+		}
+	return (signature_for(frappe.session.user, account) or {}).get("html") or ""
 
 
 # ============================================

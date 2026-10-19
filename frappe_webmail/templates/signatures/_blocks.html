@@ -1,0 +1,60 @@
+{#- The parts the layouts share (signatures.py draws them with autoescape on: every {{ value }} is escaped, nothing here is
+	marked safe). The styles come from signatures.look_of, built from checked values only (a colour, a size, a font of a short
+	list). Mail clients drop what they do not know, so: tables to place things, a style written on each element, no <style>
+	block, no class, no margin on a table, no flex or grid. Spacing between groups is the padding of a cell, as Outlook
+	keeps that one. Each line of text is a block of its own (a div), so that an editor which keeps neither tables nor
+	styles, such as the desk's composer, still reads them as lines. The file is read as lines: the newlines and the
+	indentation are taken out once it is drawn, so an inline space that matters is written on the same line as the tags
+	it separates. -#}
+
+{% macro logo(picture) %}
+<img src="{{ picture.src }}" width="{{ picture.width }}"{% if picture.height %} height="{{ picture.height }}"{% endif %} alt="{{ picture.alt }}" style="{{ picture.style }}">
+{% endmacro %}
+
+{% macro identity(card, look) %}
+{% for part in card.identity %}
+<div style="{{ look[part.kind] }}">{{ part.text }}</div>
+{% endfor %}
+{% endmacro %}
+
+{% macro contacts(card, look) %}
+{% for contact in card.contacts %}
+<div style="{{ look.line }}"><span style="{{ look.label }}">{{ contact.label }}:</span> {% if contact.href %}<a href="{{ contact.href }}" style="{{ look.link }}">{{ contact.text }}</a>{% else %}{{ contact.text }}{% endif %}</div>
+{% endfor %}
+{% if card.address %}
+<div style="{{ look.line }}">{{ card.address }}</div>
+{% endif %}
+{% endmacro %}
+
+{% macro links(items, look) %}{% for item in items %}{% if not loop.first %}<span style="{{ look.label }}"> &middot; </span>{% endif %}<a href="{{ item.url }}" style="{{ look.link }}">{{ item.label }}</a>{% endfor %}{% endmacro %}
+
+{% macro extras(card, look) %}
+{% if card.social %}
+<div style="{{ look.small }}">{{ links(card.social, look) }}</div>
+{% endif %}
+{% if card.action %}
+<div style="{{ look.small }}"><a href="{{ card.action.url }}" style="{{ look.action }}">{{ card.action.label }}</a></div>
+{% endif %}
+{% endmacro %}
+
+{#- The lines of a signature, in the groups that are spaced apart: who, how to reach them, where to read more. -#}
+{% macro details(card, look) %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if card.identity %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ identity(card, look) }}</td></tr>
+{% endif %}
+{% if card.contacts or card.address %}
+<tr><td valign="top" style="{{ look.cell }}padding:6px 0 0 0;">{{ contacts(card, look) }}</td></tr>
+{% endif %}
+{% if card.social or card.action %}
+<tr><td valign="top" style="{{ look.cell }}padding:6px 0 0 0;">{{ extras(card, look) }}</td></tr>
+{% endif %}
+</table>
+{% endmacro %}
+
+{#- Under the whole signature, across its columns. -#}
+{% macro disclaimer(card, look, columns=1) %}
+{% if card.disclaimer %}
+<tr><td{% if columns > 1 %} colspan="{{ columns }}"{% endif %} valign="top" style="{{ look.fine }}padding:12px 0 0 0;">{% for line in card.disclaimer %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+{% endif %}
+{% endmacro %}

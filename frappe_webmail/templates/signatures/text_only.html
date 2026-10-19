@@ -1,0 +1,8 @@
+{#- Text only: name, title and contact lines, no picture. -#}
+{% from "_blocks.html" import details, disclaimer %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if card.has_details %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ details(card, look) }}</td></tr>
+{% endif %}
+{{ disclaimer(card, look) }}
+</table>

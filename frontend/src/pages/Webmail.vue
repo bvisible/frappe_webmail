@@ -338,7 +338,7 @@
 					:edit-draft="editingDraft"
 					:initial-attachments="composerAttachments"
 					:initial-subject="composerSubject"
-					:signature="defaultSignature"
+					:signature="composerSignature"
 					:folder="composerFolder"
 					@sent="onEmailSent"
 					@close="closeComposer"
@@ -520,7 +520,8 @@ export default {
 			composerAttachments: [],
 			composerSubject: "",
 			editingDraft: null,
-			defaultSignature: "",
+			// The signature a message from each mailbox starts with, by mailbox ("" before the mailboxes are known)
+			signatures: {},
 			showSignatures: false,
 			pollingEnabled: true,
 			pollingInterval: 60000, // 60 seconds
@@ -585,6 +586,11 @@ export default {
 	computed: {
 		accountNames() {
 			return this.accounts.map((a) => a.name);
+		},
+
+		// The signature of the mailbox the message leaves from: a shared one signs as the mailbox
+		composerSignature() {
+			return this.signatures[this.composerAccount] ?? this.signatures[""] ?? "";
 		},
 
 		// A mailbox as its messages are tagged in « Toutes les boîtes »: its sender name, else its address's first part
@@ -1200,14 +1206,24 @@ export default {
 		},
 
 		async loadDefaultSignature() {
-			try {
-				const response = await frappe.call({
-					method: "frappe_webmail.api.get_default_signature",
-				});
-				this.defaultSignature = response.message || "";
-			} catch (error) {
-				console.error("Error loading signature:", error);
-			}
+			// Each mailbox's: the mailbox's own, the company's written for the person, or the person's (a shared
+			// mailbox signs as the mailbox, never with the writer's numbers)
+			const names = this.accountNames.length ? this.accountNames : [""];
+			const found = await Promise.all(
+				names.map(async (name) => {
+					try {
+						const response = await frappe.call({
+							method: "frappe_webmail.api.get_default_signature",
+							args: name ? { account_name: name } : {},
+						});
+						return [name, response.message || ""];
+					} catch (error) {
+						console.error("Error loading signature:", error);
+						return [name, ""];
+					}
+				})
+			);
+			this.signatures = Object.fromEntries(found);
 		},
 
 		onAccountChange() {

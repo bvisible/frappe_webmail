@@ -451,6 +451,11 @@ class TestSignaturesAPI(TestWebmailAPIBase):
 		"""Test getting default signature"""
 		from frappe_webmail.api import get_default_signature
 
+		# The person's own signature, as before any company signature: none applies here (a site under test may hold one)
+		no_template = patch("frappe_webmail.signatures.template_for", return_value=None)
+		no_template.start()
+		self.addCleanup(no_template.stop)
+
 		# Create default signature
 		sig_name = f"{self.test_user}-DefaultSig"
 		if not frappe.db.exists("Email Signature", sig_name):

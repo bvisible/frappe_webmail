@@ -171,6 +171,143 @@ class TestTheInstancePicturesGoAsParts(TestWebmailAPIBase):
 			heavy = f'<img src="{self._signature()[1]}">'
 			self.assertEqual(files_inlined(heavy), heavy, "too big: the address stays")
 
+	def test_a_company_s_logo_goes_in_for_everybody(self):
+		"""The company signature draws the company's logo for everybody (signatures.py): it leaves as a part whoever
+		sends it, a private file of the company or a public one the setup wizard wrote with no File row."""
+		import os
+
+		written = f"data:image/png;base64,{base64.b64encode(PNG).decode()}"
+		private = self._file()
+		html = f'<img src="{private}">'
+		self.assertEqual(files_inlined(html, logo=""), html, "not a logo: it stays")
+		self.assertIn(written, files_inlined(html, logo=private))
+		# A public file written straight into the site's files, with no File row
+		name = f"inline-logo-{frappe.generate_hash(length=8)}.png"
+		on_disk = frappe.get_site_path("public", "files", name)
+		with open(on_disk, "wb") as handle:
+			handle.write(PNG)
+		self.addCleanup(os.remove, on_disk)
+		address = f"/files/{name}"
+		html = f'<img src="{address}">'
+		self.assertEqual(files_inlined(html, logo=""), html, "not a logo: it stays")
+		self.assertIn(written, files_inlined(html, logo=address))
+		# Only the logo of the sender's own company counts, to the letter
+		for other in (address[:-4] + ".PNG", private):
+			html = f'<img src="{other}">'
+			self.assertEqual(files_inlined(html, logo=address), html, other)
+
+	def test_the_sender_s_logo_is_asked_for_once_a_message(self):
+		with patch.object(inline_images, "sender_logo", return_value="") as asked:
+			files_inlined('<p>Hello</p><img src="https://elsewhere.example/a.png">')
+			self.assertEqual(asked.call_count, 0, "no file of the instance: not asked")
+			files_inlined("".join(f'<img src="/files/inline-many-{n}.png">' for n in range(3)))
+			self.assertEqual(asked.call_count, 1)
+			files_inlined('<img src="/files/inline-many-0.png">', logo="")
+			self.assertEqual(asked.call_count, 1, "given by the caller: not asked again")
+
+	def test_the_sender_s_logo_is_their_company_s_for_the_desk_s_people_only(self):
+		company = frappe.db.get_value("Company", {}, "name")
+		if not company:
+			self.skipTest("this site has no company")
+		before = frappe.db.get_value("Company", company, "company_logo")
+		self.addCleanup(
+			frappe.db.set_value, "Company", company, "company_logo", before, update_modified=False
+		)
+		frappe.db.set_value(
+			"Company", company, "company_logo", " /files/inline-logo-own.png ", update_modified=False
+		)
+		portal = "inline_portal@example.com"
+		if not frappe.db.exists("User", portal):
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": portal,
+					"first_name": "Portal",
+					"send_welcome_email": 0,
+					"user_type": "Website User",
+				}
+			).insert(ignore_permissions=True)
+		with patch("frappe_webmail.signatures.company_of_user", return_value=company):
+			self.assertEqual(inline_images.sender_logo(), "/files/inline-logo-own.png")
+			frappe.set_user(portal)
+			self.assertEqual(
+				inline_images.sender_logo(), "", "a portal account is told nothing of the company"
+			)
+			frappe.set_user(self.test_user)
+		with patch("frappe_webmail.signatures.company_of_user", return_value=None):
+			self.assertEqual(inline_images.sender_logo(), "", "no company: no logo")
+		with patch("frappe_webmail.signatures.company_of_user", side_effect=RuntimeError("boom")):
+			self.assertEqual(inline_images.sender_logo(), "", "never in the way of a message")
+
+	def test_the_logo_leaves_at_the_width_its_template_draws_it(self):
+		"""The desk's editor keeps a picture's address but not its size: the sender's company logo gets back its width."""
+		logo = "/files/inline-logo-sized.png"
+		with patch.object(inline_images, "_logo_width", return_value=150):
+			self.assertEqual(
+				inline_images.logo_sized(f'<p>Camille</p><img src="{logo}" alt="logo">', logo),
+				f'<p>Camille</p><img width="150" src="{logo}" alt="logo">',
+			)
+			# A width it already says stays, and another picture is left as it was, beside the logo too
+			for kept in (
+				f'<img src="{logo}" width="80">',
+				'<img src="/files/other.png">',
+				"<p>No picture</p>",
+			):
+				self.assertEqual(inline_images.logo_sized(kept, logo), kept)
+			self.assertEqual(
+				inline_images.logo_sized(f'<img src="/files/other.png"><img src="{logo}">', logo),
+				f'<img src="/files/other.png"><img width="150" src="{logo}">',
+			)
+			# The sender's own logo, when the caller doesn't give it
+			with patch.object(inline_images, "sender_logo", return_value=logo):
+				self.assertIn('width="150"', inline_images.logo_sized(f'<img src="{logo}">'))
+		self.assertEqual(inline_images.logo_sized(f'<img src="{logo}">', ""), f'<img src="{logo}">')
+
+	def test_a_file_is_only_the_one_of_its_very_address(self):
+		"""The database compares addresses without case: a file named like another in other letters is not that one."""
+		url = self._file(private=0)
+		self.assertIn("data:image/png", files_inlined(f'<img src="{url}">'))
+		other = url[:-4] + url[-4:].upper()
+		self.assertEqual(files_inlined(f'<img src="{other}">'), f'<img src="{other}">')
+
+	def test_a_public_file_is_read_from_the_public_files_only(self):
+		for climbing in (
+			"/files/../../site_config.json",
+			"/files/%2e%2e/%2e%2e/site_config.json",
+			"/files/../private/files/x.png",
+			"/files/",
+			"/files/inline-logo-gone.png",
+			"/files/with-a-nul\x00.png",
+		):
+			self.assertIsNone(inline_images._public_file(climbing), climbing)
+		# A file that can't be read never stops a message: it is as if it weren't there
+		import os
+
+		name = f"inline-logo-{frappe.generate_hash(length=8)}.png"
+		on_disk = frappe.get_site_path("public", "files", name)
+		with open(on_disk, "wb") as handle:
+			handle.write(PNG)
+		self.addCleanup(os.remove, on_disk)
+		self.assertEqual(inline_images._public_file(f"/files/{name}"), PNG)
+		with patch("builtins.open", side_effect=PermissionError("denied")):
+			self.assertIsNone(inline_images._public_file(f"/files/{name}"))
+		# A link in the public files to a file out of them is not read
+		outside = frappe.get_site_path(f"inline-outside-{frappe.generate_hash(length=8)}.png")
+		with open(outside, "wb") as handle:
+			handle.write(PNG)
+		self.addCleanup(os.remove, outside)
+		link = frappe.get_site_path("public", "files", f"inline-link-{frappe.generate_hash(length=8)}.png")
+		os.symlink(outside, link)
+		self.addCleanup(os.remove, link)
+		self.assertIsNone(inline_images._public_file("/files/" + os.path.basename(link)))
+		# From the address a message gives, decoded, to the disk: a file out of the public files stays an address, even
+		# taken for the logo
+		climbing = "/files/%2e%2e/%2e%2e/" + os.path.basename(outside)
+		decoded = inline_images._local_path(climbing)
+		self.assertEqual(decoded, "/files/../../" + os.path.basename(outside))
+		html = f'<img src="{climbing}">'
+		self.assertEqual(files_inlined(html, logo=decoded), html)
+
 	def test_a_colleague_s_signature_logo_stays_an_address(self):
 		"""Frappe stores one logo pasted by several people once: the person's own row decides, not the colleague's."""
 		colleague = "inline_1650_colleague@example.com"
