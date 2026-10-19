@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-19 19:47+0000\n"
-"PO-Revision-Date: 2026-10-19 19:47+0000\n"
+"POT-Creation-Date: 2026-10-19 22:26+0000\n"
+"PO-Revision-Date: 2026-10-19 22:26+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -80,11 +80,11 @@ msgstr ""
 msgid "A mailbox cannot be renamed."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1190
+#: frappe_webmail/mailcraft_jmap.py:1204
 msgid "A message goes into one folder."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1138
+#: frappe_webmail/mailcraft_jmap.py:1152
 msgid "A message stays in one folder."
 msgstr ""
 
@@ -177,7 +177,7 @@ msgstr ""
 msgid "Active on this mailbox"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1308
+#: frappe_webmail/mailcraft_jmap.py:1335
 msgid "Add at least one recipient."
 msgstr ""
 
@@ -1486,7 +1486,7 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1382
+#: frappe_webmail/mailcraft_jmap.py:1511
 msgid "Folders are managed in the webmail for now."
 msgstr ""
 
@@ -2054,7 +2054,7 @@ msgstr ""
 msgid "Message subject"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1022
+#: frappe_webmail/mailcraft_jmap.py:1036
 msgid "Messages are imported, not created."
 msgstr ""
 
@@ -2109,7 +2109,7 @@ msgstr ""
 msgid "Name of the folder"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:888
+#: frappe_webmail/mailcraft_jmap.py:902
 msgid "Name the messages to read."
 msgstr ""
 
@@ -2348,7 +2348,7 @@ msgstr ""
 msgid "Not in the Compact layout."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:403 frappe_webmail/mailcraft_jmap.py:630
+#: frappe_webmail/mailcraft_jmap.py:417 frappe_webmail/mailcraft_jmap.py:644
 #: frappe_webmail/webmail_api.py:2296 frappe_webmail/webmail_api.py:2364
 msgid "Not permitted"
 msgstr ""
@@ -2435,11 +2435,11 @@ msgstr ""
 msgid "Only Trash and Spam folders can be emptied"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:835
+#: frappe_webmail/mailcraft_jmap.py:849
 msgid "Only a folder can be listed."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1313
+#: frappe_webmail/mailcraft_jmap.py:1340
 msgid "Only a message just written here can be sent."
 msgstr ""
 
@@ -2563,7 +2563,7 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:103
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:114
 msgid "Plain text version"
 msgstr ""
 
@@ -3133,7 +3133,7 @@ msgstr ""
 msgid "Signature name"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:83
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:94
 msgid "Signature preview"
 msgstr ""
 
@@ -3334,6 +3334,14 @@ msgstr ""
 msgid "The base font size must be between {0} and {1} pixels."
 msgstr ""
 
+#: frappe_webmail/mailcraft_jmap.py:1442
+msgid "The connection to the mail server ended before the message was sent."
+msgstr ""
+
+#: frappe_webmail/mailcraft_jmap.py:1384
+msgid "The connection to the mail server failed while the message was on its way."
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
 #: frontend/src/components/EmailViewer.vue:1163
 msgid "The contact could not be created"
@@ -3360,13 +3368,21 @@ msgstr ""
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:414 frappe_webmail/mailcraft_jmap.py:543
-#: frappe_webmail/mailcraft_jmap.py:634
+#: frappe_webmail/mailcraft_jmap.py:1438
+msgid "The mail server can't take the recipients just now."
+msgstr ""
+
+#: frappe_webmail/mailcraft_jmap.py:428 frappe_webmail/mailcraft_jmap.py:557
+#: frappe_webmail/mailcraft_jmap.py:648
 msgid "The mail server could not answer."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1340
-msgid "The mail server did not take the message: {0}"
+#: frappe_webmail/mailcraft_jmap.py:1413
+msgid "The mail server could not be reached or signed in to."
+msgstr ""
+
+#: frappe_webmail/mailcraft_jmap.py:1435
+msgid "The mail server takes none of the recipients."
 msgstr ""
 
 #: frontend/src/components/AgentPanel.vue:48
@@ -3377,19 +3393,19 @@ msgstr ""
 msgid "The message is required"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1321
+#: frappe_webmail/mailcraft_jmap.py:1348
 msgid "The message must be from this mailbox."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1184
+#: frappe_webmail/mailcraft_jmap.py:1198
 msgid "The message to file was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1319
+#: frappe_webmail/mailcraft_jmap.py:1346
 msgid "The message to send was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1208
+#: frappe_webmail/mailcraft_jmap.py:1222
 msgid "The message was filed but cannot be found."
 msgstr ""
 
@@ -3410,7 +3426,7 @@ msgstr ""
 msgid "The person whose details the preview is written with. It changes nothing in the template."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:63
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:74
 msgid "The preview could not be drawn."
 msgstr ""
 
@@ -3435,7 +3451,7 @@ msgstr ""
 msgid "This folder no longer exists in the Drive"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1296 frappe_webmail/mailcraft_jmap.py:1300
+#: frappe_webmail/mailcraft_jmap.py:1323 frappe_webmail/mailcraft_jmap.py:1327
 msgid "This mailbox can only send as itself."
 msgstr ""
 
@@ -3443,11 +3459,11 @@ msgstr ""
 msgid "This message"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1006
+#: frappe_webmail/mailcraft_jmap.py:1020
 msgid "This message cannot be found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1010
+#: frappe_webmail/mailcraft_jmap.py:1024
 msgid "This message is no longer in its folder: refresh the list and try again."
 msgstr ""
 
@@ -3460,11 +3476,11 @@ msgstr ""
 msgid "This signature is too large."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:33
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:34
 msgid "This template is not enabled: nobody gets it."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:73
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:84
 msgid "This template says nothing for this person: everything it shows is empty or off."
 msgstr ""
 
@@ -3532,11 +3548,11 @@ msgstr ""
 msgid "Token Expiry"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1316
+#: frappe_webmail/mailcraft_jmap.py:1343
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:596
+#: frappe_webmail/mailcraft_jmap.py:610
 msgid "Too many messages waiting to be filed."
 msgstr ""
 

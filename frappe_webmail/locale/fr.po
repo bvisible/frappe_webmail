@@ -4057,3 +4057,23 @@ msgstr "trop d'images sont téléchargées en ce moment"
 #: frappe_webmail/pictures.py:644
 msgid "what came is not a picture"
 msgstr "ce qui a été reçu n'est pas une image"
+
+#: frappe_webmail/mailcraft_jmap.py:1442
+msgid "The connection to the mail server ended before the message was sent."
+msgstr "La connexion au serveur de messagerie s'est interrompue avant l'envoi du message."
+
+#: frappe_webmail/mailcraft_jmap.py:1384
+msgid "The connection to the mail server failed while the message was on its way."
+msgstr "La connexion au serveur de messagerie a échoué pendant que le message était en cours d'envoi."
+
+#: frappe_webmail/mailcraft_jmap.py:1438
+msgid "The mail server can't take the recipients just now."
+msgstr "Le serveur de messagerie ne peut pas accepter les destinataires pour le moment."
+
+#: frappe_webmail/mailcraft_jmap.py:1413
+msgid "The mail server could not be reached or signed in to."
+msgstr "Le serveur de messagerie est injoignable ou l'authentification a échoué."
+
+#: frappe_webmail/mailcraft_jmap.py:1435
+msgid "The mail server takes none of the recipients."
+msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
