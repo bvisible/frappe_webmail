@@ -3738,3 +3738,220 @@ msgstr "Ouvrir le webmail pour en ajouter une"
 #: frappe_webmail/www/neomail.html:44
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:117
+msgid "A call to action needs both its label and its address."
+msgstr "Un appel à l'action doit avoir à la fois son libellé et son adresse."
+
+#. Description of the 'What to show' (Section Break) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A line is left out when the person has nothing to put in it."
+msgstr "Une ligne est omise lorsque la personne n'a rien à y indiquer."
+
+#. Description of the 'Call to Action Label' (Data) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A link shown under the details. It needs both its label and its https:// address."
+msgstr "Lien affiché sous les coordonnées. Il doit avoir à la fois un libellé et une adresse https://."
+
+#. Description of the 'People may use their own signature instead' (Check)
+#. field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A person who has written a signature of their own keeps it. The others get this template."
+msgstr "Une personne qui a rédigé sa propre signature la conserve. Les autres reçoivent ce modèle."
+
+#. Description of the 'Enabled' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A template that is not enabled is not used: people keep the signature they have."
+msgstr "Un modèle désactivé n'est pas utilisé : les personnes gardent la signature qu'elles ont."
+
+#. Label of a Int field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Base Font Size"
+msgstr "Taille de la police de base"
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Call to Action Label"
+msgstr "Libellé de l'appel à l'action"
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Call to Action URL"
+msgstr "URL de l'appel à l'action"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:75
+msgid "Choose the company this template applies to."
+msgstr "Choisissez la société à laquelle ce modèle s'applique."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:79
+msgid "Choose the department this template applies to."
+msgstr "Choisissez le département auquel ce modèle s'applique."
+
+#. Description of the 'Accent Colour' (Color) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Colours the name, the links and the rule between the logo and the details."
+msgstr "Colore le nom, les liens et la ligne qui sépare le logo des coordonnées."
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Company address"
+msgstr "Adresse de la société"
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#. Label of a Small Text field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Disclaimer"
+msgstr "Mention légale"
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+msgid "Email Signature Social Link"
+msgstr "Lien social de signature e-mail"
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Email Signature Template"
+msgstr "Modèle de signature e-mail"
+
+#. Description of the 'Base Font Size' (Int) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In pixels, from 11 to 16."
+msgstr "En pixels, de 11 à 16."
+
+#. Description of the 'Logo Width' (Int) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In pixels, from 60 to 240."
+msgstr "En pixels, de 60 à 240."
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Logo above"
+msgstr "Logo au-dessus"
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Logo left"
+msgstr "Logo à gauche"
+
+#. Label of a Int field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Logo Width"
+msgstr "Largeur du logo"
+
+#. Label of a Section Break field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Look"
+msgstr "Apparence"
+
+#: frappe_webmail/signatures.py:692
+msgid "Not a template"
+msgstr "Ce n'est pas un modèle."
+
+#. Description of the 'Logo' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Not in the Compact layout."
+msgstr "Non affiché dans la mise en page Compact."
+
+#. Description of the 'URL' (Data) field in DocType 'Email Signature Social
+#. Link'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+msgid "Only https:// addresses are accepted."
+msgstr "Seules les adresses https:// sont acceptées."
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "People may use their own signature instead"
+msgstr "Les personnes peuvent utiliser leur propre signature à la place."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:103
+msgid "Plain text version"
+msgstr "Version en texte brut"
+
+#. Label of a Link field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Preview As"
+msgstr "Aperçu en tant que"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:111
+msgid "Row {0}: the address of a social link must start with https://"
+msgstr "Ligne {0} : l'adresse d'un lien social doit commencer par https://"
+
+#. Description of the 'Disclaimer' (Small Text) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Shown under the signature, in small print, when Disclaimer is ticked above."
+msgstr "Affichée sous la signature, en petits caractères, lorsque « Mention légale » est cochée ci-dessus."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:83
+msgid "Signature preview"
+msgstr "Aperçu de la signature"
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Text only"
+msgstr "Texte seul"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:91
+msgid "The accent colour must be written as #rrggbb, for example {0}."
+msgstr "La couleur d'accent doit être saisie au format #rrggbb, par exemple {0}."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:121
+msgid "The address of the call to action must start with https://"
+msgstr "L'adresse de l'appel à l'action doit commencer par https://"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:99
+msgid "The base font size must be between {0} and {1} pixels."
+msgstr "La taille de la police de base doit être comprise entre {0} et {1} pixels."
+
+#. Description of the 'Mobile' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "The Employee's cell number, else the User's mobile: often a private number, so it is off unless the company wants it."
+msgstr "Le numéro de mobile de l'employé, sinon celui de l'utilisateur : souvent un numéro privé, il reste désactivé sauf si la société le souhaite."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:102
+msgid "The logo width must be between {0} and {1} pixels."
+msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
+
+#. Description of the 'Applies To' (Select) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "The most specific template wins: the one for a person's department, else the one for their company, else the one for everyone."
+msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui de sa société, sinon celui qui vaut pour tout le monde."
+
+#. Description of the 'Preview As' (Link) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "The person whose details the preview is written with. It changes nothing in the template."
+msgstr "La personne dont les coordonnées servent à l'aperçu. Cela ne modifie rien dans le modèle."
+
+#. Description of the 'Phone' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "The User's phone, else the company's main number."
+msgstr "Le téléphone de l'utilisateur, sinon le numéro principal de la société."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:33
+msgid "This template is not enabled: nobody gets it."
+msgstr "Ce modèle est désactivé : personne ne le reçoit."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:73
+msgid "This template says nothing for this person: everything it shows is empty or off."
+msgstr "Pour cette personne, ce modèle ne contient rien : tout ce qu'il affiche est vide ou désactivé."
+
+#. Label of a Section Break field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "What to show"
+msgstr "Éléments à afficher"
+
+#. Label of a Section Break field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Who it applies to"
+msgstr "À qui s'applique ce modèle"
