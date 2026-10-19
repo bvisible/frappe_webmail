@@ -3955,3 +3955,105 @@ msgstr "Éléments à afficher"
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "Who it applies to"
 msgstr "À qui s'applique ce modèle"
+
+#: frontend/src/components/SignatureEditor.vue:70
+#: frontend/src/components/SignatureEditor.vue:75
+msgid "As it will be sent"
+msgstr "Aperçu tel qu'il sera envoyé"
+
+#: frappe_webmail/pictures.py:642
+msgid "it came packed in a way that can't be read"
+msgstr "elle est arrivée compressée sous une forme illisible"
+
+#: frappe_webmail/pictures.py:640
+msgid "it is larger than 8 MB"
+msgstr "elle dépasse 8 Mo"
+
+#: frappe_webmail/pictures.py:648
+msgid "it is no longer there ({0})"
+msgstr "elle n'est plus disponible ({0})"
+
+#: frappe_webmail/pictures.py:624
+msgid "it is not the address of a picture on the web"
+msgstr "son adresse ne mène pas à une image sur le web"
+
+#: frappe_webmail/pictures.py:636
+msgid "it took too long"
+msgstr "elle a mis trop de temps"
+
+#: frappe_webmail/pictures.py:638
+msgid "it was sent on too many times"
+msgstr "elle a été redirigée trop de fois"
+
+#: frappe_webmail/pictures.py:626
+msgid "its address does not lead to the public internet"
+msgstr "son adresse n'est pas accessible depuis l'internet public"
+
+#: frappe_webmail/pictures.py:628
+msgid "its server could not be found"
+msgstr "son serveur est introuvable"
+
+#: frappe_webmail/pictures.py:630
+msgid "its server could not be reached"
+msgstr "son serveur est injoignable"
+
+#: frappe_webmail/pictures.py:632
+msgid "its server's certificate is not valid"
+msgstr "le certificat de son serveur n'est pas valide"
+
+#: frontend/src/components/SignatureEditor.vue:68
+msgid "Paste the HTML of your signature here"
+msgstr "Collez ici le code HTML de votre signature"
+
+#: frontend/src/components/SignatureEditor.vue:79
+msgid "Scripts, forms and style sheets are taken out. Pictures must be on the web (https) or in Neoffice."
+msgstr "Les scripts, les formulaires et les feuilles de style sont retirés. Les images doivent être hébergées sur le web (https) ou dans Neoffice."
+
+#: frappe_webmail/pictures.py:748
+msgid "so many pictures were downloaded in the last minutes that the next ones must wait"
+msgstr "tant d'images ont été téléchargées ces dernières minutes que les suivantes doivent attendre"
+
+#: frappe_webmail/pictures.py:634
+msgid "the connection broke before it was all there"
+msgstr "la connexion s'est interrompue avant qu'elle soit arrivée en entier"
+
+#: frappe_webmail/pictures.py:655 frappe_webmail/pictures.py:732
+msgid "the download failed"
+msgstr "le téléchargement a échoué"
+
+#: frontend/src/components/SignatureEditor.vue:285
+msgid "The editor keeps text, links and pictures only: this signature's layout and colours would be lost. Open it in the editor anyway?"
+msgstr "L'éditeur ne conserve que le texte, les liens et les images : la mise en page et les couleurs de cette signature seraient perdues. Voulez-vous quand même l'ouvrir dans l'éditeur ?"
+
+#: frappe_webmail/pictures.py:654
+msgid "the server answered {0} instead of a picture"
+msgstr "le serveur a répondu {0} au lieu d'une image"
+
+#: frappe_webmail/pictures.py:652
+msgid "the server has trouble of its own ({0})"
+msgstr "le serveur a un problème de son côté ({0})"
+
+#: frappe_webmail/pictures.py:650
+msgid "the server is being asked too often just now ({0})"
+msgstr "le serveur est sollicité trop souvent en ce moment ({0})"
+
+#: frappe_webmail/pictures.py:646
+msgid "the server won't hand it out ({0})"
+msgstr "le serveur refuse de la transmettre ({0})"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:43
+msgid "This signature has nothing a recipient could be shown."
+msgstr "Cette signature ne contient rien qu'un destinataire puisse voir."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:40
+#: frappe_webmail/webmail_api.py:2299
+msgid "This signature is too large."
+msgstr "Cette signature est trop volumineuse."
+
+#: frappe_webmail/pictures.py:752
+msgid "too many pictures are being downloaded just now"
+msgstr "trop d'images sont téléchargées en ce moment"
+
+#: frappe_webmail/pictures.py:644
+msgid "what came is not a picture"
+msgstr "ce qui a été reçu n'est pas une image"
