@@ -42,14 +42,21 @@ class TestMailCraftPage(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 
-	def _context(self, off=0, build=True, sample=False):
+	def _context(self, off=0, build=True, sample=False, trial=None, trial_installed=False):
 		from frappe_webmail.www import neomail
 
 		context = frappe._dict()
+		form = frappe._dict({"sample": ""} if sample else {})
+		if trial:
+			form.build = trial
 		with (
 			patch.dict(frappe.local.conf, {"neomail_disabled": off}),
-			patch.object(neomail, "build_installed", return_value=build),
-			patch.object(frappe.local, "form_dict", frappe._dict({"sample": ""} if sample else {})),
+			patch.object(
+				neomail,
+				"build_installed",
+				side_effect=lambda folder="mailcraft": build if folder == "mailcraft" else trial_installed,
+			),
+			patch.object(frappe.local, "form_dict", form),
 		):
 			neomail.get_context(context)
 		return context
@@ -133,3 +140,18 @@ class TestMailCraftPage(FrappeTestCase):
 		with patch.object(neomail, "nora_installed", return_value=False):
 			url = self._context(sample=True).build_url
 		self.assertTrue(url.endswith("&author=Jeanne%20%26%20Co%20Muster%231"), url)
+
+	def test_the_trial_build_opens_where_it_is_installed_and_only_when_asked(self):
+		"""`?build=ucs` frames the build tried beside the one in service; where it is not installed, or for any other
+		value, the page frames the one in service."""
+		from frappe_webmail.www import neomail
+
+		frappe.set_user(STAFF)
+		with patch.object(neomail, "nora_installed", return_value=False):
+			tried = self._context(sample=True, trial="ucs", trial_installed=True).build_url
+			missing = self._context(sample=True, trial="ucs", trial_installed=False).build_url
+			other = self._context(sample=True, trial="../mailcraft", trial_installed=True).build_url
+			unasked = self._context(sample=True, trial_installed=True).build_url
+		self.assertTrue(tried.startswith("/assets/suite/craft/mailcraft-ucs/index.html?sample&"), tried)
+		for url in (missing, other, unasked):
+			self.assertTrue(url.startswith("/assets/suite/craft/mailcraft/index.html?sample&"), url)

@@ -26,6 +26,11 @@ from frappe import _
 from frappe_webmail.mailcraft_jmap import neomail_enabled
 
 BUILD = "/assets/suite/craft/mailcraft/index.html"
+# A second build tried beside the one in service, opened by `?build=ucs`: NeoMail on its new base, which a trial
+# instance installs by hand next to the other (suite/public/craft/mailcraft-ucs). Where it is not installed the
+# parameter changes nothing.
+TRIAL = "mailcraft-ucs"
+TRIAL_BUILD = f"/assets/suite/craft/{TRIAL}/index.html"
 ROUTE = "/neomail"
 # The name the person reads; the build, a fork of MailCraft, shows it in place of its own.
 PRODUCT = "NeoMail"
@@ -33,11 +38,12 @@ PRODUCT = "NeoMail"
 no_cache = 1
 
 
-def build_installed():
-	"""The browser build is where the page frames it: the Suite's installer put it there (craft_editors.json)."""
+def build_installed(folder="mailcraft"):
+	"""The browser build is where the page frames it: the Suite's installer put it there (craft_editors.json), or, for
+	the trial build, the instance's administrator did."""
 	if "suite" not in frappe.get_installed_apps():
 		return False
-	return os.path.isfile(frappe.get_app_path("suite", "public", "craft", "mailcraft", "index.html"))
+	return os.path.isfile(frappe.get_app_path("suite", "public", "craft", folder, "index.html"))
 
 
 def available():
@@ -70,7 +76,8 @@ def get_context(context):
 	author = frappe.utils.get_fullname(frappe.session.user)
 	if author:
 		query.append("author=" + quote(author, safe=""))
-	context.build_url = BUILD + ("?" + "&".join(query) if query else "")
+	trial = frappe.form_dict.get("build") == "ucs" and build_installed(TRIAL)
+	context.build_url = (TRIAL_BUILD if trial else BUILD) + ("?" + "&".join(query) if query else "")
 	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
 
 
