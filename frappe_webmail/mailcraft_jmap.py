@@ -56,6 +56,7 @@ from frappe_webmail.attachments import get_folder_counts
 CORE = "urn:ietf:params:jmap:core"
 MAIL = "urn:ietf:params:jmap:mail"
 SUBMISSION = "urn:ietf:params:jmap:submission"
+QUOTA = "urn:ietf:params:jmap:quota"
 
 METHOD_PREFIX = "frappe_webmail.mailcraft_jmap."
 # The four addresses a token is good for, under each API prefix Frappe routes.
@@ -423,6 +424,7 @@ def _session(address):
 			},
 			MAIL: {},
 			SUBMISSION: {},
+			QUOTA: {},
 			**contacts,
 			**calendars,
 		},
@@ -441,6 +443,7 @@ def _session(address):
 						"mayCreateTopLevelMailbox": False,
 					},
 					SUBMISSION: {"maxDelayedSend": 0, "submissionExtensions": {}},
+					QUOTA: {},
 					**account_contacts,
 					**account_calendars,
 				},
@@ -449,6 +452,7 @@ def _session(address):
 		"primaryAccounts": {
 			MAIL: aid,
 			SUBMISSION: aid,
+			QUOTA: aid,
 			**{capability: aid for capability in (*contacts, *calendars)},
 		},
 		"username": frappe.session.user,
@@ -1339,6 +1343,49 @@ def mailbox_set(args):
 	}
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Quota/get
+# ---------------------------------------------------------------------------------------------------------------
+
+QUOTA_ID = "q"
+QUOTA_TTL = 300
+
+
+def quota_get(args):
+	"""The space the mailbox uses on its server and its limit (RFC 9425), as the webmail's own storage bar reads it
+	(IMAP QUOTA on INBOX): one quota of the whole account in octets, or none when the server keeps none. NeoMail shows
+	it in its File page and at the foot of its folder pane. Read again at most every five minutes: NeoMail asks at each
+	sync, and each reading opens an IMAP session."""
+	account = _account(args.get("accountId"))
+	ids = _ids(args)
+	key = f"mailcraft_jmap:quota:{account.name}"
+	kept = frappe.cache().get_value(key)
+	if kept is None:
+		read = webmail.get_quota(account.name)
+		kept = {"used": int(read["usage_kb"]) * 1024, "limit": int(read["limit_kb"]) * 1024} if read else {}
+		frappe.cache().set_value(key, kept, expires_in_sec=QUOTA_TTL)
+	quotas = []
+	if kept:
+		quotas.append(
+			{
+				"id": QUOTA_ID,
+				"resourceType": "octets",
+				"used": kept["used"],
+				"hardLimit": kept["limit"],
+				"scope": "account",
+				"name": account.name,
+				"types": ["Mail"],
+			}
+		)
+	known = {q["id"] for q in quotas}
+	return {
+		"accountId": args.get("accountId"),
+		"state": "0",
+		"list": [q for q in quotas if ids is None or q["id"] in ids],
+		"notFound": [] if ids is None else [i for i in ids if i not in known],
+	}
+
+
 METHODS = {
 	"Mailbox/get": mailbox_get,
 	"Mailbox/set": mailbox_set,
@@ -1348,4 +1395,5 @@ METHODS = {
 	"Email/import": email_import,
 	"Identity/get": identity_get,
 	"EmailSubmission/set": submission_set,
+	"Quota/get": quota_get,
 }

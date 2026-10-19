@@ -53,8 +53,10 @@ def message(subject, sender=MAILBOX, extra=""):
 class FakeServer:
 	"""An IMAP server with folders, flags, UIDs and UIDVALIDITY, answering as imapclient does (UID commands)."""
 
-	def __init__(self, sort=False, uidplus=True, move=False):
+	def __init__(self, sort=False, uidplus=True, move=False, quota=None):
 		self.uidplus, self.can_move = uidplus, move
+		# (usage, limit) in kilobytes, as IMAP QUOTA counts them (RFC 2087); None: the server keeps no quota.
+		self.quota = quota
 		self.folders = {
 			"INBOX": {"flags": (b"\\HasNoChildren",), "messages": {}},
 			"Sent": {"flags": (b"\\HasNoChildren", b"\\Sent"), "messages": {}},
@@ -83,7 +85,12 @@ class FakeServer:
 			+ ((b"UIDPLUS",) if self.uidplus else ())
 			+ ((b"MOVE",) if self.can_move else ())
 			+ ((b"SORT",) if self.can_sort else ())
+			+ ((b"QUOTA",) if self.quota else ())
 		)
+
+	def get_quota_root(self, mailbox):
+		usage, limit = self.quota
+		return None, [SimpleNamespace(quota_root="", resource=b"STORAGE", usage=usage, limit=limit)]
 
 	def list_folders(self, *args, **kwargs):
 		return [(f["flags"], b"/", name) for name, f in self.folders.items()]
@@ -395,6 +402,43 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertTrue(session["apiUrl"].endswith(API))
 		self.assertIn("{blobId}", session["downloadUrl"])
 		self.assertIn("{accountId}", session["uploadUrl"])
+
+	def test_the_session_offers_the_quota(self):
+		session = json.loads(jmap.session(MAILBOX).get_data())
+		self.assertEqual(session["capabilities"][jmap.QUOTA], {})
+		self.assertIn(jmap.QUOTA, session["accounts"][self.aid]["accountCapabilities"])
+		self.assertEqual(session["primaryAccounts"][jmap.QUOTA], self.aid)
+
+	def test_the_quota_is_the_storage_the_webmail_reads(self):
+		"""16 MB used out of 20 GB, as the webmail's storage bar shows it: octets for NeoMail (RFC 9425)."""
+		frappe.cache().delete_value(f"mailcraft_jmap:quota:{MAILBOX}")
+		with served(FakeServer(quota=(16 * 1024, 20 * 1024 * 1024))):
+			_n, every, _c = self._call("Quota/get", {"accountId": self.aid, "ids": None})
+			_n, some, _c = self._call("Quota/get", {"accountId": self.aid, "ids": ["q", "nope"]})
+		(quota,) = every["list"]
+		self.assertEqual(
+			(quota["resourceType"], quota["scope"], quota["types"]), ("octets", "account", ["Mail"])
+		)
+		self.assertEqual((quota["used"], quota["hardLimit"]), (16 * 1024 * 1024, 20 * 1024**3))
+		self.assertEqual([q["id"] for q in some["list"]], ["q"])
+		self.assertEqual(some["notFound"], ["nope"])
+
+	def test_a_server_without_quota_gives_none_and_is_not_asked_again_at_once(self):
+		frappe.cache().delete_value(f"mailcraft_jmap:quota:{MAILBOX}")
+		with (
+			served(FakeServer()),
+			patch.object(jmap.webmail, "get_quota", wraps=jmap.webmail.get_quota) as read,
+		):
+			_n, first, _c = self._call("Quota/get", {"accountId": self.aid, "ids": None})
+			_n, again, _c = self._call("Quota/get", {"accountId": self.aid, "ids": None})
+		self.assertEqual((first["list"], again["list"]), ([], []))
+		self.assertEqual(read.call_count, 1, "read once, then kept for a few minutes")
+
+	def test_the_quota_of_a_mailbox_one_cannot_open_is_refused(self):
+		self._as(STRANGER)
+		with served(FakeServer(quota=(1, 2))):
+			out = self._call("Quota/get", {"accountId": self.aid, "ids": None})
+		self.assertEqual((out[0], out[1]["type"]), ("error", "forbidden"))
 
 	def test_a_request_out_of_bounds_is_refused(self):
 		self.assertEqual(self._post(b"{nope").status_code, 400)
