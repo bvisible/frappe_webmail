@@ -25,6 +25,7 @@ frappe.ui.form.on("Email Signature Template", {
 		frm.set_value("preview_user", frappe.session.user, true, true);
 		frm.trigger("enabled");
 		frm.refresh_preview();
+		show_font_names(frm);
 	},
 
 	enabled: function (frm) {
@@ -42,6 +43,16 @@ frappe.ui.form.on("Email Signature Template", {
 		frm.refresh_preview();
 	},
 });
+
+// A font's name is a name: shown as it is written. Frappe passes the options of a Select through the site's
+// translations, where another app's « Georgia » is the country (« Géorgie »).
+function show_font_names(frm) {
+	const field = frm.get_field("font");
+	if (!field || !field.$input) return;
+	field.$input.find("option").each(function () {
+		if (this.value) this.textContent = this.value;
+	});
+}
 
 function draw_preview(frm) {
 	const field = frm.get_field("preview_html");
