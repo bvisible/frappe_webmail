@@ -17,6 +17,9 @@ from frappe_webmail import signatures
 PREFIX = "zz-signature-test"
 # Roles that ordinary people, portal users or visitors hold: never one that reads or writes the templates
 BROAD_ROLES = {"All", "Guest", "Desk User", "Website User", "Employee", "Employee Self Service"}
+# The test runner makes test records for every DocType a template links to: a site without ERPNext (the CI's) has neither
+# of these, and the tests that need them skip there.
+test_ignore = ["Company", "Department"]
 
 
 class TestEmailSignatureTemplate(FrappeTestCase):
