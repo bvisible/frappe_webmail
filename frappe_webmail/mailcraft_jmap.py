@@ -14,11 +14,13 @@ window at each sync and searches its own cache. Every mailbox call goes through 
 Only what the webmail has no function for is done here: the raw source, INTERNALDATE, UIDVALIDITY and the raw header
 fields, appending a given message, sending a given message. The instance's contacts come as a read-only address book
 (JMAP for Contacts, RFC 9610) in one mailbox of the person: mailcraft_contacts; their own calendars likewise
-(JMAP for Calendars), where the Suite is installed: mailcraft_calendars.
+(JMAP for Calendars), where the Suite is installed: mailcraft_calendars. Besides JMAP, `picture` fetches a picture on
+the web that a message links to, once the person asked to see it, which a page can't read from another site itself
+(pictures.py).
 
 Who may call it: the desk's people (System Users), on a site where NeoMail is on (`neomail_enabled`), with a token and only
 with a token. MailCraft sends no cookie: each request carries `Authorization: Bearer <token>`, a token kept hashed in
-the cache, good for this module's four addresses only (`authenticate`, an auth hook), for twelve hours at most and no
+the cache, good for this module's five addresses only (`authenticate`, an auth hook), for twelve hours at most and no
 longer than what it was given for: the desk session of the /neomail page, or the OAuth bearer token Neodesk signs in
 with (`hand_over`; an hour, then Neodesk hands its renewed one over). A desk session's cookie alone opens nothing
 here, so another page can't make a signed-in browser read or send mail (this fork's CSRF check refuses nothing
@@ -59,9 +61,9 @@ SUBMISSION = "urn:ietf:params:jmap:submission"
 QUOTA = "urn:ietf:params:jmap:quota"
 
 METHOD_PREFIX = "frappe_webmail.mailcraft_jmap."
-# The four addresses a token is good for, under each API prefix Frappe routes.
+# The five addresses a token is good for, under each API prefix Frappe routes.
 _OWN_PATH = re.compile(
-	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(session|api|download|upload)/*$"
+	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(session|api|download|upload|picture)/*$"
 )
 # The two that hand tokens out, which a token never opens.
 _HANDING_OUT = re.compile(r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(hand_over|renew)/*$")
@@ -205,7 +207,7 @@ def neomail_enabled():
 
 
 def authenticate():
-	"""auth_hooks: a request to one of this module's four addresses that carries a token /neomail or hand_over gave
+	"""auth_hooks: a request to one of this module's five addresses that carries a token /neomail or hand_over gave
 	is made as that token's person. Anything else is left alone: another address; a `cmd` (Frappe runs a `cmd` form
 	field whatever the path) other than the method the path names; a request already signed in (a desk cookie); a
 	token unknown, expired, or whose desk session or bearer token ended; a person no longer enabled or no longer of
@@ -216,8 +218,7 @@ def authenticate():
 	match = _OWN_PATH.match(getattr(request, "path", "") or "")
 	if not match:
 		return
-	form_dict = frappe.local.form_dict
-	cmd = str((form_dict or {}).get("cmd") or "")
+	cmd = str((frappe.local.form_dict or {}).get("cmd") or "")
 	if cmd and cmd != METHOD_PREFIX + match.group(1):
 		return
 	if frappe.session.user not in ("", "Guest"):
@@ -226,18 +227,43 @@ def authenticate():
 	token = token.strip()
 	if scheme.lower() != "bearer" or not token:
 		return
-	kept = frappe.cache().get_value(_token_key(token))
-	if not isinstance(kept, dict):
+	try:
+		user = _person_of_token(token)
+	except Exception as e:
+		# Answered as no token. Left to Frappe, the error would be logged with the values of these frames: the
+		# request's form (a picture's address), the desk session the token is bound to.
+		log_quietly("MailCraft JMAP: a token could not be checked", e)
 		return
-	user = kept.get("user")
-	if not (
-		user and frappe.db.get_value("User", user, "enabled") and _is_desk_user(user) and _binding_alive(kept)
-	):
+	if not user:
 		return
-	frappe.set_user(user)
 	# set_user empties the request's arguments; Frappe's own token checks put them back the same way.
+	form_dict = frappe.local.form_dict
+	frappe.set_user(user)
 	frappe.local.form_dict = form_dict
 	frappe.local.flags.mailcraft_jmap_user = user
+
+
+def _person_of_token(token):
+	"""The person a token was given to, while it is good (`authenticate`); None otherwise."""
+	kept = frappe.cache().get_value(_token_key(token))
+	if not isinstance(kept, dict):
+		return None
+	user = kept.get("user")
+	if user and frappe.db.get_value("User", user, "enabled") and _is_desk_user(user) and _binding_alive(kept):
+		return user
+	return None
+
+
+def log_quietly(title, error):
+	"""Log an error by its kind and where it happened, never its words nor the values of its frames, which may hold
+	a token, a session or the address of a picture. A log that fails too is let go: what called this answers anyway."""
+	import traceback
+
+	try:
+		where = "".join(traceback.format_tb(error.__traceback__))
+		frappe.log_error(title, f"{type(error).__name__}\n{where}")
+	except Exception:
+		pass
 
 
 def _gate():
@@ -349,7 +375,7 @@ def _message_of(jmap_id):
 
 
 # ---------------------------------------------------------------------------------------------------------------
-# The four addresses
+# The addresses
 # ---------------------------------------------------------------------------------------------------------------
 
 
@@ -586,6 +612,27 @@ def upload(**kwargs):
 		)
 
 	return _answer(build)
+
+
+@frappe.whitelist(methods=["POST"])
+def picture(url=None, **kwargs):
+	"""A picture on the web that a message links to, which a page can't read from another site itself: fetched here
+	under MailCraft's own rules, a few at a time for the whole bench (pictures.py). /neomail's
+	`window.mailcraftFetchUrl` asks for it, once the person said to show a message's pictures; the address goes in the
+	body, so that no log keeps it. The picture's bytes as their own kind, or a failure whose `detail` the person reads."""
+	from frappe_webmail.pictures import failed, relay
+
+	try:
+		_gate()
+	except frappe.PageDoesNotExistError:
+		return _problem("about:blank", 404, "Not found")
+	except frappe.PermissionError:
+		return _problem("about:blank", 403, _("Not permitted"))
+	except Exception as e:
+		# Answered here: an error Frappe caught would be logged with the request's form, the address with it.
+		failed(e)
+		return _problem("about:blank", 500, _("The mail server could not answer."))
+	return relay(url, frappe.session.user)
 
 
 def _upload_key(blob):

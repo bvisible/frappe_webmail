@@ -36,6 +36,75 @@
 			document.getElementById("signin").hidden = true;
 			return (await answer.json()).message || null;
 		};
+		// The pictures on the web a message links to, once the person asked MailCraft to show them: a page can't read
+		// another site's bytes, so the server fetches them (mailcraft_jmap.picture, under MailCraft's own rules), with
+		// the facade's token and never this page's cookie. Two at a time; the server fetches only a few at once for the
+		// whole instance and answers 503 to one more, asked again a moment later. A promise of { status, contentType,
+		// bytes }, or a failure whose message MailCraft shows where the picture would have been.
+		(function () {
+			const first = ((window.mailcraftJmap && window.mailcraftJmap.accounts) || []).find((a) => a.secret);
+			if (!first) return;
+			let token = first.secret;
+			const renew = window.mailcraftJmapRenew;
+			// The framed build renews its tokens through the page: the pictures take the new one too.
+			window.mailcraftJmapRenew = async function () {
+				const answer = await renew();
+				const fresh = ((answer && answer.accounts) || []).find((a) => a.secret);
+				if (fresh) token = fresh.secret;
+				return answer;
+			};
+			const AT_ONCE = 2;
+			const PATIENCE_MS = 50000;
+			let flying = 0;
+			const waiting = [];
+			const turn = () => new Promise((go) => (flying < AT_ONCE ? (flying++, go()) : waiting.push(go)));
+			const done = () => {
+				const next = waiting.shift();
+				if (next) next();
+				else flying--;
+			};
+			const pause = (ms) => new Promise((go) => setTimeout(go, ms));
+			const ask = (url) =>
+				fetch("/api/method/frappe_webmail.mailcraft_jmap.picture", {
+					method: "POST",
+					credentials: "omit",
+					cache: "no-store",
+					referrerPolicy: "no-referrer",
+					headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "image/*, application/json" },
+					body: JSON.stringify({ url: String(url) }),
+				});
+			window.mailcraftFetchUrl = async function (url) {
+				const since = Date.now();
+				await turn();
+				try {
+					let renewed = false;
+					for (;;) {
+						const answer = await ask(url);
+						if (answer.ok) {
+							const bytes = new Uint8Array(await answer.arrayBuffer());
+							return { status: answer.status, contentType: answer.headers.get("Content-Type") || "", bytes };
+						}
+						// The token was refused (it expired with the cache, or after twelve hours): a new one, once.
+						if ((answer.status === 401 || answer.status === 403) && !renewed) {
+							renewed = true;
+							await window.mailcraftJmapRenew();
+							continue;
+						}
+						if (answer.status === 503 && Date.now() - since < PATIENCE_MS) {
+							await pause(400 + Math.random() * 600);
+							continue;
+						}
+						let detail = "";
+						try {
+							detail = (await answer.json()).detail || "";
+						} catch (e) {}
+						throw new Error(detail || "HTTP " + answer.status);
+					}
+				} finally {
+					done();
+				}
+			};
+		})();
 	</script>
 	<!-- csrf_token -->
 	{% if no_mailbox %}

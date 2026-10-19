@@ -226,7 +226,7 @@ user_data_fields = [
 # Authentication and authorization
 # --------------------------------
 
-# MailCraft's JMAP facade (mailcraft_jmap.py): a request to its four addresses carrying the Bearer token /neomail
+# MailCraft's JMAP facade (mailcraft_jmap.py): a request to its five addresses carrying the Bearer token /neomail
 # gave is made as that token's person; nothing else is touched.
 auth_hooks = ["frappe_webmail.mailcraft_jmap.authenticate"]
 # /neomail holds that token and the facade's answers hold mail: no cache keeps them.
