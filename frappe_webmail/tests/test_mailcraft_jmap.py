@@ -4,7 +4,8 @@
 """MailCraft's JMAP facade (mailcraft_jmap.py, maintenance#1630): who gets in, and what a mailbox looks like through it.
 
 The IMAP server is a fake that keeps its folders in memory, so a flag set, a move, an import and a send can be read
-back. The webmail's own functions run unchanged under it (they are what the facade calls).
+back. The webmail's own functions run unchanged under it (they are what the facade calls). The mail server is a fake
+on the loopback that answers each step of a send as a test sets it, so that smtplib meets what a real one says.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_jmap
@@ -12,6 +13,9 @@ Run with:
 
 import json
 import secrets
+import smtplib
+import socketserver
+import threading
 from contextlib import contextmanager
 from datetime import datetime
 from types import SimpleNamespace
@@ -20,6 +24,7 @@ from urllib.parse import quote
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import cint
 
 from frappe_webmail import mailcraft_jmap as jmap
 
@@ -189,16 +194,99 @@ def served(server):
 		yield server
 
 
+REAL_SMTP = smtplib.SMTP
+# What the fake mail server answers to each step when a test doesn't say otherwise: everything goes through.
+SMTP_STEPS = {"greeting": 220, "auth": 235, "mail": 250, "rcpt": 250, "data": 354, "end": 250, "quit": 221}
+
+
+class FakeSmtp(socketserver.ThreadingTCPServer):
+	"""A mail server on the loopback that answers each step as a test sets it (`answers`): a code, or "drop" to end the
+	connection without one. What it took, (MAIL FROM, RCPT TO, data), is in `taken`."""
+
+	daemon_threads = True
+	allow_reuse_address = True
+
+	def __init__(self):
+		self.taken = []
+		self.set()
+		super().__init__(("127.0.0.1", 0), _SmtpSession)
+
+	def set(self, unreachable=False, refused=None, **answers):
+		"""Every step goes through but those `answers` names; `refused`: RCPT answers by address."""
+		self.unreachable, self.refused, self.answers = unreachable, refused or {}, {**SMTP_STEPS, **answers}
+
+	def connect(self, host, port, timeout=None, **_options):
+		"""What smtplib.SMTP and SMTP_SSL give the facade: a connection to this server (its STARTTLS taken as done)."""
+		if self.unreachable:
+			raise ConnectionRefusedError(111, "Connection refused")
+		connection = REAL_SMTP("127.0.0.1", self.server_address[1], timeout=5)
+		connection.starttls = lambda **_k: (220, b"ready")
+		return connection
+
+
+class _SmtpSession(socketserver.StreamRequestHandler):
+	def say(self, code):
+		if code == "drop":
+			return False
+		self.wfile.write(f"{code} fake\r\n".encode())
+		return True
+
+	def handle(self):
+		fake = self.server
+		if not self.say(fake.answers["greeting"]):
+			return
+		sender, recipients = None, []
+		while line := self.rfile.readline(4096):
+			verb = line[:4].upper()
+			if verb in (b"EHLO", b"HELO"):
+				self.wfile.write(b"250-fake\r\n250-SIZE 10000000\r\n250 AUTH PLAIN\r\n")
+			elif verb in (b"AUTH", b"MAIL", b"QUIT"):
+				if verb == b"MAIL":
+					sender = line.split(b"<", 1)[1].split(b">", 1)[0].decode()
+				if (
+					not self.say(fake.answers[{b"AUTH": "auth", b"MAIL": "mail", b"QUIT": "quit"}[verb]])
+					or verb == b"QUIT"
+				):
+					return
+			elif verb == b"RCPT":
+				address = line.split(b"<", 1)[1].split(b">", 1)[0].decode()
+				code = fake.refused.get(address, fake.answers["rcpt"])
+				if code in (250, 251):
+					recipients.append(address)
+				if not self.say(code):
+					return
+			elif verb == b"DATA":
+				if not self.say(fake.answers["data"]):
+					return
+				if fake.answers["data"] != 354:
+					continue
+				lines = []
+				while (chunk := self.rfile.readline(65536)) not in (b".\r\n", b""):
+					lines.append(chunk[1:] if chunk.startswith(b"..") else chunk)
+				if fake.answers["end"] == 250:
+					fake.taken.append((sender, recipients, b"".join(lines)))
+				if not self.say(fake.answers["end"]):
+					return
+				sender, recipients = None, []
+			else:
+				self.say(250)
+
+
 @contextmanager
 def smtp():
-	"""The SMTP server, whichever way the mailbox reaches it: every recipient takes the message."""
-	server = MagicMock()
-	server.sendmail.return_value = {}
-	with (
-		patch("frappe_webmail.mailcraft_jmap.smtplib.SMTP", return_value=server),
-		patch("frappe_webmail.mailcraft_jmap.smtplib.SMTP_SSL", return_value=server),
-	):
-		yield server
+	"""A mail server on the loopback in place of the mailbox's, whichever way the mailbox reaches it: unless a test sets
+	it otherwise (`set`), every step goes through and every recipient takes the message."""
+	fake = FakeSmtp()
+	threading.Thread(target=fake.serve_forever, daemon=True).start()
+	try:
+		with (
+			patch("frappe_webmail.mailcraft_jmap.smtplib.SMTP", side_effect=fake.connect),
+			patch("frappe_webmail.mailcraft_jmap.smtplib.SMTP_SSL", side_effect=fake.connect),
+		):
+			yield fake
+	finally:
+		fake.shutdown()
+		fake.server_close()
 
 
 def _user(email, desk=True):
@@ -269,7 +357,8 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.trial = patch.dict(frappe.local.conf, {"neomail_disabled": 0})
 		self.trial.start()
 		self._as(SHARED)
-		for key in (jmap._uploads_key(SHARED), jmap._sends_key()):
+		troubles = [f"mailcraft_jmap_smtp_trouble:{MAILBOX}:{kind}" for kind in ("down", "doubt")]
+		for key in (jmap._uploads_key(SHARED), jmap._sends_key(), *troubles):
 			frappe.cache().delete_value(key)
 
 	def tearDown(self):
@@ -648,16 +737,17 @@ class TestMailCraftJmap(FrappeTestCase):
 			self.assertEqual(again["notCreated"]["m"]["type"], "blobNotFound", "an upload is filed once")
 			sent = self._submit(self._submission(jid, to=("zoe@example.com", "hidden@example.com")))
 			self.assertIn("s", sent["created"], sent)
-			args = outgoing.sendmail.call_args.args
-			self.assertEqual(args[:2], (MAILBOX, ["zoe@example.com", "hidden@example.com"]))
-			self.assertNotIn(b"Bcc:", args[2], "Bcc is the envelope's, never a header")
+			sender, recipients, data = outgoing.taken[0]
+			self.assertEqual((sender, recipients), (MAILBOX, ["zoe@example.com", "hidden@example.com"]))
+			self.assertNotIn(b"Bcc:", data, "Bcc is the envelope's, never a header")
+			self.assertIn(b"Subject: Plans", data)
 			# The same message can't go out twice, nor one this person didn't just file here.
 			self.assertEqual(self._submit(self._submission(jid))["notCreated"]["s"]["type"], "invalidEmail")
 			old = server.put("Sent", message("old sent mail"))
 			self.assertEqual(
 				self._submit(self._submission(eid("Sent", old)))["notCreated"]["s"]["type"], "invalidEmail"
 			)
-		self.assertEqual(outgoing.sendmail.call_count, 1)
+		self.assertEqual(len(outgoing.taken), 1)
 		copies = [m for m in server.folders["Sent"]["messages"].values() if m["raw"] == raw]
 		self.assertEqual(len(copies), 1, "the copy MailCraft filed, and no second one from sending")
 		self.assertIn(b"\\Seen", copies[0]["flags"])
@@ -681,7 +771,7 @@ class TestMailCraftJmap(FrappeTestCase):
 				self.assertEqual(
 					self._submit(self._submission(jid))["notCreated"]["s"]["type"], "forbiddenFrom", raw
 				)
-		outgoing.sendmail.assert_not_called()
+		self.assertEqual(outgoing.taken, [])
 
 	def test_sending_is_bounded(self):
 		server = FakeServer()
@@ -700,7 +790,109 @@ class TestMailCraftJmap(FrappeTestCase):
 			)
 			frappe.cache().set_value(jmap._sends_key(), jmap.MAX_SENDS, expires_in_sec=60)
 			self.assertEqual(self._submit(self._submission(jid))["notCreated"]["s"]["type"], "rateLimit")
-		outgoing.sendmail.assert_not_called()
+		self.assertEqual(outgoing.taken, [])
+
+	def _sent_through(self, to=("zoe@example.com",)):
+		"""A message filed and submitted: its id, and the call's whole answer (its name, "error" for an error of the
+		call, and what it says)."""
+		jid = self._filed(message("Plans"), blob="U" + secrets.token_hex(4))["created"]["m"]["id"]
+		create = {"s": self._submission(jid, to=to)}
+		name, answer, _c = self._call("EmailSubmission/set", {"accountId": self.aid, "create": create})
+		return jid, name, answer
+
+	def test_a_mail_server_that_cannot_take_it_now_leaves_the_message_waiting(self):
+		"""Nothing went: the call says the server can't serve it just now, which MailCraft reads as a message to keep for
+		its next try (an error of the whole call that made no change), never as one that may have gone."""
+		server = FakeServer()
+		cases = {
+			"unreachable": {"unreachable": True},
+			"busy at the greeting": {"greeting": 421},
+			"sign-in refused": {"auth": 535},
+			"lost at the sign-in": {"auth": "drop"},
+			"sender, not now": {"mail": 451},
+			"lost before the sender": {"mail": "drop"},
+			"recipients, not now": {"rcpt": 450},
+			"data, not now": {"data": 451},
+			"end of the data, not now": {"end": 452},
+		}
+		with served(server), smtp() as outgoing, patch.object(frappe, "log_error") as logged:
+			for case, answers in cases.items():
+				outgoing.set(**answers)
+				jid, name, answer = self._sent_through()
+				self.assertEqual(
+					(name, answer.get("type")), ("error", "serverUnavailable"), f"{case}: {answer}"
+				)
+				# It can be sent once the server is back, and nothing counted against the limit.
+				self.assertTrue(frappe.cache().get_value(jmap._filed_key(jid)), case)
+			self.assertEqual(outgoing.taken, [])
+			self.assertFalse(frappe.cache().get_value(jmap._sends_key()))
+			# One line in the Error Log for the mailbox, not one per try.
+			self.assertEqual(logged.call_count, 1, logged.call_args_list)
+			outgoing.set()
+			_jid, name, answer = self._sent_through()
+			self.assertIn("s", answer["created"], answer)
+		self.assertEqual(len(outgoing.taken), 1)
+
+	def test_a_mail_server_that_will_not_take_it_says_why(self):
+		"""Nothing went either: the standard's refusal, which MailCraft holds the message with, the reason in plain words."""
+		server = FakeServer()
+		cases = [
+			({"mail": 550}, "forbiddenMailFrom"),
+			({"mail": 552}, "tooLarge"),
+			({"rcpt": 550}, "invalidRecipients"),
+			({"data": 554}, "forbiddenToSend"),
+			({"end": 554}, "invalidEmail"),
+			({"end": 552}, "tooLarge"),
+		]
+		with served(server), smtp() as outgoing:
+			for answers, kind in cases:
+				outgoing.set(**answers)
+				jid, name, answer = self._sent_through()
+				self.assertEqual(name, "EmailSubmission/set", answers)
+				self.assertEqual(answer["notCreated"]["s"]["type"], kind, answers)
+				self.assertTrue(frappe.cache().get_value(jmap._filed_key(jid)), answers)
+			# The recipients it turned down are named, as the standard has it; a "not now" for one of them waits.
+			outgoing.set(rcpt=550)
+			_jid, _name, answer = self._sent_through(to=("zoe@example.com", "bob@example.com"))
+			self.assertEqual(
+				answer["notCreated"]["s"]["invalidRecipients"], ["zoe@example.com", "bob@example.com"]
+			)
+			outgoing.set(rcpt=550, refused={"bob@example.com": 450})
+			_jid, name, _answer = self._sent_through(to=("zoe@example.com", "bob@example.com"))
+			self.assertEqual(name, "error")
+		self.assertEqual(outgoing.taken, [])
+
+	def test_a_message_the_server_took_is_sent_whatever_comes_after(self):
+		server = FakeServer()
+		with served(server), smtp() as outgoing, patch.object(frappe, "log_error") as logged:
+			outgoing.set(quit="drop")
+			jid, _name, answer = self._sent_through()
+			self.assertIn("s", answer["created"], answer)
+			self.assertFalse(frappe.cache().get_value(jmap._filed_key(jid)), "sent once, never again")
+			# One recipient turned down, the other took it: it went.
+			outgoing.set(refused={"bob@example.com": 550})
+			_jid, _name, answer = self._sent_through(to=("zoe@example.com", "bob@example.com"))
+			self.assertIn("s", answer["created"], answer)
+		self.assertEqual([recipients for _s, recipients, _d in outgoing.taken], [["zoe@example.com"]] * 2)
+		self.assertIn(
+			"bob@example.com", str(logged.call_args), "the recipient turned down, for the administrator"
+		)
+		self.assertEqual(cint(frappe.cache().get_value(jmap._sends_key())), 2)
+
+	def test_a_connection_lost_while_the_message_was_on_its_way_is_a_doubt(self):
+		"""The one case nobody can know: MailCraft holds the message as one that may have been sent, and it can't be sent
+		again from here."""
+		server = FakeServer()
+		with served(server), smtp() as outgoing, patch.object(frappe, "log_error") as logged:
+			outgoing.set(end="drop")
+			jid, name, answer = self._sent_through()
+			self.assertEqual(name, "EmailSubmission/set")
+			self.assertEqual(answer["notCreated"]["s"]["type"], "serverFail", answer)
+			self.assertFalse(frappe.cache().get_value(jmap._filed_key(jid)))
+			again = self._submit(self._submission(jid))
+			self.assertEqual(again["notCreated"]["s"]["type"], "invalidEmail")
+		self.assertEqual(logged.call_count, 1)
+		self.assertEqual(cint(frappe.cache().get_value(jmap._sends_key())), 1, "it may have gone: it counts")
 
 	def test_what_goes_to_smtp_has_crlf_lines_and_no_bcc(self):
 		sent = jmap._as_sent(b"From: a@b.c\nBcc: x@y.z,\n w@v.u\nSubject: s\r\rBody\nline\r\n")

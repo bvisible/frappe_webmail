@@ -36,6 +36,7 @@ Ids, in JMAP's alphabet (A-Z a-z 0-9 - _):
 """
 
 import base64
+import contextlib
 import email.policy
 import hashlib
 import json
@@ -83,6 +84,7 @@ MAX_SENDS = 30  # per person and SEND_WINDOW
 SEND_WINDOW = 600
 MAX_RECIPIENTS = 100
 SMTP_TIMEOUT = 30
+SMTP_QUIET = 600  # seconds between two Error Log lines of the same trouble with one mailbox's mail server
 
 # Keywords and the IMAP flags they stand for ($Forwarded as the webmail writes it); any other keyword is an IMAP
 # keyword of the same name.
@@ -110,12 +112,24 @@ _ADDRESS = re.compile(r"^[^@\s<>()\[\],;:\"]+@[^@\s<>()\[\],;:\"]+\.[^@\s<>()\[\
 
 
 class JmapError(Exception):
-	"""A method-level error: `["error", {"type", "description"}, callId]`."""
+	"""A method-level error: `["error", {"type", "description"}, callId]`, or the SetError of one object, with the
+	properties the standard gives its type (`invalidRecipients`, for one)."""
 
-	def __init__(self, type_, description=""):
+	def __init__(self, type_, description="", **properties):
 		super().__init__(description)
 		self.type = type_
 		self.description = description
+		self.properties = properties
+
+
+class NotSent(Exception):
+	"""Nothing went, and a later try may do: the mail server could not be reached or signed in to, the connection
+	ended before the message was on its way, or the server answered "not now" (4xx)."""
+
+
+class MayHaveGone(Exception):
+	"""The connection to the mail server failed while the message was on its way, or while its answer was: nobody can
+	know whether it went."""
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -532,7 +546,7 @@ def _api():
 				raise JmapError("unknownMethod", name)
 			out = (name, handler(_resolve(args, results)))
 		except JmapError as e:
-			out = ("error", {"type": e.type, "description": e.description})
+			out = ("error", {"type": e.type, "description": e.description, **e.properties})
 		except (webmail.WebmailConnectionError, webmail.WebmailAuthenticationError) as e:
 			out = ("error", {"type": "serverUnavailable", "description": str(e)})
 		except frappe.ValidationError as e:
@@ -1266,16 +1280,29 @@ def submission_set(args):
 		or args.get("destroy")
 	):
 		raise JmapError("invalidArguments", "create")
-	created, not_created = {}, {}
+	created, not_created, down = {}, {}, None
 	for cid, spec in create.items():
+		if down:
+			# The mail server could not take the one before: it is not asked again in this call.
+			not_created[cid] = {"type": "serverUnavailable", "description": down}
+			continue
 		try:
 			_submit(account, spec if isinstance(spec, dict) else {})
 			created[cid] = {
 				"id": "S" + secrets.token_hex(8),
 				"sendAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
 			}
+		except (NotSent, webmail.WebmailConnectionError, webmail.WebmailAuthenticationError) as e:
+			# (The webmail's own errors come from reading the filed message, before anything is sent.)
+			if not created:
+				# Nothing of this call went: the error of a whole call that the server can't serve just now, which
+				# made no change (RFC 8620 §3.6.2), so that MailCraft keeps the message for its next try. Said of one
+				# submission, the same type reads as one that may have gone.
+				raise JmapError("serverUnavailable", str(e)) from e
+			down = str(e)
+			not_created[cid] = {"type": "serverUnavailable", "description": down}
 		except JmapError as e:
-			not_created[cid] = {"type": e.type, "description": e.description}
+			not_created[cid] = {"type": e.type, "description": e.description, **e.properties}
 	return {
 		"accountId": account_id(account.name),
 		"oldState": "0",
@@ -1319,9 +1346,58 @@ def _submit(account, spec):
 		raise JmapError("invalidEmail", _("The message to send was not found."))
 	if not _sender_is(data, account.email):
 		raise JmapError("forbiddenFrom", _("The message must be from this mailbox."))
-	data = _as_sent(data)
-	context = ssl.create_default_context()
 	try:
+		_hand_over(account, recipients, _as_sent(data))
+	except MayHaveGone as e:
+		# It may have gone: it counts, and it can't be sent again from here.
+		_went(jid, sends)
+		raise JmapError("serverFail", str(e)) from e
+	_went(jid, sends)
+
+
+def _went(jid, sends):
+	frappe.cache().set_value(_sends_key(), sends + 1, expires_in_sec=SEND_WINDOW)
+	frappe.cache().delete_value(_filed_key(jid))
+
+
+def _hand_over(account, recipients, data):
+	"""Give the message to the mailbox's SMTP server a step at a time (RFC 5321 §3.3), so that what goes wrong says
+	whether anything went: nothing has gone until the server answers 250 to the end of the data, and from that answer
+	on it has, whatever the goodbye does.
+
+	- NotSent: nothing went, and a later try may do (the server could not be reached or signed in to, the connection
+	  ended before the data, or the server answered "not now", 4xx).
+	- JmapError, of the standard's refusals (RFC 8621 §7.5): the server will not take it (5xx). Nothing went either.
+	- MayHaveGone: the connection failed while the message was on its way or its answer was, the one case that
+	  can't be known; MailCraft then holds the message as one that may have been sent."""
+	server = _signed_in(account)
+	try:
+		refused = _envelope(server, account, recipients, len(data))
+		try:
+			code, answer = server.data(data)
+		except smtplib.SMTPDataError as e:
+			# The DATA command itself was turned down: the message never left.
+			raise _no(e.smtp_code, e.smtp_error, "forbiddenToSend") from e
+		except (smtplib.SMTPException, OSError) as e:
+			_noted(account, "doubt", "a message may not have reached the mail server", e)
+			raise MayHaveGone(
+				_("The connection to the mail server failed while the message was on its way.")
+			) from e
+		if code != 250:
+			raise _no(code, answer, "invalidEmail")
+	finally:
+		_goodbye(server)
+	if refused:
+		# Some recipients took it: it is sent (a refusal here would have MailCraft delete the sent copy).
+		frappe.log_error("MailCraft JMAP: some recipients refused", f"{account.name}: {', '.join(refused)}")
+
+
+def _signed_in(account):
+	"""The mailbox's SMTP server, connected (TLS, or STARTTLS when the mailbox says so) and signed in to; NotSent when
+	it can't be."""
+	server = None
+	try:
+		context = ssl.create_default_context()
 		if account.smtp_ssl:
 			server = smtplib.SMTP_SSL(
 				account.smtp_host, account.smtp_port, timeout=SMTP_TIMEOUT, context=context
@@ -1331,18 +1407,71 @@ def _submit(account, spec):
 			if account.smtp_starttls:
 				server.starttls(context=context)
 		webmail.smtp_login(server, account)
-		refused = server.sendmail(account.email, recipients, data)
-		server.quit()
-	except smtplib.SMTPRecipientsRefused as e:
-		raise JmapError("invalidRecipients", ", ".join(e.recipients)) from e
 	except (smtplib.SMTPException, OSError, frappe.ValidationError) as e:
-		frappe.log_error("MailCraft JMAP: sending failed", f"{account.name}: {e!r}")
-		raise JmapError("serverFail", _("The mail server did not take the message: {0}").format(e)) from e
-	frappe.cache().set_value(_sends_key(), sends + 1, expires_in_sec=SEND_WINDOW)
-	frappe.cache().delete_value(_filed_key(jid))
-	if refused:
-		# Some recipients took it: it is sent (a refusal here would have MailCraft delete the sent copy).
-		frappe.log_error("MailCraft JMAP: some recipients refused", f"{account.name}: {', '.join(refused)}")
+		_goodbye(server)
+		_noted(account, "down", "the mail server could not be reached or signed in to", e)
+		raise NotSent(_("The mail server could not be reached or signed in to.")) from e
+	return server
+
+
+def _envelope(server, account, recipients, size):
+	"""MAIL and RCPT: who the message is from and whom it goes to. The recipients the server turned down when others
+	take it; NotSent, or the standard's refusal, when nobody can."""
+	try:
+		server.ehlo_or_helo_if_needed()
+		options = [f"size={size}"] if server.does_esmtp and server.has_extn("size") else []
+		code, answer = server.mail(account.email, options)
+		if code != 250:
+			raise _no(code, answer, "forbiddenMailFrom")
+		refused = {}
+		for address in recipients:
+			code, answer = server.rcpt(address)
+			if code not in (250, 251):
+				refused[address] = code
+		if len(refused) == len(recipients):
+			if all(500 <= code <= 599 for code in refused.values()):
+				raise JmapError(
+					"invalidRecipients",
+					_("The mail server takes none of the recipients."),
+					invalidRecipients=list(refused),
+				)
+			raise NotSent(_("The mail server can't take the recipients just now."))
+		return refused
+	except (smtplib.SMTPException, OSError) as e:
+		_noted(account, "down", "the connection to the mail server ended before a message", e)
+		raise NotSent(_("The connection to the mail server ended before the message was sent.")) from e
+
+
+def _no(code, answer, kind):
+	"""The server's no: the refusal `kind` when it is for good (5xx; a message too large for it is tooLarge, whatever the
+	step), "not now" otherwise."""
+	said = f"{code} {answer.decode('utf-8', 'replace') if isinstance(answer, bytes) else answer}"[:300]
+	if code == 552:
+		return JmapError("tooLarge", said)
+	if 500 <= code <= 599:
+		return JmapError(kind, said)
+	return NotSent(said)
+
+
+def _goodbye(server):
+	"""QUIT, and the connection closed whatever the server answers to it: the message's fate is settled by then."""
+	if server is None:
+		return
+	try:
+		server.quit()
+	except (smtplib.SMTPException, OSError):
+		with contextlib.suppress(OSError):
+			server.close()
+
+
+def _noted(account, trouble, title, error):
+	"""A trouble with a mailbox's mail server in the Error Log, once in SMTP_QUIET for each kind of trouble: MailCraft
+	tries again at its next run, a few minutes later, and the same line would be written each time."""
+	key = f"mailcraft_jmap_smtp_trouble:{account.name}:{trouble}"
+	if frappe.cache().get_value(key):
+		return
+	frappe.cache().set_value(key, 1, expires_in_sec=SMTP_QUIET)
+	frappe.log_error(f"MailCraft JMAP: {title}", f"{account.name}: {error!r}")
 
 
 def _sender_is(data, address):
