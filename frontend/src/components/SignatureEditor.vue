@@ -689,6 +689,8 @@ export default {
 
 .form-actions .btn-light {
 	background: var(--card-bg, white);
+	/* Its words in the theme's text colour: in the dark theme they were dark on dark */
+	color: var(--text-color, #1f272e);
 }
 
 .no-selection {

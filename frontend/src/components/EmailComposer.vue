@@ -1110,10 +1110,16 @@ export default {
 	outline: none;
 }
 
-/* The signature is one block, shown as it will leave: not written in, taken out whole (selected, then deleted). */
+/* The signature is one block, shown as it will leave: not written in, taken out whole (selected, then deleted). On
+   the white most mail programs give it, whatever the desk's theme: its colours were chosen for a white page. */
 .editor-container :deep(.webmail-signature-block) {
+	display: inline-block;
+	max-width: 100%;
+	padding: 8px 10px;
 	cursor: default;
 	border-radius: 4px;
+	background: #fff;
+	color: #1f272e;
 }
 
 .editor-container :deep(.webmail-signature-block.ProseMirror-selectednode) {
