@@ -2270,6 +2270,39 @@ class TestNeoMailIsHandedThePhoto(PhotoTestCase):
 		self.assertEqual(pictures_left_out(left, handed_picture(left, {})), [logo])
 		self.assertEqual(pictures_left_out(left, None), [], "a logo not handed stays")
 
+	def test_the_pictures_go_in_the_order_they_are_read(self):
+		"""handed_pictures: every picture a layout draws, the first beside or above the words when the layout puts it
+		there; the logo under the words of "Photo left", and alone there without a photo."""
+		import base64
+
+		from frappe_webmail.www import neomail
+
+		photo = picture_file(self, width=96, height=96, colour=(40, 40, 40), kind="JPEG", is_private=1)
+		logo = picture_file(self, width=40, height=10)
+		named = lambda pictures: [(p["name"], p.get("lead", False)) for p in pictures or []]  # noqa: E731
+		with_photo = render_person(template("Photo left"), person(photo=photo, logo=logo))
+		both = neomail.handed_pictures(with_photo, {})
+		self.assertEqual(named(both), [(photo.rsplit("/", 1)[1], True), (logo.rsplit("/", 1)[1], False)])
+		self.assertTrue(
+			base64.b64decode(both[0]["data"]).startswith(b"\xff\xd8\xff"), "the photo's own bytes"
+		)
+		self.assertEqual(base64.b64decode(both[1]["data"])[:4], b"\x89PNG", "then the logo's")
+		alone = neomail.handed_pictures(render_person(template("Photo left"), person(logo=logo)), {})
+		self.assertEqual(
+			named(alone), [(logo.rsplit("/", 1)[1], False)], "no photo: the logo, under the words"
+		)
+		left = neomail.handed_pictures(
+			render_person(template("Logo left"), person(photo=photo, logo=logo)), {}
+		)
+		self.assertEqual(named(left), [(logo.rsplit("/", 1)[1], True)])
+		self.assertIsNone(
+			neomail.handed_pictures(render_person(template("Text only"), person(logo=logo)), {})
+		)
+		self.assertIsNone(neomail.handed_pictures({"html": "<p>Ada</p>"}, {}), "a person's own signature")
+		# Heavier together than MailCraft keeps: the one that would pass the bound is left out
+		with patch.object(neomail, "MAX_PICTURES_BYTES", len(base64.b64decode(both[0]["data"])) + 1):
+			self.assertEqual(named(neomail.handed_pictures(with_photo, {})), named(both)[:1])
+
 	def test_the_page_hands_neomail_the_photo_and_keeps_the_banner(self):
 		from frappe_webmail.www import neomail
 

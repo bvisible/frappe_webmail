@@ -140,6 +140,11 @@ def host_mailboxes(bearer=None):
 				signature["html"] = without_picture(signature["html"], src)
 			if picture:
 				signature.update(picture)
+			# Every picture in the order it is read, for a page that places more than one (the logo under the words of
+			# "Photo left"); `logo` and `layout` stay for the builds that place one.
+			pictures = handed_pictures(chosen, memo)
+			if pictures:
+				signature["pictures"] = pictures
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
@@ -189,6 +194,54 @@ def handed_picture(chosen, memo):
 		},
 		"layout": layout,
 	}
+
+
+# The most the pictures of one signature may weigh together in MailCraft (crates/model/src/signature.rs,
+# MAX_PICTURES_BYTES).
+MAX_PICTURES_BYTES = 512 * 1024
+
+
+def handed_pictures(chosen, memo):
+	"""The pictures of a company signature in the order they are read, by their bytes as MailCraft keeps a signature's
+	pictures, for a page that places more than one: [{data, name, alt, width, lead?}]. "Photo left": the person's
+	photo beside the words (`lead`), then the company's logo under them; without a photo (the person did not agree), the
+	logo alone, under the words. "Logo left" and "Logo above": the logo, beside or above them (`lead`). None for any
+	other layout, a person's own signature, and pictures MailCraft would not keep (handed_picture says which); one
+	that would make them weigh more than MAX_PICTURES_BYTES together is left out."""
+	import base64
+	import os
+	from urllib.parse import unquote
+
+	layout = chosen.get("layout")
+	if layout in PHOTO_LAYOUTS:
+		wanted = [(chosen.get("photo"), True), (chosen.get("logo"), False)]
+	elif layout in PICTURE_LAYOUTS:
+		wanted = [(chosen.get("logo"), True)]
+	else:
+		return None
+	pictures, total = [], 0
+	for picture, lead in wanted:
+		if not isinstance(picture, dict) or not picture.get("src"):
+			continue
+		key = ("picture", picture["src"])
+		if key not in memo:
+			memo[key] = _picture_of(picture["src"])
+		data = memo[key]
+		if not data or total + len(data) > MAX_PICTURES_BYTES:
+			continue
+		total += len(data)
+		name = os.path.basename(unquote(picture["src"].split("?", 1)[0])) or "picture"
+		handed = {
+			"data": base64.b64encode(data).decode("ascii"),
+			"name": name[:100],
+			"alt": picture.get("alt") or "",
+			"width": picture.get("width"),
+		}
+		# Only the first picture read can be beside or above the words
+		if lead and not pictures:
+			handed["lead"] = True
+		pictures.append(handed)
+	return pictures or None
 
 
 def pictures_left_out(chosen, handed):
