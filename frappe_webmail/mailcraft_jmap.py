@@ -12,9 +12,10 @@ keyword changes, moves, deletes, drafts and sending. No */changes, no threads, n
 window at each sync and searches its own cache. Every mailbox call goes through the webmail's own rules
 (`get_account`: the owner or a person the mailbox is shared with) and its pooled IMAP connection (`imap_session`).
 Only what the webmail has no function for is done here: the raw source, INTERNALDATE, UIDVALIDITY and the raw header
-fields, appending a given message, sending a given message. The instance's contacts come as a read-only address book
+fields, appending a given message, sending a given message. The instance's contacts come as an address book
 (JMAP for Contacts, RFC 9610) in one mailbox of the person: mailcraft_contacts; their own calendars likewise
-(JMAP for Calendars), where the Suite is installed: mailcraft_calendars. Besides JMAP, `picture` fetches a picture on
+(JMAP for Calendars), where the Suite is installed: mailcraft_calendars; and their Neoffice notes, where neoffice_theme
+is installed: mailcraft_notes. Besides JMAP, `picture` fetches a picture on
 the web that a message links to, once the person asked to see it, which a page can't read from another site itself
 (pictures.py).
 
@@ -443,7 +444,7 @@ def _max_upload():
 
 
 def _session(address):
-	from frappe_webmail import mailcraft_calendars, mailcraft_contacts
+	from frappe_webmail import mailcraft_calendars, mailcraft_contacts, mailcraft_notes
 
 	account = webmail.get_account(address)
 	aid = account_id(account.name)
@@ -452,6 +453,8 @@ def _session(address):
 	# (mailcraft_contacts, mailcraft_calendars).
 	contacts, account_contacts = _optional_parts(mailcraft_contacts.session_parts, account)
 	calendars, account_calendars = _optional_parts(mailcraft_calendars.session_parts, account)
+	# The person's Neoffice notes, in the same mailbox (mailcraft_notes).
+	notes, account_notes = _optional_parts(mailcraft_notes.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -469,6 +472,7 @@ def _session(address):
 			QUOTA: {},
 			**contacts,
 			**calendars,
+			**notes,
 		},
 		"accounts": {
 			aid: {
@@ -488,6 +492,7 @@ def _session(address):
 					QUOTA: {},
 					**account_contacts,
 					**account_calendars,
+					**account_notes,
 				},
 			}
 		},
@@ -495,7 +500,7 @@ def _session(address):
 			MAIL: aid,
 			SUBMISSION: aid,
 			QUOTA: aid,
-			**{capability: aid for capability in (*contacts, *calendars)},
+			**{capability: aid for capability in (*contacts, *calendars, *notes)},
 		},
 		"username": frappe.session.user,
 		"apiUrl": base + "api",
@@ -563,12 +568,13 @@ def _api():
 
 
 def _more_methods():
-	"""The address book's and the calendars' methods (mailcraft_contacts, mailcraft_calendars, which read this module:
-	imported when first asked)."""
+	"""The address book's, the calendars' and the notes' methods (mailcraft_contacts, mailcraft_calendars,
+	mailcraft_notes, which read this module: imported when first asked)."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
+	from frappe_webmail.mailcraft_notes import METHODS as NOTE_METHODS
 
-	return {**CONTACT_METHODS, **CALENDAR_METHODS}
+	return {**CONTACT_METHODS, **CALENDAR_METHODS, **NOTE_METHODS}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -719,6 +725,40 @@ def _account(jmap_id):
 	if not address:
 		raise JmapError("accountNotFound", str(jmap_id)[:200])
 	return webmail.get_account(address)
+
+
+def utc_of(value, precise=False):
+	"""A date and time of the instance (naive, in its system zone) in UTC, as JMAP writes it; `precise`, with its
+	milliseconds when it has any (a version two changes in one second must tell apart)."""
+	from zoneinfo import ZoneInfo
+
+	from frappe.utils import get_datetime, get_system_timezone
+
+	moment = get_datetime(value)
+	if moment.tzinfo is None:
+		moment = moment.replace(tzinfo=ZoneInfo(get_system_timezone()))
+	moment = moment.astimezone(timezone.utc)
+	text = moment.strftime("%Y-%m-%dT%H:%M:%S")
+	if precise and moment.microsecond // 1000:
+		text += f".{moment.microsecond // 1000:03d}"
+	return text + "Z"
+
+
+def moment_of(text):
+	"""The instant a JMAP date says (`…Z` or an offset, with or without a fraction), to the millisecond, in UTC; None
+	for what is no date."""
+	from datetime import datetime
+
+	if not isinstance(text, str):
+		return None
+	try:
+		moment = datetime.fromisoformat(text.replace("Z", "+00:00").replace("z", "+00:00"))
+	except ValueError:
+		return None
+	if moment.tzinfo is None:
+		return None
+	moment = moment.astimezone(timezone.utc)
+	return moment.replace(microsecond=moment.microsecond // 1000 * 1000)
 
 
 def _whole_number(value, name, default=None):
