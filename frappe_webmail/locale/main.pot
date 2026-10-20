@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-19 22:26+0000\n"
-"PO-Revision-Date: 2026-10-19 22:26+0000\n"
+"POT-Creation-Date: 2026-10-20 02:42+0000\n"
+"PO-Revision-Date: 2026-10-20 02:42+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -52,7 +52,7 @@ msgstr ""
 msgid "1st of the month at {0}"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:117
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:132
 msgid "A call to action needs both its label and its address."
 msgstr ""
 
@@ -80,11 +80,11 @@ msgstr ""
 msgid "A mailbox cannot be renamed."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1204
+#: frappe_webmail/mailcraft_jmap.py:1294
 msgid "A message goes into one folder."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1152
+#: frappe_webmail/mailcraft_jmap.py:1172
 msgid "A message stays in one folder."
 msgstr ""
 
@@ -96,6 +96,12 @@ msgstr ""
 #. field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "A person who has written a signature of their own keeps it. The others get this template."
+msgstr ""
+
+#. Description of the 'Banner Picture' (Attach Image) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A picture under the signature, whatever its layout (a fair, an offer): a PNG, JPEG or GIF, uploaded as a public file. No picture, no banner."
 msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
@@ -177,7 +183,7 @@ msgstr ""
 msgid "Active on this mailbox"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1335
+#: frappe_webmail/mailcraft_jmap.py:1425
 msgid "Add at least one recipient."
 msgstr ""
 
@@ -332,7 +338,7 @@ msgstr ""
 msgid "Are you sure you want to delete this email?"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:401
+#: frontend/src/components/SignatureEditor.vue:477
 msgid "Are you sure you want to delete this signature?"
 msgstr ""
 
@@ -354,8 +360,8 @@ msgstr ""
 msgid "Arial"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:70
-#: frontend/src/components/SignatureEditor.vue:75
+#: frontend/src/components/SignatureEditor.vue:107
+#: frontend/src/components/SignatureEditor.vue:112
 msgid "As it will be sent"
 msgstr ""
 
@@ -462,6 +468,33 @@ msgstr ""
 msgid "Automations on this mailbox"
 msgstr ""
 
+#. Label of a Section Break field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#: frappe_webmail/signatures.py:788
+#: frappe_webmail/tests/test_signatures.py:1770
+msgid "Banner"
+msgstr ""
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Description"
+msgstr ""
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Link"
+msgstr ""
+
+#. Label of a Attach Image field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Picture"
+msgstr ""
+
+#. Label of a Int field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Width"
+msgstr ""
+
 #. Label of a Int field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "Base Font Size"
@@ -482,7 +515,7 @@ msgid "Blind copy..."
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:95
-#: frontend/src/components/SignatureEditor.vue:91
+#: frontend/src/components/SignatureEditor.vue:128
 msgid "Bold"
 msgstr ""
 
@@ -511,7 +544,7 @@ msgstr ""
 #: frontend/src/components/FilterManager.vue:205
 #: frontend/src/components/FolderTree.vue:107
 #: frontend/src/components/FolderTree.vue:158
-#: frontend/src/components/SignatureEditor.vue:134
+#: frontend/src/components/SignatureEditor.vue:171
 msgid "Cancel"
 msgstr ""
 
@@ -561,11 +594,11 @@ msgstr ""
 msgid "Check this mailbox every hour for invoices"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:75
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:87
 msgid "Choose the company this template applies to."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:79
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:91
 msgid "Choose the department this template applies to."
 msgstr ""
 
@@ -628,6 +661,10 @@ msgstr ""
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "Company name"
+msgstr ""
+
+#: frontend/src/components/SignatureEditor.vue:37
+msgid "Company signature"
 msgstr ""
 
 #. Label of a Section Break field in DocType 'Email Filter'
@@ -791,7 +828,7 @@ msgstr ""
 msgid "Default Signature"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:45
+#: frontend/src/components/SignatureEditor.vue:82
 msgid "Default signature"
 msgstr ""
 
@@ -802,7 +839,7 @@ msgstr ""
 #: frontend/src/components/FilterManager.vue:74
 #: frontend/src/components/FilterManager.vue:167
 #: frontend/src/components/FilterManager.vue:438
-#: frontend/src/components/SignatureEditor.vue:132
+#: frontend/src/components/SignatureEditor.vue:169
 msgid "Delete"
 msgstr ""
 
@@ -811,7 +848,7 @@ msgid "Delete draft"
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:773
-#: frontend/src/components/SignatureEditor.vue:417
+#: frontend/src/components/SignatureEditor.vue:493
 #: frontend/src/pages/Webmail.vue:1492
 msgid "Delete error"
 msgstr ""
@@ -859,6 +896,7 @@ msgstr ""
 
 #. Name of a role
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
 msgid "Desk User"
 msgstr ""
 
@@ -982,15 +1020,15 @@ msgstr ""
 msgid "Edit filter"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:56
+#: frontend/src/components/SignatureEditor.vue:93
 msgid "Editor"
 msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:596 frappe_webmail/tests/test_signatures.py:204
-#: frappe_webmail/tests/test_signatures.py:676
-#: frappe_webmail/tests/test_signatures.py:1052
+#: frappe_webmail/signatures.py:689 frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:753
+#: frappe_webmail/tests/test_signatures.py:1129
 #: frontend/src/components/AutomationsPanel.vue:144
 msgid "Email"
 msgstr ""
@@ -1026,6 +1064,11 @@ msgstr ""
 #. Name of a DocType
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
 msgid "Email Signature"
+msgstr ""
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Email Signature Preference"
 msgstr ""
 
 #. Name of a DocType
@@ -1486,7 +1529,7 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1511
+#: frappe_webmail/mailcraft_jmap.py:1601
 msgid "Folders are managed in the webmail for now."
 msgstr ""
 
@@ -1585,7 +1628,7 @@ msgstr ""
 msgid "Gmail"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:59
+#: frontend/src/components/SignatureEditor.vue:96
 msgid "HTML"
 msgstr ""
 
@@ -1618,6 +1661,12 @@ msgstr ""
 
 #: frontend/src/pages/Webmail.vue:11 frontend/src/pages/Webmail.vue:12
 msgid "Hide folders"
+msgstr ""
+
+#. Label of a Check field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+#: frontend/src/components/SignatureEditor.vue:67
+msgid "Hide my mobile number"
 msgstr ""
 
 #: frontend/src/components/AttachmentPicker.vue:87
@@ -1701,13 +1750,13 @@ msgid "Ignore"
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:132
-#: frontend/src/components/SignatureEditor.vue:112
+#: frontend/src/components/SignatureEditor.vue:149
 msgid "Image"
 msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:541
-#: frontend/src/components/SignatureEditor.vue:340
+#: frontend/src/components/SignatureEditor.vue:416
 msgid "Image URL:"
 msgstr ""
 
@@ -1744,10 +1793,27 @@ msgstr ""
 msgid "In pixels, from 11 to 16."
 msgstr ""
 
+#. Description of the 'Banner Width' (Int) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In pixels, from 200 to 600."
+msgstr ""
+
 #. Description of the 'Logo Width' (Int) field in DocType 'Email Signature
 #. Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "In pixels, from 60 to 240."
+msgstr ""
+
+#. Description of the 'Photo' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In the Photo left layout, for the people who agree to show theirs: each person chooses in their own signature settings."
+msgstr ""
+
+#. Label of a Section Break field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "In the company signature"
 msgstr ""
 
 #: frontend/src/utils/folderNames.js:21
@@ -1821,7 +1887,7 @@ msgid "Is Default"
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:102
-#: frontend/src/components/SignatureEditor.vue:98
+#: frontend/src/components/SignatureEditor.vue:135
 msgid "Italic"
 msgstr ""
 
@@ -1876,13 +1942,13 @@ msgid "Learn my writing style from my sent emails"
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:129
-#: frontend/src/components/SignatureEditor.vue:109
+#: frontend/src/components/SignatureEditor.vue:146
 msgid "Link"
 msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:534
-#: frontend/src/components/SignatureEditor.vue:333
+#: frontend/src/components/SignatureEditor.vue:409
 msgid "Link URL:"
 msgstr ""
 
@@ -1910,7 +1976,7 @@ msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/EmailList.vue:544
-#: frontend/src/components/SignatureEditor.vue:231
+#: frontend/src/components/SignatureEditor.vue:272
 #: frontend/src/pages/Webmail.vue:1751
 msgid "Loading error"
 msgstr ""
@@ -1945,7 +2011,7 @@ msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:647
+#: frappe_webmail/signatures.py:743
 msgid "Logo"
 msgstr ""
 
@@ -2060,11 +2126,12 @@ msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:594 frappe_webmail/tests/test_signatures.py:204
-#: frappe_webmail/tests/test_signatures.py:243
-#: frappe_webmail/tests/test_signatures.py:270
-#: frappe_webmail/tests/test_signatures.py:675
-#: frappe_webmail/tests/test_signatures.py:727
+#: frappe_webmail/signatures.py:687 frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:284
+#: frappe_webmail/tests/test_signatures.py:311
+#: frappe_webmail/tests/test_signatures.py:752
+#: frappe_webmail/tests/test_signatures.py:804
+#: frappe_webmail/tests/test_signatures.py:1894
 msgid "Mobile"
 msgstr ""
 
@@ -2243,6 +2310,10 @@ msgstr ""
 msgid "No permission to read {0}"
 msgstr ""
 
+#: frontend/src/components/SignatureEditor.vue:50
+msgid "No photo of you was found: add one in My Settings."
+msgstr ""
+
 #: frontend/src/components/AdvancedSearch.vue:113
 msgid "No results found"
 msgstr ""
@@ -2334,7 +2405,7 @@ msgstr ""
 msgid "Nora's model did not answer (service busy). Please try again in a moment."
 msgstr ""
 
-#: frappe_webmail/signatures.py:721
+#: frappe_webmail/signatures.py:868
 msgid "Not a template"
 msgstr ""
 
@@ -2349,7 +2420,8 @@ msgid "Not in the Compact layout."
 msgstr ""
 
 #: frappe_webmail/mailcraft_jmap.py:417 frappe_webmail/mailcraft_jmap.py:644
-#: frappe_webmail/webmail_api.py:2296 frappe_webmail/webmail_api.py:2364
+#: frappe_webmail/signatures.py:886 frappe_webmail/webmail_api.py:2296
+#: frappe_webmail/webmail_api.py:2364
 msgid "Not permitted"
 msgstr ""
 
@@ -2439,7 +2511,7 @@ msgstr ""
 msgid "Only a folder can be listed."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1340
+#: frappe_webmail/mailcraft_jmap.py:1430
 msgid "Only a message just written here can be sent."
 msgstr ""
 
@@ -2455,6 +2527,10 @@ msgstr ""
 
 #: frappe_webmail/webmail_api.py:610
 msgid "Only the account owner can change the password"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.py:40
+msgid "Only the desk's people have choices of the company signature."
 msgstr ""
 
 #: frappe_webmail/webmail_api.py:3422
@@ -2533,7 +2609,7 @@ msgstr ""
 msgid "Password updated"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:68
+#: frontend/src/components/SignatureEditor.vue:105
 msgid "Paste the HTML of your signature here"
 msgstr ""
 
@@ -2557,10 +2633,31 @@ msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:592 frappe_webmail/tests/test_signatures.py:204
-#: frappe_webmail/tests/test_signatures.py:674
-#: frappe_webmail/tests/test_signatures.py:1403
+#: frappe_webmail/signatures.py:685 frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:751
+#: frappe_webmail/tests/test_signatures.py:1480
 msgid "Phone"
+msgstr ""
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#: frappe_webmail/signatures.py:759
+msgid "Photo"
+msgstr ""
+
+#. Label of a Small Text field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Photo Made From"
+msgstr ""
+
+#. Label of a Attach Image field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Photo in the signature"
+msgstr ""
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Photo left"
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:114
@@ -2572,7 +2669,7 @@ msgstr ""
 msgid "Please enter a message before sending."
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:348
+#: frontend/src/components/SignatureEditor.vue:424
 msgid "Please enter a name"
 msgstr ""
 
@@ -2813,7 +2910,7 @@ msgstr ""
 msgid "Root level"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:111
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:126
 msgid "Row {0}: the address of a social link must start with https://"
 msgstr ""
 
@@ -2856,7 +2953,7 @@ msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:23
 #: frontend/src/components/FilterManager.vue:208
-#: frontend/src/components/SignatureEditor.vue:125
+#: frontend/src/components/SignatureEditor.vue:162
 msgid "Save"
 msgstr ""
 
@@ -2873,7 +2970,7 @@ msgstr ""
 msgid "Save changes"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:392
+#: frontend/src/components/SignatureEditor.vue:468
 msgid "Save error"
 msgstr ""
 
@@ -2900,7 +2997,7 @@ msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:186
 #: frontend/src/components/FilterManager.vue:208
-#: frontend/src/components/SignatureEditor.vue:125
+#: frontend/src/components/SignatureEditor.vue:162
 #: frontend/src/utils/webmailErrors.js:134
 msgid "Saving..."
 msgstr ""
@@ -2909,11 +3006,15 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:168
+msgid "Say in a few words what the banner shows: it is what a recipient reads where the picture is not."
+msgstr ""
+
 #: frappe_webmail/scans.py:56
 msgid "Scanned documents are not available on this instance"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:79
+#: frontend/src/components/SignatureEditor.vue:116
 msgid "Scripts, forms and style sheets are taken out. Pictures must be on the web (https) or in Neoffice."
 msgstr ""
 
@@ -2962,7 +3063,7 @@ msgstr ""
 msgid "Searching…"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:139
+#: frontend/src/components/SignatureEditor.vue:176
 msgid "Select a signature or create a new one"
 msgstr ""
 
@@ -3083,6 +3184,12 @@ msgstr ""
 msgid "Show folders"
 msgstr ""
 
+#. Label of a Check field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+#: frontend/src/components/SignatureEditor.vue:45
+msgid "Show my photo in the company signature"
+msgstr ""
+
 #: frontend/src/components/EmailViewer.vue:203
 msgid "Show the images"
 msgstr ""
@@ -3125,11 +3232,11 @@ msgstr ""
 msgid "Signature Name"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:412
+#: frontend/src/components/SignatureEditor.vue:488
 msgid "Signature deleted"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:38
+#: frontend/src/components/SignatureEditor.vue:75
 msgid "Signature name"
 msgstr ""
 
@@ -3137,7 +3244,7 @@ msgstr ""
 msgid "Signature preview"
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:387
+#: frontend/src/components/SignatureEditor.vue:463
 msgid "Signature saved"
 msgstr ""
 
@@ -3246,6 +3353,7 @@ msgstr ""
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "System Manager"
@@ -3317,11 +3425,15 @@ msgstr ""
 msgid "The User's phone, else the company's main number."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:91
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:103
 msgid "The accent colour must be written as #rrggbb, for example {0}."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:121
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:151
+msgid "The address of the banner's link must start with https://"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:136
 msgid "The address of the call to action must start with https://"
 msgstr ""
 
@@ -3330,15 +3442,23 @@ msgstr ""
 msgid "The automation could not be created — see the message above."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:99
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:162
+msgid "The banner must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:117
+msgid "The banner width must be between {0} and {1} pixels."
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:111
 msgid "The base font size must be between {0} and {1} pixels."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1442
+#: frappe_webmail/mailcraft_jmap.py:1532
 msgid "The connection to the mail server ended before the message was sent."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1384
+#: frappe_webmail/mailcraft_jmap.py:1474
 msgid "The connection to the mail server failed while the message was on its way."
 msgstr ""
 
@@ -3347,12 +3467,18 @@ msgstr ""
 msgid "The contact could not be created"
 msgstr ""
 
+#. Description of the 'Photo in the signature' (Attach Image) field in DocType
+#. 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "The copy of your photo that your messages carry, made from the picture of your employee record, else of your user."
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:965
 msgid "The draft is already in that language."
 msgstr ""
 
-#: frontend/src/components/SignatureEditor.vue:285
+#: frontend/src/components/SignatureEditor.vue:361
 msgid "The editor keeps text, links and pictures only: this signature's layout and colours would be lost. Open it in the editor anyway?"
 msgstr ""
 
@@ -3364,11 +3490,11 @@ msgstr ""
 msgid "The file is copied by the server, straight from the e-mail: nothing is downloaded."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:102
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:114
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1438
+#: frappe_webmail/mailcraft_jmap.py:1528
 msgid "The mail server can't take the recipients just now."
 msgstr ""
 
@@ -3377,11 +3503,11 @@ msgstr ""
 msgid "The mail server could not answer."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1413
+#: frappe_webmail/mailcraft_jmap.py:1503
 msgid "The mail server could not be reached or signed in to."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1435
+#: frappe_webmail/mailcraft_jmap.py:1525
 msgid "The mail server takes none of the recipients."
 msgstr ""
 
@@ -3393,19 +3519,19 @@ msgstr ""
 msgid "The message is required"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1348
+#: frappe_webmail/mailcraft_jmap.py:1438
 msgid "The message must be from this mailbox."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1198
+#: frappe_webmail/mailcraft_jmap.py:1288
 msgid "The message to file was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1346
+#: frappe_webmail/mailcraft_jmap.py:1436
 msgid "The message to send was not found."
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1222
+#: frappe_webmail/mailcraft_jmap.py:1312
 msgid "The message was filed but cannot be found."
 msgstr ""
 
@@ -3451,7 +3577,7 @@ msgstr ""
 msgid "This folder no longer exists in the Drive"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1323 frappe_webmail/mailcraft_jmap.py:1327
+#: frappe_webmail/mailcraft_jmap.py:1413 frappe_webmail/mailcraft_jmap.py:1417
 msgid "This mailbox can only send as itself."
 msgstr ""
 
@@ -3548,7 +3674,7 @@ msgstr ""
 msgid "Token Expiry"
 msgstr ""
 
-#: frappe_webmail/mailcraft_jmap.py:1343
+#: frappe_webmail/mailcraft_jmap.py:1433
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 
@@ -3640,7 +3766,7 @@ msgid "Unable to determine which account to update."
 msgstr ""
 
 #: frontend/src/components/EmailComposer.vue:109
-#: frontend/src/components/SignatureEditor.vue:105
+#: frontend/src/components/SignatureEditor.vue:142
 msgid "Underline"
 msgstr ""
 
@@ -3667,15 +3793,17 @@ msgstr ""
 #. Label of a Link field in DocType 'Email Draft'
 #. Label of a Link field in DocType 'Email Filter'
 #. Label of a Link field in DocType 'Email Signature'
+#. Label of a Link field in DocType 'Email Signature Preference'
 #. Label of a Link field in DocType 'Webmail Account User'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
 #: frappe_webmail/frappe_webmail/doctype/webmail_account_user/webmail_account_user.json
 msgid "User"
 msgstr ""
 
-#: frappe_webmail/signatures.py:724
+#: frappe_webmail/signatures.py:871
 msgid "User {0} not found"
 msgstr ""
 
@@ -3707,11 +3835,11 @@ msgstr ""
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:598 frappe_webmail/signatures.py:606
-#: frappe_webmail/tests/test_signatures.py:204
-#: frappe_webmail/tests/test_signatures.py:501
-#: frappe_webmail/tests/test_signatures.py:569
-#: frappe_webmail/tests/test_signatures.py:677
+#: frappe_webmail/signatures.py:691 frappe_webmail/signatures.py:699
+#: frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:542
+#: frappe_webmail/tests/test_signatures.py:610
+#: frappe_webmail/tests/test_signatures.py:754
 msgid "Website"
 msgstr ""
 
@@ -3734,6 +3862,12 @@ msgstr ""
 msgid "What should I reply?"
 msgstr ""
 
+#. Description of the 'Banner Description' (Data) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "What the banner says, in a few words: shown where the picture is not, and read out to those who listen to their mail."
+msgstr ""
+
 #. Label of a Section Break field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 msgid "What to show"
@@ -3741,6 +3875,12 @@ msgstr ""
 
 #: frontend/src/components/AutomationsPanel.vue:143
 msgid "WhatsApp"
+msgstr ""
+
+#. Description of the 'Banner Link' (Data) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Where a click on the banner leads: an https:// address. Without one, the banner is a picture only."
 msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
@@ -3813,8 +3953,29 @@ msgstr ""
 msgid "Your Neoffice session has ended."
 msgstr ""
 
+#: frappe_webmail/signatures.py:940
+#: frontend/src/components/SignatureEditor.vue:303
+msgid "Your choice could not be saved"
+msgstr ""
+
 #: frontend/src/components/AgentPanel.vue:290
 msgid "Your draft"
+msgstr ""
+
+#. Description of the 'Hide my mobile number' (Check) field in DocType 'Email
+#. Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Your mobile number is left out of the company signature, even when the company shows mobile numbers."
+msgstr ""
+
+#: frontend/src/components/SignatureEditor.vue:54
+msgid "Your photo could not be used: use a PNG, JPEG or GIF picture, not a private file."
+msgstr ""
+
+#. Description of the 'Show my photo in the company signature' (Check) field in
+#. DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Your photo, reduced, goes in the company signature when its layout has a place for it. Untick it to take it out: its copy is deleted."
 msgstr ""
 
 #: frappe_webmail/mailcraft_contacts.py:282

@@ -4077,3 +4077,141 @@ msgstr "Le serveur de messagerie est injoignable ou l'authentification a échou�
 #: frappe_webmail/mailcraft_jmap.py:1435
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
+
+#. Description of the 'Banner Picture' (Attach Image) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "A picture under the signature, whatever its layout (a fair, an offer): a PNG, JPEG or GIF, uploaded as a public file. No picture, no banner."
+msgstr "Une image placée sous la signature, quelle que soit sa mise en page (un salon, une offre) : au format PNG, JPEG ou GIF, chargée comme fichier public. Sans image, pas de bannière."
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Description"
+msgstr "Description de la bannière"
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Link"
+msgstr "Lien de la bannière"
+
+#. Label of a Attach Image field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Picture"
+msgstr "Image de la bannière"
+
+#. Label of a Int field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Banner Width"
+msgstr "Largeur de la bannière"
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Email Signature Preference"
+msgstr "Préférence de signature e-mail"
+
+#. Label of a Check field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+#: frontend/src/components/SignatureEditor.vue:67
+msgid "Hide my mobile number"
+msgstr "Masquer mon numéro de mobile"
+
+#. Description of the 'Banner Width' (Int) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In pixels, from 200 to 600."
+msgstr "En pixels, de 200 à 600."
+
+#. Label of a Section Break field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "In the company signature"
+msgstr "Dans la signature de la société"
+
+#. Description of the 'Photo' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "In the Photo left layout, for the people who agree to show theirs: each person chooses in their own signature settings."
+msgstr "Dans la mise en page « Photo à gauche », pour les personnes qui acceptent de montrer la leur : chacun choisit dans ses propres paramètres de signature."
+
+#: frontend/src/components/SignatureEditor.vue:50
+msgid "No photo of you was found: add one in My Settings."
+msgstr "Aucune photo de vous n'a été trouvée : ajoutez-en une dans « Mes paramètres »."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.py:40
+msgid "Only the desk's people have choices of the company signature."
+msgstr "Seuls les utilisateurs du bureau peuvent faire des choix pour la signature de la société."
+
+#. Label of a Attach Image field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Photo in the signature"
+msgstr "Photo dans la signature"
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Photo left"
+msgstr "Photo à gauche"
+
+#. Label of a Small Text field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Photo Made From"
+msgstr "Photo issue de"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:168
+msgid "Say in a few words what the banner shows: it is what a recipient reads where the picture is not."
+msgstr "Indiquez en quelques mots ce que montre la bannière : c'est ce que lit le destinataire là où l'image ne s'affiche pas."
+
+#. Label of a Check field in DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+#: frontend/src/components/SignatureEditor.vue:45
+msgid "Show my photo in the company signature"
+msgstr "Afficher ma photo dans la signature de la société"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:151
+msgid "The address of the banner's link must start with https://"
+msgstr "L'adresse du lien de la bannière doit commencer par https://"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:162
+msgid "The banner must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
+msgstr "La bannière doit être une image PNG, JPEG ou GIF parmi les fichiers publics de cette instance (et non privés) : tous ceux qui écrivent avec cette signature l'afficheront."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:117
+msgid "The banner width must be between {0} and {1} pixels."
+msgstr "La largeur de la bannière doit être comprise entre {0} et {1} pixels."
+
+#. Description of the 'Photo in the signature' (Attach Image) field in DocType
+#. 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "The copy of your photo that your messages carry, made from the picture of your employee record, else of your user."
+msgstr "La copie de votre photo qui accompagne vos messages : elle est faite à partir de la photo de votre fiche employé ou, à défaut, de celle de votre compte utilisateur."
+
+#. Description of the 'Banner Description' (Data) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "What the banner says, in a few words: shown where the picture is not, and read out to those who listen to their mail."
+msgstr "Ce que dit la bannière, en quelques mots : ce texte s'affiche là où l'image n'apparaît pas, et il est lu à voix haute pour ceux qui écoutent leurs e-mails."
+
+#. Description of the 'Banner Link' (Data) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+msgid "Where a click on the banner leads: an https:// address. Without one, the banner is a picture only."
+msgstr "Destination d'un clic sur la bannière : une adresse https://. Sans adresse, la bannière n'est qu'une image."
+
+#: frappe_webmail/signatures.py:940
+#: frontend/src/components/SignatureEditor.vue:303
+msgid "Your choice could not be saved"
+msgstr "Votre choix n'a pas pu être enregistré"
+
+#. Description of the 'Hide my mobile number' (Check) field in DocType 'Email
+#. Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Your mobile number is left out of the company signature, even when the company shows mobile numbers."
+msgstr "Votre numéro de mobile n'apparaît pas dans la signature de la société, même si celle-ci affiche les numéros de mobile."
+
+#: frontend/src/components/SignatureEditor.vue:54
+msgid "Your photo could not be used: use a PNG, JPEG or GIF picture, not a private file."
+msgstr "Votre photo n'a pas pu être utilisée : utilisez une image au format PNG, JPEG ou GIF, et non un fichier privé."
+
+#. Description of the 'Show my photo in the company signature' (Check) field in
+#. DocType 'Email Signature Preference'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
+msgid "Your photo, reduced, goes in the company signature when its layout has a place for it. Untick it to take it out: its copy is deleted."
+msgstr "Votre photo, réduite, figure dans la signature de la société lorsque sa mise en page prévoit une place pour elle. Décochez cette case pour la retirer : sa copie est alors supprimée."
