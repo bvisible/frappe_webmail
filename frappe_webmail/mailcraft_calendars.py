@@ -8,7 +8,7 @@ each occurrence of a repeating event apart and with its start and end in UTC (`u
 MailCraft has no time-zone database). NeoMail's calendar is then Neoffice's (maintenance#1630, step 3 of NeoMail's
 programme; study: vault note Neoffice-Apps/20).
 
-NeoMail does with them what the desk does (Jérémy, 17.10: « elle doit pouvoir tout faire, comme dans le desk »): it
+NeoMail does with them what the desk does (Jérémy, 17.10: "she must be able to do everything, as in the desk"): it
 creates, changes and deletes events, a whole series or one of its occurrences, through the Suite's own calendar functions
 (suite.calendar.doctype.calendar_event: add_calendar_event, update_calendar_event, delete_calendar_events and their
 occurrence variants), so with their rules, their rights and their invitations, and in the calendars the person may
@@ -76,6 +76,9 @@ def session_parts(account):
 			"maxExpandedQueryDuration": "P500D",
 			"maxParticipantsPerEvent": None,
 			"mayCreateCalendar": False,
+			# Not in the draft: what an event keeps when it is written here, so that a client offers nothing else
+			# (categories, importance, online meetings…) rather than learn it from a refusal.
+			"writableProperties": sorted(WRITABLE_EVENT),
 		}
 	}
 
@@ -241,7 +244,9 @@ def calendar_get(args):
 	from suite.calendar.jmap_events import get_calendars
 
 	listed = []
-	for calendar in _reading(lambda: get_calendars(_client(suite_account))):
+	every = _reading(lambda: get_calendars(_client(suite_account)))
+	default = _default_calendar({calendar.get("id"): calendar for calendar in every})
+	for calendar in every:
 		cid = _calendar_id(calendar.get("id"))
 		if ids is not None and cid not in ids:
 			continue
@@ -250,11 +255,12 @@ def calendar_get(args):
 				"id": cid,
 				"name": calendar.get("name") or "",
 				"description": calendar.get("description"),
-				"color": calendar.get("color"),
+				"color": _color(calendar.get("color")),
 				"sortOrder": cint(calendar.get("sortOrder")),
 				"isSubscribed": True,
 				"isVisible": calendar.get("isVisible", True) is not False,
-				"isDefault": bool(calendar.get("isDefault")),
+				# One, and the one an event made without naming its calendar goes to (_create_event).
+				"isDefault": calendar.get("id") == default,
 				"includeInAvailability": "none",
 				"myRights": _rights(calendar.get("myRights")),
 			}
@@ -266,6 +272,34 @@ def calendar_get(args):
 		"list": listed,
 		"notFound": [i for i in (ids or []) if i not in found],
 	}
+
+
+def _default_calendar(calendars):
+	"""The calendar (raw id) an event goes to when the client names none, which is also the one said to be the default:
+	the first the Suite flags among those the person may write, else the first they may write. When they may write none,
+	the first flagged, else the first, so that one is still the default (an event made there is refused). The Suite and
+	the mail server may flag several, or none."""
+	writable = [raw for raw, calendar in calendars.items() if _writable(_rights(calendar.get("myRights")))]
+	pool = writable or list(calendars)
+	return next((raw for raw in pool if calendars[raw].get("isDefault")), pool[0] if pool else None)
+
+
+def _color(value):
+	"""A calendar's colour as `#rrggbb`, whatever the Suite or another client of the mail server wrote (a CSS name,
+	`#rgb`, `#rrggbbaa`, `rgb()`); None for none, for one that reads as no colour, and for a transparent one. Pillow
+	does not bound what it reads (`rgb(300,0,0)`): a channel outside 0 to 255 is no colour either."""
+	if not isinstance(value, str) or not value.strip() or len(value) > 64:
+		return None
+	from PIL import ImageColor
+
+	try:
+		channels = ImageColor.getrgb(value.strip())
+	except ValueError:
+		return None
+	if not all(0 <= channel <= 255 for channel in channels) or (len(channels) == 4 and channels[3] == 0):
+		return None
+	red, green, blue = channels[:3]
+	return f"#{red:02x}{green:02x}{blue:02x}"
 
 
 def _utc_date(value, name):
@@ -280,7 +314,7 @@ def _utc_date(value, name):
 
 
 def event_query(args):
-	"""The ids of the events of a window (`after`, `before`, both asked, 400 days at most), in the person's calendars
+	"""The ids of the events of a window (`after`, `before`, both asked, 500 days at most), in the person's calendars
 	or those named (`inCalendars`); each occurrence apart when `expandRecurrences` is asked."""
 	aid, suite_account = _calendar_account(args)
 	criteria = args.get("filter") or {}
@@ -422,16 +456,17 @@ def _writable(rights):
 
 
 # A batch's events are written one by one through the desk's rate-limited functions, whose limits the whole office
-# shares: at most this many in one call, the others answered « rateLimit » (tried again later by the client).
+# shares: at most this many in one call, the others answered "rateLimit" (tried again later by the client).
 MAX_EVENTS_PER_SET = 50
 
 
 def event_set(args):
 	"""Events created, changed and deleted in the person's own calendars, as the desk does it (see the module's text).
 	A whole property replaces it; an occurrence of a series is changed or deleted alone. Invitations go out when the
-	client asks (`sendSchedulingMessages`) and the person organizes the event, never for a draft, as in the desk. Each
-	refusal is said for its event; what a refused one had begun to write in the instance is undone (a savepoint per
-	event: the instance's own records, not what a mail server already did)."""
+	client asks (`sendSchedulingMessages`) and the person organizes the event, never for a draft, as in the desk; the
+	person's answer to someone else's invitation, when the client asks for it to be sent, reaches its organizer as the
+	desk's answer does (`_answer_of`). Each refusal is said for its event; what a refused one had begun to write in the
+	instance is undone (a savepoint per event: the instance's own records, not what a mail server already did)."""
 	aid, suite_account = _calendar_account(args)
 	creates, updates, destroys = args.get("create") or {}, args.get("update") or {}, args.get("destroy") or []
 	if not isinstance(creates, dict) or not isinstance(updates, dict) or not isinstance(destroys, list):
@@ -682,7 +717,7 @@ def _event_fields(event, calendars):
 				"roles": entry.get("roles"),
 				"participation_status": entry.get("participationStatus"),
 				# Someone added is asked for an answer, as the desk asks every participant it adds (JSCalendar's
-				# default is « no reply expected »); the organizer is not.
+				# default is "no reply expected"); the organizer is not.
 				"expect_reply": bool(
 					entry["expectReply"]
 					if "expectReply" in entry
@@ -755,13 +790,8 @@ def _create_event(suite_account, client, calendars, event, notify):
 			if again:
 				return again["id"], again.get("uid")
 	if "calendar_ids" not in fields:
-		writable = [
-			raw for raw, calendar in calendars.items() if _writable(_rights(calendar.get("myRights")))
-		]
-		default = next(
-			(raw for raw in writable if calendars[raw].get("isDefault")), writable[0] if writable else None
-		)
-		if not default:
+		default = _default_calendar(calendars)
+		if not default or not _writable(_rights(calendars[default].get("myRights"))):
 			raise frappe.PermissionError
 		fields["calendar_ids"] = [default]
 	raw = add_calendar_event(
@@ -782,19 +812,40 @@ def _create_event(suite_account, client, calendars, event, notify):
 def _update_event(suite_account, client, calendars, vid, patch, notify):
 	"""An event changed, by the desk's update_calendar_event: the properties the patch names replace the stored ones,
 	the others stay, its organizer and draft state among them. An occurrence of a series is changed alone
-	(update_calendar_event_instance). Invitations go out only from the organizer, never for a draft."""
+	(update_calendar_event_instance). Invitations go out only from the organizer, never for a draft. The person's answer
+	to someone else's invitation, the client asking for it to be sent from a calendar that sends answers, is the desk's
+	answer (rsvp_calendar_event): recorded on their copy and told to the organizer, where a change of their copy would
+	tell nobody; as in the desk, it is the whole invitation's, never one occurrence's."""
 	from suite.calendar.doctype.calendar_event.calendar_event import (
 		update_calendar_event,
 		update_calendar_event_instance,
 	)
 	from suite.calendar.doctype.calendar_event.fields import EventFields
 
-	raw, stored, series, recurrence_id = _addressed(suite_account, client, vid)
+	raw, stored, series, recurrence_id, now = _addressed(suite_account, client, vid)
 	_check_writable(stored, calendars)
 	_keep_own(patch if isinstance(patch, dict) else {}, stored)
 	fields = _event_fields(patch, calendars)
 	draft = bool(stored.get("isDraft"))
-	notify = notify and not draft and _organizes(suite_account, stored)
+	asked = notify and not draft
+	organizes = asked and _organizes(suite_account, stored)
+	answer = (
+		asked
+		and not organizes
+		and _may_answer(stored, calendars)
+		and _answer_of(suite_account, stored, now, patch, fields, calendars)
+	)
+	if answer and recurrence_id:
+		# The desk offers no answer to one occurrence of someone else's invitation: the mail server, finding no series on
+		# the person's copy, gives the answer to every occurrence, and the copy loses its rule.
+		raise frappe.PermissionError("An invitation is answered as a whole: answer its series.")
+	if answer:
+		from suite.calendar.api import rsvp_calendar_event
+
+		# The desk's own answer, with its rate limit (each answer is a mail).
+		rsvp_calendar_event(suite_account, raw, answer)
+		return True
+	notify = organizes
 	if recurrence_id:
 		for key in NOT_FOR_AN_OCCURRENCE:
 			fields.pop(key, None)
@@ -834,7 +885,7 @@ def _destroy_event(suite_account, client, calendars, vid, notify):
 		delete_calendar_events,
 	)
 
-	raw, stored, series, recurrence_id = _addressed(suite_account, client, vid)
+	raw, stored, series, recurrence_id, _now = _addressed(suite_account, client, vid)
 	_check_writable(stored, calendars)
 	notify = notify and not stored.get("isDraft") and _organizes(suite_account, stored)
 	if recurrence_id:
@@ -850,23 +901,105 @@ def _destroy_event(suite_account, client, calendars, vid, notify):
 
 
 def _addressed(suite_account, client, vid):
-	"""(raw id, the event as stored, its series, its start) of the event a facade id names; series and start are None
-	for an event that is not an occurrence. An occurrence named by its series and start is checked against its series
-	(its calendar, its organizer, its draft state are the series'), after making sure it is still one of it."""
+	"""(raw id, the event as stored, its series, its start, the event itself as the server holds it now) of the event a
+	facade id names; series and start are None for an event that is not an occurrence. An occurrence named by its series
+	and start is checked against its series (its calendar, its organizer, its draft state are the series'), after making
+	sure it is still one of it; the last is then the occurrence, its own changes applied (its participants' answers)."""
 	occurrence = _occurrence_of(vid)
 	if occurrence:
 		series, recurrence_id = occurrence
 		stored = _stored(client, series)
-		if not stored or not _occurrences_now(suite_account, [occurrence]):
+		now = _occurrences_now(suite_account, [occurrence]).get(occurrence) if stored else None
+		if not stored or not now:
 			raise frappe.DoesNotExistError
-		return series, stored, series, recurrence_id
+		return series, stored, series, recurrence_id, now
 	raw = _raw(vid, "V")
 	stored = _stored(client, raw)
 	if not stored:
 		raise frappe.DoesNotExistError
 	if stored.get("recurrenceId"):
-		return raw, stored, _master_of(client, raw), stored["recurrenceId"]
-	return raw, stored, None, None
+		return raw, stored, _master_of(client, raw), stored["recurrenceId"], stored
+	return raw, stored, None, None, stored
+
+
+# What a person answers an invitation with: the Suite's PARTICIPATION_RESPONSES, which record_rsvp takes (not imported:
+# this module is read where the Suite may not be installed).
+ANSWERS = ("accepted", "tentative", "declined")
+
+
+def _may_answer(stored, calendars):
+	"""Whether the person's answers go to organizers from the event's calendars (`mayRSVP`): a mail server's calendars
+	say so; a calendar the Suite keeps in the instance does not, as it sends no mail (an answer there stays on the copy,
+	as before)."""
+	held = [k for k, on in (stored.get("calendarIds") or {}).items() if on]
+	return bool(held) and all(_rights(calendars[k].get("myRights")).get("mayRSVP") for k in held)
+
+
+def _rsvp_address(entry):
+	"""The address record_rsvp knows a participant by: its calendar address, else its email, in lower case, without
+	`mailto:` (suite.calendar.api.rsvp)."""
+	return str(entry.get("calendarAddress") or entry.get("email") or "").lower().replace("mailto:", "")
+
+
+def _as_compared(row):
+	"""A participant as _event_fields writes it, for telling whether two differ: without what the Suite works out again
+	when it writes one (where invitations go, its scheduling id, whether a reply is expected), its address and its status
+	in lower case whatever a client spelled, its roles those that are on."""
+	roles = row.get("roles") if isinstance(row.get("roles"), dict) else {}
+	return {
+		**{key: value for key, value in row.items() if key not in ("send_to", "schedule_id", "expect_reply")},
+		"email": re.sub(r"(?i)^mailto:", "", str(row.get("email") or "")).lower(),
+		"roles": sorted(role for role, on in roles.items() if on),
+		"participation_status": str(row.get("participation_status") or "").lower() or None,
+	}
+
+
+def _answer_of(suite_account, stored, now, patch, fields, calendars):
+	"""The person's answer to an invitation that an update gives, or None for another change. An answer writes the
+	participants alone, and changes one entry of them, from the event as it is now (`now`, an occurrence's own): the
+	person's, as record_rsvp finds it in the copy it reads (`stored`: the first entry whose address is one of theirs,
+	when they are invited under two), in its participationStatus alone, now accepted, tentative or declined. `fields`
+	are the patch's, as _event_fields read them. The person's own status moved to an answer with something else changed
+	beside it is written as before, and said in the error log: the organizer is not told."""
+	if not isinstance(patch, dict):
+		return None
+	given = {row["uid"]: _as_compared(row) for row in fields.get("participants") or []}
+	read = _event_fields({"participants": now.get("participants")}, calendars).get("participants") or []
+	kept = {row["uid"]: _as_compared(row) for row in read}
+	first = _first_own(suite_account, stored)
+	status = (given.get(first) or {}).get("participation_status")
+	if (
+		not first
+		or first not in kept
+		or status not in ANSWERS
+		or status == kept[first]["participation_status"]
+	):
+		return None
+	others = {uid: row for uid, row in given.items() if uid != first}
+	if (
+		set(patch) - SERVER_SET == {"participants"}
+		and set(given) == set(kept)
+		and all(row == kept[uid] for uid, row in others.items())
+		and {**given[first], "participation_status": None} == {**kept[first], "participation_status": None}
+	):
+		return status
+	frappe.log_error(
+		"NeoMail: an answer to an invitation was written on the copy alone",
+		f"The update changed more than the person's answer (properties: {sorted(set(patch) - SERVER_SET)}): its "
+		"organizer is not told.",
+	)
+	return None
+
+
+def _first_own(suite_account, stored):
+	"""The participant (its key) record_rsvp answers for in `stored`: the first one whose address is one of the
+	person's; None when none is."""
+	from suite.mail.jmap import get_participant_identities
+
+	own = {identity["email"] for identity in get_participant_identities(suite_account)}
+	return next(
+		(uid for uid, entry in _map(stored, "participants").items() if _rsvp_address(entry) in own), None
+	)
 
 
 def _check_writable(stored, calendars):

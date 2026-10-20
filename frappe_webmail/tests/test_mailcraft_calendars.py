@@ -31,6 +31,7 @@ BOX = "mailcraft_calendars_box@webmail.test"
 NOBODY_BOX = "mailcraft_calendars_nobody@webmail.test"
 JANUARY = {"after": "2030-01-01T00:00:00Z", "before": "2030-02-01T00:00:00Z"}
 JULY = {"after": "2030-07-01T00:00:00Z", "before": "2030-08-01T00:00:00Z"}
+NOVEMBER = {"after": "2030-11-01T00:00:00Z", "before": "2030-12-01T00:00:00Z"}
 
 
 @unittest.skipUnless("suite" in frappe.get_installed_apps(), "the calendars are the Suite's")
@@ -59,7 +60,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 					**row,
 					"creation_id": "weekly",
 					"uid": "mc-cal-weekly",
-					"title": "Point chantier",
+					"title": "Site meeting",
 					"start": "2030-01-14T09:00:00",
 					"duration": "PT1H30M",
 					"recurrence_rule": {"@type": "RecurrenceRule", "frequency": "weekly", "count": 3},
@@ -68,14 +69,14 @@ class TestMailCraftCalendars(FrappeTestCase):
 					**row,
 					"creation_id": "summer",
 					"uid": "mc-cal-summer",
-					"title": "Été",
+					"title": "Summer café",
 					"start": "2030-07-15T09:00:00",
 					"duration": "PT1H",
 				},
 				{
 					"creation_id": "day",
 					"uid": "mc-cal-day",
-					"title": "Fermeture",
+					"title": "Closed",
 					"start": "2030-01-20T00:00:00",
 					"duration": "P1D",
 					"show_without_time": True,
@@ -85,7 +86,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 					**row,
 					"creation_id": "dst",
 					"uid": "mc-cal-dst",
-					"title": "Nuit",
+					"title": "Night",
 					"start": "2030-10-27T01:00:00",
 					"duration": "PT3H",
 				},
@@ -151,9 +152,34 @@ class TestMailCraftCalendars(FrappeTestCase):
 		session = json.loads(jmap.session(BOX).get_data())
 		self.assertIn(calendars.CALENDARS, session["capabilities"])
 		self.assertEqual(session["primaryAccounts"][calendars.CALENDARS], aid)
+		written = session["accounts"][aid]["accountCapabilities"][calendars.CALENDARS]["writableProperties"]
+		self.assertEqual(
+			written,
+			[
+				"alerts",
+				"calendarIds",
+				"description",
+				"duration",
+				"freeBusyStatus",
+				"links",
+				"locations",
+				"participants",
+				"privacy",
+				"recurrenceRule",
+				"showWithoutTime",
+				"start",
+				"status",
+				"timeZone",
+				"title",
+				"useDefaultAlerts",
+			],
+			"what an event keeps when it is written here, said in advance",
+		)
+		self.assertNotIn("keywords", written)
 		listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
 		self.assertTrue(listed and all(c["id"].startswith("C") for c in listed))
 		self.assertTrue(listed[0]["myRights"]["mayWriteOwn"], "the person's own calendar, as in the desk")
+		self.assertEqual(sum(1 for c in listed if c["isDefault"]), 1)
 
 	def test_without_a_calendar_none_is_offered(self):
 		self._as(NOBODY)
@@ -281,13 +307,13 @@ class TestMailCraftCalendars(FrappeTestCase):
 			"@type": "Event",
 			"uid": uid,
 			"calendarIds": {calendar: True},
-			"title": "Visite de chantier",
+			"title": "Site visit",
 			"start": "2030-03-04T10:00:00",
 			"duration": "PT2H",
 			"timeZone": "Europe/Zurich",
 			"showWithoutTime": False,
-			"description": "Avec le maître d'ouvrage",
-			"locations": {"l1": {"@type": "Location", "name": "Rue du Lac 12, Vevey"}},
+			"description": "With the project owner",
+			"locations": {"l1": {"@type": "Location", "name": "12 Lake Street, Vevey"}},
 		}
 		made = self._set(create={"k": event})
 		self.assertEqual(made["notCreated"], {})
@@ -296,24 +322,22 @@ class TestMailCraftCalendars(FrappeTestCase):
 		found = next(e for e in self._window(march) if e["id"] == vid)
 		self.assertEqual(
 			(found["title"], found["utcStart"], found["utcEnd"]),
-			("Visite de chantier", "2030-03-04T09:00:00Z", "2030-03-04T11:00:00Z"),
+			("Site visit", "2030-03-04T09:00:00Z", "2030-03-04T11:00:00Z"),
 		)
-		self.assertEqual([place["name"] for place in found["locations"].values()], ["Rue du Lac 12, Vevey"])
+		self.assertEqual([place["name"] for place in found["locations"].values()], ["12 Lake Street, Vevey"])
 		# Sent again (its answer lost on the way): the same event, not a second one.
 		again = self._set(create={"k2": event})
 		self.assertEqual(again["created"]["k2"]["id"], vid)
-		self.assertEqual(sum(1 for e in self._window(march) if e.get("title") == "Visite de chantier"), 1)
+		self.assertEqual(sum(1 for e in self._window(march) if e.get("title") == "Site visit"), 1)
 		# Changed: the properties named replace the stored ones, the others stay.
-		changed = self._set(
-			update={vid: {"title": "Visite de chantier (déplacée)", "start": "2030-03-05T14:00:00"}}
-		)
+		changed = self._set(update={vid: {"title": "Site visit (moved)", "start": "2030-03-05T14:00:00"}})
 		self.assertEqual((changed["updated"], changed["notUpdated"]), ({vid: None}, {}))
 		moved = next(e for e in self._window(march) if e["id"] == vid)
 		self.assertEqual(
 			(moved["title"], moved["utcStart"], moved["duration"]),
-			("Visite de chantier (déplacée)", "2030-03-05T13:00:00Z", "PT2H"),
+			("Site visit (moved)", "2030-03-05T13:00:00Z", "PT2H"),
 		)
-		self.assertEqual(moved["description"], "Avec le maître d'ouvrage")
+		self.assertEqual(moved["description"], "With the project owner")
 		# Deleted, as in the desk.
 		gone = self._set(destroy=[vid])
 		self.assertEqual((gone["destroyed"], gone["notDestroyed"]), ([vid], {}))
@@ -329,7 +353,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		series = {
 			"@type": "Event",
 			"calendarIds": {self._calendar(): True},
-			"title": "Atelier (renuméroté)",
+			"title": "Workshop (renumbered)",
 			"start": "2030-06-03T09:00:00",
 			"duration": "PT1H",
 			"timeZone": "Europe/Zurich",
@@ -362,14 +386,14 @@ class TestMailCraftCalendars(FrappeTestCase):
 			return [{**e, "id": renumbered.get(e["id"], e["id"])} for e in events]
 
 		with patch.object(jmap_events, "query_events", query), patch.object(jmap_events, "get_events", get):
-			changed = self._set(update={third["id"]: {"title": "Atelier (renuméroté, salle B)"}})
+			changed = self._set(update={third["id"]: {"title": "Workshop (renumbered, room B)"}})
 			self.assertEqual(changed["notUpdated"], {})
 			gone = self._set(destroy=[second["id"]])
 			self.assertEqual(gone["notDestroyed"], {})
 			alone = self._calls(
 				("CalendarEvent/get", {"accountId": jmap.account_id(BOX), "ids": [third["id"]]})
 			)
-			self.assertEqual([e["title"] for e in alone[0][1]["list"]], ["Atelier (renuméroté, salle B)"])
+			self.assertEqual([e["title"] for e in alone[0][1]["list"]], ["Workshop (renumbered, room B)"])
 			self.assertEqual(
 				[e["utcStart"] for e in ours()],
 				["2030-06-03T07:00:00Z", "2030-06-17T07:00:00Z"],
@@ -386,7 +410,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		series = {
 			"@type": "Event",
 			"calendarIds": {self._calendar(): True},
-			"title": "Atelier (série)",
+			"title": "Workshop (series)",
 			"start": "2030-09-02T09:00:00",
 			"duration": "PT1H",
 			"timeZone": "Europe/Zurich",
@@ -412,10 +436,10 @@ class TestMailCraftCalendars(FrappeTestCase):
 			self.assertEqual(len(weekly), 3)
 			self.assertTrue(all(e["id"][:1] == "O" for e in weekly), [e["id"] for e in weekly])
 			self.assertEqual({e.get("baseEventId") for e in weekly}, {vid}, "each says its series")
-			changed = self._set(update={weekly[1]["id"]: {"title": "Atelier (salle C)"}})
+			changed = self._set(update={weekly[1]["id"]: {"title": "Workshop (room C)"}})
 			self.assertEqual(changed["notUpdated"], {})
 			self.assertEqual(
-				[e["title"] for e in ours()], ["Atelier (série)", "Atelier (salle C)", "Atelier (série)"]
+				[e["title"] for e in ours()], ["Workshop (series)", "Workshop (room C)", "Workshop (series)"]
 			)
 			# Asked for by the server's own id (an older read's), an occurrence says its series too.
 			own = calendars._event_id(instance_id(calendars._raw(vid, "V"), weekly[2]["recurrenceId"]))
@@ -427,7 +451,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		series = {
 			"@type": "Event",
 			"calendarIds": {self._calendar(): True},
-			"title": "Réunion d'équipe",
+			"title": "Team meeting",
 			"start": "2030-05-06T08:30:00",
 			"duration": "PT1H",
 			"timeZone": "Europe/Zurich",
@@ -438,7 +462,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 
 		def occurrences():
 			return sorted(
-				(e for e in self._window(may) if e.get("title", "").startswith("Réunion d'équipe")),
+				(e for e in self._window(may) if e.get("title", "").startswith("Team meeting")),
 				key=lambda e: e["utcStart"],
 			)
 
@@ -451,11 +475,11 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertTrue(
 			weekly[1].get("recurrenceId"), "an occurrence says which one it is (the desk's instance path)"
 		)
-		self.assertEqual(self._set(update={third: {"title": "Réunion d'équipe (salle B)"}})["notUpdated"], {})
+		self.assertEqual(self._set(update={third: {"title": "Team meeting (room B)"}})["notUpdated"], {})
 		self.assertEqual(self._set(destroy=[second])["notDestroyed"], {})
 		after = occurrences()
 		self.assertEqual([e["utcStart"] for e in after], ["2030-05-06T06:30:00Z", "2030-05-20T06:30:00Z"])
-		self.assertEqual([e["title"] for e in after], ["Réunion d'équipe", "Réunion d'équipe (salle B)"])
+		self.assertEqual([e["title"] for e in after], ["Team meeting", "Team meeting (room B)"])
 
 	def test_what_cannot_be_written_is_refused_and_says_why(self):
 		self._as(PERSON)
@@ -521,7 +545,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		event = {
 			"@type": "Event",
 			"calendarIds": {self._calendar(): True},
-			"title": "Revue",
+			"title": "Review",
 			"start": "2030-04-08T10:00:00",
 			"duration": "PT1H",
 			"timeZone": "Europe/Zurich",
@@ -542,13 +566,13 @@ class TestMailCraftCalendars(FrappeTestCase):
 		stored = self._get(vid)
 		organizer = stored.get("organizerCalendarAddress")
 		# Sent back as it was: accepted.
-		same = self._set(update={vid: {"title": "Revue (bis)", "organizerCalendarAddress": organizer}})
+		same = self._set(update={vid: {"title": "Review (again)", "organizerCalendarAddress": organizer}})
 		self.assertEqual(same["notUpdated"], {})
 		# Another organizer, or none: refused, nothing changed.
 		for other in ("mailto:boss@example.com", None):
 			refused = self._set(update={vid: {"organizerCalendarAddress": other, "title": "x"}})
 			self.assertEqual(refused["notUpdated"][vid]["type"], "forbidden", other)
-		self.assertEqual(self._get(vid)["title"], "Revue (bis)")
+		self.assertEqual(self._get(vid)["title"], "Review (again)")
 		# A create names one of the person's own addresses, or none.
 		elsewhere = self._set(
 			create={
@@ -575,15 +599,385 @@ class TestMailCraftCalendars(FrappeTestCase):
 			account=self.account,
 			calendar_ids=[calendars._raw(self._calendar(), "C")],
 			draft=True,
-			title="Brouillon",
+			title="Draft",
 			start="2030-04-10T09:00:00",
 			duration="PT30M",
 			time_zone="Europe/Zurich",
 		)
 		vid = calendars._event_id(raw)
-		self.assertEqual(self._set(update={vid: {"title": "Brouillon (renommé)"}})["notUpdated"], {})
+		self.assertEqual(self._set(update={vid: {"title": "Draft (renamed)"}})["notUpdated"], {})
 		after = self._get(vid)
-		self.assertEqual((after["title"], bool(after.get("isDraft"))), ("Brouillon (renommé)", True))
+		self.assertEqual((after["title"], bool(after.get("isDraft"))), ("Draft (renamed)", True))
+
+	def _invitation(self, **over):
+		"""The occurrences (one for a single event) of an event someone else organizes, in the person's calendar, the
+		person invited (as the Suite files an invitation that arrives), with a second guest."""
+		from suite.calendar.jmap_events import create_events
+		from suite.mail.jmap import get_account_client
+
+		uid = f"mc-invite-{frappe.generate_hash(length=10)}"
+		guest = {"roles": {"attendee": True}, "participation_status": "needs-action", "expect_reply": True}
+		create_events(
+			get_account_client(self.account),
+			self.account,
+			[
+				{
+					"creation_id": "i",
+					"uid": uid,
+					"calendar_ids": [calendars._raw(self._calendar(), "C")],
+					"organizer": "boss@example.com",
+					"title": "Project review",
+					"start": "2030-11-04T10:00:00",
+					"duration": "PT1H",
+					"time_zone": "Europe/Zurich",
+					"participants": [
+						{
+							"uid": "boss",
+							"email": "boss@example.com",
+							"roles": {"owner": True, "attendee": True},
+							"participation_status": "accepted",
+						},
+						{"uid": "me", "email": PERSON, **guest},
+						{"uid": "ana", "email": "ana@example.com", **guest},
+					],
+					**over,
+				}
+			],
+		)
+		return sorted((e for e in self._window(NOVEMBER) if e.get("uid") == uid), key=lambda e: e["utcStart"])
+
+	def _answered(self, event, who="me", status="accepted"):
+		"""The participants of `event` as a client sends them back, `who` having answered `status`."""
+		participants = json.loads(json.dumps(event["participants"]))
+		participants[who]["participationStatus"] = status
+		return participants
+
+	def _sending_answers(self):
+		"""The person's calendars as a mail server's: answers go out from them (`mayRSVP`), where the calendar the Suite
+		keeps in the instance sends none."""
+		from suite.calendar import jmap_events
+
+		real = jmap_events.get_calendars
+
+		def granted(client, ids=None):
+			return [
+				{**c, "myRights": {**(c.get("myRights") or {}), "mayRSVP": True}} for c in real(client, ids)
+			]
+
+		return patch.object(jmap_events, "get_calendars", side_effect=granted)
+
+	def test_an_answer_to_someone_elses_invitation_reaches_its_organizer(self):
+		"""Answered in NeoMail, the client asking for it to be sent: recorded on the person's copy and told to the
+		organizer, by the desk's own answer (rsvp_calendar_event), where a change of the copy alone tells nobody."""
+		from suite.calendar.doctype.calendar_event import invitations
+
+		self._as(PERSON)
+		(event,) = self._invitation()
+		queued = []
+		# The custom reply mail is queued (and not run): what it would be told is read from the queue.
+		with (
+			self._sending_answers(),
+			patch.object(invitations, "custom_event_invites_enabled", return_value=True),
+			patch.object(frappe, "enqueue", side_effect=lambda method, **kw: queued.append((method, kw))),
+			patch.object(frappe, "sendmail", side_effect=AssertionError("a test sends no mail")),
+		):
+			answered = self._set(
+				update={event["id"]: {"participants": self._answered(event)}}, sendSchedulingMessages=True
+			)
+		self.assertEqual((answered["updated"], answered["notUpdated"]), ({event["id"]: None}, {}))
+		after = self._get(event["id"])["participants"]
+		self.assertEqual(
+			{who: p.get("participationStatus") for who, p in after.items()},
+			{"boss": "accepted", "me": "accepted", "ana": "needs-action"},
+		)
+		told = [kw for method, kw in queued if method.endswith(".notify_organizer_of_reply")]
+		self.assertEqual(len(told), 1, queued)
+		self.assertEqual(
+			(told[0]["event_id"], told[0]["responder_email"], told[0]["status"], told[0]["recurrence_id"]),
+			(calendars._raw(event["id"], "V"), PERSON, "accepted", None),
+		)
+
+	def test_a_calendar_that_sends_no_answers_keeps_them_on_the_copy(self):
+		"""A calendar the Suite keeps in the instance sends no mail (`mayRSVP` is off): an answer there is written on the
+		copy, as before, and never handed to the desk's answer, whose reply mail could not go."""
+		from suite.calendar import api as calendar_api
+		from suite.calendar.doctype.calendar_event import calendar_event, invitations
+
+		self._as(PERSON)
+		(event,) = self._invitation()
+		with (
+			patch.object(calendar_api, "rsvp_calendar_event", side_effect=AssertionError("no answer sent")),
+			patch.object(
+				calendar_event, "update_calendar_event", wraps=calendar_event.update_calendar_event
+			) as written,
+			patch.object(invitations, "custom_event_invites_enabled", return_value=False),
+			patch.object(frappe, "enqueue"),
+		):
+			answered = self._set(
+				update={event["id"]: {"participants": self._answered(event, status="tentative")}},
+				sendSchedulingMessages=True,
+			)
+		self.assertEqual(answered["notUpdated"], {})
+		self.assertEqual(written.call_args.kwargs["send_scheduling_messages"], False)
+		self.assertEqual(self._get(event["id"])["participants"]["me"]["participationStatus"], "tentative")
+
+	def test_what_is_not_an_answer_is_written_as_before_and_tells_nobody(self):
+		"""Not asked to be sent, something else changed with it, another guest's status, a status that answers
+		nothing, two entries changed, a guest added, the person's name changed, or the organizer's own: written as
+		before (update_calendar_event), the organizer not told; what looked like the person's answer is logged."""
+		from suite.calendar import api as calendar_api
+		from suite.calendar.doctype.calendar_event import calendar_event, invitations
+
+		self._as(PERSON)
+		(event,) = self._invitation()
+		vid = event["id"]
+
+		def current():
+			return self._get(vid)
+
+		def two(e):
+			participants = self._answered(e)
+			participants["ana"]["participationStatus"] = "declined"
+			return {"participants": participants}
+
+		def added(e):
+			participants = self._answered(e, status="tentative")
+			participants["zed"] = {
+				"@type": "Participant",
+				"calendarAddress": "mailto:zed@example.com",
+				"roles": {"attendee": True},
+				"participationStatus": "needs-action",
+			}
+			return {"participants": participants}
+
+		def renamed(e):
+			participants = self._answered(e)
+			participants["me"]["name"] = "Someone else"
+			return {"participants": participants}
+
+		cases = [
+			("not asked", lambda e: {"participants": self._answered(e, status="tentative")}, False),
+			(
+				"title too",
+				lambda e: {"participants": self._answered(e, status="declined"), "title": "Review (again)"},
+				True,
+			),
+			("another's", lambda e: {"participants": self._answered(e, who="ana")}, True),
+			("no answer", lambda e: {"participants": self._answered(e, status="delegated")}, True),
+			("two changed", two, True),
+			("guest added", added, True),
+			("name changed", renamed, True),
+		]
+		# The calendar kept in the instance sends no scheduling mail of its own; the custom invitations, which would, are
+		# off, and nothing queued runs.
+		with (
+			self._sending_answers(),
+			patch.object(
+				calendar_api, "rsvp_calendar_event", side_effect=AssertionError("not an answer")
+			) as answer,
+			patch.object(
+				calendar_event, "update_calendar_event", wraps=calendar_event.update_calendar_event
+			) as written,
+			patch.object(invitations, "custom_event_invites_enabled", return_value=False),
+			patch.object(frappe, "enqueue"),
+			patch.object(frappe, "sendmail", side_effect=AssertionError("a test sends no mail")),
+			patch.object(frappe, "log_error") as logged,
+		):
+			for name, change, send in cases:
+				done = self._set(update={vid: change(current())}, sendSchedulingMessages=send)
+				self.assertEqual(done["notUpdated"], {}, name)
+				self.assertEqual(written.call_args.kwargs["send_scheduling_messages"], False, name)
+			# The organizer's own answer is an organizer's change: the guests are told by an update, as from the desk.
+			with patch.object(calendars, "_organizes", return_value=True):
+				done = self._set(
+					update={vid: {"participants": self._answered(current(), who="boss", status="tentative")}},
+					sendSchedulingMessages=True,
+				)
+			self.assertEqual(done["notUpdated"], {})
+			self.assertEqual(written.call_args.kwargs["send_scheduling_messages"], True)
+		self.assertEqual(answer.call_count, 0)
+		self.assertEqual(
+			[call.args[0] for call in logged.call_args_list],
+			["NeoMail: an answer to an invitation was written on the copy alone"] * 4,
+			"title too, two changed, guest added, name changed",
+		)
+		after = current()
+		self.assertEqual(after["title"], "Review (again)")
+		self.assertEqual(after["participants"]["me"]["name"], "Someone else")
+		self.assertEqual(
+			{who: p.get("participationStatus") for who, p in after["participants"].items()},
+			{"boss": "tentative", "me": "accepted", "ana": "declined", "zed": "needs-action"},
+		)
+
+	def test_an_answer_sent_back_as_a_client_spells_it_is_still_one(self):
+		"""What the Suite works out again when it writes a participant (where invitations go, its scheduling id, whether
+		a reply is expected) may come back otherwise, an address's scheme in capitals, roles that are off said off: the
+		person's answer is still theirs alone."""
+		from suite.calendar import api as calendar_api
+
+		self._as(PERSON)
+		(event,) = self._invitation()
+		echoed = self._answered(event)
+		for entry in echoed.values():
+			for derived in ("sendTo", "scheduleId", "expectReply"):
+				entry.pop(derived, None)
+			entry["roles"] = {**(entry.get("roles") or {}), "chair": False}
+		echoed["me"]["calendarAddress"] = "MAILTO:" + PERSON.upper()
+		with self._sending_answers(), patch.object(calendar_api, "rsvp_calendar_event") as answer:
+			answered = self._set(update={event["id"]: {"participants": echoed}}, sendSchedulingMessages=True)
+		self.assertEqual(answered["notUpdated"], {})
+		answer.assert_called_once_with(self.account, calendars._raw(event["id"], "V"), "accepted")
+
+	def test_invited_under_two_of_their_addresses_the_first_answers(self):
+		"""record_rsvp answers for the first of the person's entries: a change of the other is not taken for an answer
+		(it would land on the wrong entry), and is written as before."""
+		from suite.calendar import api as calendar_api
+		from suite.calendar.doctype.calendar_event import invitations
+		from suite.mail import jmap as suite_jmap
+
+		self._as(PERSON)
+		guest = {"roles": {"attendee": True}, "participation_status": "needs-action", "expect_reply": True}
+		(event,) = self._invitation(
+			participants=[
+				{
+					"uid": "boss",
+					"email": "boss@example.com",
+					"roles": {"owner": True},
+					"participation_status": "accepted",
+				},
+				{"uid": "me", "email": PERSON, **guest},
+				{"uid": "alias", "email": "alias.mailcraft@example.com", **guest},
+			]
+		)
+		identities = [{"email": PERSON}, {"email": "alias.mailcraft@example.com"}]
+		with (
+			self._sending_answers(),
+			patch.object(suite_jmap, "get_participant_identities", return_value=identities),
+			patch.object(calendar_api, "rsvp_calendar_event") as answer,
+			patch.object(invitations, "custom_event_invites_enabled", return_value=False),
+			patch.object(frappe, "enqueue"),
+			patch.object(frappe, "sendmail", side_effect=AssertionError("a test sends no mail")),
+		):
+			other = self._set(
+				update={event["id"]: {"participants": self._answered(event, who="alias")}},
+				sendSchedulingMessages=True,
+			)
+			self.assertEqual((other["notUpdated"], answer.call_count), ({}, 0))
+			first = self._set(
+				update={event["id"]: {"participants": self._answered(self._get(event["id"]))}},
+				sendSchedulingMessages=True,
+			)
+		self.assertEqual(first["notUpdated"], {})
+		answer.assert_called_once_with(self.account, calendars._raw(event["id"], "V"), "accepted")
+
+	def test_one_occurrence_of_someone_elses_invitation_is_answered_with_its_series(self):
+		"""As in the desk, which offers no answer to one occurrence of another's invitation (the mail server would give
+		it to every occurrence, and the copy would lose its rule): refused, and said; nothing written."""
+		from suite.calendar import api as calendar_api
+
+		self._as(PERSON)
+		weekly = self._invitation(
+			recurrence_rule={"@type": "RecurrenceRule", "frequency": "weekly", "count": 3}
+		)
+		self.assertEqual(len(weekly), 3)
+		second = weekly[1]
+		self.assertEqual(second["id"][:1], "O", second["id"])
+		with (
+			self._sending_answers(),
+			patch.object(calendar_api, "rsvp_calendar_event", side_effect=AssertionError("refused first")),
+		):
+			refused = self._set(
+				update={second["id"]: {"participants": self._answered(second, status="declined")}},
+				sendSchedulingMessages=True,
+			)
+		self.assertEqual(refused["notUpdated"][second["id"]]["type"], "forbidden")
+		self.assertIn("answered as a whole", refused["notUpdated"][second["id"]]["description"])
+		self.assertEqual(
+			[e["participants"]["me"]["participationStatus"] for e in self._invitation_now(weekly)],
+			["needs-action"] * 3,
+		)
+
+	def _invitation_now(self, occurrences):
+		uid = occurrences[0]["uid"]
+		return sorted((e for e in self._window(NOVEMBER) if e.get("uid") == uid), key=lambda e: e["utcStart"])
+
+	def test_one_calendar_is_the_default_and_colours_are_rrggbb(self):
+		"""The Suite and the mail server may flag several calendars, or none, and keep a colour as any client wrote it:
+		one is said to be the default, the one an event made without a calendar goes to, and each colour is #rrggbb."""
+		from suite.calendar import jmap_events
+		from suite.calendar.doctype.calendar_event import calendar_event
+
+		self._as(PERSON)
+		read_only, writable = {"mayReadItems": True}, {"mayReadItems": True, "mayWriteAll": True}
+
+		def kept(*calendars_kept):
+			return lambda client, ids=None: [dict(c) for c in calendars_kept]
+
+		flagged_read_only = {
+			"id": "a",
+			"name": "A",
+			"isDefault": True,
+			"myRights": read_only,
+			"color": "blue",
+		}
+		plain = {"id": "b", "name": "B", "myRights": writable, "color": "#ABC"}
+		flagged = {"id": "c", "name": "C", "isDefault": True, "myRights": writable, "color": "#11223344"}
+		odd = {"id": "d", "name": "D", "myRights": writable, "color": "not a colour"}
+		aid = jmap.account_id(BOX)
+		for calendars_kept, default in (
+			((flagged_read_only, plain, flagged, odd), "c"),
+			((flagged_read_only, plain, odd), "b"),
+			((flagged_read_only, {**flagged, "myRights": read_only}), "a"),
+		):
+			with patch.object(jmap_events, "get_calendars", side_effect=kept(*calendars_kept)):
+				listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
+			self.assertEqual(
+				[c["id"] for c in listed if c["isDefault"]], [calendars._calendar_id(default)], default
+			)
+		with patch.object(
+			jmap_events, "get_calendars", side_effect=kept(flagged_read_only, plain, flagged, odd)
+		):
+			listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
+			self.assertEqual(
+				{c["name"]: c["color"] for c in listed},
+				{"A": "#0000ff", "B": "#aabbcc", "C": "#112233", "D": None},
+			)
+			with patch.object(calendar_event, "add_calendar_event", return_value="made") as add:
+				self._set(create={"k": {"title": "x", "start": "2030-04-08T10:00:00", "duration": "PT1H"}})
+		self.assertEqual(add.call_args.kwargs["calendar_ids"], ["c"], "where the default said it would go")
+		# What Pillow reads but is no colour: a channel out of bounds, a transparent one.
+		for odd_colour in (
+			"rgb(300,0,0)",
+			"rgb(200%,0%,0%)",
+			"hsl(0, 500%, 50%)",
+			"#00000000",
+			"rgba(0,0,0,0)",
+		):
+			self.assertIsNone(calendars._color(odd_colour), odd_colour)
+		self.assertEqual(calendars._color("#D68A59"), "#d68a59")
+
+	def test_a_series_master_is_read_by_its_v_id(self):
+		"""A client reads a series itself by its V id, for its rule, its own changes of single occurrences and its
+		first start."""
+		self._as(PERSON)
+		vid = self._make(
+			title="Committee", recurrenceRule={"@type": "RecurrenceRule", "frequency": "weekly", "count": 3}
+		)
+		april = {"after": "2030-04-01T00:00:00Z", "before": "2030-05-01T00:00:00Z"}
+		weekly = sorted(
+			(e for e in self._window(april) if e.get("title") == "Committee"), key=lambda e: e["utcStart"]
+		)
+		self.assertEqual(len(weekly), 3)
+		self.assertEqual(
+			self._set(update={weekly[1]["id"]: {"title": "Committee (room B)"}})["notUpdated"], {}
+		)
+		master = self._get(vid)
+		self.assertEqual(master["id"], vid)
+		self.assertEqual(
+			(master["recurrenceRule"]["frequency"], master["start"]), ("weekly", "2030-04-08T10:00:00")
+		)
+		self.assertFalse(master.get("recurrenceId"))
+		self.assertIn(weekly[1]["recurrenceId"], master.get("recurrenceOverrides") or {})
 
 	def test_what_the_suite_does_not_keep_is_refused_not_dropped(self):
 		self._as(PERSON)
@@ -612,19 +1006,21 @@ class TestMailCraftCalendars(FrappeTestCase):
 	def test_an_occurrence_keeps_its_zone_and_its_calendar(self):
 		self._as(PERSON)
 		self._make(
-			title="Atelier", recurrenceRule={"@type": "RecurrenceRule", "frequency": "weekly", "count": 2}
+			title="Workshop", recurrenceRule={"@type": "RecurrenceRule", "frequency": "weekly", "count": 2}
 		)
 		april = {"after": "2030-04-01T00:00:00Z", "before": "2030-05-01T00:00:00Z"}
 		first = next(
-			e for e in sorted(self._window(april), key=lambda e: e["utcStart"]) if e.get("title") == "Atelier"
+			e
+			for e in sorted(self._window(april), key=lambda e: e["utcStart"])
+			if e.get("title") == "Workshop"
 		)
 		self.assertEqual(
-			self._set(update={first["id"]: {"title": "Atelier (A)", "timeZone": "America/New_York"}})[
+			self._set(update={first["id"]: {"title": "Workshop (A)", "timeZone": "America/New_York"}})[
 				"notUpdated"
 			],
 			{},
 		)
-		moved = next(e for e in self._window(april) if e.get("title") == "Atelier (A)")
+		moved = next(e for e in self._window(april) if e.get("title") == "Workshop (A)")
 		self.assertEqual(
 			moved["utcStart"], first["utcStart"], "the zone of an occurrence is not changed alone"
 		)

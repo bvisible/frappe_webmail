@@ -167,6 +167,11 @@ class TestMailCraftContacts(FrappeTestCase):
 		aid = jmap.account_id(BOX)
 		self.assertIn(contacts.CONTACTS, own["capabilities"])
 		self.assertIn(contacts.CONTACTS, own["accounts"][aid]["accountCapabilities"])
+		self.assertEqual(
+			own["accounts"][aid]["accountCapabilities"][contacts.CONTACTS]["writableProperties"],
+			["emails", "name", "organizations", "phones", "titles"],
+			"what a card keeps when it is written here, said in advance",
+		)
 		self.assertEqual(own["primaryAccounts"][contacts.CONTACTS], aid)
 		shared = json.loads(jmap.session(SHARED_BOX).get_data())
 		self.assertNotIn(

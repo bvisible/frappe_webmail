@@ -5,7 +5,7 @@
 JMAP for Contacts (RFC 9610) in MailCraft's facade (mailcraft_jmap): the instance's contacts (Contact, with their
 addresses and phone numbers) as one address book, with the rights of the person the token is for. NeoMail's address
 book, its completion of recipients and its person card are then Neoffice's (maintenance#1630, step 2 of NeoMail's
-programme). NeoMail does what the desk does (Jérémy, 17.10: « elle doit pouvoir tout faire, comme dans le desk »): it
+programme). NeoMail does what the desk does (Jérémy, 17.10: "she must be able to do everything, as in the desk"): it
 creates, changes and deletes contacts with the person's own rights, and by the desk's rules (Frappe's link check and
 the apps' own hooks on a deletion; a deleted one can be restored from the Deleted Documents).
 
@@ -47,7 +47,15 @@ def session_parts(account):
 	account's; nothing for the person's other mailboxes."""
 	if account.name != contacts_mailbox():
 		return {}, {}
-	return {CONTACTS: {}}, {CONTACTS: {"maxAddressBooksPerCard": 1, "mayCreateAddressBook": False}}
+	return {CONTACTS: {}}, {
+		CONTACTS: {
+			"maxAddressBooksPerCard": 1,
+			"mayCreateAddressBook": False,
+			# Not in the RFC: what a card keeps when it is written here, so that a client offers nothing else (addresses,
+			# notes, birthdays…) rather than learn it from a refusal.
+			"writableProperties": sorted(WRITABLE),
+		}
+	}
 
 
 def _book_account(args):
@@ -286,7 +294,7 @@ def _refusal(error):
 		# The desk's rule: a contact that documents name is not deleted (Frappe says which).
 		return {"type": "forbidden", "description": strip_html(str(error)).strip()[:200]}
 	if isinstance(error, frappe.ValidationError | ValueError | TypeError):
-		# NeoMail shows it as it is: Frappe's messages carry markup (« Only one <strong>Email ID</strong>… »).
+		# NeoMail shows it as it is: Frappe's messages carry markup ("Only one <strong>Email ID</strong>…").
 		return {"type": "invalidProperties", "description": strip_html(str(error)).strip()[:200]}
 	frappe.log_error("MailCraft contacts: a card could not be written", frappe.get_traceback())
 	return {"type": "serverFail"}
@@ -417,7 +425,7 @@ def _create(card):
 	fields.pop("full_name", None)
 	addresses, phones = fields.pop("emails", []), fields.pop("phones", [])
 	if not (fields.get("first_name") or fields.get("last_name")):
-		# A contact is named: from its address when no name is given (« jeanne.muster@… » → Jeanne Muster).
+		# A contact is named: from its address when no name is given ("jeanne.muster@…" → Jeanne Muster).
 		if not addresses:
 			raise ValueError(_("A contact needs a name or an address."))
 		words = addresses[0].split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").split()
@@ -439,7 +447,7 @@ def _create(card):
 
 
 def _update(name, patch):
-	# A contact the person may not read is one that is not there: « forbidden » would say it exists.
+	# A contact the person may not read is one that is not there: "forbidden" would say it exists.
 	if not isinstance(name, str) or not frappe.db.exists("Contact", name):
 		raise frappe.DoesNotExistError
 	if not frappe.has_permission("Contact", "read", doc=name):
