@@ -581,6 +581,29 @@ class TestMailCraftContacts(FrappeTestCase):
 		self.assertTrue(read["created"].endswith("Z") and read["updated"].endswith("Z"), read)
 		self.assertLessEqual(read["created"], read["updated"])
 
+	def test_a_card_made_here_is_found_by_its_uid(self):
+		"""A client that sends a create again finds the contact the first one made by its uid, and nothing for a uid
+		it never sent (nor another person's)."""
+		uid = f"mc-test-{uuid.uuid4()}"
+		made = self._set(READER, BOX, create={"k": {"uid": uid, "name": {"full": "Nu Contactsperm"}}})[1]
+		name = made["created"]["k"]["id"]
+		self._as(READER)
+		aid = jmap.account_id(BOX)
+		found = self._calls(
+			("ContactCard/query", {"accountId": aid, "filter": {"uid": uid}, "calculateTotal": True})
+		)
+		self.assertEqual((found[0][1]["ids"], found[0][1]["total"]), ([name], 1), found)
+		none = self._calls(("ContactCard/query", {"accountId": aid, "filter": {"uid": "mc-test-never-sent"}}))
+		self.assertEqual(none[0][1]["ids"], [])
+		self._as(DELETER)
+		other = self._calls(
+			("ContactCard/query", {"accountId": jmap.account_id(DELETER_BOX), "filter": {"uid": uid}})
+		)
+		self.assertEqual(other[0][1]["ids"], [], "another person's create is not theirs to find")
+		self._as(READER)
+		odd = self._calls(("ContactCard/query", {"accountId": aid, "filter": {"name": "x"}}))
+		self.assertEqual((odd[0][0], odd[0][1]["type"]), ("error", "unsupportedFilter"))
+
 	def test_a_contact_is_deleted_as_in_the_desk(self):
 		frappe.set_user("Administrator")
 		theta = _contact("Theta", "Contactsperm", "theta@contacts.test")

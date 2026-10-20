@@ -150,9 +150,10 @@ def _state():
 
 
 def card_query(args):
-	"""The ids of the contacts the person may read, by name; the only filter is the one address book. A window of them
-	(RFC 8620 §5.5): `position` from the start, or from the end when negative; `limit` at most MAX_CARDS, said back when
-	the server set it; `total` when asked (`calculateTotal`)."""
+	"""The ids of the contacts the person may read, by name; the filters are the one address book, and `uid`: the contact
+	a create with that uid made here (a client that sends a create again finds it, and writes it only what changed). A
+	window of them (RFC 8620 §5.5): `position` from the start, or from the end when negative; `limit` at most MAX_CARDS,
+	said back when the server set it; `total` when asked (`calculateTotal`)."""
 	aid = _book_account(args)
 	position = jmap._whole_number(args.get("position"), "position", 0)
 	limit = jmap._whole_number(args.get("limit"), "limit")
@@ -161,10 +162,28 @@ def card_query(args):
 	if args.get("anchor") is not None:
 		raise jmap.JmapError("invalidArguments", "anchor")
 	criteria = args.get("filter")
-	if criteria not in (None, {}, {"inAddressBook": BOOK}):
-		raise jmap.JmapError("unsupportedFilter", "Only inAddressBook is supported.")
+	if criteria is not None and (
+		not isinstance(criteria, dict)
+		or set(criteria) - {"inAddressBook", "uid"}
+		or criteria.get("inAddressBook", BOOK) != BOOK
+		or ("uid" in criteria and not isinstance(criteria["uid"], str))
+	):
+		raise jmap.JmapError("unsupportedFilter", "Only inAddressBook and uid are supported.")
 	if args.get("sort") not in (None, []):
 		raise jmap.JmapError("unsupportedSort", "The cards come by name.")
+	if criteria and "uid" in criteria:
+		made = _made_before(_text(criteria["uid"], 255)) if _readable() else None
+		found = [made] if made else []
+		answer = {
+			"accountId": aid,
+			"queryState": _state(),
+			"canCalculateChanges": False,
+			"position": 0,
+			"ids": found[position:] if limit is None else found[position : position + limit],
+		}
+		if args.get("calculateTotal"):
+			answer["total"] = len(found)
+		return answer
 	total = cint(_aggregate("count(name)")) if args.get("calculateTotal") or position < 0 else None
 	if position < 0:
 		position = max(0, total + position)
