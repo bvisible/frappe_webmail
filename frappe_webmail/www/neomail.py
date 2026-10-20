@@ -121,9 +121,68 @@ def host_mailboxes(bearer=None):
 		chosen = signature_for(frappe.session.user, a, memo) or {}
 		signature = handed_signature(chosen.get("html"), chosen.get("text"))
 		if signature:
+			signature.update(handed_picture(chosen, memo) or {})
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
+
+
+# How a company template places its logo, as MailCraft's signatures say it (`signature.layout`): beside the words, a
+# two-cell table when sent, or above them. The other layouts draw no logo.
+PICTURE_LAYOUTS = {"Logo left": "pictureLeft", "Logo above": "pictureAbove"}
+# The most one picture of a signature may weigh in MailCraft (crates/model/src/signature.rs, MAX_PICTURE_BYTES).
+MAX_PICTURE_BYTES = 256 * 1024
+# The kinds of picture MailCraft keeps in a signature, by their first bytes.
+_PICTURE_MAGIC = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")
+
+
+def handed_picture(chosen, memo):
+	"""The logo of a company signature as MailCraft keeps a signature's pictures, {logo: {data, name, alt, width},
+	layout}: its bytes in base64, its file's name, its description and the width the template gives it, and its place.
+	MailCraft takes the words of the HTML and leaves its pictures out (its `signature.set`); this hands it the logo
+	itself, read from the instance's files. None for a signature without one (a person's own, a layout without a logo),
+	for a logo that is no file of the instance (MailCraft fetches nothing for a signature), and for a file it would not
+	keep: not a PNG, JPEG or GIF by its own bytes, or heavier than MAX_PICTURE_BYTES."""
+	import base64
+	import os
+	from urllib.parse import unquote
+
+	logo, layout = chosen.get("logo"), PICTURE_LAYOUTS.get(chosen.get("layout"))
+	if not isinstance(logo, dict) or not logo.get("src") or not layout:
+		return None
+	key = ("picture", logo["src"])
+	if key not in memo:
+		memo[key] = _picture_of(logo["src"])
+	data = memo[key]
+	if not data:
+		return None
+	name = os.path.basename(unquote(logo["src"].split("?", 1)[0])) or "logo"
+	return {
+		"logo": {
+			"data": base64.b64encode(data).decode("ascii"),
+			"name": name[:100],
+			"alt": logo.get("alt") or "",
+			"width": logo.get("width"),
+		},
+		"layout": layout,
+	}
+
+
+def _picture_of(src):
+	"""The bytes of a file of the instance that a logo's address names, when MailCraft would keep them; None else."""
+	from frappe_webmail.signatures import _file_on_disk
+
+	path = _file_on_disk(src)
+	if not path:
+		return None
+	try:
+		with open(path, "rb") as picture:
+			data = picture.read(MAX_PICTURE_BYTES + 1)
+	except OSError:
+		return None
+	if len(data) > MAX_PICTURE_BYTES or not data.startswith(_PICTURE_MAGIC):
+		return None
+	return data
 
 
 # A signature is a few lines and perhaps a logo. A bigger one goes as its text alone (the page carries every mailbox's

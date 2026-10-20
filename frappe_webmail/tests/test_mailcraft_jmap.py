@@ -1032,6 +1032,53 @@ class TestMailCraftJmap(FrappeTestCase):
 			'src="/private/files/', given["html"], "Frappe keeps a pasted picture as a file of the instance"
 		)
 
+	def test_a_company_signature_comes_with_its_logo_by_its_bytes(self):
+		"""Under a template that draws the company's logo, the page hands MailCraft the logo itself and its place: MailCraft
+		keeps a signature's pictures by their bytes and takes none from its HTML."""
+		import base64
+		import io
+
+		from PIL import Image
+
+		from frappe_webmail.www import neomail
+
+		buffer = io.BytesIO()
+		Image.new("RGB", (40, 10), (31, 58, 95)).save(buffer, "PNG")
+		logo = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": "mailcraft-jmap-test-logo.png",
+				"content": buffer.getvalue(),
+				"is_private": 0,
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "File", logo.name, force=True, ignore_permissions=True)
+		writer = frappe._dict(
+			user=SHARED,
+			name="Camille Favre",
+			job_title="",
+			department="",
+			phone="",
+			mobile="",
+			email=SHARED,
+			company_name="Atelier",
+			website="",
+			address="",
+			logo=logo.file_url,
+		)
+		company = frappe._dict(layout="Logo left", logo_width=90)
+		with (
+			patch("frappe_webmail.signatures.template_for", return_value=company),
+			patch("frappe_webmail.signatures.person_of", return_value=writer),
+			patch("frappe_webmail.signatures._team_of", side_effect=lambda person, account, phone: person),
+		):
+			box = next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)
+		signature = box["signature"]
+		self.assertIn("Camille Favre", signature["text"])
+		self.assertEqual(signature["layout"], "pictureLeft")
+		self.assertEqual((signature["logo"]["width"], signature["logo"]["alt"]), (90, "Atelier"))
+		self.assertEqual(base64.b64decode(signature["logo"]["data"]), buffer.getvalue())
+
 	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
 		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
 		from frappe_webmail.www import neomail

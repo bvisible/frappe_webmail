@@ -561,8 +561,14 @@ def render_person(template, person: frappe._dict) -> dict:
 	):
 		return {"html": "", "text": ""}
 	html = _environment().get_template(LAYOUTS[layout]).render(card=card, look=look_of(template))
-	# The templates are written as lines: no newline, no indentation in what leaves (a space that matters is on its line)
-	return {"html": re.sub(r"\s*\n\s*", "", html).strip(), "text": text_of(card)}
+	# The templates are written as lines: no newline, no indentation in what leaves (a space that matters is on its line).
+	# The logo and the layout go with them for NeoMail, which keeps a signature's pictures by their bytes (www/neomail.py).
+	return {
+		"html": re.sub(r"\s*\n\s*", "", html).strip(),
+		"text": text_of(card),
+		"logo": card["logo"],
+		"layout": layout,
+	}
 
 
 def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dict:
@@ -724,4 +730,5 @@ def preview(doc, user: str | None = None) -> dict:
 		frappe.throw(_("User {0} not found").format(user), frappe.DoesNotExistError)
 	# Whatever the form said it is, it is a template: it is not saved, and only read
 	template = frappe.get_doc({**doc, "doctype": "Email Signature Template"})
-	return render(template, user)
+	written = render(template, user)
+	return {"html": written["html"], "text": written["text"]}

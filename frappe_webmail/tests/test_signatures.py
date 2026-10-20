@@ -627,6 +627,42 @@ class TestRendering(FrappeTestCase):
 			image = soup(render_person(template("Logo left"), person(logo=stored))["html"]).find("img")
 			self.assertNotIn("height", image.attrs, stored)
 
+	def test_neomail_is_handed_the_logo_by_its_bytes_and_where_it_goes(self):
+		"""MailCraft drops the pictures of a signature's HTML (its `signature.set`): the page hands it the template's logo
+		itself, read from the instance's files, and the place the layout gives it (www/neomail.py)."""
+		import base64
+
+		from frappe_webmail.www.neomail import MAX_PICTURE_BYTES, handed_picture
+
+		logo = self.logo_file(width=40, height=10)
+		for layout, place in (("Logo left", "pictureLeft"), ("Logo above", "pictureAbove")):
+			handed = handed_picture(render_person(template(layout, logo_width=80), person(logo=logo)), {})
+			self.assertEqual(handed["layout"], place)
+			self.assertEqual((handed["logo"]["width"], handed["logo"]["alt"]), (80, "Example Ltd"))
+			self.assertEqual(handed["logo"]["name"], logo.rsplit("/", 1)[1])
+			self.assertTrue(base64.b64decode(handed["logo"]["data"]).startswith(b"\x89PNG\r\n\x1a\n"))
+		# A layout that draws no logo, and a person's own signature, hand none
+		for layout in ("Text only", "Compact"):
+			self.assertIsNone(handed_picture(render_person(template(layout), person(logo=logo)), {}), layout)
+		self.assertIsNone(handed_picture({"html": "<p>Me</p>", "text": "Me"}, {}))
+		# Nor does a logo elsewhere (MailCraft fetches nothing for a signature), one no longer there, or a file it would not
+		# keep: no PNG, JPEG or GIF by its own bytes, or heavier than it takes
+		for stored in (
+			"https://cdn.example.com/logo.png",
+			MISSING_LOGO,
+			self.logo_file(content=b"<svg xmlns='http://www.w3.org/2000/svg'/>", extension="svg"),
+			self.logo_file(content=b"\x89PNG\r\n\x1a\n" + b"\0" * MAX_PICTURE_BYTES),
+		):
+			self.assertIsNone(
+				handed_picture(render_person(template("Logo left"), person(logo=stored)), {}), stored
+			)
+		# The file is read once a page, whatever the number of mailboxes that carry it
+		memo = {}
+		chosen = render_person(template("Logo left"), person(logo=logo))
+		handed_picture(chosen, memo)
+		with patch("frappe_webmail.www.neomail._picture_of", side_effect=AssertionError("read again")):
+			self.assertIsNotNone(handed_picture(chosen, memo))
+
 	def logo_file(self, width=1, height=1, content=None, extension="png"):
 		"""A public file of the instance, a picture of that size or those bytes, removed after the test: its address."""
 		from PIL import Image
