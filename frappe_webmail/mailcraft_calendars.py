@@ -593,11 +593,23 @@ def _one_event(write):
 		return _event_refusal(e)
 
 
+class RoomRefused(Exception):
+	"""What stopped the Meet room an event asked for, said apart from the event's own refusals: its SetError names the
+	property (`virtualLocations`), so that a client tells "no room" from "the desk's limits, try again"."""
+
+	def __init__(self, kind, description):
+		super().__init__(description)
+		self.kind = kind
+		self.description = description
+
+
 def _event_refusal(error):
 	"""A JMAP SetError for what stopped an event (the Suite's own messages, without their markup)."""
 	from frappe.utils import strip_html
 
 	described = strip_html(str(error)).strip()[:200]
+	if isinstance(error, RoomRefused):
+		return {"type": error.kind, "properties": [ONLINE_PROPERTY], "description": error.description[:200]}
 	if isinstance(error, jmap.JmapError):
 		# A read of the Suite on the way (_reading): refused, or the server not answering.
 		return {
@@ -943,14 +955,25 @@ def _make_room(suite_account, title):
 	guests let in as the Meet settings say, the person its host, under the desk's limit on new rooms. Made in the
 	event's savepoint, just before the event is written: an event the Suite then refuses leaves no room (the limit
 	counts it, as in the desk)."""
+	from frappe.utils import strip_html
+
 	if not meet_usable():
-		raise frappe.PermissionError("No online meeting can be made here: Meet is not set up for you.")
+		raise RoomRefused("forbidden", "No online meeting can be made here: Meet is not set up for you.")
 	from suite.mail.doctype.user_account.user_account import is_jmap_account_belongs_to_user
 	from suite.meet.api.meeting import create
 
 	is_jmap_account_belongs_to_user(suite_account, raise_exception=True)
-	# Meet keeps a title of 140 characters at most (a Data field).
-	room = create(meeting_type="open", title=(title or "")[:140] or None)
+	try:
+		# Meet keeps a title of 140 characters at most (a Data field).
+		room = create(meeting_type="open", title=(title or "")[:140] or None)
+	except frappe.RateLimitExceededError as e:
+		raise RoomRefused(
+			"rateLimit", strip_html(str(e)).strip() or "Too many meeting rooms were made from here just now."
+		) from e
+	except frappe.PermissionError as e:
+		raise RoomRefused(
+			"forbidden", strip_html(str(e)).strip() or "Your rights do not let you make meeting rooms."
+		) from e
 	return room, frappe.utils.get_url(f"/meet/{room}")
 
 

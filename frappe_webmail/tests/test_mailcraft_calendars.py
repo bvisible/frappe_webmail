@@ -1123,6 +1123,24 @@ class TestMailCraftCalendars(FrappeTestCase):
 			with patch.object(calendars, "meet_usable", return_value=False):
 				refused = self._set(create={"k": event})
 			self.assertEqual(refused["notCreated"]["k"]["type"], "forbidden", refused)
+			self.assertEqual(
+				refused["notCreated"]["k"]["properties"], ["virtualLocations"], "the room, not the event"
+			)
+			# The limit on new rooms is the room's refusal, said apart from the desk's own limits.
+			from suite.meet.api import meeting as meet_meeting
+
+			with (
+				patch.object(calendars, "meet_usable", return_value=True),
+				patch.object(
+					meet_meeting, "create", side_effect=frappe.RateLimitExceededError("Too many rooms")
+				),
+			):
+				limited = self._set(create={"k": event})
+			self.assertEqual(
+				(limited["notCreated"]["k"]["type"], limited["notCreated"]["k"]["properties"]),
+				("rateLimit", ["virtualLocations"]),
+				limited,
+			)
 			# Refused after its room was made: no room left.
 			with (
 				patch.object(calendars, "meet_usable", return_value=True),
@@ -1251,6 +1269,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 		):
 			limited = self._set(create={"k": event})
 		self.assertEqual(limited["notCreated"]["k"]["type"], "rateLimit")
+		self.assertNotIn("properties", limited["notCreated"]["k"], "the desk's limits name no property")
 		many = self._set(create={f"k{n}": {"title": "x"} for n in range(calendars.MAX_EVENTS_PER_SET + 1)})
 		kinds = sorted(error["type"] for error in many["notCreated"].values())
 		self.assertEqual(kinds.count("rateLimit"), 1, "one past the limit waits")
