@@ -127,7 +127,11 @@ class TestMailCraftCalendars(FrappeTestCase):
 		).encode()
 		# A request as the facade reads it, with the headers the Suite's rate limit reads when an event is written.
 		request = SimpleNamespace(
-			get_data=lambda: body, headers={}, method="POST", path="/api/method/" + jmap.METHOD_PREFIX + "api"
+			get_data=lambda: body,
+			headers={},
+			host="webmail.test",
+			method="POST",
+			path="/api/method/" + jmap.METHOD_PREFIX + "api",
 		)
 		with patch.object(frappe.local, "request", request, create=True):
 			answer = jmap.api()
@@ -970,6 +974,133 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertEqual(
 			(calendars._keeps_client_uid(older), calendars._keeps_client_uid(newer)), (False, True)
 		)
+
+	def test_an_online_meeting_is_the_events_own_meet_room(self):
+		"""Asked for by its request in virtualLocations, the event gets a Meet room as the desk's switch makes it: its link
+		in links, the room tied to the event, read back as a virtual location. Asked again, no second room; a place that
+		is no room of this site is refused; named no more, its link goes and the room stays. Without Meet the request is
+		refused, and an event refused after its room was made leaves no room."""
+		from suite.calendar.doctype.calendar_event import calendar_event
+		from suite.utils import rate_limiter
+
+		if not frappe.db.exists("Role", "Suite User"):
+			self.skipTest("Meet rooms are made by a Suite User")
+		# Meet's limit on new rooms (ten an hour from one address) is the desk's, and would stop a test run again.
+		real_limits = rate_limiter.get_rate_limits
+		no_room_limit = patch.object(
+			rate_limiter,
+			"get_rate_limits",
+			side_effect=lambda path: [] if path == "suite.meet.api.meeting.create" else real_limits(path),
+		)
+		no_room_limit.start()
+		self.addCleanup(no_room_limit.stop)
+		request = {"m": {"@type": "VirtualLocation", "uri": calendars.ONLINE_MEETING_REQUEST}}
+		event = {
+			"calendarIds": {},
+			"title": "Design review",
+			"start": "2030-05-06T10:00:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+			"virtualLocations": request,
+		}
+		rooms_before = set(frappe.get_all("Meet Room", pluck="name"))
+		frappe.get_doc("User", PERSON).add_roles("Suite User")
+		vid = other_vid = None
+		try:
+			self._as(PERSON)
+			event["calendarIds"] = {self._calendar(): True}
+			with patch.object(calendars, "meet_usable", return_value=True):
+				aid = jmap.account_id(BOX)
+				session = json.loads(jmap.session(BOX).get_data())
+				written = session["accounts"][aid]["accountCapabilities"][calendars.CALENDARS][
+					"writableProperties"
+				]
+				self.assertIn("virtualLocations", written, "offered where Meet makes the room")
+				made = self._set(create={"k": event})
+				self.assertEqual(made["notCreated"], {}, made)
+				vid = made["created"]["k"]["id"]
+				places = list(made["created"]["k"]["virtualLocations"].values())
+				self.assertEqual(len(places), 1, places)
+				url = places[0]["uri"]
+				self.assertIn("/meet/", url)
+				self.assertTrue(places[0]["features"]["video"])
+				room = url.rsplit("/", 1)[1]
+				self.assertEqual(
+					frappe.db.get_value("Meet Room", room, "calendar_event"),
+					f"{self.account}|{calendars._raw(vid, 'V')}",
+				)
+				read = self._get(vid)
+				self.assertEqual([link["href"] for link in read["links"].values()], [url])
+				self.assertEqual([place["uri"] for place in read["virtualLocations"].values()], [url])
+				# Asked again (a second device, a resend): the same room.
+				again = self._set(update={vid: {"virtualLocations": request}})
+				self.assertEqual(again["notUpdated"], {}, again)
+				self.assertEqual(
+					[p["uri"] for p in again["updated"][vid]["virtualLocations"].values()], [url]
+				)
+				self.assertEqual(set(frappe.get_all("Meet Room", pluck="name")) - rooms_before, {room})
+				# Asked again with links read before the room was made: the room's link goes back, no second room.
+				stale = self._set(update={vid: {"links": {}, "virtualLocations": request}})
+				self.assertEqual(
+					[p["uri"] for p in stale["updated"][vid]["virtualLocations"].values()], [url]
+				)
+				self.assertEqual([link["href"] for link in self._get(vid)["links"].values()], [url])
+				self.assertEqual(set(frappe.get_all("Meet Room", pluck="name")) - rooms_before, {room})
+				# A place that is no room of this site is refused.
+				elsewhere = {"z": {"@type": "VirtualLocation", "uri": "https://video.example.org/room"}}
+				odd = self._set(update={vid: {"virtualLocations": elsewhere}})
+				self.assertEqual(odd["notUpdated"][vid]["type"], "invalidProperties", odd)
+				# Named no more: the link goes, the room stays (with its recordings, its host's).
+				dropped = self._set(update={vid: {"virtualLocations": {}}})
+				self.assertEqual(
+					(dropped["notUpdated"], dropped["updated"][vid]), ({}, {"virtualLocations": {}})
+				)
+				self.assertFalse(calendars._meet_links(self._get(vid).get("links")))
+				self.assertTrue(frappe.db.exists("Meet Room", room))
+				# Another service's address with /meet/ in it is no room: one is made, and dropping it keeps the other.
+				elsewhere_link = {
+					"f": {"@type": "Link", "href": "https://video.example.org/meet/abcd-efgh-ijkl"}
+				}
+				other = self._set(
+					create={"k": {**event, "title": "x" * 200, "links": elsewhere_link, "uid": None}}
+				)
+				self.assertEqual(other["notCreated"], {}, other)
+				other_vid = other["created"]["k"]["id"]
+				places = [p["uri"] for p in other["created"]["k"]["virtualLocations"].values()]
+				self.assertEqual(len(places), 1, places)
+				self.assertNotEqual(places[0], elsewhere_link["f"]["href"])
+				self.assertEqual(
+					frappe.db.get_value("Meet Room", places[0].rsplit("/", 1)[1], "title"), "x" * 140
+				)
+				self._set(update={other_vid: {"virtualLocations": {}}})
+				self.assertEqual(
+					[link["href"] for link in self._get(other_vid)["links"].values()],
+					[elsewhere_link["f"]["href"]],
+				)
+			# Without Meet: refused, nothing made.
+			with patch.object(calendars, "meet_usable", return_value=False):
+				refused = self._set(create={"k": event})
+			self.assertEqual(refused["notCreated"]["k"]["type"], "forbidden", refused)
+			# Refused after its room was made: no room left.
+			with (
+				patch.object(calendars, "meet_usable", return_value=True),
+				patch.object(calendar_event, "add_calendar_event", side_effect=ValueError("refused")),
+			):
+				failed = self._set(create={"k": event})
+			self.assertEqual(failed["notCreated"]["k"]["type"], "invalidProperties", failed)
+			self.assertEqual(
+				set(frappe.get_all("Meet Room", pluck="name")) - rooms_before,
+				{room, places[0].rsplit("/", 1)[1]},
+			)
+		finally:
+			self._as(PERSON)
+			for made_vid in (vid, other_vid):
+				if made_vid:
+					self._set(destroy=[made_vid])
+			frappe.set_user("Administrator")
+			frappe.get_doc("User", PERSON).remove_roles("Suite User")
+			for name in set(frappe.get_all("Meet Room", pluck="name")) - rooms_before:
+				frappe.delete_doc("Meet Room", name, ignore_permissions=True, force=True)
 
 	def test_a_series_master_is_read_by_its_v_id(self):
 		"""A client reads a series itself by its V id, for its rule, its own changes of single occurrences and its

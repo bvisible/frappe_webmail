@@ -26,6 +26,7 @@ import inspect
 import json
 import re
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import frappe
@@ -79,7 +80,7 @@ def session_parts(account):
 			"mayCreateCalendar": False,
 			# Not in the draft: what an event keeps when it is written here, so that a client offers nothing else
 			# (categories, importance, online meetings…) rather than learn it from a refusal.
-			"writableProperties": sorted(WRITABLE_EVENT),
+			"writableProperties": sorted(WRITABLE_EVENT | ({ONLINE_PROPERTY} if meet_usable() else set())),
 		}
 	}
 
@@ -496,7 +497,7 @@ def event_set(args):
 	for key, event in creates.items():
 		outcome = written(lambda event=event: _create_event(suite_account, client, calendars, event, notify))
 		if isinstance(outcome, tuple):
-			created[key] = {"id": _event_id(outcome[0]), "uid": outcome[1]}
+			created[key] = {"id": _event_id(outcome[0]), "uid": outcome[1], **outcome[2]}
 		else:
 			not_created[key] = outcome
 	for vid, patch in updates.items():
@@ -506,7 +507,8 @@ def event_set(args):
 		if isinstance(outcome, dict):
 			not_updated[vid] = outcome
 		else:
-			updated[vid] = None
+			# What the server set of the event besides the patch (its online meeting), or nothing.
+			updated[vid] = (outcome[1] or None) if isinstance(outcome, tuple) else None
 	for vid in destroys:
 		if not isinstance(vid, str):
 			continue
@@ -570,6 +572,12 @@ SERVER_SET = {
 	"organizerCalendarAddress",
 	"isDraft",
 }
+# An online meeting (RFC 8984 `virtualLocations`): a client asks for one by this `uri`, and the event gets its own Meet
+# room, made here as the desk's "Meet link" switch makes it (suite.meet.api.schedule), its link kept in `links`, where
+# the desk, the invitation's Meet card and its .ics read it. A Meet link of an event reads back as a virtual location.
+ONLINE_PROPERTY = "virtualLocations"
+ONLINE_MEETING_REQUEST = "urn:x-online-meeting:new"
+MEET_FEATURES = {"audio": True, "chat": True, "screen": True, "video": True}
 # Fields an occurrence of a series never takes, as the desk keeps them off its patches: a zone there would move the
 # exception away from its occurrence, and an occurrence does not change calendar alone.
 NOT_FOR_AN_OCCURRENCE = ("time_zone", "calendar_ids")
@@ -641,7 +649,7 @@ def _event_fields(event, calendars):
 		raise ValueError("An event must be an object.")
 	if any("/" in key for key in event):
 		raise ValueError("A whole property replaces it: no patch of a part.")
-	unknown = set(event) - WRITABLE_EVENT - SERVER_SET
+	unknown = set(event) - WRITABLE_EVENT - SERVER_SET - {ONLINE_PROPERTY}
 	if unknown:
 		raise ValueError("Not written here: " + ", ".join(sorted(unknown)))
 	out = {}
@@ -767,10 +775,11 @@ def _organizes(suite_account, stored):
 
 
 def _create_event(suite_account, client, calendars, event, notify):
-	"""A new event, by the desk's add_calendar_event: (its id, its uid). The organizer is the person's own identity
-	(the account's, or one of theirs the client names). One sent again (its answer lost on the way) comes back to the
-	event it made, by the client's uid. An occurrence's own object (`recurrenceId`) is not made here: it is a change of
-	its series."""
+	"""A new event, by the desk's add_calendar_event: (its id, its uid, what the answer says of its online meeting).
+	The organizer is the person's own identity (the account's, or one of theirs the client names). One sent again (its
+	answer lost on the way) comes back to the event it made, by the client's uid. An occurrence's own object
+	(`recurrenceId`) is not made here: it is a change of its series. Asked for as an online meeting, it gets its own
+	Meet room (_online_change)."""
 	from suite.calendar.doctype.calendar_event.calendar_event import add_calendar_event
 	from suite.calendar.doctype.calendar_event.invitations import acting_as_organizer
 
@@ -789,7 +798,8 @@ def _create_event(suite_account, client, calendars, event, notify):
 		if isinstance(kept, dict) and kept.get("account") == suite_account:
 			again = _stored(client, kept.get("id"))
 			if again:
-				return again["id"], again.get("uid")
+				return again["id"], again.get("uid"), _online_answer(event, again)
+	online, _ = _online_change(event)
 	if "calendar_ids" not in fields:
 		default = _default_calendar(calendars)
 		if not default or not _writable(_rights(calendars[default].get("myRights"))):
@@ -799,6 +809,10 @@ def _create_event(suite_account, client, calendars, event, notify):
 	# it made in its next read, even when the answer to this call is lost on the way.
 	if uid and _keeps_client_uid(add_calendar_event):
 		fields["uid"] = uid
+	room = None
+	if online == "make":
+		room, url = _make_room(suite_account, fields.get("title"))
+		fields["links"] = [*(fields.get("links") or []), {"href": url, "content_type": "text/html"}]
 	raw = add_calendar_event(
 		account=suite_account, organizer=organizer or None, send_scheduling_messages=notify, **fields
 	)
@@ -807,11 +821,15 @@ def _create_event(suite_account, client, calendars, event, notify):
 		frappe.cache().set_value(
 			_event_uid_key(uid), {"account": suite_account, "id": raw}, expires_in_sec=7 * 24 * 3600
 		)
+	if room:
+		_tie_room(room, suite_account, raw)
 	try:
 		made = _stored(client, raw) or {}
 	except Exception:
 		made = {}
-	return raw, made.get("uid")
+	if room and not made:
+		made = {"links": {"meet": {"href": url}}}
+	return raw, made.get("uid"), _online_answer(event, made)
 
 
 def _keeps_client_uid(add_calendar_event):
@@ -822,13 +840,141 @@ def _keeps_client_uid(add_calendar_event):
 		return False
 
 
+def meet_usable():
+	"""Whether the person's events get a Meet room here: the Suite's Meet is there and can be joined (the secret of its
+	video server is set), and the person may make rooms, as the desk's switch needs. Read on every session: whatever goes
+	wrong only says no."""
+	try:
+		from suite.meet.api import meeting
+		from suite.meet.utils.sfu_config import get_sfu_config
+
+		return (
+			callable(getattr(meeting, "create", None))
+			and bool(get_sfu_config().get("sfu_secret"))
+			and bool(frappe.has_permission("Meet Room", "create"))
+		)
+	except Exception:
+		return False
+
+
+# A Meet room's address on this site, `/meet/<name>` (Meet names its rooms `xxxx-xxxx-xxxx`).
+_ROOM_PATH = re.compile(r"^/meet/([a-z0-9]+(?:-[a-z0-9]+)*)/?$")
+
+
+def _room_of(href):
+	"""The name of the Meet room of this site a link is, else None: the desk's Join reads it the same way, other
+	services whose addresses happen to have `/meet/` are no room of it."""
+	parts = urlsplit(str(href or ""))
+	site = urlsplit(frappe.utils.get_url()).netloc.lower()
+	if parts.scheme not in ("http", "https") or not site or parts.netloc.lower() != site:
+		return None
+	found = _ROOM_PATH.match(parts.path)
+	return found.group(1) if found else None
+
+
+def _meet_links(links, existing=False):
+	"""The links among an event's `links` (a JSCalendar map) that are Meet rooms of this site, by their key; with
+	`existing`, those whose room is still there (a room undone after its link reached the mail server is none)."""
+	if not isinstance(links, dict):
+		return {}
+	out = {}
+	for key, entry in links.items():
+		room = _room_of(entry.get("href")) if isinstance(entry, dict) else None
+		if room and (not existing or frappe.db.exists("Meet Room", room)):
+			out[key] = entry
+	return out
+
+
+def _virtual_locations(event):
+	"""The event's virtual locations: the mail server's own, and each Meet room of this site among its `links` as one,
+	keyed as its link (the desk keeps a room there and writes no virtual location)."""
+	value = event.get(ONLINE_PROPERTY)
+	places = (
+		{key: entry for key, entry in value.items() if isinstance(entry, dict)}
+		if isinstance(value, dict)
+		else {}
+	)
+	for key, link in _meet_links(event.get("links")).items():
+		if any(place.get("uri") == link.get("href") for place in places.values()):
+			continue
+		places[key if key not in places else f"meet-{key}"] = {
+			"@type": "VirtualLocation",
+			"name": "Meet",
+			"uri": link.get("href"),
+			"features": dict(MEET_FEATURES),
+		}
+	return places
+
+
+def _online_change(event, stored=None):
+	"""What a client's `virtualLocations` asks of the event's Meet room, as (what, links):
+	- ("make", []): it gives the request and the event has no room;
+	- ("restore", links): it gives the request and names `links` without the room the event has (a resend, a copy read
+	  before the room was made): the room's links, in the Suite's shape, go back with the others, and no room is made;
+	- ("drop", hrefs): it names none of the event's rooms any more: their links go (the room stays);
+	- (None, []): not named, or as it is.
+	A place that is neither the request nor one the event has (or the client gives in its `links`) is refused: only a
+	room made here is written."""
+	if not isinstance(event, dict) or ONLINE_PROPERTY not in event:
+		return None, []
+	given = {entry.get("uri") for entry in _map(event, ONLINE_PROPERTY).values()}
+	stored_rooms = _meet_links((stored or {}).get("links"), existing=True)
+	named = _meet_links(event.get("links"), existing=True) if "links" in event else stored_rooms
+	known = {place.get("uri") for place in _virtual_locations(stored or {}).values()} | {
+		link.get("href") for link in _meet_links(event.get("links")).values()
+	}
+	if any(uri != ONLINE_MEETING_REQUEST and uri not in known for uri in given):
+		raise ValueError("Only an online meeting made here is written: a Meet room of this site.")
+	if ONLINE_MEETING_REQUEST in given:
+		if named:
+			return None, []
+		if stored_rooms:
+			return "restore", [
+				{"uid": key, "href": link.get("href"), "content_type": link.get("contentType")}
+				for key, link in stored_rooms.items()
+			]
+		return "make", []
+	rooms = {link.get("href") for link in named.values()}
+	return ("drop", sorted(rooms)) if rooms and not rooms & given else (None, [])
+
+
+def _make_room(suite_account, title):
+	"""(its name, its link): a Meet room for an event, as the desk's switch makes it (suite.meet.api.schedule): open,
+	guests let in as the Meet settings say, the person its host, under the desk's limit on new rooms. Made in the
+	event's savepoint, just before the event is written: an event the Suite then refuses leaves no room (the limit
+	counts it, as in the desk)."""
+	if not meet_usable():
+		raise frappe.PermissionError("No online meeting can be made here: Meet is not set up for you.")
+	from suite.mail.doctype.user_account.user_account import is_jmap_account_belongs_to_user
+	from suite.meet.api.meeting import create
+
+	is_jmap_account_belongs_to_user(suite_account, raise_exception=True)
+	# Meet keeps a title of 140 characters at most (a Data field).
+	room = create(meeting_type="open", title=(title or "")[:140] or None)
+	return room, frappe.utils.get_url(f"/meet/{room}")
+
+
+def _tie_room(room, suite_account, raw):
+	"""The room knows its event, as the desk's create_scheduled_meeting records it (Meet's recording estimate reads it)."""
+	frappe.db.set_value("Meet Room", room, "calendar_event", f"{suite_account}|{raw}")
+
+
+def _online_answer(asked, made):
+	"""What a set answers of an event's online meeting: its virtual locations as they now are, when the client named
+	them; nothing otherwise."""
+	if not isinstance(asked, dict) or ONLINE_PROPERTY not in asked:
+		return {}
+	return {ONLINE_PROPERTY: _virtual_locations(made or {})}
+
+
 def _update_event(suite_account, client, calendars, vid, patch, notify):
 	"""An event changed, by the desk's update_calendar_event: the properties the patch names replace the stored ones,
 	the others stay, its organizer and draft state among them. An occurrence of a series is changed alone
 	(update_calendar_event_instance). Invitations go out only from the organizer, never for a draft. The person's answer
 	to someone else's invitation, the client asking for it to be sent from a calendar that sends answers, is the desk's
 	answer (rsvp_calendar_event): recorded on their copy and told to the organizer, where a change of their copy would
-	tell nobody; as in the desk, it is the whole invitation's, never one occurrence's."""
+	tell nobody; as in the desk, it is the whole invitation's, never one occurrence's. A patch that names the online
+	meeting answers ("updated", its virtual locations as they now are); any other, True."""
 	from suite.calendar.doctype.calendar_event.calendar_event import (
 		update_calendar_event,
 		update_calendar_event_instance,
@@ -839,6 +985,11 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 	_check_writable(stored, calendars)
 	_keep_own(patch if isinstance(patch, dict) else {}, stored)
 	fields = _event_fields(patch, calendars)
+	online, online_links = _online_change(patch, stored)
+	if online and recurrence_id:
+		raise ValueError("An online meeting is the whole series': change it on the series.")
+	if online == "make" and _map(stored, "participants") and not _organizes(suite_account, stored):
+		raise frappe.PermissionError("An online meeting is added by the meeting's organizer.")
 	draft = bool(stored.get("isDraft"))
 	asked = notify and not draft
 	organizes = asked and _organizes(suite_account, stored)
@@ -877,6 +1028,15 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 		_calendar_id(k): True for k, on in (stored.get("calendarIds") or {}).items() if on
 	}
 	merged = _event_fields(whole, calendars) | fields
+	room = None
+	if online == "make":
+		room, url = _make_room(suite_account, merged.get("title"))
+		merged["links"] = [*(merged.get("links") or []), {"href": url, "content_type": "text/html"}]
+	elif online == "restore":
+		merged["links"] = [*(merged.get("links") or []), *online_links]
+	elif online == "drop":
+		# The links go, the room stays (with its recordings, which are its host's), as when the desk's switch is off.
+		merged["links"] = [link for link in merged.get("links") or [] if link.get("href") not in online_links]
 	update_calendar_event(
 		account=suite_account,
 		id=raw,
@@ -886,6 +1046,16 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 		send_scheduling_messages=notify,
 		**merged,
 	)
+	if room:
+		_tie_room(room, suite_account, raw)
+	if ONLINE_PROPERTY in patch:
+		try:
+			made = _stored(client, raw) or {}
+		except Exception:
+			made = {}
+		if room and not made:
+			made = {"links": {"meet": {"href": url}}}
+		return "updated", _online_answer(patch, made)
 	return True
 
 
@@ -1086,6 +1256,9 @@ def _facade_event(event, properties=None, as_id=None):
 		out["baseEventId"] = _event_id(event["baseEventId"])
 	if not event.get("showWithoutTime"):
 		out["utcStart"], out["utcEnd"] = _utc_times(event)
+	online = _virtual_locations(event)
+	if online:
+		out[ONLINE_PROPERTY] = online
 	if properties is not None:
 		keep = set(properties) | {"id", "@type"}
 		out = {k: v for k, v in out.items() if k in keep}
