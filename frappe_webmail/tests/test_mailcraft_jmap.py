@@ -58,8 +58,8 @@ def message(subject, sender=MAILBOX, extra=""):
 class FakeServer:
 	"""An IMAP server with folders, flags, UIDs and UIDVALIDITY, answering as imapclient does (UID commands)."""
 
-	def __init__(self, sort=False, uidplus=True, move=False, quota=None):
-		self.uidplus, self.can_move = uidplus, move
+	def __init__(self, sort=False, uidplus=True, move=False, quota=None, uidnext=True):
+		self.uidplus, self.can_move, self.says_uidnext = uidplus, move, uidnext
 		# (usage, limit) in kilobytes, as IMAP QUOTA counts them (RFC 2087); None: the server keeps no quota.
 		self.quota = quota
 		self.folders = {
@@ -113,7 +113,24 @@ class FakeServer:
 		if criteria[:1] == ["HEADER"]:
 			wanted = criteria[2].encode()
 			return [u for u, m in self._messages().items() if wanted in m["raw"]]
+		if criteria[:1] == ["UID"]:
+			# The messages the set names that are there, marked deleted or not, as a server answers UID SEARCH
+			return [u for u in self._uids(criteria[1]) if u in self._messages()]
 		return [u for u, m in self._messages().items() if b"\\Deleted" not in m["flags"]]
+
+	def _uids(self, messages):
+		"""UIDs as a list, or a set as IMAP writes one (`3,5:7`, `4:*`). `n:*` past the last UID names the last one, as
+		IMAP says (`*` is the highest UID there is)."""
+		if not isinstance(messages, str):
+			return list(messages)
+		highest = max(self._messages(), default=0)
+		out = []
+		for part in messages.split(","):
+			low, _sep, high = part.partition(":")
+			low = highest if low == "*" else int(low)
+			high = low if not _sep else (highest if high == "*" else int(high))
+			out.extend(range(min(low, high), max(low, high) + 1))
+		return out
 
 	def sort(self, sort_criteria, criteria):
 		alive = [(m["date"], u) for u, m in self._messages().items() if b"\\Deleted" not in m["flags"]]
@@ -121,7 +138,7 @@ class FakeServer:
 
 	def fetch(self, uids, items):
 		out = {}
-		for uid in uids:
+		for uid in self._uids(uids):
 			m = self._messages().get(uid)
 			if not m:
 				continue
@@ -137,6 +154,12 @@ class FakeServer:
 					got[b"BODY[HEADER]"] = m["raw"].split(b"\r\n\r\n", 1)[0] + b"\r\n\r\n"
 				elif item == "BODY.PEEK[]":
 					got[b"BODY[]"] = m["raw"]
+				elif item == "BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)]":
+					head = m["raw"].split(b"\r\n\r\n", 1)[0].split(b"\r\n")
+					found = [line for line in head if line.lower().startswith(b"message-id:")]
+					got[b"BODY[HEADER.FIELDS (MESSAGE-ID)]"] = (
+						b"".join(line + b"\r\n" for line in found) + b"\r\n"
+					)
 			out[uid] = got
 		return out
 
@@ -179,11 +202,14 @@ class FakeServer:
 
 	def folder_status(self, folder, items):
 		messages = self.folders[folder]["messages"].values()
-		return {
+		status = {
 			b"MESSAGES": len(messages),
 			b"UNSEEN": sum(1 for m in messages if b"\\Seen" not in m["flags"]),
 			b"UIDVALIDITY": self.validity[folder],
 		}
+		if self.says_uidnext:
+			status[b"UIDNEXT"] = self.next_uid[folder]
+		return status
 
 
 @contextmanager
@@ -677,12 +703,73 @@ class TestMailCraftJmap(FrappeTestCase):
 				},
 			)
 		self.assertEqual(set(out["updated"]), {ea, eb})
+		self.assertIsNone(out["updated"][ea], "marks give no new id")
+		self.assertEqual(out["updated"][eb], {"id": eid("Trash", 1)}, "a move says where the message is now")
 		self.assertEqual(out["destroyed"], [ec])
 		self.assertEqual(out["notUpdated"], {})
 		inbox = server.folders["INBOX"]["messages"]
 		self.assertEqual(set(inbox), {a, foreign})
 		self.assertTrue({b"\\Seen", b"\\Flagged"} <= inbox[a]["flags"])
 		self.assertEqual([m["raw"] for m in server.folders["Trash"]["messages"].values()], [message("b")])
+
+	def _to(self, folder, source="INBOX"):
+		"""The patch of a move from `source` to `folder`."""
+		return {f"mailboxIds/{jmap.mailbox_id(source)}": None, f"mailboxIds/{jmap.mailbox_id(folder)}": True}
+
+	def test_a_moved_message_comes_back_with_its_new_id(self):
+		"""An id names a place: the answer to a move says the id the message has where it went, so that MailCraft keeps it
+		as the same message, whichever way the server moves (MOVE, or a copy and an expunge)."""
+		for can_move in (True, False):
+			server = FakeServer(move=can_move)
+			# A message of the same Message-ID already there: the one that arrives is told from it
+			server.put("Trash", message("b"))
+			b = server.put("INBOX", message("b"))
+			eb = eid("INBOX", b)
+			with served(server):
+				out = self._call("Email/set", {"accountId": self.aid, "update": {eb: self._to("Trash")}})[1]
+			landed = max(server.folders["Trash"]["messages"])
+			self.assertEqual(out["updated"], {eb: {"id": eid("Trash", landed)}}, can_move)
+			self.assertNotIn(b, server.folders["INBOX"]["messages"])
+
+	def test_a_move_whose_new_place_cannot_be_told_says_no_id(self):
+		# Two messages of one Message-ID moved together: both moved, neither id said (which is which can't be told)
+		server = FakeServer(move=True)
+		twins = [eid("INBOX", server.put("INBOX", message("twin"))) for _n in range(2)]
+		with served(server):
+			out = self._call(
+				"Email/set", {"accountId": self.aid, "update": {i: self._to("Trash") for i in twins}}
+			)[1]
+		self.assertEqual(out["updated"], dict.fromkeys(twins))
+		self.assertEqual(len(server.folders["Trash"]["messages"]), 2)
+		# A server that gives no UIDNEXT: moved, no id said
+		server = FakeServer(move=True, uidnext=False)
+		one = eid("INBOX", server.put("INBOX", message("c")))
+		with served(server):
+			out = self._call("Email/set", {"accountId": self.aid, "update": {one: self._to("Trash")}})[1]
+		self.assertEqual(out["updated"], {one: None})
+		self.assertEqual(len(server.folders["Trash"]["messages"]), 1)
+
+	def test_a_message_no_longer_there_is_not_found(self):
+		"""Another client deleted it: the server would say nothing of a STORE, a MOVE or an expunge of its UID, so it is not
+		answered as done."""
+		server = FakeServer(move=True)
+		ea, eb, ec = (eid("INBOX", server.put("INBOX", message(name))) for name in ("a", "b", "c"))
+		server.folders["INBOX"]["messages"].clear()
+		with served(server):
+			out = self._call(
+				"Email/set",
+				{
+					"accountId": self.aid,
+					"update": {ea: {"keywords/$seen": True}, eb: self._to("Trash")},
+					"destroy": [ec],
+				},
+			)[1]
+		self.assertEqual(out["updated"], {})
+		self.assertEqual(
+			{k: v["type"] for k, v in out["notUpdated"].items()}, {ea: "notFound", eb: "notFound"}
+		)
+		self.assertEqual((out["destroyed"], out["notDestroyed"]), ([], {ec: {"type": "notFound"}}))
+		self.assertEqual(server.folders["Trash"]["messages"], {})
 
 	def test_a_patch_is_all_or_nothing(self):
 		server = FakeServer()

@@ -1070,6 +1070,24 @@ def email_set(args):
 	for jid in [j for j, c in changes.items() if c[1] != validities.get(c[0])]:
 		del changes[jid]
 		not_updated[jid] = {"type": "notFound"}
+	# A message another client deleted or moved since is not found, not "done": the mail server says nothing of a STORE
+	# or a MOVE of a UID it no longer has.
+	asked = {}
+	for folder, _validity, uid, _flags, _target in changes.values():
+		asked.setdefault(folder, set()).add(uid)
+	for folder, items in gone.items():
+		asked.setdefault(folder, set()).update(
+			uid for _jid, validity, uid in items if validity == validities.get(folder)
+		)
+	present = _present(account, asked) if asked else {}
+	for jid in [j for j, c in changes.items() if c[2] not in present.get(c[0], ())]:
+		del changes[jid]
+		not_updated[jid] = {"type": "notFound"}
+	for folder, items in gone.items():
+		for jid, validity, uid in items:
+			if validity == validities.get(folder) and uid not in present.get(folder, ()):
+				not_destroyed[jid] = {"type": "notFound"}
+		gone[folder] = [item for item in items if item[0] not in not_destroyed]
 	# Keywords: one STORE per folder, direction and flag, for all its messages.
 	stores = {}
 	for jid, (folder, _validity, uid, flags, _target) in changes.items():
@@ -1088,13 +1106,15 @@ def email_set(args):
 	for jid, (folder, _validity, uid, _flags, target) in changes.items():
 		if target != folder:
 			moves.setdefault((folder, target), []).append((jid, uid))
+	# A moved message has another id (an id names a place): the answer says which, where it can be told.
+	moved_to = {}
 	for (source, target), items in moves.items():
 		_apply(
 			items,
 			not_updated,
 			changes,
-			lambda uids, source=source, target=target: webmail.move_emails(
-				account.name, uids, source, target
+			lambda _uids, source=source, target=target, items=items: moved_to.update(
+				_move(account, source, target, items)
 			),
 		)
 	destroyed = []
@@ -1120,7 +1140,7 @@ def email_set(args):
 		"accountId": account_id(account.name),
 		"oldState": "0",
 		"newState": "0",
-		"updated": {jid: None for jid in changes},
+		"updated": {jid: ({"id": moved_to[jid]} if moved_to.get(jid) else None) for jid in changes},
 		"destroyed": destroyed,
 		"notUpdated": not_updated,
 		"notDestroyed": not_destroyed,
@@ -1151,6 +1171,76 @@ def _patch(place, patch):
 	if target is None:
 		return {"type": "invalidProperties", "description": _("A message stays in one folder.")}
 	return (folder, validity, uid, flags, target)
+
+
+def _present(account, wanted):
+	"""Of these UIDs by folder, those the mail server still has (a message marked deleted and not expunged is still there)."""
+	out = {}
+	with webmail.imap_session(account) as client:
+		for folder, uids in wanted.items():
+			if not uids or _select(client, folder) is None:
+				continue
+			found = client.search(["UID", ",".join(str(uid) for uid in sorted(uids))])
+			out[folder] = {int(uid) for uid in found} & set(uids)
+	return out
+
+
+# A message's Message-ID, as a server hands the field back (folded or not)
+_HEADER_ID = re.compile(rb"^Message-ID:\s*(<[^>\r\n]+>)", re.IGNORECASE | re.MULTILINE)
+_ID_FIELD = "BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)]"
+# The most messages of one move whose new place is looked for (more: they are found again by MailCraft's windows)
+MAX_MOVED_FOUND = 500
+
+
+def _message_ids(client, messages):
+	"""The Message-ID of each of these messages of the selected folder (UIDs, or a set as IMAP writes one), by UID."""
+	out = {}
+	for uid, got in (client.fetch(messages, [_ID_FIELD]) or {}).items():
+		field = next(
+			(value for key, value in got.items() if key.upper().startswith(b"BODY[HEADER.FIELDS")), b""
+		)
+		match = _HEADER_ID.search(field or b"")
+		if match:
+			out[int(uid)] = match.group(1).lower()
+	return out
+
+
+def _move(account, source, target, items):
+	"""Move these (id, UID) of `source` to `target` in one session, and the new id of each moved message that can be told:
+	the messages that arrived in `target` from its UIDNEXT before the move on, matched by their Message-ID, where exactly
+	one arrival has it. One that can't be told (no Message-ID, two alike, a server without UIDNEXT) has none: MailCraft
+	finds it again when it reads `target`."""
+	uids = [uid for _jid, uid in items]
+	with webmail.imap_session(account) as client:
+		try:
+			before = int((client.folder_status(target, [b"UIDNEXT"]) or {}).get(b"UIDNEXT") or 0)
+		except Exception as e:
+			if webmail._imap_is_connection_error(e):
+				raise
+			before = 0
+		client.select_folder(source)
+		ids = _message_ids(client, uids[:MAX_MOVED_FOUND]) if before else {}
+		webmail._move_messages(client, uids, target)
+		if not ids:
+			return {}
+		# The messages moved: what follows only tells their new ids, and never makes the move a failure.
+		try:
+			validity = _select(client, target)
+			arrived = {}
+			for uid, mid in _message_ids(client, f"{before}:*").items():
+				if uid >= before:
+					arrived.setdefault(mid, []).append(uid)
+		except Exception as e:
+			log_quietly("MailCraft JMAP: where moved messages went could not be read", e)
+			return {}
+	if not validity:
+		return {}
+	out = {}
+	for jid, uid in items:
+		landed = arrived.get(ids.get(uid))
+		if landed and len(landed) == 1:
+			out[jid] = email_id(target, validity, landed[0])
+	return out
 
 
 def _apply(items, failed, changes, run):
