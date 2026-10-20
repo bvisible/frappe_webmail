@@ -435,7 +435,8 @@ def _answer(build):
 
 @frappe.whitelist(methods=["GET"])
 def session(account=None, **kwargs):
-	"""The JMAP session of one mailbox (MailCraft reads one account per session): `?account=<address>`."""
+	"""The JMAP session of one mailbox (MailCraft reads one account per session): `?account=<name>`, the Webmail
+	Account's name, which is its address as first given (an address changed later leaves the name as it was)."""
 	return _answer(lambda: _json(_session(account)))
 
 
