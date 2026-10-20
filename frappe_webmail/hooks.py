@@ -26,8 +26,8 @@ add_to_apps_screen = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/frappe_webmail/js/frappe_webmail.css?v=52"
-app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=52"
+app_include_css = "/assets/frappe_webmail/js/frappe_webmail.css?v=53"
+app_include_js = "/assets/frappe_webmail/js/frappe_webmail.bundle.iife.js?v=53"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/frappe_webmail/css/frappe_webmail.css"
@@ -122,11 +122,14 @@ permission_query_conditions = {
 	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.get_permission_query_conditions",
 	# Drafts are personal: without these two, the list showed every user's drafts (#431).
 	"Email Draft": "frappe_webmail.frappe_webmail.doctype.email_draft.email_draft.get_permission_query_conditions",
+	# A person's choices of the company signature (their photo, their mobile) are theirs and a System Manager's
+	"Email Signature Preference": "frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.get_permission_query_conditions",
 }
 
 has_permission = {
 	"Webmail Account": "frappe_webmail.frappe_webmail.doctype.webmail_account.webmail_account.has_permission",
 	"Email Draft": "frappe_webmail.frappe_webmail.doctype.email_draft.email_draft.has_permission",
+	"Email Signature Preference": "frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.has_permission",
 }
 
 # DocType Class
@@ -144,7 +147,11 @@ has_permission = {
 doc_events = {
 	"Email Signature": {
 		"before_save": "frappe_webmail.frappe_webmail.doctype.email_signature.email_signature.before_save"
-	}
+	},
+	# A person deleted takes their choices of the company signature and their photo's copy with them
+	"User": {
+		"on_trash": "frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.on_user_trash"
+	},
 }
 
 # Scheduled Tasks
@@ -218,6 +225,11 @@ user_data_fields = [
 	},
 	{
 		"doctype": "Email Signature",
+		"filter_by": "user",
+		"partial": 1,
+	},
+	{
+		"doctype": "Email Signature Preference",
 		"filter_by": "user",
 		"partial": 1,
 	},

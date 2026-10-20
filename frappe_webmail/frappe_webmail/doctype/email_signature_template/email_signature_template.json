@@ -27,6 +27,7 @@
   "show_company_name",
   "show_company_address",
   "show_logo",
+  "show_photo",
   "show_social_links",
   "show_disclaimer",
   "sb_look",
@@ -42,6 +43,12 @@
   "cb_addons",
   "cta_label",
   "cta_url",
+  "sb_banner",
+  "banner_image",
+  "banner_url",
+  "cb_banner",
+  "banner_description",
+  "banner_width",
   "sb_preview",
   "preview_user",
   "preview_html"
@@ -119,7 +126,7 @@
    "fieldname": "layout",
    "fieldtype": "Select",
    "label": "Layout",
-   "options": "Text only\nLogo left\nLogo above\nCompact",
+   "options": "Text only\nLogo left\nLogo above\nCompact\nPhoto left",
    "reqd": 1
   },
   {
@@ -194,6 +201,13 @@
    "fieldname": "show_logo",
    "fieldtype": "Check",
    "label": "Logo"
+  },
+  {
+   "default": "1",
+   "description": "In the Photo left layout, for the people who agree to show theirs: each person chooses in their own signature settings.",
+   "fieldname": "show_photo",
+   "fieldtype": "Check",
+   "label": "Photo"
   },
   {
    "default": "1",
@@ -283,6 +297,43 @@
    "options": "URL"
   },
   {
+   "fieldname": "sb_banner",
+   "fieldtype": "Section Break",
+   "label": "Banner"
+  },
+  {
+   "description": "A picture under the signature, whatever its layout (a fair, an offer): a PNG, JPEG or GIF, uploaded as a public file. No picture, no banner.",
+   "fieldname": "banner_image",
+   "fieldtype": "Attach Image",
+   "label": "Banner Picture"
+  },
+  {
+   "description": "Where a click on the banner leads: an https:// address. Without one, the banner is a picture only.",
+   "fieldname": "banner_url",
+   "fieldtype": "Data",
+   "label": "Banner Link",
+   "length": 1000,
+   "options": "URL"
+  },
+  {
+   "fieldname": "cb_banner",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "What the banner says, in a few words: shown where the picture is not, and read out to those who listen to their mail.",
+   "fieldname": "banner_description",
+   "fieldtype": "Data",
+   "label": "Banner Description",
+   "mandatory_depends_on": "eval:doc.banner_image"
+  },
+  {
+   "default": "400",
+   "description": "In pixels, from 200 to 600.",
+   "fieldname": "banner_width",
+   "fieldtype": "Int",
+   "label": "Banner Width"
+  },
+  {
    "fieldname": "sb_preview",
    "fieldtype": "Section Break",
    "label": "Preview"
@@ -303,7 +354,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-19 14:30:00.000000",
+ "modified": "2026-10-20 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "Email Signature Template",

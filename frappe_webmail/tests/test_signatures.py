@@ -22,9 +22,10 @@ from bs4 import BeautifulSoup
 from frappe import _
 from frappe.tests.utils import FrappeTestCase
 
-from frappe_webmail import signatures
+from frappe_webmail import signature_photos, signatures
 from frappe_webmail.signatures import (
 	LAYOUTS,
+	PREFERENCE,
 	card_of,
 	own_signature,
 	render_person,
@@ -44,6 +45,11 @@ PORTAL = "signatures_test_portal@example.com"
 # A role that opens the desk and gives no right: a template applies to the desk's people only, and the people of these
 # tests may read or write nothing of the templates
 DESK_ROLE = f"{PREFIX}-desk"
+# The address of a person's photo and of a banner that no file of the site answers to (drawing needs no file)
+PHOTO = f"/private/files/{PREFIX}-photo.jpg"
+BANNER = f"/files/{PREFIX}-no-such-banner.png"
+# The worker's call itself, which the tests that give people photos replace (PhotoTestCase)
+REFRESH_LATER = signature_photos.refresh_later
 
 # The tags and attributes that the cleaning of a message sent keeps (webmail_api.send_email), as that function writes
 # them. The layouts keep to them, so that what the form shows is what leaves: a layout that needs another is a change
@@ -116,6 +122,41 @@ def make_user(email, first_name, last_name, desk=True):
 		user.add_roles(DESK_ROLE)
 	if user.user_type != ("System User" if desk else "Website User"):
 		raise AssertionError(f"{email} is a {user.user_type}")
+
+
+def picture_file(
+	test, width=40, height=30, colour=(31, 58, 95), kind="PNG", content=None, extension=None, **values
+):
+	"""A file of the instance, a picture of that size and colour (or those bytes), removed after the test: its address.
+	`values` are the File's own (is_private, attached_to_doctype, attached_to_name). Bytes alike are one file to Frappe:
+	a test that needs two files draws two pictures."""
+	from PIL import Image
+
+	if content is None:
+		buffer = io.BytesIO()
+		Image.new("RGB", (width, height), colour).save(buffer, kind)
+		content = buffer.getvalue()
+	extension = extension or {"JPEG": "jpg", "GIF": "gif"}.get(kind, "png")
+	file = frappe.get_doc(
+		{
+			"doctype": "File",
+			"file_name": f"{PREFIX}-{frappe.generate_hash(length=8)}.{extension}",
+			"content": content,
+			"is_private": 0,
+		}
+		| values
+	).insert(ignore_permissions=True)
+	test.addCleanup(frappe.delete_doc, "File", file.name, force=True, ignore_permissions=True)
+	return file.file_url
+
+
+def banner(**values):
+	"""A template's banner, a picture with its link and its words, unless the test changes them."""
+	return {
+		"banner_image": BANNER,
+		"banner_url": "https://example.com/fair",
+		"banner_description": "Meet us at the fair",
+	} | values
 
 
 class SignatureTestCase(FrappeTestCase):
@@ -1569,3 +1610,774 @@ class TestTheSignatureLeavesWithTheMessage(TestWebmailAPIBase):
 		self.assertIn("color:#aa3300", html)
 		for dropped in ("position", "float", "top:", "background-image", "tracker.example.com"):
 			self.assertNotIn(dropped, html)
+
+
+class TestThePhotoAndTheBannerAreDrawn(FrappeTestCase):
+	"""The Photo left layout and the banner, as a mail client is given them: a person and a template built in the test."""
+
+	def test_photo_left_draws_the_photo_round_at_the_left_and_the_logo_under_the_details(self):
+		tree = soup(render_person(template("Photo left"), person(photo=PHOTO))["html"])
+		cells = tree.find("tr").find_all("td", recursive=False)
+		self.assertEqual(len(cells), 2, "the photo in a column, the details in another")
+		photo = cells[0].find("img")
+		self.assertEqual(photo["src"], PHOTO)
+		self.assertEqual((photo["width"], photo["height"]), ("96", "96"), "drawn at a fixed size")
+		self.assertIn("width:96px;height:96px;", photo["style"])
+		self.assertIn(
+			"border-radius:48px;", photo["style"], "round where a mail client keeps rounded corners"
+		)
+		self.assertEqual(photo["alt"], "Alex Example")
+		self.assertEqual(cells[0]["width"], "96", "the photo's column is as wide as the photo")
+		self.assertEqual(len(cells[0].find_all("img")), 1)
+		# At its right the details, and the company's logo under them
+		self.assertEqual([image["src"] for image in cells[1].find_all("img")], [MISSING_LOGO])
+		rows = cells[1].find("table").find_all("tr", recursive=False)
+		self.assertIn("Alex Example", rows[0].get_text())
+		self.assertIsNone(rows[0].find("img"))
+		self.assertIsNotNone(rows[-1].find("img"), "the logo on the last row, under the details")
+		self.assertNotIn("border-left", str(tree), "no rule between the photo and the details")
+		# Without the logo: the photo and the details
+		bare = soup(render_person(template("Photo left", show_logo=0), person(photo=PHOTO))["html"])
+		self.assertEqual([image["src"] for image in bare.find_all("img")], [PHOTO])
+
+	def test_photo_left_without_a_photo_leaves_no_empty_column(self):
+		for case, (values, who) in {
+			"the person shows none": ({}, person()),
+			"the company shows none": ({"show_photo": 0}, person(photo=PHOTO)),
+		}.items():
+			result = render_person(template("Photo left", **values), who)
+			tree = soup(result["html"])
+			self.assertNotIn(PHOTO, result["html"], case)
+			self.assertIsNone(result["photo"], case)
+			for row in tree.find("table").find_all("tr", recursive=False):
+				self.assertEqual(len(row.find_all("td", recursive=False)), 1, case)
+			self.assertEqual([image["src"] for image in tree.find_all("img")], [MISSING_LOGO], case)
+			self.assertIn("Alex Example", result["text"], case)
+		# The photo alone, when nothing else is shown
+		off = {switch: 0 for switch in signatures.SWITCHES}
+		tree = soup(
+			render_person(template("Photo left", **off | {"show_photo": 1}), person(photo=PHOTO))["html"]
+		)
+		self.assertEqual(len(tree.find_all("td")), 1)
+		self.assertEqual(tree.find("img")["src"], PHOTO)
+
+	def test_the_photo_is_drawn_in_the_photo_layout_only(self):
+		for layout in LAYOUTS:
+			result = render_person(template(layout), person(photo=PHOTO))
+			self.assertEqual(PHOTO in result["html"], layout in signatures.WITH_PHOTO, layout)
+			self.assertNotIn(PHOTO, result["text"], layout)
+
+	def test_a_photo_is_a_file_of_the_instance(self):
+		for stored in (
+			"https://cdn.example.com/me.jpg",
+			"data:image/jpeg;base64,/9j/4AAQ",
+			"javascript:alert(1)",
+			"/private/files/../site_config.json",
+			"/private/files/%2e%2e/%2e%2e/site_config.json",
+			'/private/files/a.jpg" onerror="x',
+			"private/files/a.jpg",
+			"",
+			None,
+		):
+			html = render_person(template("Photo left"), person(photo=stored))["html"]
+			self.assertEqual(
+				[image["src"] for image in soup(html).find_all("img")], [MISSING_LOGO], repr(stored)
+			)
+
+	def test_a_banner_goes_under_the_signature_and_above_its_small_print_whatever_the_layout(self):
+		small = {"show_disclaimer": 1, "disclaimer": "Small print"}
+		for layout in LAYOUTS:
+			plain = render_person(template(layout), person(photo=PHOTO))["html"]
+			result = render_person(template(layout, **small, **banner()), person(photo=PHOTO))
+			tree = soup(result["html"])
+			roots = [child for child in tree.contents if getattr(child, "name", None)]
+			self.assertEqual([root.name for root in roots], ["table"], f"{layout}: in one piece")
+			rows = roots[0].find_all("tr", recursive=False)
+			self.assertEqual(len(rows), 3, f"{layout}: the signature, the banner, the small print")
+			# The signature as its layout draws it, untouched, then the banner, then the small print
+			self.assertIn(plain, result["html"], layout)
+			anchor = rows[1].find("a")
+			self.assertEqual(anchor["href"], "https://example.com/fair", layout)
+			self.assertTrue(anchor.get("style"), layout)
+			image = anchor.find("img")
+			self.assertEqual(
+				(image["src"], image["width"], image["alt"]), (BANNER, "400", "Meet us at the fair"), layout
+			)
+			self.assertIn("width:400px;", image["style"], layout)
+			self.assertEqual(rows[2].get_text(), "Small print", layout)
+			# In the text: its words and its link, the small print still last
+			self.assertTrue(
+				result["text"].endswith("Meet us at the fair: https://example.com/fair\n\nSmall print"),
+				layout,
+			)
+
+	def test_a_banner_link_is_an_https_address_and_its_width_is_bounded(self):
+		for bad in (
+			"http://example.com/fair",
+			"javascript:alert(1)",
+			"//example.com/fair",
+			"https://example.com/ x",
+			"",
+		):
+			result = render_person(template(**banner(banner_url=bad)), person())
+			image = soup(result["html"]).find("img", src=BANNER)
+			self.assertIsNotNone(image, repr(bad))
+			self.assertIsNone(image.find_parent("a"), f"{bad!r}: a picture, not a link")
+			self.assertNotIn("Meet us at the fair:", result["text"], repr(bad))
+			self.assertNotIn("alert", result["html"], repr(bad))
+		for width, expected in ((10, 200), (999, 600), (0, 400), (None, 400), ("300", 300)):
+			drawn = render_person(template(**banner(banner_width=width)), person())["html"]
+			self.assertEqual(soup(drawn).find("img", src=BANNER)["width"], str(expected), width)
+
+	def test_a_banner_is_a_public_picture_of_the_instance(self):
+		"""Public: every person who writes with the signature shows it, and a template's private file is the System
+		Manager's to read."""
+		for stored in (
+			f"/private/files/{PREFIX}-banner.png",
+			"https://cdn.example.com/banner.png",
+			"data:image/png;base64,iVBORw0KGgo=",
+			"javascript:alert(1)",
+			"/files/../private/files/x.png",
+			"/files/%2e%2e/private/files/x.png",
+			"files/banner.png",
+			"",
+			None,
+		):
+			result = render_person(template(**banner(banner_image=stored)), person())
+			self.assertIsNone(soup(result["html"]).find("a", href="https://example.com/fair"), repr(stored))
+			self.assertNotIn("Meet us at the fair", result["text"], repr(stored))
+
+	def test_the_banner_height_is_its_file_s_own_proportion(self):
+		src = picture_file(self, width=600, height=150)
+		for width, height in ((400, 100), (200, 50), (600, 150)):
+			drawn = render_person(template(**banner(banner_image=src, banner_width=width)), person())["html"]
+			image = soup(drawn).find("img", src=src)
+			self.assertEqual((image["width"], image["height"]), (str(width), str(height)))
+			self.assertIn(f"width:{width}px;height:{height}px;", image["style"])
+		# A file that is not there: its width alone, the height following it
+		image = soup(render_person(template(**banner()), person())["html"]).find("img", src=BANNER)
+		self.assertNotIn("height", image.attrs)
+		self.assertIn("height:auto;", image["style"])
+
+	def test_a_banner_alone_is_a_signature_and_its_words_have_a_fallback(self):
+		off = {switch: 0 for switch in signatures.SWITCHES}
+		result = render_person(template(**off, **banner()), person(photo=PHOTO))
+		tree = soup(result["html"])
+		self.assertEqual(len(tree.find_all("img")), 1)
+		self.assertEqual(len(tree.find_all("td")), 1, "the banner alone")
+		self.assertEqual(result["text"], "Meet us at the fair: https://example.com/fair")
+		# Words of its own, else the company's name (the form asks for its words before it saves a banner)
+		for description, company, expected in (("", "Example Ltd", "Example Ltd"), (" ", "", _("Banner"))):
+			drawn = render_person(
+				template(**banner(banner_description=description)), person(company_name=company)
+			)
+			self.assertEqual(soup(drawn["html"]).find("img", src=BANNER)["alt"], expected)
+
+	def test_the_photo_and_the_banner_are_escaped_like_every_value(self):
+		hostile = person(name='Alex "><script>alert(1)</script>', photo=PHOTO)
+		words = 'Fair "><img src=x onerror=alert(2)> & more'
+		html = render_person(template("Photo left", **banner(banner_description=words)), hostile)["html"]
+		self.assertNotIn("<script", html.lower())
+		self.assertNotIn("<img src=x", html.lower())
+		tree = soup(html)
+		self.assertIsNone(tree.find("script"))
+		self.assertEqual(tree.find("img", src=PHOTO)["alt"], 'Alex "><script>alert(1)</script>')
+		self.assertEqual(tree.find("img", src=BANNER)["alt"], words)
+		self.assertEqual(len(tree.find_all("img")), 3, "the photo, the logo, the banner: nothing more")
+
+	def test_the_photo_and_the_banner_keep_to_what_a_message_sent_keeps(self):
+		from frappe_webmail.webmail_api import EMAIL_CSS_PROPERTIES
+
+		for layout in LAYOUTS:
+			drawn = render_person(
+				template(layout, show_disclaimer=1, disclaimer="Small print", **banner()), person(photo=PHOTO)
+			)["html"]
+			self.assertNotIn("\n", drawn, layout)
+			self.assertNotIn("data:", drawn, layout)
+			tree = soup(drawn)
+			for element in tree.find_all(True):
+				self.assertIn(element.name, KEPT_TAGS, layout)
+				kept = KEPT_ATTRIBUTES["*"] | KEPT_ATTRIBUTES.get(element.name, set())
+				self.assertLessEqual(set(element.attrs), kept, f"{layout}: {element.name}")
+				if element.name in ("table", "td", "div", "span", "a", "img"):
+					self.assertTrue(element.get("style"), f"{layout}: a style on every {element.name}")
+					self.assertNotRegex(
+						element["style"], r"flex|grid|margin|float|position|var\(|calc\(|url\(", layout
+					)
+				for declaration in filter(None, element.get("style", "").split(";")):
+					self.assertIn(
+						declaration.split(":")[0].strip(), EMAIL_CSS_PROPERTIES, f"{layout}: {declaration}"
+					)
+			for image in tree.find_all("img"):
+				self.assertTrue(image.get("width") and image.get("alt"), layout)
+			for anchor in tree.find_all("a"):
+				self.assertRegex(anchor["href"], r"^(https://|mailto:)", layout)
+
+
+class PhotoTestCase(SignatureTestCase):
+	"""Tests that give people a picture and choices: the worker that makes a copy again is not asked (its job is called
+	by the tests that need it), and what a test gives a person is taken back."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		make_user(USER, "Sigtest", "Person")
+		make_user(OTHER, "Sigtest", "Other")
+		make_user(PORTAL, "Sigtest", "Portal", desk=False)
+
+	def setUp(self):
+		self.quiet_the_site()
+		later = patch.object(signature_photos, "refresh_later")
+		self.later = later.start()
+		self.addCleanup(later.stop)
+		self.addCleanup(frappe.set_user, "Administrator")
+		for user in (USER, OTHER, PORTAL):
+			self.forget(user)
+
+	def forget(self, user):
+		"""The person without choices, picture or copy; USER with a mobile number (a number is one person's: unique)."""
+		name = frappe.db.get_value(PREFERENCE, {"user": user}, "name")
+		if name:
+			frappe.delete_doc(PREFERENCE, name, force=True, ignore_permissions=True)
+		mobile = "+41 00 000 00 02" if user == USER else None
+		frappe.db.set_value("User", user, {"user_image": None, "mobile_no": mobile})
+
+	def face(self, user=USER, **picture):
+		"""A picture of the person, as their User's (a public file of the instance): its address."""
+		url = picture_file(self, **picture)
+		frappe.db.set_value("User", user, "user_image", url)
+		return url
+
+	def choose(self, user=USER, **values):
+		"""The person's choices saved in their record, made the first time and removed after the test."""
+		name = frappe.db.get_value(PREFERENCE, {"user": user}, "name")
+		doc = (
+			frappe.get_doc(PREFERENCE, name)
+			if name
+			else frappe.get_doc({"doctype": PREFERENCE, "user": user})
+		)
+		doc.update(values)
+		doc.save(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, PREFERENCE, doc.name, force=True, ignore_permissions=True)
+		return doc
+
+	def copies(self, user=USER):
+		"""The copies of the person's photo: the File records attached to their preference."""
+		name = frappe.db.get_value(PREFERENCE, {"user": user}, "name")
+		if not name:
+			return []
+		return frappe.get_all(
+			"File",
+			filters={"attached_to_doctype": PREFERENCE, "attached_to_name": name},
+			fields=["name", "file_url", "is_private"],
+		)
+
+
+class TestThePersonsChoices(PhotoTestCase):
+	"""Each person's choices of the company signature: their photo only if they say yes, and gone when they say no; their
+	mobile hidden if they wish; the copy of their photo made once, and again only when its source changes."""
+
+	def test_a_person_who_made_no_choice_shows_no_photo_and_keeps_their_mobile(self):
+		self.face()
+		known = signatures.person_of(USER)
+		self.assertEqual((known.photo, known.mobile), ("", "+41 00 000 00 02"))
+		self.assertIsNone(frappe.db.get_value(PREFERENCE, {"user": USER}))
+		self.assertIsNone(render_person(template("Photo left", show_mobile=1), known)["photo"])
+		self.assertIn("+41 00 000 00 02", render_person(template(show_mobile=1), known)["html"])
+
+	def test_the_mobile_a_person_hides_is_left_out(self):
+		self.choose(hide_mobile=1)
+		known = signatures.person_of(USER)
+		self.assertEqual(known.mobile, "")
+		result = render_person(template(show_mobile=1), known)
+		self.assertNotIn("+41 00 000 00 02", result["html"])
+		self.assertNotIn(f"{_('Mobile')}:", result["text"])
+		self.choose(hide_mobile=0)
+		self.assertEqual(signatures.person_of(USER).mobile, "+41 00 000 00 02")
+
+	def test_the_photo_is_there_only_with_the_person_s_consent_and_goes_with_it(self):
+		from PIL import Image
+
+		self.face(width=300, height=400, colour=(200, 40, 40))
+		self.assertEqual(signatures.person_of(USER).photo, "", "no choice made: no photo")
+		self.choose(hide_mobile=1)
+		self.assertEqual(signatures.person_of(USER).photo, "", "another choice: still no photo")
+		self.assertEqual(self.copies(), [])
+		doc = self.choose(photo_allowed=1)
+		copies = self.copies()
+		self.assertEqual(len(copies), 1, "one copy, made when they agree")
+		copy = copies[0]
+		self.assertTrue(copy.is_private, "a private file of the instance")
+		self.assertTrue(copy.file_url.startswith("/private/files/"))
+		self.assertEqual(frappe.db.get_value(PREFERENCE, doc.name, "photo"), copy.file_url)
+		content = frappe.get_doc("File", copy.name).get_content()
+		picture = Image.open(io.BytesIO(content))
+		self.assertEqual(
+			(picture.format, picture.size),
+			("JPEG", (signatures.PHOTO_SIZE, signatures.PHOTO_SIZE)),
+			"a square of 96 pixels",
+		)
+		self.assertFalse(dict(picture.getexif()), "nothing of the source's metadata")
+		self.assertLess(len(content), 20_000, "a few kilobytes in each message")
+		known = signatures.person_of(USER)
+		self.assertEqual(known.photo, copy.file_url)
+		drawn = render_person(template("Photo left"), known)
+		self.assertEqual(drawn["photo"]["src"], copy.file_url)
+		self.assertIn(f'src="{copy.file_url}"', drawn["html"])
+		# Taken back: gone from the signature, and the copy from the instance
+		on_disk = signatures._file_on_disk(copy.file_url)
+		self.choose(photo_allowed=0)
+		self.assertEqual(signatures.person_of(USER).photo, "")
+		self.assertIsNone(render_person(template("Photo left"), signatures.person_of(USER))["photo"])
+		self.assertEqual(self.copies(), [])
+		self.assertFalse(frappe.db.exists("File", copy.name))
+		self.assertFalse(os.path.exists(on_disk), "the copy's file is deleted too")
+		self.assertEqual(frappe.db.get_value(PREFERENCE, doc.name, ["photo", "photo_source"]), (None, None))
+
+	def test_the_copy_is_made_once_and_again_only_when_its_source_changes(self):
+		self.face(width=200, height=200, colour=(10, 120, 10))
+		self.choose(photo_allowed=1)
+		first = self.copies()
+		self.assertEqual(len(first), 1)
+		with patch.object(signature_photos, "reduced", wraps=signature_photos.reduced) as made:
+			self.choose(hide_mobile=1)
+			for _n in range(3):
+				self.assertEqual(signatures.person_of(USER).photo, first[0].file_url)
+			self.assertEqual(made.call_count, 0, "nothing changed: not made again")
+		self.assertEqual(self.copies(), first)
+		self.later.assert_not_called()
+		# A new picture: the copy is out of date, left out, and a worker is asked to make it again
+		self.face(width=220, height=200, colour=(10, 10, 120))
+		self.assertEqual(signature_photos.photo_state(USER, signatures.preference_of(USER)), ("", "pending"))
+		self.assertEqual(signatures.person_of(USER).photo, "")
+		self.later.assert_called_with(USER)
+		# The worker's job: a new copy, the old one deleted
+		made = signature_photos.refresh(USER)
+		self.assertTrue(made)
+		self.assertNotEqual(made, first[0].file_url)
+		self.assertEqual([copy.file_url for copy in self.copies()], [made])
+		self.assertFalse(frappe.db.exists("File", first[0].name))
+		self.assertEqual(signatures.person_of(USER).photo, made)
+		# No picture any more: no photo, and its copy goes
+		frappe.db.set_value("User", USER, "user_image", None)
+		self.assertEqual(signature_photos.photo_state(USER, signatures.preference_of(USER)), ("", "missing"))
+		signature_photos.refresh(USER)
+		self.assertEqual(self.copies(), [])
+		self.assertEqual(signature_photos.photo_state(USER, signatures.preference_of(USER)), ("", "missing"))
+
+	def test_a_worker_is_asked_once_for_a_person(self):
+		"""refresh_later itself: one job waiting at a time for each person, on the short queue."""
+		with patch.object(frappe, "enqueue") as enqueue:
+			REFRESH_LATER(USER)
+		kwargs = enqueue.call_args.kwargs
+		self.assertEqual(enqueue.call_args.args[0], "frappe_webmail.signature_photos.refresh")
+		self.assertEqual((kwargs["user"], kwargs["deduplicate"]), (USER, True))
+		self.assertIn(USER, kwargs["job_id"])
+		with (
+			patch.object(frappe, "enqueue", side_effect=RuntimeError("no queue")),
+			patch.object(frappe, "log_error") as log,
+		):
+			REFRESH_LATER(USER)
+		self.assertLessEqual(len(log.call_args.args[0]), 140)
+		self.assertIn("no queue", log.call_args.args[1])
+
+	def test_the_employee_s_picture_comes_before_the_user_s(self):
+		account = frappe._dict(user_image="/files/user.png")
+		self.assertEqual(
+			signature_photos.source_of(
+				USER, frappe._dict(name="HR-EMP-0001", image="/files/employee.png"), account
+			),
+			("/files/employee.png", "Employee", "HR-EMP-0001"),
+		)
+		self.assertEqual(
+			signature_photos.source_of(USER, frappe._dict(name="HR-EMP-0001", image=" "), account),
+			("/files/user.png", "User", USER),
+			"an Employee without a picture: the User's",
+		)
+		self.assertEqual(signature_photos.source_of(USER, frappe._dict(), frappe._dict()), ("", None, None))
+		url = self.face()
+		with patch.object(signatures, "_employee_of", return_value=frappe._dict()):
+			self.assertEqual(signature_photos.source_of(USER), (url, "User", USER), "read from the records")
+
+	def test_a_photo_that_cannot_be_read_is_left_out_and_logged_once(self):
+		broken = picture_file(
+			self,
+			content=b"not a picture at all",
+			extension="png",
+			is_private=1,
+			attached_to_doctype="User",
+			attached_to_name=USER,
+		)
+		frappe.db.set_value("User", USER, "user_image", broken)
+		with patch.object(frappe, "log_error") as log:
+			self.choose(photo_allowed=1)
+			self.assertEqual(self.copies(), [])
+			self.assertEqual(log.call_count, 1)
+			title, message = log.call_args.args[:2]
+			self.assertEqual(title, "Email signature photo could not be read")
+			self.assertLessEqual(len(title), 140)
+			self.assertIn(USER, message)
+			# Known as unreadable: left out without a word, and not tried again until the picture changes
+			self.assertEqual(
+				signature_photos.photo_state(USER, signatures.preference_of(USER)), ("", "unreadable")
+			)
+			self.choose(hide_mobile=1)
+			self.assertEqual(signatures.person_of(USER).photo, "")
+			self.assertEqual(log.call_count, 1)
+		self.later.assert_not_called()
+
+	def test_a_private_picture_is_copied_only_from_the_employee_record(self):
+		"""Anyone may point their own User's picture at any address, and Frappe lets anyone make a File record of any
+		address: from the User record, a public picture only. A private one is taken from the Employee record (HR's
+		choice), as a File attached to that very record."""
+		theirs = picture_file(self, width=50, height=50, colour=(1, 2, 3), is_private=1)
+		frappe.db.set_value("User", USER, "user_image", theirs)
+		self.assertFalse(
+			frappe.has_permission(
+				"File", "read", doc=frappe.db.get_value("File", {"file_url": theirs}), user=USER
+			)
+		)
+		with patch.object(frappe, "log_error") as log:
+			self.choose(photo_allowed=1)
+		self.assertEqual(self.copies(), [])
+		self.assertEqual(log.call_count, 1)
+		self.assertIsNone(signature_photos.usable_path(theirs, "User", USER))
+		# Not even a private picture attached to their own User record, nor one they put in Neoffice themselves
+		own = picture_file(
+			self,
+			width=50,
+			height=52,
+			colour=(1, 2, 3),
+			is_private=1,
+			attached_to_doctype="User",
+			attached_to_name=USER,
+		)
+		frappe.set_user(USER)
+		mine = picture_file(self, width=52, height=50, colour=(1, 2, 3), is_private=1)
+		frappe.set_user("Administrator")
+		for private in (own, mine):
+			self.assertIsNone(signature_photos.usable_path(private, "User", USER), private)
+		# A public picture of their User record is taken
+		public = self.face(width=53, height=50, colour=(1, 2, 3))
+		self.assertTrue(signature_photos.usable_path(public, "User", USER))
+		self.assertTrue(signature_photos.refresh(USER))
+		self.assertEqual(len(self.copies()), 1)
+		# A private picture of their Employee record, attached to that record, and to no other
+		employee = f"{PREFIX}-employee"
+		hr = picture_file(
+			self,
+			width=54,
+			height=50,
+			colour=(1, 2, 3),
+			is_private=1,
+			attached_to_doctype="Employee",
+			attached_to_name=employee,
+		)
+		self.assertTrue(signature_photos.usable_path(hr, "Employee", employee))
+		self.assertIsNone(signature_photos.usable_path(hr, "Employee", f"{employee}-other"))
+		self.assertIsNone(signature_photos.usable_path(hr, "User", USER))
+		self.assertIsNone(signature_photos.usable_path(theirs, "Employee", employee))
+		# Nothing is fetched from the web, and nothing out of the files, written as is or encoded
+		for elsewhere in (
+			"https://cdn.example.com/me.jpg",
+			"/private/files/../../site_config.json",
+			"/files/%2e%2e/%2e%2e/site_config.json",
+			"",
+		):
+			self.assertIsNone(signature_photos.usable_path(elsewhere, "Employee", employee), elsewhere)
+
+	def test_a_shared_mailbox_never_carries_the_writer_s_photo(self):
+		self.face(width=60, height=60, colour=(5, 5, 5))
+		self.choose(photo_allowed=1)
+		self.make_template("team", layout="Photo left")
+		photo = signatures.person_of(USER).photo
+		self.assertTrue(photo)
+		shared = {
+			"email": "team@webmail.test",
+			"sender_name": "The Team",
+			"default_signature": None,
+			"user": OTHER,
+		}
+		frappe.set_user(USER)
+		self.assertNotIn(photo, signature_for(USER, shared)["html"])
+		self.assertIn(photo, signature_for(USER)["html"], "under their own mailbox: their photo")
+
+	def test_my_choices_say_what_the_template_lets_the_person_choose(self):
+		frappe.set_user(USER)
+		self.assertEqual(
+			signatures.my_choices(),
+			{
+				"template": False,
+				"photo": False,
+				"mobile": False,
+				"photo_allowed": 0,
+				"hide_mobile": 0,
+				"photo_url": "",
+				"photo_state": "off",
+			},
+		)
+		frappe.set_user("Administrator")
+		rule = self.make_template("photos", layout="Photo left")
+
+		def offered():
+			frappe.set_user(USER)
+			found = signatures.my_choices()
+			frappe.set_user("Administrator")
+			return {item: found[item] for item in ("template", "photo", "mobile")}
+
+		self.assertEqual(offered(), {"template": True, "photo": True, "mobile": False})
+		frappe.db.set_value("Email Signature Template", rule.name, {"show_mobile": 1, "show_photo": 0})
+		self.assertEqual(offered(), {"template": True, "photo": False, "mobile": True})
+		frappe.db.set_value("Email Signature Template", rule.name, {"show_photo": 1, "layout": "Logo left"})
+		self.assertEqual(offered()["photo"], False, "a layout with no place for a photo")
+
+	def test_a_person_who_said_yes_can_always_take_it_back(self):
+		"""Without a template that shows photos any more (it was changed, or removed), a person who said yes still sees the
+		switch, to take their photo back; and the same for a mobile they hide."""
+		self.face(width=75, height=75, colour=(40, 90, 40))
+		self.choose(photo_allowed=1, hide_mobile=1)
+		frappe.set_user(USER)
+		found = signatures.my_choices()
+		self.assertEqual((found["template"], found["photo"], found["mobile"]), (False, True, True))
+		self.assertEqual(
+			signatures.save_my_choices(photo_allowed=0)["photo"], False, "taken back: nothing left to show"
+		)
+		self.assertEqual(self.copies(), [])
+
+	def test_the_template_s_preview_shows_a_photo_only_for_a_person_who_said_yes(self):
+		doc = {"doctype": "Email Signature Template", "layout": "Photo left"}
+		self.face(width=77, height=77, colour=(90, 40, 90))
+		self.assertNotIn("border-radius", signatures.preview(doc, USER)["html"])
+		self.choose(photo_allowed=1)
+		photo = frappe.db.get_value(PREFERENCE, {"user": USER}, "photo")
+		self.assertIn(f'src="{photo}"', signatures.preview(doc, USER)["html"])
+		self.assertNotIn(photo, signatures.preview({**doc, "show_photo": 0}, USER)["html"])
+
+	def test_a_person_saves_their_own_choices_and_no_one_else_s(self):
+		self.face(width=70, height=70, colour=(9, 9, 9))
+		frappe.set_user(USER)
+		given = signatures.save_my_choices(photo_allowed=1)
+		self.assertEqual(
+			(given["photo_allowed"], given["hide_mobile"], given["photo_state"]), (1, 0, "ready")
+		)
+		self.assertEqual(given["photo_url"], frappe.db.get_value(PREFERENCE, {"user": USER}, "photo"))
+		self.assertTrue(given["photo_url"].startswith("/private/files/"))
+		self.assertEqual(signatures.save_my_choices(hide_mobile="true")["hide_mobile"], 1)
+		after = signatures.save_my_choices(photo_allowed="0")
+		self.assertEqual((after["photo_allowed"], after["hide_mobile"]), (0, 1), "what is not said stays")
+		self.assertEqual(self.copies(), [], "taken back: the copy is gone")
+		# Another person changes their own, whatever they send: there is no way to name someone else
+		frappe.set_user(OTHER)
+		frappe.call(signatures.save_my_choices, user=USER, photo_allowed=1, hide_mobile=0)
+		frappe.set_user("Administrator")
+		self.addCleanup(frappe.delete_doc, PREFERENCE, OTHER, force=True, ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, PREFERENCE, USER, force=True, ignore_permissions=True)
+		self.assertEqual(
+			frappe.db.get_value(PREFERENCE, {"user": USER}, ["photo_allowed", "hide_mobile"]), (0, 1)
+		)
+		self.assertEqual(
+			frappe.db.get_value(PREFERENCE, {"user": OTHER}, ["photo_allowed", "hide_mobile"]), (1, 0)
+		)
+
+	def test_the_choices_are_for_the_desk_s_people_only(self):
+		for method in (signatures.my_choices, signatures.save_my_choices):
+			frappe.is_whitelisted(method)
+			self.assertNotIn(method, frappe.guest_methods)
+		self.assertEqual(
+			list(frappe.allowed_http_methods_for_whitelisted_func[signatures.save_my_choices]), ["POST"]
+		)
+		for refused in (PORTAL, "Guest"):
+			frappe.set_user(refused)
+			with self.assertRaises(frappe.PermissionError, msg=refused):
+				signatures.my_choices()
+			with self.assertRaises(frappe.PermissionError, msg=refused):
+				signatures.save_my_choices(photo_allowed=1)
+		frappe.set_user("Administrator")
+		self.assertIsNone(frappe.db.get_value(PREFERENCE, {"user": PORTAL}))
+
+
+class TestNeoMailIsHandedThePhoto(PhotoTestCase):
+	"""In "Photo left", the page hands MailCraft the person's photo by its bytes, as it hands the logo of the other
+	layouts, and keeps out of the HTML the pictures MailCraft has no place for (www/neomail.py)."""
+
+	def test_the_photo_goes_by_its_bytes_in_the_logo_s_place(self):
+		import base64
+
+		from frappe_webmail.www.neomail import handed_picture, pictures_left_out
+
+		photo = picture_file(self, width=96, height=96, colour=(40, 40, 40), kind="JPEG", is_private=1)
+		logo = picture_file(self, width=40, height=10)
+		chosen = render_person(template("Photo left", **banner()), person(photo=photo, logo=logo))
+		handed = handed_picture(chosen, {})
+		self.assertEqual(handed["layout"], "pictureLeft")
+		self.assertEqual((handed["logo"]["width"], handed["logo"]["alt"]), (96, "Alex Example"))
+		self.assertEqual(handed["logo"]["name"], photo.rsplit("/", 1)[1])
+		data = base64.b64decode(handed["logo"]["data"])
+		self.assertTrue(data.startswith(b"\xff\xd8\xff"), "the photo's own bytes, a JPEG")
+		# Out of the HTML: the photo (handed) and the logo (MailCraft has no place under the words); the banner stays,
+		# its words a link to where it leads
+		self.assertEqual(set(pictures_left_out(chosen, handed)), {photo, logo})
+		# Without a photo: nothing handed, the logo still out
+		bare = render_person(template("Photo left"), person(logo=logo))
+		self.assertIsNone(handed_picture(bare, {}))
+		self.assertEqual(pictures_left_out(bare, None), [logo])
+		# The other layouts as before: the logo, handed and out of the HTML
+		left = render_person(template("Logo left"), person(photo=photo, logo=logo))
+		self.assertEqual(base64.b64decode(handed_picture(left, {})["logo"]["data"])[:4], b"\x89PNG")
+		self.assertEqual(pictures_left_out(left, handed_picture(left, {})), [logo])
+		self.assertEqual(pictures_left_out(left, None), [], "a logo not handed stays")
+
+	def test_the_page_hands_neomail_the_photo_and_keeps_the_banner(self):
+		from frappe_webmail.www import neomail
+
+		self.face(width=80, height=90, colour=(70, 20, 70))
+		self.choose(photo_allowed=1)
+		photo = frappe.db.get_value(PREFERENCE, {"user": USER}, "photo")
+		self.assertTrue(photo)
+		self.make_template(
+			"photo",
+			layout="Photo left",
+			**banner(banner_image=picture_file(self, width=400, height=80, colour=(200, 120, 60))),
+		)
+		account = {
+			"name": "signatures_box@webmail.test",
+			"email": "signatures_box@webmail.test",
+			"sender_name": "Sigtest",
+			"default_signature": None,
+			"user": USER,
+		}
+		frappe.set_user(USER)
+		with (
+			patch("frappe_webmail.webmail_api.get_accounts", return_value=[account]),
+			patch("frappe_webmail.mailcraft_jmap.give_token", return_value="token"),
+		):
+			box = neomail.host_mailboxes()[0]
+		signature = box["signature"]
+		self.assertEqual(signature["layout"], "pictureLeft")
+		self.assertEqual(signature["logo"]["alt"], "Sigtest Person")
+		self.assertTrue(signature["logo"]["data"])
+		self.assertNotIn(photo, signature["html"], "the photo goes by its bytes, not in the HTML")
+		self.assertIn('href="https://example.com/fair"', signature["html"], "the banner stays, as a link")
+		self.assertIn("Sigtest Person", signature["text"])
+		self.assertIn("Meet us at the fair: https://example.com/fair", signature["text"])
+
+
+class TestThePhotoAndTheBannerLeaveWithTheMessage(TestWebmailAPIBase):
+	"""The photo and the banner are files of the instance: the message sent carries them as its own parts, as it carries
+	the logo (inline_images.files_inlined). The photo is a private file: the sender's own goes, never a colleague's. The
+	banner is a public one."""
+
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		frappe.db.sql("update `tabEmail Signature Template` set enabled = 0 where enabled = 1")
+		later = patch.object(signature_photos, "refresh_later")
+		later.start()
+		self.addCleanup(later.stop)
+		for user in (self.test_user, OTHER):
+			name = frappe.db.get_value(PREFERENCE, {"user": user}, "name")
+			if name:
+				frappe.delete_doc(PREFERENCE, name, force=True, ignore_permissions=True)
+		make_user(OTHER, "Sigtest", "Other")
+
+	def photo_of(self, user, **picture):
+		"""The person's picture, their consent, and the copy made of it: its address."""
+		frappe.db.set_value("User", user, "user_image", picture_file(self, **picture))
+		self.addCleanup(frappe.db.set_value, "User", user, "user_image", None)
+		doc = frappe.get_doc({"doctype": PREFERENCE, "user": user, "photo_allowed": 1}).insert(
+			ignore_permissions=True
+		)
+		self.addCleanup(frappe.delete_doc, PREFERENCE, doc.name, force=True, ignore_permissions=True)
+		return frappe.db.get_value(PREFERENCE, doc.name, "photo")
+
+	def company_template(self, **values):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Email Signature Template",
+				"template_name": f"{PREFIX}-sent-{frappe.generate_hash(length=6)}",
+				"enabled": 1,
+				"applies_to": "Everyone",
+				"layout": "Photo left",
+			}
+			| values
+		).insert(ignore_permissions=True)
+		self.addCleanup(
+			frappe.delete_doc, "Email Signature Template", doc.name, force=True, ignore_permissions=True
+		)
+		return doc
+
+	@patch("frappe_webmail.api.smtplib.SMTP")
+	def test_the_photo_and_the_banner_leave_as_parts_of_the_message(self, smtp_class):
+		from frappe_webmail.api import send_email
+
+		photo = self.photo_of(self.test_user, width=90, height=120, colour=(120, 60, 30))
+		banner_url = picture_file(self, width=600, height=100, colour=(0, 90, 160))
+		rule = self.company_template(**banner(banner_image=banner_url))
+		drawn = render_person(rule, person(photo=photo))["html"]
+		self.assertIn(photo, drawn)
+		self.assertIn(banner_url, drawn)
+		server = MagicMock()
+		smtp_class.return_value = server
+		frappe.set_user(self.test_user)
+		with mocked_imap(imap_client()):
+			send_email(
+				account_name=self.test_account_email,
+				to="marc@example.com",
+				subject="Signature",
+				html_content=f"<p>Hello</p><p>--</p>{drawn}",
+			)
+		sent = email.message_from_string(server.sendmail.call_args.args[2])
+		html = (
+			next(p for p in sent.walk() if p.get_content_type() == "text/html")
+			.get_payload(decode=True)
+			.decode()
+		)
+		parts = {
+			part["Content-ID"].strip("<>"): part.get_payload(decode=True)
+			for part in sent.walk()
+			if part.get_content_maintype() == "image"
+		}
+		frappe.set_user("Administrator")
+		photo_bytes = frappe.get_doc("File", {"file_url": photo}).get_content()
+		banner_bytes = frappe.get_doc("File", {"file_url": banner_url}).get_content()
+		self.assertIn(photo_bytes, parts.values(), "the photo's copy, as a part")
+		self.assertIn(banner_bytes, parts.values(), "the banner, as a part")
+		self.assertNotIn("/private/files/", html, "no private address of the instance leaves")
+		for cid in parts:
+			self.assertIn(f"cid:{cid}", html)
+		tree = soup(html)
+		# The sizes and the link as drawn
+		drawn_photo = tree.find("img", alt="Alex Example")
+		self.assertEqual((drawn_photo["width"], drawn_photo["height"]), ("96", "96"))
+		self.assertEqual(tree.find("a", href="https://example.com/fair").find("img")["width"], "400")
+
+	def test_only_the_sender_s_own_photo_goes_in(self):
+		from frappe_webmail import inline_images
+
+		# Pictures far apart: two copies of the same bytes are one file to Frappe, at one address
+		mine = self.photo_of(self.test_user, width=91, height=120, colour=(121, 60, 30))
+		theirs = self.photo_of(OTHER, width=92, height=120, colour=(20, 160, 200))
+		self.assertNotEqual(mine, theirs)
+		frappe.set_user(self.test_user)
+		self.assertEqual(inline_images.sender_photo(), mine)
+		written = inline_images.files_inlined(f'<img src="{mine}"><img src="{theirs}">')
+		self.assertNotIn(mine, written)
+		self.assertIn(f'src="{theirs}"', written, "a colleague's photo stays an address")
+		# Their consent taken back: their photo no longer goes either (and its copy is gone)
+		frappe.set_user("Administrator")
+		doc = frappe.get_doc(PREFERENCE, {"user": self.test_user})
+		doc.photo_allowed = 0
+		doc.save(ignore_permissions=True)
+		frappe.set_user(self.test_user)
+		self.assertEqual(inline_images.sender_photo(), "")
+		self.assertEqual(inline_images.files_inlined(f'<img src="{mine}">'), f'<img src="{mine}">')
+
+	def test_a_portal_account_sends_no_photo_and_a_failure_none(self):
+		from frappe_webmail import inline_images
+
+		make_user(PORTAL, "Sigtest", "Portal", desk=False)
+		frappe.set_user(PORTAL)
+		self.assertEqual(inline_images.sender_photo(), "")
+		with patch.object(signature_photos, "sent_photo", side_effect=RuntimeError("boom")):
+			frappe.set_user(self.test_user)
+			self.assertEqual(inline_images.sender_photo(), "", "never in the way of a message")

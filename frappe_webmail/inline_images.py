@@ -14,8 +14,9 @@ instead of in its text.
 
 A picture of the instance's own files (a signature's logo: Frappe keeps a pasted picture as a file, `/private/files/…`)
 is written in too, in the message sent only (`files_inlined`): sent as an address, it reached the recipient as a private
-address of another site, and showed nothing (maintenance#1650). The draft and the copy for the document's timeline keep
-the address, which the webmail's editor and the desk show.
+address of another site, and showed nothing (maintenance#1650). So is the sender's own photo in the company signature
+(`sender_photo`), a private file. The draft and the copy for the document's timeline keep the address, which the webmail's
+editor and the desk show.
 """
 
 import base64
@@ -77,22 +78,28 @@ def body_with(alternative: MIMEMultipart, parts: list[MIMEImage]) -> MIMEMultipa
 	return related
 
 
-def files_inlined(html: str | None, logo: str | None = None) -> str:
+def files_inlined(html: str | None, logo: str | None = None, photo: str | None = None) -> str:
 	"""The HTML with each picture of the instance written in as a `data:` image, which `to_parts` then turns into a part
 	of the message: a public file (`/files/…`), a private one (`/private/files/…`) attached to a signature of the
-	person sending (Frappe keeps a signature's pasted logo as a private file of that signature), or the logo of their
-	company (`logo`, sender_logo, worked out here the first time it is needed when the caller doesn't give it). Anything
-	else is left as it was: a private file the person may well read, but which a message they reply to may name (a
-	quoted address must not bring the file along), a picture too big, of a type mail clients do not show, missing on the
-	disk, or of another site."""
+	person sending (Frappe keeps a signature's pasted logo as a private file of that signature), the logo of their
+	company (`logo`, sender_logo), or their own photo in the company signature (`photo`, sender_photo); both worked
+	out here the first time they are needed when the caller doesn't give them ('' for none).
+	Anything else is left as it was: a private file the person may well read, but which a message they reply to may name
+	(a quoted address must not bring the file along), a picture too big, of a type mail clients do not show, missing on
+	the disk, or of another site."""
 	left = MAX_FILE_IMAGES
 	found: dict[str, tuple[str, bytes] | None] = {}
-	known = {"logo": logo}
+	known = {"logo": logo, "photo": photo}
 
 	def the_logo() -> str:
 		if known["logo"] is None:
 			known["logo"] = sender_logo()
 		return known["logo"]
+
+	def the_photo() -> str:
+		if known["photo"] is None:
+			known["photo"] = sender_photo()
+		return known["photo"]
 
 	def swap(match: re.Match) -> str:
 		nonlocal left
@@ -101,7 +108,9 @@ def files_inlined(html: str | None, logo: str | None = None) -> str:
 			return match.group(0)
 		if path not in found:
 			# At most this many different files of the instance looked up per message: past them, the addresses stay.
-			found[path] = _picture(path, the_logo()) if len(found) < MAX_FILES_LOOKED_UP else None
+			found[path] = (
+				_picture(path, the_logo(), the_photo()) if len(found) < MAX_FILES_LOOKED_UP else None
+			)
 		picture = found[path]
 		if not picture or len(picture[1]) > left:
 			return match.group(0)
@@ -137,17 +146,19 @@ def _local_path(address: str) -> str | None:
 	return path if mimetypes.guess_type(path)[0] in _FILE_IMAGE_TYPES else None
 
 
-def _picture(path: str, logo: str = "") -> tuple[str, bytes] | None:
+def _picture(path: str, logo: str = "", photo: str = "") -> tuple[str, bytes] | None:
 	"""(type, bytes) of the instance's file at `path` when it may go in (`files_inlined`); None otherwise. Whether it is
 	private follows its address, as Frappe serves it: a `/private/files/` one only from a signature of the person, or
-	when it is the logo of their company (`logo`: the company signature draws it for everyone, signatures.py)."""
+	when it is the logo of their company (`logo`: the company signature draws it for everyone, signatures.py) or their
+	own photo in it (`photo`, sender_photo)."""
 	import mimetypes
 
 	import frappe
 
-	is_logo = bool(logo) and path == logo
+	# The company signature's own pictures (signatures.py): its logo, drawn for everyone, and the sender's photo
+	is_signature_picture = (bool(logo) and path == logo) or (bool(photo) and path == photo)
 	filters: dict = {"file_url": path, "is_folder": 0}
-	if path.startswith("/private/files/") and not is_logo:
+	if path.startswith("/private/files/") and not is_signature_picture:
 		signatures = frappe.get_all("Email Signature", filters={"user": frappe.session.user}, pluck="name")
 		if not signatures:
 			return None
@@ -162,7 +173,7 @@ def _picture(path: str, logo: str = "") -> tuple[str, bytes] | None:
 		except Exception:
 			# Its row is there, its bytes are not (a file gone from the disk): the address stays.
 			return None
-	elif is_logo and path.startswith("/files/"):
+	elif is_signature_picture and path.startswith("/files/"):
 		# A logo written straight into the site's public files (the setup wizard does), with no File row.
 		content = _public_file(path)
 	else:
@@ -192,6 +203,29 @@ def sender_logo() -> str:
 		if not company or not frappe.db.table_exists("Company"):
 			return ""
 		return (frappe.db.get_value("Company", company, "company_logo") or "").strip()
+	except Exception:
+		return ""
+
+
+def sender_photo() -> str:
+	"""The address of the sender's own photo in the company signature ('' when there is none), which their message may
+	carry though it is a private file: only when they agree to show it, and only the copy made for them, never another
+	file (signature_photos.sent_photo). A colleague's photo a message names stays an address. Only for the desk's people,
+	as the company signature is. Never in the way of a message: whatever fails gives none. (The banner is a public file:
+	it goes as any public picture does.)"""
+	from urllib.parse import unquote
+
+	import frappe
+
+	from frappe_webmail import signature_photos
+
+	user = frappe.session.user
+	try:
+		if frappe.db.get_value("User", user, "user_type") != "System User":
+			return ""
+		photo = signature_photos.sent_photo(user) or ""
+		# As _local_path reads an address: decoded, without what follows a `?`
+		return unquote(photo.split("?", 1)[0])
 	except Exception:
 		return ""
 

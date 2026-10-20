@@ -122,18 +122,22 @@ def host_mailboxes(bearer=None):
 		signature = handed_signature(chosen.get("html"), chosen.get("text"))
 		if signature:
 			picture = handed_picture(chosen, memo)
+			# The picture handed by its bytes leaves the HTML, where MailCraft would keep its description as words; so
+			# does one MailCraft has no place for (pictures_left_out).
+			for src in pictures_left_out(chosen, picture):
+				signature["html"] = without_picture(signature["html"], src)
 			if picture:
-				# The logo goes by its bytes: its picture leaves the HTML, where MailCraft would keep its description as words.
-				signature["html"] = without_picture(signature["html"], chosen["logo"]["src"])
 				signature.update(picture)
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
 
 
-# How a company template places its logo, as MailCraft's signatures say it (`signature.layout`): beside the words, a
-# two-cell table when sent, or above them. The other layouts draw no logo.
-PICTURE_LAYOUTS = {"Logo left": "pictureLeft", "Logo above": "pictureAbove"}
+# How a company template places its picture, as MailCraft's signatures say it (`signature.layout`): beside the words, a
+# two-cell table when sent, or above them. The other layouts draw no picture. "Photo left" hands the person's photo.
+PICTURE_LAYOUTS = {"Logo left": "pictureLeft", "Logo above": "pictureAbove", "Photo left": "pictureLeft"}
+# The layouts whose picture handed is the person's photo (signatures.WITH_PHOTO), not the logo
+PHOTO_LAYOUTS = frozenset(("Photo left",))
 # The most one picture of a signature may weigh in MailCraft (crates/model/src/signature.rs, MAX_PICTURE_BYTES).
 MAX_PICTURE_BYTES = 256 * 1024
 # The kinds of picture MailCraft keeps in a signature, by their first bytes.
@@ -141,17 +145,20 @@ _PICTURE_MAGIC = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF87a", b"GIF89a")
 
 
 def handed_picture(chosen, memo):
-	"""The logo of a company signature as MailCraft keeps a signature's pictures, {logo: {data, name, alt, width},
+	"""The picture of a company signature as MailCraft keeps a signature's pictures, {logo: {data, name, alt, width},
 	layout}: its bytes in base64, its file's name, its description and the width the template gives it, and its place.
-	MailCraft takes the words of the HTML and leaves its pictures out (its `signature.set`); this hands it the logo
-	itself, read from the instance's files. None for a signature without one (a person's own, a layout without a logo),
-	for a logo that is no file of the instance (MailCraft fetches nothing for a signature), and for a file it would not
-	keep: not a PNG, JPEG or GIF by its own bytes, or heavier than MAX_PICTURE_BYTES."""
+	MailCraft takes the words of the HTML and leaves its pictures out (its `signature.set`); this hands it the picture
+	itself, read from the instance's files: the logo, or in "Photo left" the person's photo (there only when they agreed
+	to show it), under the same name, MailCraft keeping one picture in its place. None for a signature without one (a
+	person's own, a layout without a picture, a person who shows no photo), for a picture that is no file of the
+	instance (MailCraft fetches nothing for a signature), and for a file it would not keep: not a PNG, JPEG or GIF by its
+	own bytes, or heavier than MAX_PICTURE_BYTES."""
 	import base64
 	import os
 	from urllib.parse import unquote
 
-	logo, layout = chosen.get("logo"), PICTURE_LAYOUTS.get(chosen.get("layout"))
+	layout = PICTURE_LAYOUTS.get(chosen.get("layout"))
+	logo = chosen.get("photo") if chosen.get("layout") in PHOTO_LAYOUTS else chosen.get("logo")
 	if not isinstance(logo, dict) or not logo.get("src") or not layout:
 		return None
 	key = ("picture", logo["src"])
@@ -170,6 +177,20 @@ def handed_picture(chosen, memo):
 		},
 		"layout": layout,
 	}
+
+
+def pictures_left_out(chosen, handed):
+	"""The addresses of the pictures of a signature that leave the HTML a page hands MailCraft: the one it hands by its
+	bytes (`handed`), which MailCraft would otherwise show twice, the second time by its description; and in "Photo left"
+	the photo and the logo, whether handed or not: MailCraft keeps a single picture, beside or above the words, and would
+	write the logo under the details as its words (the company's name, a second time) and a photo it was not handed as
+	the person's name. A banner stays: its description is a link to where it leads, which is what MailCraft can show of it."""
+	sources = []
+	if chosen.get("layout") in PHOTO_LAYOUTS:
+		sources = [(chosen.get(item) or {}).get("src") for item in ("photo", "logo")]
+	elif handed:
+		sources = [(chosen.get("logo") or {}).get("src")]
+	return [src for src in sources if src]
 
 
 def without_picture(html, src):

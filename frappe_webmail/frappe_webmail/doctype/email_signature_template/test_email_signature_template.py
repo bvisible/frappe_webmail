@@ -46,6 +46,9 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 		doc = self.saved()
 		self.assertEqual(doc.enabled, 1)
 		self.assertEqual((doc.font, doc.font_size, doc.logo_width), ("Arial", 13, 120))
+		self.assertEqual(
+			(doc.banner_width, doc.banner_image), (signatures.DEFAULT_BANNER_WIDTH, None), "no banner"
+		)
 		self.assertEqual(doc.accent_color, signatures.DEFAULT_ACCENT)
 		self.assertEqual(doc.allow_personal, 0, "people do not keep their own signature unless it is said")
 		self.assertEqual(
@@ -82,13 +85,14 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 				self.make(accent_color=bad).insert(ignore_permissions=True)
 
 	def test_the_sizes_are_kept_between_their_bounds(self):
-		for field, low, high in (("font_size", 11, 16), ("logo_width", 60, 240)):
+		for field, low, high in (("font_size", 11, 16), ("logo_width", 60, 240), ("banner_width", 200, 600)):
 			self.assertEqual(self.saved(**{field: low}).get(field), low)
 			self.assertEqual(self.saved(**{field: high}).get(field), high)
 			for out in (low - 1, high + 1, -5):
 				with self.assertRaises(frappe.ValidationError, msg=f"{field}: {out}"):
 					self.make(**{field: out}).insert(ignore_permissions=True)
 		self.assertEqual(self.saved(font_size=0, logo_width=0).font_size, 13, "left empty: the default")
+		self.assertEqual(self.saved(banner_width=0).banner_width, 400, "left empty: the default")
 
 	def test_a_template_for_a_company_or_a_department_names_it(self):
 		company = frappe.db.get_value("Company", {}, "name")
@@ -217,3 +221,80 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 		rights = {row.role: (row.create, row.write, row.delete) for row in meta.permissions}
 		self.assertEqual(rights.get("System Manager"), (1, 1, 1))
 		self.assertEqual({role for role, given in rights.items() if any(given)}, {"System Manager"}, rights)
+
+	def banner_file(self, extension="png", private=0, content=None):
+		"""A picture of the instance's files for a banner, removed after the test: its address. An SVG is one by its
+		bytes (Frappe gives a raster picture the extension of its own kind); `content`, bytes of one's own."""
+		import io
+
+		from PIL import Image
+
+		buffer = io.BytesIO()
+		if content is not None:
+			buffer.write(content)
+		elif extension == "svg":
+			buffer.write(b"<svg xmlns='http://www.w3.org/2000/svg' width='60' height='20'/>")
+		else:
+			Image.new("RGB", (60, 20), (31, 58, 95)).save(buffer, "GIF" if extension == "gif" else "PNG")
+		file = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": f"{PREFIX}-{frappe.generate_hash(length=8)}.{extension}",
+				"content": buffer.getvalue(),
+				"is_private": private,
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "File", file.name, force=True, ignore_permissions=True)
+		return file.file_url
+
+	def test_a_banner_is_a_picture_of_the_instance_with_its_words_and_an_https_link(self):
+		picture = self.banner_file()
+		doc = self.saved(
+			banner_image=f" {picture} ",
+			banner_description=" Meet us at the fair ",
+			banner_url=" https://example.com/fair ",
+		)
+		self.assertEqual(
+			(doc.banner_image, doc.banner_description, doc.banner_url),
+			(picture, "Meet us at the fair", "https://example.com/fair"),
+		)
+		self.assertEqual(
+			self.saved(banner_image=self.banner_file("gif"), banner_description="Fair").banner_url,
+			None,
+			"a link is optional",
+		)
+		for values in (
+			{"banner_image": picture, "banner_description": ""},
+			{"banner_image": picture, "banner_description": "  "},
+			{"banner_image": "https://cdn.example.com/banner.png", "banner_description": "Fair"},
+			{"banner_image": "/files/../private/files/x.png", "banner_description": "Fair"},
+			{"banner_image": self.banner_file("svg"), "banner_description": "Fair"},
+			# A template's private file is the System Manager's to read: the others' composers would not show it
+			{"banner_image": self.banner_file(private=1), "banner_description": "Fair"},
+			# A picture by its name only, and one that is not there
+			{"banner_image": self.banner_file(content=b"GIF? no: text"), "banner_description": "Fair"},
+			{"banner_image": f"/files/{PREFIX}-gone.png", "banner_description": "Fair"},
+			{"banner_image": "/files/%2e%2e/private/files/x.png", "banner_description": "Fair"},
+			{"banner_image": picture, "banner_description": "Fair", "banner_url": "http://example.com/fair"},
+			{"banner_image": picture, "banner_description": "Fair", "banner_url": "javascript:alert(1)"},
+			{"banner_url": "ftp://example.com/fair"},
+		):
+			with self.assertRaises(frappe.ValidationError, msg=str(values)):
+				self.make(**values).insert(ignore_permissions=True)
+
+	def test_the_banner_s_words_are_shown_as_they_were_written(self):
+		picture = self.banner_file()
+		words = "Fair <b>2027</b> & more"
+		doc = self.saved(
+			banner_image=picture, banner_description=words, banner_url="https://example.com/fair"
+		)
+		self.assertFalse(
+			frappe.get_meta("Email Signature Template").get_field("banner_description").ignore_xss_filter
+		)
+		nobody = frappe._dict(
+			name="", job_title="", department="", phone="", mobile="", email="", company_name=""
+		)
+		result = signatures.render_person(frappe.get_doc("Email Signature Template", doc.name), nobody)
+		self.assertIn('alt="Fair &lt;b&gt;2027&lt;/b&gt; &amp; more"', result["html"])
+		self.assertNotIn("&amp;lt;", result["html"], "encoded once")
+		self.assertEqual(result["text"], f"{words}: https://example.com/fair")

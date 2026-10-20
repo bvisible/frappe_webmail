@@ -1,0 +1,36 @@
+{#- Photo left: the person's photo in a column of its own, round where a client keeps rounded corners (square in Outlook
+	on Windows); at its right the details, and the company's logo under them when the template shows it. The photo is
+	there only for a person who agreed to show it (signatures.card_of): without it, the details and the logo are drawn
+	one above the other, with no empty column; with the photo and nothing else, the photo alone. The photo's column has
+	the width of the photo: a long disclaimer under the table widens it, and the extra width goes to the details. -#}
+{% from "_blocks.html" import details, disclaimer, logo, picture %}
+{% macro column(card, look) %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if card.has_details %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ details(card, look) }}</td></tr>
+{% endif %}
+{% if card.logo %}
+<tr><td valign="top" style="{{ look.cell }}padding:{{ "10px" if card.has_details else "0" }} 0 0 0;">{{ logo(card.logo) }}</td></tr>
+{% endif %}
+</table>
+{% endmacro %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if card.photo and (card.has_details or card.logo) %}
+<tr>
+<td valign="top" width="{{ card.photo.width }}" style="{{ look.cell }}padding:0 16px 0 0;">{{ picture(card.photo) }}</td>
+<td valign="top" style="{{ look.cell }}padding:0;">{{ column(card, look) }}</td>
+</tr>
+{{ disclaimer(card, look, 2) }}
+{% else %}
+{% if card.photo %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ picture(card.photo) }}</td></tr>
+{% endif %}
+{% if not card.photo and card.has_details %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ details(card, look) }}</td></tr>
+{% endif %}
+{% if not card.photo and card.logo %}
+<tr><td valign="top" style="{{ look.cell }}padding:{{ "10px" if card.has_details else "0" }} 0 0 0;">{{ logo(card.logo) }}</td></tr>
+{% endif %}
+{{ disclaimer(card, look) }}
+{% endif %}
+</table>

@@ -69,7 +69,33 @@ window.__ = (text, args, context) => {
 };
 
 // ---- the server ---------------------------------------------------------------------------------------------------
+// The person's choices of the company signature (signatures.my_choices, save_my_choices), kept while the page lives:
+// a template with photos and mobile numbers. ?photo=missing or ?photo=unreadable: their photo can't be shown.
+const PHOTO =
+	"data:image/svg+xml," +
+	encodeURIComponent(
+		"<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><rect width='96' height='96' fill='#c9b8a6'/>" +
+			"<circle cx='48' cy='38' r='18' fill='#8a7663'/><rect x='18' y='62' width='60' height='40' rx='30' fill='#8a7663'/></svg>"
+	);
+const choices = {
+	template: true,
+	photo: true,
+	mobile: true,
+	photo_allowed: 0,
+	hide_mobile: 0,
+	photo_url: "",
+	photo_state: "off",
+};
 const answers = {
+	my_choices: () => ({ ...choices }),
+	save_my_choices: (args) => {
+		if ("photo_allowed" in args) choices.photo_allowed = Number(args.photo_allowed);
+		if ("hide_mobile" in args) choices.hide_mobile = Number(args.hide_mobile);
+		const unshown = params.get("photo");
+		choices.photo_url = choices.photo_allowed && !unshown ? PHOTO : "";
+		choices.photo_state = choices.photo_allowed ? unshown || "ready" : "off";
+		return { ...choices };
+	},
 	get_accounts: () => ACCOUNTS,
 	get_folders: () => FOLDERS,
 	get_folder_counts: () => COUNTS,

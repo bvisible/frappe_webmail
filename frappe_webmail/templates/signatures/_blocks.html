@@ -11,6 +11,16 @@
 <img src="{{ picture.src }}" width="{{ picture.width }}"{% if picture.height %} height="{{ picture.height }}"{% endif %} alt="{{ picture.alt }}" style="{{ picture.style }}">
 {% endmacro %}
 
+{#- A picture drawn as the logo is (the person's photo): its address, its sizes, its words and its style. -#}
+{% macro picture(item) %}
+<img src="{{ item.src }}" width="{{ item.width }}"{% if item.height %} height="{{ item.height }}"{% endif %} alt="{{ item.alt }}" style="{{ item.style }}">
+{% endmacro %}
+
+{#- The banner: its picture, in a link when it has one (an https address, signatures.https_url). -#}
+{% macro banner(item, look) %}
+{% if item.href %}<a href="{{ item.href }}" style="{{ look.picture_link }}">{{ picture(item) }}</a>{% else %}{{ picture(item) }}{% endif %}
+{% endmacro %}
+
 {% macro identity(card, look) %}
 {% for part in card.identity %}
 <div style="{{ look[part.kind] }}">{{ part.text }}</div>

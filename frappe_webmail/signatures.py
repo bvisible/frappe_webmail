@@ -19,9 +19,13 @@ the signature never writes a `data:` image. Every value is escaped (the Jinja en
 no field is ever taken as HTML. Each line of text is a block of its own: the desk's composer (TipTap) keeps neither
 tables nor styles nor the size of a picture, and reads the lines as paragraphs.
 
-The layouts are the files of templates/signatures. A layout to come (a round photo at the left, a clickable banner under
-the signature) is one more entry of LAYOUTS and one more file there, drawing the same card and look; the banner as a
-block that the layouts include.
+The layouts are the files of templates/signatures, each one more entry of LAYOUTS drawing the same card and look. "Photo
+left" draws the person's photo, and only for a person who agreed to show it (Email Signature Preference, which they set
+themselves and can take back; signature_photos.py makes the reduced copy that is drawn). The person also chooses whether
+their mobile is shown. A banner (a link when it has an https address) goes under the signature whatever its layout: the
+layout is drawn as it is, the banner on a row under it (_banner.html, `_draw`). The banner is a public picture of the
+instance, which every composer shows; the photo a private file, which the person's own composer shows and the message
+sent carries as its own part (inline_images.sender_photo).
 """
 
 import os
@@ -32,6 +36,7 @@ from urllib.parse import unquote, urlsplit
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import cint
 
 # The layouts, by the name the template's Select gives them, and the file that draws each (templates/signatures).
@@ -40,10 +45,13 @@ LAYOUTS = {
 	"Logo left": "logo_left.html",
 	"Logo above": "logo_above.html",
 	"Compact": "compact.html",
+	"Photo left": "photo_left.html",
 }
 DEFAULT_LAYOUT = "Text only"
-# The layouts that have a place for the logo (the others never fetch it)
-WITH_LOGO = frozenset(("Logo left", "Logo above"))
+# The layouts that have a place for the logo (the others never fetch it); Photo left draws it under the details
+WITH_LOGO = frozenset(("Logo left", "Logo above", "Photo left"))
+# The layouts that have a place for the person's photo
+WITH_PHOTO = frozenset(("Photo left",))
 
 # The fonts of the Select, each with the ones a client falls back on (no quote needed: CSS takes a name of words as is)
 FONTS = {
@@ -63,6 +71,14 @@ FONT_SIZE = (11, 16)
 DEFAULT_FONT_SIZE = 13
 LOGO_WIDTH = (60, 240)
 DEFAULT_LOGO_WIDTH = 120
+# The person's photo: a square of this many pixels (the reduced copy is made at that size, signature_photos.py), drawn
+# at it, round where a client keeps rounded corners
+PHOTO_SIZE = 96
+# The banner's width, in pixels; its height follows its file
+BANNER_WIDTH = (200, 600)
+DEFAULT_BANNER_WIDTH = 400
+# The person's own choices of the company signature: their photo, their mobile (one record per person)
+PREFERENCE = "Email Signature Preference"
 
 # The networks of a social link (the child table's Select), shown by their name
 NETWORKS = ("LinkedIn", "X", "Facebook", "Instagram", "YouTube", "Website")
@@ -80,6 +96,8 @@ SWITCHES = {
 	"show_company_name": 1,
 	"show_company_address": 0,
 	"show_logo": 1,
+	# The company wants photos; each person's is shown only if they agreed (Email Signature Preference)
+	"show_photo": 1,
 	"show_social_links": 1,
 	"show_disclaimer": 0,
 }
@@ -170,6 +188,13 @@ def _instance_file(value) -> str | None:
 	return None
 
 
+def _plain_instance_file(value) -> str | None:
+	"""_instance_file, and no `..` written encoded either (`%2e%2e`): the address of a photo or a banner. (Every read
+	of the disk keeps to the files anyway, _file_on_disk; this keeps such an address out of what is drawn.)"""
+	src = _instance_file(value.strip()) if isinstance(value, str) else None
+	return src if src and ".." not in unquote(src.split("?", 1)[0]).split("/") else None
+
+
 def _logo_src(value) -> str | None:
 	"""A logo's address as the signature writes it: the company's file as stored, or an https address."""
 	if not isinstance(value, str):
@@ -194,9 +219,9 @@ def _file_on_disk(src: str) -> str | None:
 
 
 def _logo_height(src: str, width: int) -> int | None:
-	"""The height the logo takes at that width, from the proportions of its file, so that a client reserves its place
-	before the picture is there. None when they cannot be read (an address elsewhere, a file gone from the disk, a
-	vector picture): the width alone then decides, the height following."""
+	"""The height a picture (the logo, the banner) takes at that width, from the proportions of its file, so that a
+	client reserves its place before the picture is there. None when they cannot be read (an address elsewhere, a file
+	gone from the disk, a vector picture): the width alone then decides, the height following."""
 	path = _file_on_disk(src)
 	if not path:
 		return None
@@ -219,12 +244,17 @@ def person_of(user: str) -> frappe._dict:
 	The User gives the name, the e-mail address and the numbers; the Employee linked to it (`user_id`), when there is one,
 	the job title and the department, and its own values, which win; the Company gives what is the company's (name, logo,
 	website, address) and its main number and address for a person with none of their own. The Company is the Employee's,
-	else the person's default one. ERPNext's doctypes may be missing from a site: each is read where it exists."""
+	else the person's default one. ERPNext's doctypes may be missing from a site: each is read where it exists.
+
+	The person's own choices (preference_of) are honoured: a mobile they hide is not there, and their photo (the reduced
+	copy, signature_photos.photo_of) is there only when they agreed to show it."""
+	from frappe_webmail import signature_photos
+
 	account = (
 		frappe.db.get_value(
 			"User",
 			user,
-			["full_name", "first_name", "last_name", "email", "phone", "mobile_no"],
+			["full_name", "first_name", "last_name", "email", "phone", "mobile_no", "user_image"],
 			as_dict=True,
 		)
 		or frappe._dict()
@@ -232,6 +262,7 @@ def person_of(user: str) -> frappe._dict:
 	employee = _employee_of(user)
 	company_name = employee.company or _default_company(user)
 	company = _company_of(company_name)
+	choices = preference_of(user)
 	return frappe._dict(
 		user=user,
 		name=_one_line(
@@ -243,13 +274,30 @@ def person_of(user: str) -> frappe._dict:
 		job_title=_one_line(employee.designation),
 		department=_one_line(_department_name(employee.department)),
 		phone=_one_line(account.phone or company.phone_no),
-		mobile=_one_line(employee.cell_number or account.mobile_no),
+		mobile="" if choices.hide_mobile else _one_line(employee.cell_number or account.mobile_no),
 		email=_one_line(employee.company_email or account.email or company.email),
 		company_name=_one_line(company.company_name or company_name),
 		website=_one_line(company.website),
 		address=_one_line(company.address),
 		logo=(company.company_logo or "").strip(),
+		photo=signature_photos.photo_of(user, choices, employee, account) if choices.photo_allowed else "",
 	)
+
+
+def preference_of(user: str) -> frappe._dict:
+	"""The person's own choices of the company signature (their Email Signature Preference): whether they agreed to show
+	their photo, whether they hide their mobile, and the reduced copy of their photo with what it was made from. All off
+	and empty for a person who made none, and on a site that has not the DocType yet."""
+	if user and frappe.db.table_exists(PREFERENCE):
+		found = frappe.db.get_value(
+			PREFERENCE,
+			{"user": user},
+			["name", "photo_allowed", "hide_mobile", "photo", "photo_source"],
+			as_dict=True,
+		)
+		if found:
+			return found
+	return frappe._dict(name=None, photo_allowed=0, hide_mobile=0, photo=None, photo_source=None)
 
 
 def _employee_of(user: str) -> frappe._dict:
@@ -260,7 +308,16 @@ def _employee_of(user: str) -> frappe._dict:
 		frappe.db.get_value(
 			"Employee",
 			{"user_id": user, "status": ["!=", "Left"]},
-			["employee_name", "designation", "department", "cell_number", "company_email", "company"],
+			[
+				"name",
+				"employee_name",
+				"designation",
+				"department",
+				"cell_number",
+				"company_email",
+				"company",
+				"image",
+			],
 			as_dict=True,
 			order_by="modified desc",
 		)
@@ -466,7 +523,7 @@ def _signature_for(user: str, account: dict | None, memo: dict, shared: bool) ->
 
 def _team_of(person: frappe._dict, account: dict, phone: str) -> frappe._dict:
 	"""A shared mailbox as a signature writes it: its name and address, the company's details and its main number
-	(`phone`); nothing of the person who writes from it (their job, their department, their numbers)."""
+	(`phone`); nothing of the person who writes from it (their job, their department, their numbers, their photo)."""
 	return frappe._dict(
 		person,
 		name=_one_line(account.get("sender_name") or account.get("email")),
@@ -475,6 +532,7 @@ def _team_of(person: frappe._dict, account: dict, phone: str) -> frappe._dict:
 		mobile="",
 		phone=_one_line(phone),
 		email=_one_line(account.get("email")),
+		photo="",
 	)
 
 
@@ -557,18 +615,47 @@ def render_person(template, person: frappe._dict) -> dict:
 		layout = DEFAULT_LAYOUT
 	card = card_of(template, person, layout)
 	if not any(
-		card[item] for item in ("identity", "contacts", "address", "social", "action", "disclaimer", "logo")
+		card[item]
+		for item in (
+			"identity",
+			"contacts",
+			"address",
+			"social",
+			"action",
+			"disclaimer",
+			"logo",
+			"photo",
+			"banner",
+		)
 	):
 		return {"html": "", "text": ""}
-	html = _environment().get_template(LAYOUTS[layout]).render(card=card, look=look_of(template))
+	html = _draw(layout, card, look_of(template))
 	# The templates are written as lines: no newline, no indentation in what leaves (a space that matters is on its line).
-	# The logo and the layout go with them for NeoMail, which keeps a signature's pictures by their bytes (www/neomail.py).
+	# The logo, the photo and the layout go with them for NeoMail, which keeps a signature's pictures by their bytes
+	# (www/neomail.py).
 	return {
 		"html": re.sub(r"\s*\n\s*", "", html).strip(),
 		"text": text_of(card),
 		"logo": card["logo"],
+		"photo": card["photo"],
 		"layout": layout,
 	}
+
+
+def _draw(layout: str, card: dict, look: dict) -> str:
+	"""The card drawn by its layout. A banner goes under the signature and above its small print, whatever the layout:
+	the layout draws the rest as it always has, and _banner.html puts it on a row above the banner."""
+	from markupsafe import Markup
+
+	environment = _environment()
+	if not card["banner"]:
+		return environment.get_template(LAYOUTS[layout]).render(card=card, look=look)
+	above = {**card, "disclaimer": []}
+	signature = ""
+	if above["has_details"] or above["logo"] or above["photo"]:
+		# Drawn by our own templates, every value escaped: the banner's template takes it as it is
+		signature = Markup(environment.get_template(LAYOUTS[layout]).render(card=above, look=look))
+	return environment.get_template("_banner.html").render(signature=signature, card=card, look=look)
 
 
 def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dict:
@@ -636,6 +723,9 @@ def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dic
 		"has_details": bool(identity or contacts or address or social or action),
 		"disclaimer": disclaimer,
 		"logo": _logo_of(template, person) if shown("show_logo") and layout in WITH_LOGO else None,
+		# The person's photo is in `person` only when they agreed to show it (person_of)
+		"photo": _photo_of(person) if shown("show_photo") and layout in WITH_PHOTO else None,
+		"banner": _banner_of(template, person),
 	}
 
 
@@ -656,8 +746,55 @@ def _logo_of(template, person: frappe._dict) -> dict | None:
 	}
 
 
+def _photo_of(person: frappe._dict) -> dict | None:
+	"""The person's photo as the layout draws it: the reduced copy (a file of the instance, square), at its own size,
+	round where a mail client keeps rounded corners (Outlook on Windows shows it square)."""
+	src = _plain_instance_file(person.get("photo"))
+	if not src:
+		return None
+	return {
+		"src": src,
+		"width": PHOTO_SIZE,
+		"height": PHOTO_SIZE,
+		"alt": _one_line(person.name) or _("Photo"),
+		"style": f"display:block;border:0;text-decoration:none;width:{PHOTO_SIZE}px;height:{PHOTO_SIZE}px;"
+		f"border-radius:{PHOTO_SIZE // 2}px;",
+	}
+
+
+def banner_src(template) -> str | None:
+	"""The address of the template's banner, a public picture of the instance; None when it has none (no banner then).
+	Public: every person who writes with the signature shows it in their composer, and a private file of a template is
+	the System Manager's to read (the form refuses one)."""
+	src = _plain_instance_file(template.get("banner_image"))
+	return src if src and src.startswith("/files/") else None
+
+
+def _banner_of(template, person: frappe._dict) -> dict | None:
+	"""The banner as the signature draws it: the template's picture at its width (and its height, from its file), its
+	description for the words a client shows in its place, and its link when it is an https address."""
+	src = banner_src(template)
+	if not src:
+		return None
+	width = _number(template.get("banner_width"), BANNER_WIDTH, DEFAULT_BANNER_WIDTH)
+	height = _logo_height(src, width)
+	return {
+		"src": src,
+		"width": width,
+		"height": height,
+		# Frappe stores what is typed with its characters escaped (card_of): read back as typed, escaped once when drawn
+		"alt": _one_line(unescape(template.get("banner_description") or ""))
+		or _one_line(person.get("company_name"))
+		or _("Banner"),
+		"href": https_url(template.get("banner_url")),
+		"style": f"display:block;border:0;text-decoration:none;width:{width}px;"
+		+ (f"height:{height}px;" if height else "height:auto;"),
+	}
+
+
 def text_of(card: dict) -> str:
-	"""The signature as plain text, from the same card: one line for each item, the disclaimer after a blank one."""
+	"""The signature as plain text, from the same card: one line for each item, the disclaimer after a blank one. A
+	banner that is a link is its description and its address; a picture says nothing else in text."""
 	lines = [part["text"] for part in card["identity"]]
 	lines += [f"{contact['label']}: {contact['text']}" for contact in card["contacts"]]
 	if card["address"]:
@@ -665,6 +802,8 @@ def text_of(card: dict) -> str:
 	lines += [f"{link['label']}: {link['url']}" for link in card["social"]]
 	if card["action"]:
 		lines.append(f"{card['action']['label']}: {card['action']['url']}")
+	if card.get("banner") and card["banner"]["href"]:
+		lines.append(f"{card['banner']['alt']}: {card['banner']['href']}")
 	if card["disclaimer"]:
 		lines += ["", *card["disclaimer"]]
 	return "\n".join(lines)
@@ -696,6 +835,8 @@ def look_of(template) -> dict:
 		"link": f"color:{accent};text-decoration:none;",
 		"action": f"color:{accent};text-decoration:underline;",
 		"rule": f"border-left:1px solid {accent};",
+		# A picture that is a link (the banner): no underline, no border around it
+		"picture_link": "display:block;border:0;text-decoration:none;",
 	}
 
 
@@ -732,3 +873,77 @@ def preview(doc, user: str | None = None) -> dict:
 	template = frappe.get_doc({**doc, "doctype": "Email Signature Template"})
 	written = render(template, user)
 	return {"html": written["html"], "text": written["text"]}
+
+
+# The person's own choices ------------------------------------------------------------------------------------------
+
+
+def _choosing() -> str:
+	"""The person who asks, when they are one of the desk's people: only they have a company signature to make choices
+	of (template_for); anyone else, a portal account or a visitor, is refused."""
+	user = frappe.session.user
+	if user == "Guest" or frappe.get_cached_value("User", user, "user_type") != "System User":
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	return user
+
+
+def _shows(template, switch: str) -> bool:
+	"""Whether a template shows an item, its default when it says nothing (card_of reads its checks the same way)."""
+	value = template.get(switch)
+	return bool(SWITCHES[switch] if value is None else cint(value))
+
+
+@frappe.whitelist()
+def my_choices() -> dict:
+	"""What the person who asks may choose of the company signature that applies to them, and what they chose.
+
+	`template`: whether one applies; `photo` and `mobile`: whether the person has that choice to make, because the
+	template shows photos (in a layout with a place for one) or mobile numbers, or because they made it already (a
+	yes is always theirs to take back, whatever the template now shows); `photo_allowed` and `hide_mobile`: their
+	choices; `photo_url`: the copy of their photo that their messages carry, when it is ready; `photo_state`: how their
+	photo stands (signature_photos.photo_state: ready, off, missing, unreadable, pending). Their own only: it names
+	nobody."""
+	from frappe_webmail import signature_photos
+
+	user = _choosing()
+	template = template_for(user)
+	choices = preference_of(user)
+	photo_url, photo_state = signature_photos.photo_state(user, choices)
+	shows_photos = bool(template) and _shows(template, "show_photo") and template.get("layout") in WITH_PHOTO
+	return {
+		"template": bool(template),
+		"photo": shows_photos or bool(cint(choices.photo_allowed)),
+		"mobile": (bool(template) and _shows(template, "show_mobile")) or bool(cint(choices.hide_mobile)),
+		"photo_allowed": cint(choices.photo_allowed),
+		"hide_mobile": cint(choices.hide_mobile),
+		"photo_url": photo_url,
+		"photo_state": photo_state,
+	}
+
+
+def _flag(value) -> int:
+	"""A check as the desk sends it (1, "1", true, "true"...): 1 or 0."""
+	if isinstance(value, str):
+		return int(value.strip().lower() in ("1", "true", "yes", "on"))
+	return int(bool(value))
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=30, seconds=60)
+def save_my_choices(photo_allowed=None, hide_mobile=None) -> dict:
+	"""Save the choices of the person who asks, in their own record, made for them the first time; what is not said
+	stays as it was. The copy of their photo is made, or deleted, with the choice (Email Signature Preference). There is
+	no way to name another person: one may change one's own choices only. Answers what my_choices answers."""
+	user = _choosing()
+	if not frappe.db.table_exists(PREFERENCE):
+		# The code is there, its DocType not yet (a site between an update and its migration)
+		frappe.throw(_("Your choice could not be saved"))
+	name = frappe.db.get_value(PREFERENCE, {"user": user}, "name")
+	doc = frappe.get_doc(PREFERENCE, name) if name else frappe.get_doc({"doctype": PREFERENCE, "user": user})
+	if photo_allowed is not None:
+		doc.photo_allowed = _flag(photo_allowed)
+	if hide_mobile is not None:
+		doc.hide_mobile = _flag(hide_mobile)
+	# With the person's own rights: their record is theirs to read and write (has_permission of the DocType)
+	doc.save()
+	return my_choices()

@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "autoname": "field:user",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "sb_choices",
+  "photo_allowed",
+  "hide_mobile",
+  "cb_photo",
+  "photo",
+  "photo_source"
+ ],
+ "fields": [
+  {
+   "default": "__user",
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "sb_choices",
+   "fieldtype": "Section Break",
+   "label": "In the company signature"
+  },
+  {
+   "default": "0",
+   "description": "Your photo, reduced, goes in the company signature when its layout has a place for it. Untick it to take it out: its copy is deleted.",
+   "fieldname": "photo_allowed",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Show my photo in the company signature"
+  },
+  {
+   "default": "0",
+   "description": "Your mobile number is left out of the company signature, even when the company shows mobile numbers.",
+   "fieldname": "hide_mobile",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Hide my mobile number"
+  },
+  {
+   "fieldname": "cb_photo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The copy of your photo that your messages carry, made from the picture of your employee record, else of your user.",
+   "fieldname": "photo",
+   "fieldtype": "Attach Image",
+   "label": "Photo in the signature",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "photo_source",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Photo Made From",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Webmail",
+ "name": "Email Signature Preference",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Desk User",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "user",
+ "track_changes": 1
+}

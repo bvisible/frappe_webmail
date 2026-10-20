@@ -7,14 +7,20 @@ from frappe.model.document import Document
 from frappe.utils import cint
 
 from frappe_webmail.signatures import (
+	BANNER_WIDTH,
 	DEFAULT_ACCENT,
+	DEFAULT_BANNER_WIDTH,
 	DEFAULT_FONT_SIZE,
 	DEFAULT_LOGO_WIDTH,
 	FONT_SIZE,
 	LOGO_WIDTH,
+	banner_src,
 	clean_color,
 	https_url,
 )
+
+# The pictures a banner may be: the ones every mail client shows, and NeoMail keeps (www/neomail.py)
+BANNER_TYPES = ("image/png", "image/jpeg", "image/gif")
 
 
 class EmailSignatureTemplate(Document):
@@ -33,6 +39,10 @@ class EmailSignatureTemplate(Document):
 		accent_color: DF.Color | None
 		allow_personal: DF.Check
 		applies_to: DF.Literal["Everyone", "Company", "Department"]
+		banner_description: DF.Data | None
+		banner_image: DF.AttachImage | None
+		banner_url: DF.Data | None
+		banner_width: DF.Int
 		company: DF.Link | None
 		cta_label: DF.Data | None
 		cta_url: DF.Data | None
@@ -41,7 +51,7 @@ class EmailSignatureTemplate(Document):
 		enabled: DF.Check
 		font: DF.Literal["Arial", "Helvetica", "Verdana", "Georgia", "Tahoma", "Trebuchet MS"]
 		font_size: DF.Int
-		layout: DF.Literal["Text only", "Logo left", "Logo above", "Compact"]
+		layout: DF.Literal["Text only", "Logo left", "Logo above", "Compact", "Photo left"]
 		logo_width: DF.Int
 		preview_user: DF.Link | None
 		show_company_address: DF.Check
@@ -54,6 +64,7 @@ class EmailSignatureTemplate(Document):
 		show_logo: DF.Check
 		show_mobile: DF.Check
 		show_phone: DF.Check
+		show_photo: DF.Check
 		show_social_links: DF.Check
 		show_website: DF.Check
 		social_links: DF.Table[EmailSignatureSocialLink]
@@ -64,6 +75,7 @@ class EmailSignatureTemplate(Document):
 		self.validate_scope()
 		self.validate_look()
 		self.validate_links()
+		self.validate_banner()
 		# Whom the preview was written for is the form's business, not the template's: kept, it would link the template
 		# to that user (who could then not be deleted).
 		self.preview_user = None
@@ -100,6 +112,9 @@ class EmailSignatureTemplate(Document):
 		self.logo_width = cint(self.logo_width) or DEFAULT_LOGO_WIDTH
 		if not LOGO_WIDTH[0] <= self.logo_width <= LOGO_WIDTH[1]:
 			frappe.throw(_("The logo width must be between {0} and {1} pixels.").format(*LOGO_WIDTH))
+		self.banner_width = cint(self.banner_width) or DEFAULT_BANNER_WIDTH
+		if not BANNER_WIDTH[0] <= self.banner_width <= BANNER_WIDTH[1]:
+			frappe.throw(_("The banner width must be between {0} and {1} pixels.").format(*BANNER_WIDTH))
 
 	def validate_links(self):
 		"""Only https:// addresses go into a signature (a link in a message that others read), and a call to action is
@@ -120,3 +135,55 @@ class EmailSignatureTemplate(Document):
 			if not url:
 				frappe.throw(_("The address of the call to action must start with https://"))
 			self.cta_url = url
+
+	def validate_banner(self):
+		"""A banner is a public picture of the instance's files (every person who writes with the signature shows it,
+		and a private file of a template is the System Manager's to read), of a kind every mail client shows, with words
+		that say what it says (what a client shows in its place); its link, when it has one, is an https:// address."""
+		import mimetypes
+
+		self.banner_image = (self.banner_image or "").strip() or None
+		self.banner_description = (self.banner_description or "").strip() or None
+		self.banner_url = (self.banner_url or "").strip() or None
+		if self.banner_url:
+			url = https_url(self.banner_url)
+			if not url:
+				frappe.throw(_("The address of the banner's link must start with https://"))
+			self.banner_url = url
+		if not self.banner_image:
+			return
+		src = banner_src(self)
+		if (
+			not src
+			or mimetypes.guess_type(src.split("?", 1)[0])[0] not in BANNER_TYPES
+			or not _a_picture(src)
+		):
+			frappe.throw(
+				_(
+					"The banner must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
+				)
+			)
+		if not self.banner_description:
+			frappe.throw(
+				_(
+					"Say in a few words what the banner shows: it is what a recipient reads where the picture is not."
+				)
+			)
+
+
+def _a_picture(src: str) -> bool:
+	"""Whether the file of the instance at `src` is on the disk and a PNG, JPEG or GIF by its own first bytes (what mail
+	clients show and NeoMail keeps: www/neomail.py), whatever its name says."""
+	import os
+
+	from frappe_webmail.signatures import _file_on_disk
+	from frappe_webmail.www.neomail import _PICTURE_MAGIC
+
+	path = _file_on_disk(src)
+	if not path or not os.path.isfile(path):
+		return False
+	try:
+		with open(path, "rb") as picture:
+			return picture.read(16).startswith(_PICTURE_MAGIC)
+	except OSError:
+		return False

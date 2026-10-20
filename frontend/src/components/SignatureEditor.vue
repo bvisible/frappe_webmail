@@ -30,6 +30,43 @@
 				</div>
 
 				<div v-if="!signatures.length" class="empty-state">{{ __("No signature") }}</div>
+
+				<!-- What the person may take out of the company signature that applies to them: their photo, their mobile.
+				Their own choices only (signatures.save_my_choices names nobody else). -->
+				<div v-if="choices && (choices.photo || choices.mobile)" class="company-choices">
+					<div class="choices-title">{{ __("Company signature") }}</div>
+					<label v-if="choices.photo" class="choice">
+						<input
+							type="checkbox"
+							:checked="Boolean(choices.photo_allowed)"
+							:disabled="savingChoices"
+							@change="saveChoice('photo_allowed', $event)"
+						/>
+						<span>{{ __("Show my photo in the company signature") }}</span>
+					</label>
+					<div v-if="choices.photo && choices.photo_allowed" class="choice-photo">
+						<img v-if="choices.photo_url" :src="choices.photo_url" alt="" />
+						<span v-else-if="choices.photo_state === 'missing'">
+							{{ __("No photo of you was found: add one in My Settings.") }}
+						</span>
+						<span v-else-if="choices.photo_state === 'unreadable'">
+							{{
+								__(
+									"Your photo could not be used: use a PNG, JPEG or GIF picture, not a private file."
+								)
+							}}
+						</span>
+					</div>
+					<label v-if="choices.mobile" class="choice">
+						<input
+							type="checkbox"
+							:checked="Boolean(choices.hide_mobile)"
+							:disabled="savingChoices"
+							@change="saveChoice('hide_mobile', $event)"
+						/>
+						<span>{{ __("Hide my mobile number") }}</span>
+					</label>
+				</div>
 			</div>
 
 			<!-- Signature Form -->
@@ -187,6 +224,9 @@ export default {
 			previewHtml: "",
 			previewTimer: null,
 			previewAsked: 0,
+			// What the person may choose of the company signature, and what they chose (signatures.my_choices)
+			choices: null,
+			savingChoices: false,
 		};
 	},
 
@@ -211,6 +251,7 @@ export default {
 
 	mounted() {
 		this.loadSignatures();
+		this.loadChoices();
 	},
 
 	beforeUnmount() {
@@ -229,6 +270,41 @@ export default {
 				this.signatures = response.message || [];
 			} catch (error) {
 				frappe.toast({ message: this.__("Loading error"), indicator: "red" });
+			}
+		},
+
+		async loadChoices() {
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.signatures.my_choices",
+				});
+				this.choices = response.message || null;
+			} catch (error) {
+				// Without them the manager is as it was: nothing to choose is shown
+				this.choices = null;
+			}
+		},
+
+		// A choice is saved as soon as it is made; the composer then takes the signature again ("updated")
+		async saveChoice(field, event) {
+			const box = event.target;
+			this.savingChoices = true;
+			try {
+				const response = await frappe.call({
+					method: "frappe_webmail.signatures.save_my_choices",
+					args: { [field]: box.checked ? 1 : 0 },
+				});
+				this.choices = response.message || this.choices;
+				this.$emit("updated");
+			} catch (error) {
+				// The box shows what is saved, not what was asked
+				box.checked = !box.checked;
+				frappe.toast({
+					message: this.__("Your choice could not be saved"),
+					indicator: "red",
+				});
+			} finally {
+				this.savingChoices = false;
 			}
 		},
 
@@ -529,6 +605,45 @@ export default {
 	padding: 16px;
 	color: var(--text-muted, #8d99a6);
 	text-align: center;
+}
+
+.company-choices {
+	margin-top: auto;
+	padding: 12px 16px;
+	border-top: 1px solid var(--border-color, #e5e5e5);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	font-size: 13px;
+}
+
+.choices-title {
+	font-weight: 600;
+}
+
+.choice {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	cursor: pointer;
+}
+
+.choice input {
+	margin-top: 2px;
+}
+
+.choice-photo {
+	padding-left: 24px;
+	font-size: 12px;
+	color: var(--text-muted, #8d99a6);
+}
+
+/* The copy of the photo that messages carry, round as most mail programs show it */
+.choice-photo img {
+	display: block;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
 }
 
 .signature-form {

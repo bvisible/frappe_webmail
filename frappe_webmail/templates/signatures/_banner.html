@@ -1,0 +1,11 @@
+{#- A banner under a signature, whatever its layout (signatures._draw): the signature as its layout drew it without its
+	small print (`signature`, already drawn and escaped), the banner on a row of its own, then the small print. A template
+	that shows nothing but a banner is the banner alone. -#}
+{% from "_blocks.html" import banner, disclaimer %}
+<table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
+{% if signature %}
+<tr><td valign="top" style="{{ look.cell }}padding:0 0 12px 0;">{{ signature }}</td></tr>
+{% endif %}
+<tr><td valign="top" style="{{ look.cell }}padding:0;">{{ banner(card.banner, look) }}</td></tr>
+{{ disclaimer(card, look) }}
+</table>
