@@ -993,6 +993,11 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 	draft = bool(stored.get("isDraft"))
 	asked = notify and not draft
 	organizes = asked and _organizes(suite_account, stored)
+	# The organizer's own status moved alone (a client that took one of their addresses for a guest's answers its
+	# invitation): no change to tell the guests, and no answer to send to oneself.
+	own_status_only = organizes and _answer_of(
+		suite_account, stored, now, patch, fields, calendars, quiet=True
+	)
 	answer = (
 		asked
 		and not organizes
@@ -1004,12 +1009,19 @@ def _update_event(suite_account, client, calendars, vid, patch, notify):
 		# the person's copy, gives the answer to every occurrence, and the copy loses its rule.
 		raise frappe.PermissionError("An invitation is answered as a whole: answer its series.")
 	if answer:
+		from suite.calendar import jmap_events
 		from suite.calendar.api import rsvp_calendar_event
 
-		# The desk's own answer, with its rate limit (each answer is a mail).
+		# The desk's own answer, with its rate limit (each answer is a mail): recorded on the person's first entry.
 		rsvp_calendar_event(suite_account, raw, answer)
+		# Invited under two of their addresses, the client moved another (it cannot know which the server lists first):
+		# that one says the answer too, without a second mail, so that the copy reads as the client wrote it.
+		first = next(iter(_own_entries(suite_account, stored)), None)
+		for uid in _moved_own(suite_account, stored, now, fields, calendars):
+			if uid != first:
+				jmap_events.set_participation_status(client, raw, uid, answer, send_scheduling_messages=False)
 		return True
-	notify = organizes
+	notify = organizes and not own_status_only
 	if recurrence_id:
 		for key in NOT_FOR_AN_OCCURRENCE:
 			fields.pop(key, None)
@@ -1137,52 +1149,64 @@ def _as_compared(row):
 	}
 
 
-def _answer_of(suite_account, stored, now, patch, fields, calendars):
+def _answer_of(suite_account, stored, now, patch, fields, calendars, quiet=False):
 	"""The person's answer to an invitation that an update gives, or None for another change. An answer writes the
-	participants alone, and changes one entry of them, from the event as it is now (`now`, an occurrence's own): the
-	person's, as record_rsvp finds it in the copy it reads (`stored`: the first entry whose address is one of theirs,
-	when they are invited under two), in its participationStatus alone, now accepted, tentative or declined. `fields`
-	are the patch's, as _event_fields read them. The person's own status moved to an answer with something else changed
-	beside it is written as before, and said in the error log: the organizer is not told."""
+	participants alone, and changes the person's own entries of them, from the event as it is now (`now`, an occurrence's
+	own), in their participationStatus alone, now accepted, tentative or declined. The person's entries are those whose
+	address is one of theirs (_own_entries): invited under two, a client may move either, and record_rsvp answers for
+	the first (the organizer is told the same). `fields` are the patch's, as _event_fields read them. The person's own
+	status moved to an answer with something else changed beside it is written as before, and said in the error log
+	(not with `quiet`): the organizer is not told."""
 	if not isinstance(patch, dict):
 		return None
 	given = {row["uid"]: _as_compared(row) for row in fields.get("participants") or []}
 	read = _event_fields({"participants": now.get("participants")}, calendars).get("participants") or []
 	kept = {row["uid"]: _as_compared(row) for row in read}
-	first = _first_own(suite_account, stored)
-	status = (given.get(first) or {}).get("participation_status")
-	if (
-		not first
-		or first not in kept
-		or status not in ANSWERS
-		or status == kept[first]["participation_status"]
-	):
+	moved = _moved_own(suite_account, stored, now, fields, calendars)
+	statuses = {given[uid]["participation_status"] for uid in moved}
+	if not moved or len(statuses) != 1 or not statuses <= set(ANSWERS):
 		return None
-	others = {uid: row for uid, row in given.items() if uid != first}
 	if (
 		set(patch) - SERVER_SET == {"participants"}
 		and set(given) == set(kept)
-		and all(row == kept[uid] for uid, row in others.items())
-		and {**given[first], "participation_status": None} == {**kept[first], "participation_status": None}
+		and all(row == kept[uid] for uid, row in given.items() if uid not in moved)
+		and all(
+			{**given[uid], "participation_status": None} == {**kept[uid], "participation_status": None}
+			for uid in moved
+		)
 	):
-		return status
-	frappe.log_error(
-		"NeoMail: an answer to an invitation was written on the copy alone",
-		f"The update changed more than the person's answer (properties: {sorted(set(patch) - SERVER_SET)}): its "
-		"organizer is not told.",
-	)
+		return statuses.pop()
+	if not quiet:
+		frappe.log_error(
+			"NeoMail: an answer to an invitation was written on the copy alone",
+			f"The update changed more than the person's answer (properties: {sorted(set(patch) - SERVER_SET)}): "
+			"its organizer is not told.",
+		)
 	return None
 
 
-def _first_own(suite_account, stored):
-	"""The participant (its key) record_rsvp answers for in `stored`: the first one whose address is one of the
-	person's; None when none is."""
+def _moved_own(suite_account, stored, now, fields, calendars):
+	"""The person's own entries (_own_entries) whose status the patch's participants (`fields`) move, from the event as
+	it is now."""
+	given = {row["uid"]: _as_compared(row) for row in fields.get("participants") or []}
+	read = _event_fields({"participants": now.get("participants")}, calendars).get("participants") or []
+	kept = {row["uid"]: _as_compared(row) for row in read}
+	return [
+		uid
+		for uid in _own_entries(suite_account, stored)
+		if uid in kept
+		and uid in given
+		and given[uid]["participation_status"] != kept[uid]["participation_status"]
+	]
+
+
+def _own_entries(suite_account, stored):
+	"""The participants (their keys) of `stored` whose address is one of the person's, in the copy's order: the first
+	is the one record_rsvp answers for."""
 	from suite.mail.jmap import get_participant_identities
 
-	own = {identity["email"] for identity in get_participant_identities(suite_account)}
-	return next(
-		(uid for uid, entry in _map(stored, "participants").items() if _rsvp_address(entry) in own), None
-	)
+	own = {str(identity["email"]).lower() for identity in get_participant_identities(suite_account)}
+	return [uid for uid, entry in _map(stored, "participants").items() if _rsvp_address(entry) in own]
 
 
 def _check_writable(stored, calendars):

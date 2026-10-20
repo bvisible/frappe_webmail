@@ -834,9 +834,9 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.assertEqual(answered["notUpdated"], {})
 		answer.assert_called_once_with(self.account, calendars._raw(event["id"], "V"), "accepted")
 
-	def test_invited_under_two_of_their_addresses_the_first_answers(self):
-		"""record_rsvp answers for the first of the person's entries: a change of the other is not taken for an answer
-		(it would land on the wrong entry), and is written as before."""
+	def test_invited_under_two_of_their_addresses_either_entry_answers(self):
+		"""A client may move either of the person's entries (it cannot know which the server lists first): either is
+		the answer, which record_rsvp records on the first and tells the organizer."""
 		from suite.calendar import api as calendar_api
 		from suite.calendar.doctype.calendar_event import invitations
 		from suite.mail import jmap as suite_jmap
@@ -868,13 +868,55 @@ class TestMailCraftCalendars(FrappeTestCase):
 				update={event["id"]: {"participants": self._answered(event, who="alias")}},
 				sendSchedulingMessages=True,
 			)
-			self.assertEqual((other["notUpdated"], answer.call_count), ({}, 0))
+			self.assertEqual(other["notUpdated"], {})
+			answer.assert_called_once_with(self.account, calendars._raw(event["id"], "V"), "accepted")
+			# The entry the client moved says it too (record_rsvp, stood in for here, records the first).
+			self.assertEqual(
+				self._get(event["id"])["participants"]["alias"]["participationStatus"], "accepted"
+			)
 			first = self._set(
-				update={event["id"]: {"participants": self._answered(self._get(event["id"]))}},
+				update={
+					event["id"]: {"participants": self._answered(self._get(event["id"]), status="declined")}
+				},
 				sendSchedulingMessages=True,
 			)
 		self.assertEqual(first["notUpdated"], {})
-		answer.assert_called_once_with(self.account, calendars._raw(event["id"], "V"), "accepted")
+		self.assertEqual(answer.call_args.args, (self.account, calendars._raw(event["id"], "V"), "declined"))
+
+	def test_the_organizers_own_status_moved_alone_tells_nobody(self):
+		"""The person organizes the meeting (under an address the client took for a guest's) and only their own status
+		moves: no change to tell the guests, and no answer sent to oneself."""
+		from suite.calendar import api as calendar_api
+		from suite.calendar.doctype.calendar_event import calendar_event, invitations
+		from suite.mail import jmap as suite_jmap
+
+		self._as(PERSON)
+		(event,) = self._invitation()
+		real_update = calendar_event.update_calendar_event
+		with (
+			self._sending_answers(),
+			patch.object(calendars, "_organizes", return_value=True),
+			patch.object(suite_jmap, "get_participant_identities", return_value=[{"email": PERSON}]),
+			patch.object(
+				calendar_api, "rsvp_calendar_event", side_effect=AssertionError("no answer to oneself")
+			),
+			patch.object(calendar_event, "update_calendar_event", wraps=real_update) as update,
+			patch.object(invitations, "custom_event_invites_enabled", return_value=False),
+			patch.object(frappe, "enqueue"),
+			patch.object(frappe, "sendmail", side_effect=AssertionError("a test sends no mail")),
+		):
+			own = self._set(
+				update={event["id"]: {"participants": self._answered(event, status="tentative")}},
+				sendSchedulingMessages=True,
+			)
+			self.assertEqual(own["notUpdated"], {}, own)
+			self.assertIs(update.call_args.kwargs["send_scheduling_messages"], False)
+			# Anything else changed with it is the organizer's change, told to the guests.
+			retitled = self._set(
+				update={event["id"]: {"title": "Project review (room B)"}}, sendSchedulingMessages=True
+			)
+			self.assertEqual(retitled["notUpdated"], {}, retitled)
+			self.assertIs(update.call_args.kwargs["send_scheduling_messages"], True)
 
 	def test_one_occurrence_of_someone_elses_invitation_is_answered_with_its_series(self):
 		"""As in the desk, which offers no answer to one occurrence of another's invitation (the mail server would give
