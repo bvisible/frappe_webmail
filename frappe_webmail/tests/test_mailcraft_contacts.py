@@ -513,6 +513,74 @@ class TestMailCraftContacts(FrappeTestCase):
 		second = self._set(READER, BOX, create={"k": card})[1]["created"]["k"]["id"]
 		self.assertNotEqual(second, first)
 
+	def test_a_resend_a_company_a_preferred_address_and_dates_are_kept(self):
+		"""A create sent again with a change made in between holds the change; a contact with only its company is made,
+		named by it, as in the desk; the preferred address is the primary one; a text the contact cannot hold is refused,
+		not cut; every card says when it was made and last changed."""
+		uid = f"mc-test-{uuid.uuid4()}"
+		card = {
+			"uid": uid,
+			"name": {"full": "Lambda Contactsperm"},
+			"emails": {"e1": {"address": "lambda@contacts.test"}},
+		}
+		made = self._set(READER, BOX, create={"k": card})[1]["created"]["k"]["id"]
+		changed = {**card, "phones": {"p1": {"number": "+41 79 555 55 55", "features": {"mobile": True}}}}
+		again = self._set(READER, BOX, create={"k": changed})[1]
+		self.assertEqual(again["created"]["k"]["id"], made)
+		frappe.set_user("Administrator")
+		self.assertEqual(
+			[row.phone for row in frappe.get_doc("Contact", made).phone_nos], ["+41 79 555 55 55"]
+		)
+		company = self._set(
+			READER, BOX, create={"c": {"organizations": {"o1": {"name": "Omicron Contactsperm SA"}}}}
+		)[1]
+		self.assertEqual(company["notCreated"], {}, company)
+		frappe.set_user("Administrator")
+		named = frappe.get_doc("Contact", company["created"]["c"]["id"])
+		self.assertEqual(
+			(named.company_name, named.full_name), ("Omicron Contactsperm SA", "Omicron Contactsperm SA")
+		)
+		preferred = self._set(
+			READER,
+			BOX,
+			create={
+				"p": {
+					"name": {"full": "Kappa Contactsperm"},
+					"emails": {
+						"e1": {"address": "kappa@contacts.test", "pref": 2},
+						"e2": {"address": "kappa.office@contacts.test", "pref": 1},
+					},
+				}
+			},
+		)[1]["created"]["p"]["id"]
+		frappe.set_user("Administrator")
+		self.assertEqual(
+			frappe.db.get_value("Contact Email", {"parent": preferred, "is_primary": 1}, "email_id"),
+			"kappa.office@contacts.test",
+		)
+		self._set(
+			READER,
+			BOX,
+			update={
+				preferred: {
+					"emails": {
+						"e1": {"address": "kappa@contacts.test", "pref": 1},
+						"e2": {"address": "kappa.office@contacts.test"},
+					}
+				}
+			},
+		)
+		frappe.set_user("Administrator")
+		self.assertEqual(
+			frappe.db.get_value("Contact Email", {"parent": preferred, "is_primary": 1}, "email_id"),
+			"kappa@contacts.test",
+		)
+		long = self._set(READER, BOX, update={preferred: {"titles": {"t1": {"name": "x" * 141}}}})[1]
+		self.assertEqual(long["notUpdated"][preferred]["type"], "invalidProperties", long)
+		read = self._cards(READER, BOX, ids=[preferred])[1]["list"][0]
+		self.assertTrue(read["created"].endswith("Z") and read["updated"].endswith("Z"), read)
+		self.assertLessEqual(read["created"], read["updated"])
+
 	def test_a_contact_is_deleted_as_in_the_desk(self):
 		frappe.set_user("Administrator")
 		theta = _contact("Theta", "Contactsperm", "theta@contacts.test")

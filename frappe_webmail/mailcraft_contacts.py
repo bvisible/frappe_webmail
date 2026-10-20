@@ -26,8 +26,30 @@ CONTACTS = "urn:ietf:params:jmap:contacts"
 BOOK = "neoffice"
 MAX_CARDS = 5000
 UID_SECONDS = 7 * 24 * 3600  # how long a create is recognised by its card's uid (an answer lost on the way)
-FIELDS = ["name", "first_name", "last_name", "full_name", "company_name", "designation"]
-PROPERTIES = {"id", "uid", "addressBookIds", "name", "emails", "phones", "organizations", "titles"}
+FIELDS = [
+	"name",
+	"first_name",
+	"last_name",
+	"full_name",
+	"company_name",
+	"designation",
+	"creation",
+	"modified",
+]
+PROPERTIES = {
+	"id",
+	"uid",
+	"addressBookIds",
+	"name",
+	"emails",
+	"phones",
+	"organizations",
+	"titles",
+	"created",
+	"updated",
+}
+# The longest text a contact keeps in a field (Data fields): a longer one is refused, never cut.
+MAX_TEXT = 140
 
 
 def contacts_mailbox():
@@ -281,7 +303,7 @@ def _one_card(write):
 
 
 WRITABLE = {"name", "emails", "phones", "organizations", "titles"}
-IGNORED = {"@type", "version", "addressBookIds", "uid", "kind"}
+IGNORED = {"@type", "version", "addressBookIds", "uid", "kind", "created", "updated"}
 
 
 def _refusal(error):
@@ -310,8 +332,13 @@ def _entries(card, key):
 	return [entry for entry in value.values() if isinstance(entry, dict)]
 
 
-def _text(value, size=140):
-	return str(value if value is not None else "").strip()[:size]
+def _text(value, size=MAX_TEXT, what=None):
+	"""A text of a card, trimmed: one longer than the contact keeps is refused (named `what`), or cut when `what` is
+	not given (what the contact itself derives)."""
+	text = str(value if value is not None else "").strip()
+	if what and len(text) > size:
+		raise ValueError(_("{0} is longer than {1} characters.").format(what, size))
+	return text[:size]
 
 
 def _fields(card):
@@ -329,32 +356,42 @@ def _fields(card):
 		components = name.get("components") or []
 		if not isinstance(components, list):
 			raise ValueError("name.components must be a list.")
-		parts = {p.get("kind"): _text(p.get("value")) for p in components if isinstance(p, dict)}
+		parts = {
+			p.get("kind"): _text(p.get("value"), what=_("A name")) for p in components if isinstance(p, dict)
+		}
 		first, last = parts.get("given", ""), parts.get("surname", "")
 		if not first and not last:
 			# Only the full name (a client that keeps no parts of it): read as the contact's own when it is unchanged.
-			out["full_name"] = _text(name.get("full"), 281)
+			out["full_name"] = _text(name.get("full"), 281, _("A name"))
 			first, _sep, last = out["full_name"].partition(" ")
 		out["first_name"], out["last_name"] = first[:140], last.strip()[:140]
 	if "emails" in card:
-		seen, addresses = set(), []
+		seen, addresses, preferred = set(), [], []
 		for entry in _entries(card, "emails"):
-			address = _text(entry.get("address"))
+			address = _text(entry.get("address"), what=_("An address"))
 			if "@" in address and address.lower() not in seen:
 				seen.add(address.lower())
 				addresses.append(address)
+				# RFC 9553: the lowest `pref` is the most preferred, and is the contact's primary address.
+				if isinstance(entry.get("pref"), int) and not isinstance(entry.get("pref"), bool):
+					preferred.append((entry["pref"], len(addresses), address))
 		out["emails"] = addresses
+		if preferred:
+			out["primary_email"] = min(preferred)[2]
 	if "phones" in card:
 		out["phones"] = [
-			(_text(entry.get("number")), bool((entry.get("features") or {}).get("mobile")))
+			(
+				_text(entry.get("number"), what=_("A number")),
+				bool((entry.get("features") or {}).get("mobile")),
+			)
 			for entry in _entries(card, "phones")
-			if _text(entry.get("number"))
+			if _text(entry.get("number"), what=_("A number"))
 		]
 	if "organizations" in card:
-		names = [_text(o.get("name")) for o in _entries(card, "organizations")]
+		names = [_text(o.get("name"), what=_("A company")) for o in _entries(card, "organizations")]
 		out["company_name"] = next((n for n in names if n), "")
 	if "titles" in card:
-		names = [_text(t.get("name")) for t in _entries(card, "titles")]
+		names = [_text(t.get("name"), what=_("A job title")) for t in _entries(card, "titles")]
 		out["designation"] = next((n for n in names if n), "")
 	return out
 
@@ -421,20 +458,25 @@ def _create(card):
 	uid = _text(card.get("uid"), 255) if isinstance(card.get("uid"), str) else ""
 	made = _made_before(uid)
 	if made:
+		# Sent again after its answer was lost, maybe changed in between: the contact made the first time gets what the
+		# client sends now, so that the server holds what the client believes it does.
+		_update(made, {key: value for key, value in card.items() if key in WRITABLE})
 		return made
 	fields.pop("full_name", None)
 	addresses, phones = fields.pop("emails", []), fields.pop("phones", [])
-	if not (fields.get("first_name") or fields.get("last_name")):
-		# A contact is named: from its address when no name is given ("jeanne.muster@…" → Jeanne Muster).
+	primary = fields.pop("primary_email", None)
+	if not (fields.get("first_name") or fields.get("last_name")) and not fields.get("company_name"):
+		# A contact is named: by its company, as the desk names one (Contact.autoname), else from its address
+		# ("jeanne.muster@…" → Jeanne Muster).
 		if not addresses:
-			raise ValueError(_("A contact needs a name or an address."))
+			raise ValueError(_("A contact needs a name, a company or an address."))
 		words = addresses[0].split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").split()
 		fields["first_name"] = " ".join(word.capitalize() for word in words)[:140] or addresses[0][:140]
 	doc = frappe.get_doc(
 		{
 			"doctype": "Contact",
 			**fields,
-			"email_ids": _email_rows(addresses),
+			"email_ids": _email_rows(addresses, primary),
 			"phone_nos": _phone_rows(phones),
 		}
 	)
@@ -468,7 +510,9 @@ def _update(name, patch):
 		if key in fields:
 			doc.set(key, fields[key])
 	if "emails" in fields:
-		primary = next((row.email_id for row in doc.email_ids if row.is_primary), None)
+		primary = fields.get("primary_email") or next(
+			(row.email_id for row in doc.email_ids if row.is_primary), None
+		)
 		doc.set("email_ids", _email_rows(fields["emails"], primary))
 	if "phones" in fields:
 		old = [
@@ -521,6 +565,10 @@ def _card(row, emails, phones, wanted=None):
 			for n, p in enumerate((p for p in phones if p.phone), 1)
 		},
 	}
+	if row.creation:
+		card["created"] = jmap.utc_of(row.creation)
+	if row.modified:
+		card["updated"] = jmap.utc_of(row.modified)
 	if row.company_name:
 		card["organizations"] = {"o1": {"@type": "Organization", "name": row.company_name}}
 	if row.designation:
