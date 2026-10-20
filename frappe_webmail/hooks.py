@@ -144,6 +144,11 @@ has_permission = {
 # ---------------
 # Hook on document methods and events
 
+# What NeoMail's facade remembers of a create (mailcraft_calendars, mailcraft_contacts, mailcraft_notes: the uid a client
+# gave, for a week), so that a create sent again after its answer was lost finds what it made: not erased by
+# frappe.clear_cache (a migrate, a deploy), which would make the resend a second contact, event or note.
+persistent_cache_keys = ["mailcraft_event_uid:*", "mailcraft_card_uid:*", "mailcraft_note_uid:*"]
+
 doc_events = {
 	"Email Signature": {
 		"before_save": "frappe_webmail.frappe_webmail.doctype.email_signature.email_signature.before_save"

@@ -604,6 +604,28 @@ class TestMailCraftContacts(FrappeTestCase):
 		odd = self._calls(("ContactCard/query", {"accountId": aid, "filter": {"name": "x"}}))
 		self.assertEqual((odd[0][0], odd[0][1]["type"]), ("error", "unsupportedFilter"))
 
+	def test_what_a_create_left_survives_a_clear_cache(self):
+		"""A migrate or a deploy clears the cache: what the facade remembers of a create stays (hooks:
+		persistent_cache_keys), so that a resend finds what it made rather than make a second one."""
+		from frappe_webmail import mailcraft_calendars, mailcraft_notes
+
+		self._as(READER)
+		keys = [
+			contacts._uid_key("mc-test-persistent"),
+			mailcraft_calendars._event_uid_key("mc-test-persistent"),
+			mailcraft_notes._uid_key("mc-test-persistent"),
+		]
+		# The hooks themselves are cached: a first clear reads them again as this app's hooks.py says them.
+		frappe.clear_cache()
+		try:
+			for key in keys:
+				frappe.cache().set_value(key, {"name": "kept"}, expires_in_sec=300)
+			frappe.clear_cache()
+			self.assertEqual([frappe.cache().get_value(key) for key in keys], [{"name": "kept"}] * 3)
+		finally:
+			for key in keys:
+				frappe.cache().delete_value(key)
+
 	def test_a_contact_is_deleted_as_in_the_desk(self):
 		frappe.set_user("Administrator")
 		theta = _contact("Theta", "Contactsperm", "theta@contacts.test")
