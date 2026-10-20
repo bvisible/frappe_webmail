@@ -2089,7 +2089,23 @@ class TestThePersonsChoices(PhotoTestCase):
 		self.assertTrue(signature_photos.usable_path(public, "User", USER))
 		self.assertTrue(signature_photos.refresh(USER))
 		self.assertEqual(len(self.copies()), 1)
-		# A private picture of their Employee record, attached to that record, and to no other
+		# Nothing is fetched from the web, and nothing out of the files, written as is or encoded
+		for elsewhere in (
+			"https://cdn.example.com/me.jpg",
+			"/private/files/../../site_config.json",
+			"/files/%2e%2e/%2e%2e/site_config.json",
+			"",
+		):
+			self.assertIsNone(
+				signature_photos.usable_path(elsewhere, "Employee", f"{PREFIX}-employee"), elsewhere
+			)
+
+	def test_a_private_picture_of_the_employee_record_is_taken_from_that_record_only(self):
+		"""HR's choice: a private picture attached to the person's Employee record, and to no other record."""
+		if not frappe.db.exists("DocType", "Employee"):
+			# A File can be attached to a DocType of the site only (HRMS or ERPNext adds Employee)
+			self.skipTest("this site has no Employee DocType")
+		loose = picture_file(self, width=55, height=50, colour=(1, 2, 3), is_private=1)
 		employee = f"{PREFIX}-employee"
 		hr = picture_file(
 			self,
@@ -2103,15 +2119,7 @@ class TestThePersonsChoices(PhotoTestCase):
 		self.assertTrue(signature_photos.usable_path(hr, "Employee", employee))
 		self.assertIsNone(signature_photos.usable_path(hr, "Employee", f"{employee}-other"))
 		self.assertIsNone(signature_photos.usable_path(hr, "User", USER))
-		self.assertIsNone(signature_photos.usable_path(theirs, "Employee", employee))
-		# Nothing is fetched from the web, and nothing out of the files, written as is or encoded
-		for elsewhere in (
-			"https://cdn.example.com/me.jpg",
-			"/private/files/../../site_config.json",
-			"/files/%2e%2e/%2e%2e/site_config.json",
-			"",
-		):
-			self.assertIsNone(signature_photos.usable_path(elsewhere, "Employee", employee), elsewhere)
+		self.assertIsNone(signature_photos.usable_path(loose, "Employee", employee))
 
 	def test_a_shared_mailbox_never_carries_the_writer_s_photo(self):
 		self.face(width=60, height=60, colour=(5, 5, 5))
