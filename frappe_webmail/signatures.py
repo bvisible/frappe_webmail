@@ -747,8 +747,9 @@ def _logo_of(template, person: frappe._dict) -> dict | None:
 
 
 def _photo_of(person: frappe._dict) -> dict | None:
-	"""The person's photo as the layout draws it: the reduced copy (a file of the instance, square), at its own size,
-	round where a mail client keeps rounded corners (Outlook on Windows shows it square)."""
+	"""The person's photo as the layout draws it: the reduced copy (a file of the instance), at its own size, round by
+	its own pixels (a PNG transparent outside the circle, signature_photos.reduced) and by its style where a mail client
+	keeps rounded corners."""
 	src = _plain_instance_file(person.get("photo"))
 	if not src:
 		return None

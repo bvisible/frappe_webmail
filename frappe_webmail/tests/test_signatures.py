@@ -1940,12 +1940,20 @@ class TestThePersonsChoices(PhotoTestCase):
 		content = frappe.get_doc("File", copy.name).get_content()
 		picture = Image.open(io.BytesIO(content))
 		self.assertEqual(
-			(picture.format, picture.size),
-			("JPEG", (signatures.PHOTO_SIZE, signatures.PHOTO_SIZE)),
-			"a square of 96 pixels",
+			(picture.format, picture.mode, picture.size),
+			("PNG", "RGBA", (signatures.PHOTO_SIZE, signatures.PHOTO_SIZE)),
+			"a picture of 96 pixels with its transparency",
+		)
+		# Round by its own pixels: the corners transparent, the middle and the edge's middle opaque
+		last = signatures.PHOTO_SIZE - 1
+		corners = [picture.getpixel(at)[3] for at in ((0, 0), (last, 0), (0, last), (last, last))]
+		self.assertEqual(corners, [0, 0, 0, 0], "transparent outside the circle")
+		middle = signatures.PHOTO_SIZE // 2
+		self.assertEqual(
+			[picture.getpixel(at)[3] for at in ((middle, middle), (middle, 1), (1, middle))], [255, 255, 255]
 		)
 		self.assertFalse(dict(picture.getexif()), "nothing of the source's metadata")
-		self.assertLess(len(content), 20_000, "a few kilobytes in each message")
+		self.assertLess(len(content), 40_000, "a few kilobytes in each message")
 		known = signatures.person_of(USER)
 		self.assertEqual(known.photo, copy.file_url)
 		drawn = render_person(template("Photo left"), known)

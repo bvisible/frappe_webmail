@@ -13,7 +13,8 @@ pass for theirs; the copy would then be theirs to read. A private picture is tak
 one HR chose and the person cannot point elsewhere, and only as a File attached to that very record.
 
 What a message carries is a reduced copy, never the source: a square of PHOTO_SIZE pixels cut from it (a little above
-its middle, where a portrait has the face), upright, as a JPEG without the source's metadata (a phone's photo says where
+its middle, where a portrait has the face), upright, round by its own pixels (a PNG transparent outside the circle:
+every mail client shows it round, Outlook on Windows too), without the source's metadata (a phone's photo says where
 it was taken), kept as a private File attached to the person's preference. It is made once, and again only when its
 source changes (its address, its size or its time on the disk: `photo_source`): when the person agrees (their
 preference's on_update), and, when a signature finds its copy out of date, by a worker (`refresh_later`: a signature is
@@ -36,7 +37,9 @@ MAX_SOURCE_BYTES = 20 << 20
 MAX_SOURCE_PIXELS = 40_000_000
 # Where the square is cut from a picture taller or wider than it: across, the middle; down, a little above it
 PORTRAIT_CENTRE = (0.5, 0.4)
-JPEG_QUALITY = 85
+# What a copy is, part of what it is made from (fingerprint_of): a copy of another kind, the square JPEG of before, is
+# made again the next time the signature is written
+COPY_KIND = "round-png"
 # The background job that makes a copy again, one waiting at a time for each person
 JOB = "frappe_webmail.signature_photos.refresh"
 
@@ -60,7 +63,7 @@ def source_of(user: str, employee=None, account=None) -> tuple[str, str | None, 
 
 def fingerprint_of(src: str) -> str:
 	"""What a copy is made from, to tell when its source changed: the source's address, and the size and the time of
-	its file on the disk when it is a file of the instance ('' for no source)."""
+	its file on the disk when it is a file of the instance, and what kind of copy is made of it ('' for no source)."""
 	if not src:
 		return ""
 	path = signatures._file_on_disk(src)
@@ -68,7 +71,8 @@ def fingerprint_of(src: str) -> str:
 		found = os.stat(path) if path else None
 	except OSError:
 		found = None
-	return f"{src}|{found.st_size}|{found.st_mtime_ns}" if found else src
+	made_from = f"{src}|{found.st_size}|{found.st_mtime_ns}" if found else src
+	return f"{made_from}|{COPY_KIND}"
 
 
 def copy_on_disk(photo: str | None) -> bool:
@@ -177,9 +181,10 @@ def usable_path(src: str, doctype: str | None, name: str | None) -> str | None:
 
 def reduced(path: str) -> bytes:
 	"""The reduced copy of the picture at `path`: a square of PHOTO_SIZE pixels cut from it, upright (a phone's photo says
-	which way is up), as a JPEG, a transparent picture on white, without the source's metadata. Raises ValueError for a
+	which way is up), a transparent picture on white, as a round PNG (transparent outside the circle, its edge smoothed),
+	without the source's metadata. Raises ValueError for a
 	file or a picture too big, and Pillow's or the system's errors for a file that is no picture Pillow reads."""
-	from PIL import Image, ImageOps
+	from PIL import Image, ImageDraw, ImageOps
 
 	if os.path.getsize(path) > MAX_SOURCE_BYTES:
 		raise ValueError(f"the file is larger than {MAX_SOURCE_BYTES} bytes")
@@ -195,6 +200,11 @@ def reduced(path: str) -> bytes:
 	square = ImageOps.fit(
 		flat, (PHOTO_SIZE, PHOTO_SIZE), method=Image.Resampling.LANCZOS, centering=PORTRAIT_CENTRE
 	)
+	# Round by its own pixels: the circle drawn four times as large, then averaged down, so that its edge is smooth
+	mask = Image.new("L", (PHOTO_SIZE * 4, PHOTO_SIZE * 4), 0)
+	ImageDraw.Draw(mask).ellipse((0, 0, PHOTO_SIZE * 4 - 1, PHOTO_SIZE * 4 - 1), fill=255)
+	round_copy = square.convert("RGBA")
+	round_copy.putalpha(mask.resize((PHOTO_SIZE, PHOTO_SIZE), Image.Resampling.BOX))
 	buffer = io.BytesIO()
-	square.save(buffer, "JPEG", quality=JPEG_QUALITY, optimize=True)
+	round_copy.save(buffer, "PNG", optimize=True)
 	return buffer.getvalue()

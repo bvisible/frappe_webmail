@@ -93,7 +93,7 @@ class EmailSignaturePreference(Document):
 		made = frappe.get_doc(
 			{
 				"doctype": "File",
-				"file_name": f"signature-photo-{frappe.generate_hash(length=10)}.jpg",
+				"file_name": f"signature-photo-{frappe.generate_hash(length=10)}.png",
 				"content": content,
 				"is_private": 1,
 				"attached_to_doctype": PREFERENCE,
