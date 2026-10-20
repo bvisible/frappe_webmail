@@ -121,7 +121,11 @@ def host_mailboxes(bearer=None):
 		chosen = signature_for(frappe.session.user, a, memo) or {}
 		signature = handed_signature(chosen.get("html"), chosen.get("text"))
 		if signature:
-			signature.update(handed_picture(chosen, memo) or {})
+			picture = handed_picture(chosen, memo)
+			if picture:
+				# The logo goes by its bytes: its picture leaves the HTML, where MailCraft would keep its description as words.
+				signature["html"] = without_picture(signature["html"], chosen["logo"]["src"])
+				signature.update(picture)
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
@@ -166,6 +170,20 @@ def handed_picture(chosen, memo):
 		},
 		"layout": layout,
 	}
+
+
+def without_picture(html, src):
+	"""`html` without the pictures whose address is `src`: the logo a page hands MailCraft by its bytes, which MailCraft
+	would otherwise show twice, by its description after the picture itself."""
+	if not html or "<img" not in html.lower():
+		return html
+	from bs4 import BeautifulSoup
+
+	tree = BeautifulSoup(html, "html.parser")
+	for image in tree.find_all("img"):
+		if (image.get("src") or "").strip() == src:
+			image.decompose()
+	return str(tree)
 
 
 def _picture_of(src):

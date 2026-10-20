@@ -1078,6 +1078,9 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(signature["layout"], "pictureLeft")
 		self.assertEqual((signature["logo"]["width"], signature["logo"]["alt"]), (90, "Atelier"))
 		self.assertEqual(base64.b64decode(signature["logo"]["data"]), buffer.getvalue())
+		# Its picture leaves the HTML: MailCraft would show the logo twice, the second time by its description
+		self.assertNotIn(logo.file_url, signature["html"])
+		self.assertIn("Camille Favre", signature["html"])
 
 	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
 		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
