@@ -12,7 +12,9 @@ osiris only (`mailcraft_trial`) while the plan that brings Nora into MailCraft w
 It hands the build the person's mailboxes (owned or shared, as the webmail lists them), each with its JMAP session on
 the facade (mailcraft_jmap.py) and a token for it; without any mailbox, or with `?sample`, MailCraft opens its sample
 mailbox. It hands the person's language too: MailCraft draws in it unless one is chosen in its settings (the browser's
-language is often not the desk's). The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
+language is often not the desk's), and where the signatures of those mailboxes are written (`signatures`), the address
+MailCraft's own signatures name for them: they come from here, and what MailCraft would keep of them would be replaced
+by the page's at the next visit. The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
 methods apply their own rights. The desk's people only: a visitor signs in first, a portal account is refused, as for
 the webmail.
 """
@@ -34,6 +36,9 @@ TRIAL_BUILD = f"/assets/suite/craft/{TRIAL}/index.html"
 ROUTE = "/neomail"
 # The name the person reads; the build, a fork of MailCraft, shows it in place of its own.
 PRODUCT = "NeoMail"
+# Where the person writes their signatures and sees the company's: the webmail's signatures, opened by its address
+# (Webmail.vue, applyUrlIntent).
+SIGNATURES = "/app/webmail?signatures=1"
 
 no_cache = 1
 
@@ -78,7 +83,14 @@ def get_context(context):
 		query.append("author=" + quote(author, safe=""))
 	trial = frappe.form_dict.get("build") == "ucs" and build_installed(TRIAL)
 	context.build_url = (TRIAL_BUILD if trial else BUILD) + ("?" + "&".join(query) if query else "")
-	context.host_json = _script_json({"accounts": mailboxes, "language": context.lang, "product": PRODUCT})
+	context.host_json = _script_json(
+		{"accounts": mailboxes, "language": context.lang, "product": PRODUCT, "signatures": signatures_url()}
+	)
+
+
+def signatures_url():
+	"""The whole address of the webmail's signatures on this instance: Neodesk, which opens it too, is no page of it."""
+	return frappe.utils.get_url(SIGNATURES)
 
 
 def nora_installed():

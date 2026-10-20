@@ -1062,7 +1062,13 @@ class TestMailCraftJmap(FrappeTestCase):
 			sample.build_url.endswith("?sample&nora&" + shared), "?sample opens the sample mailbox"
 		)
 		self.assertEqual(
-			json.loads(sample.host_json), {"accounts": [], "language": context.lang, "product": "NeoMail"}
+			json.loads(sample.host_json),
+			{
+				"accounts": [],
+				"language": context.lang,
+				"product": "NeoMail",
+				"signatures": frappe.utils.get_url("/app/webmail?signatures=1"),
+			},
 		)
 		self.assertEqual(
 			json.loads(context.host_json)["language"], frappe.local.lang or "en", "the desk's language"
@@ -1274,6 +1280,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		box = next(a for a in given["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual((given["product"], box["scheme"]), ("NeoMail", "bearer"))
 		self.assertTrue(given["language"])
+		self.assertEqual(given["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
 		self.assertEqual(
 			given["nora"], "nora" in frappe.get_installed_apps(), "Nora only where the instance has her"
 		)

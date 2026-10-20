@@ -1113,6 +1113,8 @@ export default {
 		// Deep-link support (used by the NeoCockpit mail panel):
 		//   /app/webmail?compose=1                          → open the composer
 		//   /app/webmail?account=<name|email>&folder=<F>&uid=<n> → open an email
+		//   /app/webmail?signatures=1                       → open the signatures (NeoMail's
+		//     File › Signatures leads here: the signatures of the mailboxes it is handed are these)
 		// The params are consumed once and stripped from the URL so reloads
 		// and the browser back button behave normally afterwards.
 		applyUrlIntent() {
@@ -1124,6 +1126,11 @@ export default {
 			}
 			if (params.get("compose")) {
 				this.compose();
+				this.cleanIntentUrl();
+				return;
+			}
+			if (params.get("signatures")) {
+				this.showSignatures = true;
 				this.cleanIntentUrl();
 				return;
 			}

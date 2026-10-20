@@ -141,6 +141,16 @@ class TestMailCraftPage(FrappeTestCase):
 			url = self._context(sample=True).build_url
 		self.assertTrue(url.endswith("&author=Jeanne%20%26%20Co%20Muster%231"), url)
 
+	def test_the_page_names_where_the_signatures_are_written(self):
+		"""MailCraft's own signatures name the webmail's for the mailboxes the page hands it, by their whole address:
+		Neodesk, which is handed the same, is no page of the instance."""
+		import json
+
+		frappe.set_user(STAFF)
+		host = json.loads(self._context(sample=True).host_json)
+		self.assertEqual(host["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
+		self.assertTrue(host["signatures"].startswith(("https://", "http://")), host["signatures"])
+
 	def test_the_trial_build_opens_where_it_is_installed_and_only_when_asked(self):
 		"""`?build=ucs` frames the build tried beside the one in service; where it is not installed, or for any other
 		value, the page frames the one in service."""
