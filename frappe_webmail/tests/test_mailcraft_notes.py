@@ -325,3 +325,36 @@ class TestMailCraftNotes(FrappeTestCase):
 			'<img src="a">',
 		):
 			self.assertTrue(notes._rich_markup(rich), rich)
+
+	def test_the_words_a_client_wrote_are_read_back_exactly(self):
+		"""A client compares what it wrote with what it reads: a space at the end of a line, a run of empty lines or a
+		line break at either end come back as they went, or it would take its own words for someone else's change."""
+		for text in [
+			"Hello ",
+			"Line1\n",
+			"a\n\n\nb",
+			"\nHello\n",
+			"\n",
+			"\n\n\n",
+			"x",
+			"  indented\n\ttab",
+			"a < b & c > d",
+			"&nbsp; and &amp; typed",
+			"trailing   \nspaces  ",
+			"non\xa0breaking",
+			"<p>not markup</p>",
+			"   ",
+		]:
+			with self.subTest(text=text):
+				self.assertEqual(notes.plain_text(notes.content_of(text)), text)
+
+	def test_the_desks_own_markup_reads_as_its_lines(self):
+		for content, text in [
+			('<div class="ql-editor"><p>a</p><p><br></p><p>b</p></div>', "a\n\nb"),
+			("<p>one&nbsp;two</p>\n<p>three</p>", "one two\nthree"),
+			("<ul><li>x</li><li>y</li></ul><p>z</p>", "x\ny\nz"),
+			("<h1>T</h1><p><strong>b</strong> c</p>", "T\nb c"),
+			("plain", "plain"),
+		]:
+			with self.subTest(content=content):
+				self.assertEqual(notes.plain_text(content), text)

@@ -161,12 +161,30 @@ def _state():
 	return hashlib.sha256(json.dumps([rows, shares]).encode()).hexdigest()[:16]
 
 
+_BLOCK_END = r"<\s*/\s*(?:p|div|li|h[1-6])\s*>"
+# An empty paragraph, as content_of and the desk's editor write an empty line.
+_EMPTY_LINE = re.compile(r"(?i)<\s*p\b[^>]*>\s*<\s*br\s*/?\s*>\s*<\s*/\s*p\s*>")
+# A wrapper closed right after a paragraph (the editor's <div class="ql-editor">, a list) ends no line of its own.
+_WRAPPERS_AFTER = re.compile(r"(?i)(" + _BLOCK_END + r")(?:\s*<\s*/\s*(?:div|ul|ol)\s*>)+")
+# Layout whitespace between a paragraph and the next tag is no text.
+_LAYOUT = re.compile(r"(?i)(" + _BLOCK_END + r")\s+(?=<)")
+_LINE_END = "\x00"
+
+
 def plain_text(content):
-	"""The words of a note's content: each paragraph or line break a line, the markup gone, the entities read."""
-	text = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", content or "")
-	text = re.sub(r"(?i)<\s*/\s*(p|div|li|h[1-6])\s*>", "\n", text)
-	text = html.unescape(strip_html(text)).replace("\xa0", " ")
-	return re.sub(r"\n{3,}", "\n\n", "\n".join(line.rstrip() for line in text.split("\n"))).strip("\n")
+	"""The words of a note's content, read back exactly as content_of wrote them: a line per paragraph (or div, list
+	item, heading), an empty paragraph an empty line, a line break within one a new line; the markup gone, the entities
+	read, the editor's non-breaking spaces (&nbsp;) plain spaces. Nothing else is trimmed or merged: a client compares
+	what it wrote with what it reads back, and a space at the end of a line or a run of empty lines is the person's."""
+	text = _EMPTY_LINE.sub("<p></p>", content or "")
+	text = _LAYOUT.sub(r"\1", _WRAPPERS_AFTER.sub(r"\1", text))
+	text = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", text)
+	text = re.sub("(?i)" + _BLOCK_END, _LINE_END, text.replace(_LINE_END, ""))
+	text = html.unescape(re.sub(r"(?i)&nbsp;|&#160;|&#x0*a0;", " ", strip_html(text)))
+	lines = text.split(_LINE_END)
+	if len(lines) > 1 and not lines[-1]:
+		lines.pop()
+	return "\n".join(lines)
 
 
 def content_of(text):
