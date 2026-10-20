@@ -320,6 +320,8 @@ class TestMailCraftCalendars(FrappeTestCase):
 		vid = made["created"]["k"]["id"]
 		march = {"after": "2030-03-01T00:00:00Z", "before": "2030-04-01T00:00:00Z"}
 		found = next(e for e in self._window(march) if e["id"] == vid)
+		# The client's uid is the event's: its next read knows the event it made.
+		self.assertEqual((made["created"]["k"]["uid"], found["uid"]), (uid, uid))
 		self.assertEqual(
 			(found["title"], found["utcStart"], found["utcEnd"]),
 			("Site visit", "2030-03-04T09:00:00Z", "2030-03-04T11:00:00Z"),
@@ -955,6 +957,19 @@ class TestMailCraftCalendars(FrappeTestCase):
 		):
 			self.assertIsNone(calendars._color(odd_colour), odd_colour)
 		self.assertEqual(calendars._color("#D68A59"), "#d68a59")
+
+	def test_the_clients_uid_goes_to_a_suite_that_keeps_it(self):
+		"""An older Suite makes its own uid and takes no `uid`: nothing is passed to it then."""
+
+		def older(account, organizer=None, send_scheduling_messages=False):
+			pass
+
+		def newer(account, organizer=None, send_scheduling_messages=False, uid=None):
+			pass
+
+		self.assertEqual(
+			(calendars._keeps_client_uid(older), calendars._keeps_client_uid(newer)), (False, True)
+		)
 
 	def test_a_series_master_is_read_by_its_v_id(self):
 		"""A client reads a series itself by its V id, for its rule, its own changes of single occurrences and its

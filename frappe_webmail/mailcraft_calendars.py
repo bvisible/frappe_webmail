@@ -22,6 +22,7 @@ the ERP's dates (`erp:`), whose titles carry customers, amounts and leaves that 
 """
 
 import hashlib
+import inspect
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -794,6 +795,10 @@ def _create_event(suite_account, client, calendars, event, notify):
 		if not default or not _writable(_rights(calendars[default].get("myRights"))):
 			raise frappe.PermissionError
 		fields["calendar_ids"] = [default]
+	# The client's uid is the event's where the Suite keeps it (an older one makes its own): the client knows the event
+	# it made in its next read, even when the answer to this call is lost on the way.
+	if uid and _keeps_client_uid(add_calendar_event):
+		fields["uid"] = uid
 	raw = add_calendar_event(
 		account=suite_account, organizer=organizer or None, send_scheduling_messages=notify, **fields
 	)
@@ -807,6 +812,14 @@ def _create_event(suite_account, client, calendars, event, notify):
 	except Exception:
 		made = {}
 	return raw, made.get("uid")
+
+
+def _keeps_client_uid(add_calendar_event):
+	"""Whether the Suite's add_calendar_event takes the client's uid (suite.calendar.doctype.calendar_event.client_uid)."""
+	try:
+		return "uid" in inspect.signature(add_calendar_event).parameters
+	except (TypeError, ValueError):
+		return False
 
 
 def _update_event(suite_account, client, calendars, vid, patch, notify):
