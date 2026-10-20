@@ -1289,6 +1289,35 @@ def _facade_event(event, properties=None, as_id=None):
 	return out
 
 
+def participant_identity_get(args):
+	"""The addresses the person takes part in events under (JMAP for Calendars' ParticipantIdentity): the Suite's own
+	list for their account, as the desk reads it to tell their entry of an event and whether they organize it. A client
+	that knows them all tells its own meetings and answers from somebody else's, an alias included."""
+	aid, suite_account = _calendar_account(args)
+	ids = _string_ids(args)
+	from suite.mail.jmap import get_participant_identities
+
+	listed = [
+		{
+			"id": str(identity.get("id")),
+			"name": identity.get("_name") or "",
+			"calendarAddress": "mailto:" + str(identity.get("email") or ""),
+			"isDefault": bool(cint(identity.get("default"))),
+		}
+		for identity in _reading(lambda: get_participant_identities(suite_account))
+		if identity.get("email")
+	]
+	if ids is not None:
+		listed = [identity for identity in listed if identity["id"] in ids]
+	found = {identity["id"] for identity in listed}
+	return {
+		"accountId": aid,
+		"state": "0",
+		"list": listed,
+		"notFound": [i for i in ids or [] if i not in found],
+	}
+
+
 def no_changes(args):
 	"""The changes since a state are not kept: the client reads the window again (RFC 8620 §5.2)."""
 	_calendar_account(args)
@@ -1303,4 +1332,6 @@ METHODS = {
 	"CalendarEvent/get": event_get,
 	"CalendarEvent/changes": no_changes,
 	"CalendarEvent/set": event_set,
+	"ParticipantIdentity/get": participant_identity_get,
+	"ParticipantIdentity/changes": no_changes,
 }

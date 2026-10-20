@@ -1144,6 +1144,27 @@ class TestMailCraftCalendars(FrappeTestCase):
 			for name in set(frappe.get_all("Meet Room", pluck="name")) - rooms_before:
 				frappe.delete_doc("Meet Room", name, ignore_permissions=True, force=True)
 
+	def test_the_persons_addresses_in_events_are_their_participant_identities(self):
+		"""A client learns every address the person takes part in events under, an alias included, as the desk reads
+		them (ParticipantIdentity/get)."""
+		from suite.mail import jmap as suite_jmap
+
+		self._as(PERSON)
+		aid = jmap.account_id(BOX)
+		identities = [
+			{"id": "1", "_name": "Person", "email": PERSON, "default": 1},
+			{"id": "2", "_name": "Person (alias)", "email": "alias.mailcraft@example.com", "default": 0},
+		]
+		with patch.object(suite_jmap, "get_participant_identities", return_value=identities):
+			every = self._calls(("ParticipantIdentity/get", {"accountId": aid, "ids": None}))[0]
+			some = self._calls(("ParticipantIdentity/get", {"accountId": aid, "ids": ["2", "9"]}))[0]
+		self.assertEqual(every[0], "ParticipantIdentity/get", every)
+		self.assertEqual(
+			[(i["calendarAddress"], i["isDefault"]) for i in every[1]["list"]],
+			[(f"mailto:{PERSON}", True), ("mailto:alias.mailcraft@example.com", False)],
+		)
+		self.assertEqual(([i["id"] for i in some[1]["list"]], some[1]["notFound"]), (["2"], ["9"]))
+
 	def test_a_series_master_is_read_by_its_v_id(self):
 		"""A client reads a series itself by its V id, for its rule, its own changes of single occurrences and its
 		first start."""
