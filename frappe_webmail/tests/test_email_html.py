@@ -15,7 +15,12 @@ from bs4 import BeautifulSoup
 from frappe.tests.utils import FrappeTestCase
 
 from frappe_webmail import webmail_api
-from frappe_webmail.email_html import MAX_SIGNATURE_SOURCE, clean_sent_html, clean_signature_html
+from frappe_webmail.email_html import (
+	MAX_SIGNATURE_SOURCE,
+	clean_sent_html,
+	clean_signature_html,
+	plain_text,
+)
 
 USER = "email_html_signature@example.com"
 PORTAL = "email_html_portal@example.com"
@@ -217,3 +222,46 @@ class TestEmailHtml(FrappeTestCase):
 		self.assertIsNone(tree.find("script"))
 		# The composer's mark of its signature block is its own: it doesn't leave.
 		self.assertNotIn("data-webmail-signature", sent)
+
+	def test_the_text_version_says_where_links_and_a_banner_lead(self):
+		"""What a reader of the text alone gets: a link's address after its words (not when its words say it already), a
+		banner's description and where it leads, a picture alone left out, entities read, what is never shown gone."""
+		written = (
+			'<p>Hello <strong>Ann</strong>,&nbsp;see <a href="https://www.example.org/offer">the offer</a>.</p><p></p>'
+			'<p>Write to <a href="mailto:ann@example.org">ann@example.org</a> or <a href="tel:+41210000000">call us</a>.</p>'
+			'<p><a href="https://www.example.org/">www.example.org</a> &amp; more</p><p>--</p>'
+			'<table><tr><td><img src="cid:photo" alt="Ann"></td><td>Ann Example<br>Example SA</td></tr></table>'
+			'<a href="https://www.example.org/spring"><img src="cid:banner" alt="Spring offer"></a>'
+			"<script>alert(1)</script><style>p { color: red; }</style>"
+		)
+		self.assertEqual(
+			plain_text(written),
+			"Hello Ann, see the offer (https://www.example.org/offer).\n\n"
+			"Write to ann@example.org or call us (+41210000000).\n\n"
+			"www.example.org & more\n\n"
+			"--\n\n"
+			"Ann Example\nExample SA\n\n"
+			"Spring offer (https://www.example.org/spring)",
+		)
+		self.assertEqual(plain_text(""), "")
+		self.assertEqual(plain_text("Just words &lt;not a tag&gt;"), "Just words <not a tag>")
+
+	def test_the_text_version_keeps_the_lines_lists_and_quotes(self):
+		"""A line of a composer that writes one block a line (Gmail's divs) ends once, with no empty line between lines;
+		an item starts with a dash or its number; a quote's lines start with "> ", a quote in a quote with "> > "."""
+		self.assertEqual(
+			plain_text("<div>Line 1</div>\n<div>Line 2</div>\n<div><br></div>\n<div>Line 4</div>"),
+			"Line 1\nLine 2\n\nLine 4",
+		)
+		self.assertEqual(
+			plain_text(
+				"<p>Points:</p><ul><li>one</li><li>two <b>bold</b></li></ul><ol><li>first</li><li>second</li></ol><p>End</p>"
+			),
+			"Points:\n\n- one\n- two bold\n\n1. first\n2. second\n\nEnd",
+		)
+		self.assertEqual(
+			plain_text(
+				"<p>Thanks</p><blockquote><p>Original line</p><p>Second</p><blockquote><p>Older</p></blockquote></blockquote>"
+			),
+			"Thanks\n\n> Original line\n>\n> Second\n>\n> > Older",
+		)

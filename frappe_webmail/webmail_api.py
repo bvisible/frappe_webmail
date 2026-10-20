@@ -27,7 +27,7 @@ from frappe_webmail.conversations import conversation_of, message_id_of, one_per
 
 # Served as frappe_webmail.api.list_attachable_documents, like every method of this module
 from frappe_webmail.documents import list_attachable_documents
-from frappe_webmail.email_html import clean_sent_html
+from frappe_webmail.email_html import clean_sent_html, plain_text
 from frappe_webmail.inline_images import (
 	body_with,
 	files_inlined,
@@ -1324,14 +1324,8 @@ def send_email(
 	# Body (multipart/alternative for text + html)
 	body = MIMEMultipart("alternative")
 
-	# Plain text version
-	if bleach:
-		text_content = bleach.clean(html_content, tags=[], strip=True)
-	else:
-		# Simple HTML stripping if bleach not available
-		import re
-
-		text_content = re.sub(r"<[^>]+>", "", html_content)
+	# Plain text version: what a reader of the text alone gets, links and banners with where they lead
+	text_content = plain_text(html_content)
 
 	body.attach(MIMEText(text_content, "plain", "utf-8"))
 
@@ -1564,13 +1558,7 @@ def save_draft_imap(
 	# Body
 	body = MIMEMultipart("alternative")
 	if html_content:
-		if bleach:
-			text_content = bleach.clean(html_content, tags=[], strip=True)
-		else:
-			import re
-
-			text_content = re.sub(r"<[^>]+>", "", html_content)
-		body.attach(MIMEText(text_content, "plain", "utf-8"))
+		body.attach(MIMEText(plain_text(html_content), "plain", "utf-8"))
 		body.attach(MIMEText(html_content, "html", "utf-8"))
 	msg.attach(body_with(body, inline_parts))
 

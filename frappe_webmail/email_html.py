@@ -207,3 +207,145 @@ def clean_signature_html(html):
 		):
 			text.replace_with("\n" if "\n" in text else " ")
 	return soup.decode(formatter=_KEEPS_NBSP).strip()
+
+
+# In the text version of a message, what ends a paragraph (an empty line after it) and what ends a line only.
+_PARAGRAPHS = frozenset(
+	("p", "h1", "h2", "h3", "h4", "h5", "h6", "table", "ul", "ol", "dl", "pre", "hr", "address")
+)
+_LINES = frozenset(
+	(
+		"div",
+		"tr",
+		"td",
+		"th",
+		"thead",
+		"tbody",
+		"tfoot",
+		"dt",
+		"dd",
+		"section",
+		"article",
+		"header",
+		"footer",
+		"center",
+	)
+)
+# Where a block ends, before the lines are made: the marks of one boundary run into each other, so that blocks inside
+# blocks (a cell in a row in a table) end the line once, and a paragraph's mark wins over a line's.
+_LINE, _PARAGRAPH = "\x1e", "\x1f"
+
+
+def plain_text(html):
+	"""The text version of a message written in HTML (the text/plain beside it): what a reader of the text alone gets.
+
+	A line ends where a block ends (a line of the composer, an item, a row, a cell), and an empty line follows a paragraph,
+	a title, a table, a list and a quote; an item starts with a dash, or its number in a numbered list; the lines of a
+	quote start with "> ". A link says where it leads after its words, unless its words say it already ("the offer
+	(https://…)"), and a picture that is a link says its description and where it leads (a banner under a signature); a
+	picture alone is left out, as the reader of the text cannot see it. What a mail client never shows goes, entities are
+	read, spaces are folded as a browser folds them, and no more than one empty line follows another."""
+	if not html or not isinstance(html, str):
+		return ""
+	soup = BeautifulSoup(html, "html.parser")
+	return _tidy(_resolved(_text_of(soup.body or soup)))
+
+
+def _text_of(node, link=False, pre=False):
+	"""The text of `node`'s children, with the marks of where blocks end; in a link, a picture is its description."""
+	out = []
+	for child in node.children:
+		if isinstance(child, Comment):
+			continue
+		if isinstance(child, NavigableString):
+			out.append(str(child) if pre else re.sub(r"\s+", " ", str(child)))
+			continue
+		name = (child.name or "").lower()
+		if name in _HIDDEN:
+			continue
+		if name == "br":
+			out.append("\n")
+		elif name == "img":
+			if link:
+				out.append(" " + (child.get("alt") or "").strip() + " ")
+		elif name == "a" and not link:
+			out.append(_link_text(child, pre))
+		elif name == "li":
+			out.append(_LINE + _item_mark(child) + _text_of(child, link, pre).strip() + _LINE)
+		elif name == "blockquote":
+			quoted = _tidy(_resolved(_text_of(child, link, pre)))
+			out.append(
+				_PARAGRAPH
+				+ "\n".join(f"> {line}" if line else ">" for line in quoted.split("\n"))
+				+ _PARAGRAPH
+			)
+		elif name in _PARAGRAPHS:
+			out.append(_PARAGRAPH + _text_of(child, link, pre or name == "pre") + _PARAGRAPH)
+		elif name in _LINES:
+			out.append(_LINE + _text_of(child, link, pre) + _LINE)
+		else:
+			out.append(_text_of(child, link, pre))
+	return "".join(out)
+
+
+def _resolved(text):
+	"""`text` with its marks made into line ends: one boundary ends the line where it is not ended yet (a `<br>` before
+	it counts), and a paragraph's leaves an empty line; none at the start."""
+	# The spaces between blocks are no words of the message.
+	text = re.sub(
+		rf"[ \t]*[{_LINE}{_PARAGRAPH}][{_LINE}{_PARAGRAPH} \t]*",
+		lambda m: re.sub(r"[ \t]", "", m.group()),
+		text,
+	)
+	out, ended = [], 0
+	for piece in re.split(rf"([{_LINE}{_PARAGRAPH}]+)", text):
+		if not piece:
+			continue
+		if piece[0] in (_LINE, _PARAGRAPH):
+			wanted = 2 if _PARAGRAPH in piece else 1
+			if out and ended < wanted:
+				out.append("\n" * (wanted - ended))
+				ended = wanted
+			continue
+		out.append(piece)
+		kept = piece.rstrip(" \t")
+		if not kept.strip("\n"):
+			ended += kept.count("\n")
+		else:
+			ended = len(kept) - len(kept.rstrip("\n"))
+	return "".join(out)
+
+
+def _item_mark(item):
+	""" "- " for an item of a list, its number for one of a numbered list."""
+	parent = item.parent
+	if parent is not None and (parent.name or "").lower() == "ol":
+		return f"{1 + sum(1 for sibling in item.find_previous_siblings('li'))}. "
+	return "- "
+
+
+def _link_text(link, pre):
+	"""A link as its words, then where it leads in brackets when the words don't say it: the address of a page, of a
+	mailbox or a phone number (nothing else a message sent may link to)."""
+	words = re.sub(r"\s+", " ", _text_of(link, link=True, pre=pre)).strip()
+	href = (link.get("href") or "").strip()
+	lowered = href.lower()
+	if lowered.startswith(("http://", "https://")):
+		target = href
+	elif lowered.startswith(("mailto:", "tel:")):
+		target = href.split(":", 1)[1].split("?", 1)[0]
+	else:
+		return words
+	if not words:
+		return target
+
+	def bare(value):
+		return re.sub(r"^(https?://|mailto:|tel:)", "", value.strip().lower()).rstrip("/")
+
+	return words if bare(words) == bare(target) else f"{words} ({target})"
+
+
+def _tidy(text):
+	"""Lines with their spaces folded and trimmed, and one empty line at most in a row."""
+	lines = [re.sub(r"[ \t\xa0]+", " ", line).strip() for line in text.split("\n")]
+	return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n")

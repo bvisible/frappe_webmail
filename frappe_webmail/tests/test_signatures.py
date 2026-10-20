@@ -1591,6 +1591,33 @@ class TestTheSignatureLeavesWithTheMessage(TestWebmailAPIBase):
 		)
 
 	@patch("frappe_webmail.api.smtplib.SMTP")
+	def test_the_text_of_a_message_sent_says_where_its_links_and_its_banner_lead(self, smtp_class):
+		"""Beside the HTML, the text a reader of the text alone gets: a link's address after its words, a banner's
+		description and where it leads (email_html.plain_text); before, the tags went and so did every address."""
+		server = MagicMock()
+		smtp_class.return_value = server
+		with mocked_imap(imap_client()):
+			from frappe_webmail.api import send_email
+
+			send_email(
+				account_name=self.test_account_email,
+				to="marc@example.com",
+				subject="Banner",
+				html_content=(
+					'<p>See <a href="https://example.com/offer">the offer</a></p><p>--</p>'
+					'<a href="https://example.com/spring"><img src="https://example.com/banner.png" alt="Spring offer"></a>'
+				),
+			)
+		sent = email.message_from_string(server.sendmail.call_args.args[2])
+		text = next(part for part in sent.walk() if part.get_content_type() == "text/plain").get_payload(
+			decode=True
+		)
+		self.assertEqual(
+			text.decode(),
+			"See the offer (https://example.com/offer)\n\n--\n\nSpring offer (https://example.com/spring)",
+		)
+
+	@patch("frappe_webmail.api.smtplib.SMTP")
 	def test_a_message_sent_carries_the_signature_as_it_was_drawn(self, smtp_class):
 		for name in LAYOUTS:
 			drawn = self.drawn(name)
