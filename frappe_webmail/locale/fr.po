@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-20 06:28+0000\n"
+"POT-Creation-Date: 2026-10-21 03:31+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -58,13 +58,21 @@ msgstr "Le 1er du mois à {0}"
 msgid "A call to action needs both its label and its address."
 msgstr "Un appel à l'action doit avoir à la fois son libellé et son adresse."
 
-#: frappe_webmail/mailcraft_contacts.py:430
-msgid "A contact needs a name or an address."
-msgstr "Un contact doit avoir un nom ou une adresse e-mail."
+#: frappe_webmail/mailcraft_contacts.py:410
+msgid "A company"
+msgstr "Une entreprise"
+
+#: frappe_webmail/mailcraft_contacts.py:491
+msgid "A contact needs a name, a company or an address."
+msgstr "Un contact doit avoir un nom, une entreprise ou une adresse."
 
 #: frappe_webmail/webmail_api.py:1741
 msgid "A folder with this name already exists"
 msgstr "Un dossier portant ce nom existe déjà"
+
+#: frappe_webmail/mailcraft_contacts.py:413
+msgid "A job title"
+msgstr "Une fonction"
 
 #. Description of the 'What to show' (Section Break) field in DocType 'Email
 #. Signature Template'
@@ -86,13 +94,23 @@ msgstr ""
 msgid "A mailbox cannot be renamed."
 msgstr "Une boîte mail ne peut pas être renommée."
 
-#: frappe_webmail/mailcraft_jmap.py:1294
+#: frappe_webmail/mailcraft_jmap.py:1337
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1172
+#: frappe_webmail/mailcraft_jmap.py:1215
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
+
+#: frappe_webmail/mailcraft_contacts.py:379
+#: frappe_webmail/mailcraft_contacts.py:384
+msgid "A name"
+msgstr "Un nom"
+
+#: frappe_webmail/mailcraft_contacts.py:403
+#: frappe_webmail/mailcraft_contacts.py:407
+msgid "A number"
+msgstr "Un numéro"
 
 #: frappe_webmail/webmail_api.py:616
 msgid "A password is required"
@@ -205,7 +223,7 @@ msgstr "Active"
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
-#: frappe_webmail/mailcraft_jmap.py:1425
+#: frappe_webmail/mailcraft_jmap.py:1468
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -298,6 +316,10 @@ msgstr "Toujours pour cet expéditeur"
 msgid "Always for {0}"
 msgstr "Toujours pour {0}"
 
+#: frappe_webmail/mailcraft_contacts.py:390
+msgid "An address"
+msgstr "Une adresse"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:828
 msgid "An error occurred"
@@ -361,7 +383,7 @@ msgstr ""
 msgid "Are you sure you want to delete this draft?"
 msgstr "Voulez-vous vraiment supprimer ce brouillon ?"
 
-#: frontend/src/pages/Webmail.vue:1468
+#: frontend/src/pages/Webmail.vue:1475
 msgid "Are you sure you want to delete this email?"
 msgstr "Voulez-vous vraiment supprimer cet email ?"
 
@@ -386,7 +408,7 @@ msgstr ""
 "Êtes-vous sûr(e) de vouloir supprimer définitivement tous les e-mails de ce "
 "dossier ? Cette action est irréversible."
 
-#: frontend/src/pages/Webmail.vue:2038
+#: frontend/src/pages/Webmail.vue:2045
 msgid ""
 "Are you sure you want to permanently delete this email? This action cannot "
 "be undone."
@@ -517,7 +539,7 @@ msgstr "Automatisations sur cette boîte mail"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:788
+#: frappe_webmail/signatures.py:789
 #: frappe_webmail/tests/test_signatures.py:1797
 msgid "Banner"
 msgstr ""
@@ -917,7 +939,7 @@ msgstr "Supprimer le brouillon"
 
 #: frontend/src/components/EmailComposer.vue:773
 #: frontend/src/components/SignatureEditor.vue:493
-#: frontend/src/pages/Webmail.vue:1492
+#: frontend/src/pages/Webmail.vue:1499
 msgid "Delete error"
 msgstr "Erreur de suppression"
 
@@ -1166,15 +1188,15 @@ msgstr "Adresse e-mail"
 msgid "Email address is required"
 msgstr "L'adresse email est requise"
 
-#: frontend/src/pages/Webmail.vue:2018
+#: frontend/src/pages/Webmail.vue:2025
 msgid "Email copied"
 msgstr "E-mail copié"
 
-#: frontend/src/pages/Webmail.vue:1481
+#: frontend/src/pages/Webmail.vue:1488
 msgid "Email deleted"
 msgstr "Email supprimé"
 
-#: frontend/src/pages/Webmail.vue:2054
+#: frontend/src/pages/Webmail.vue:2061
 msgid "Email deleted permanently"
 msgstr "E-mail supprimé définitivement"
 
@@ -1182,11 +1204,11 @@ msgstr "E-mail supprimé définitivement"
 msgid "Email filters"
 msgstr "Filtres email"
 
-#: frontend/src/pages/Webmail.vue:1984
+#: frontend/src/pages/Webmail.vue:1991
 msgid "Email moved"
 msgstr "E-mail déplacé"
 
-#: frontend/src/pages/Webmail.vue:1773
+#: frontend/src/pages/Webmail.vue:1780
 msgid "Email moved to {0}"
 msgstr "E-mail déplacé vers {0}"
 
@@ -1280,7 +1302,7 @@ msgstr "Le nom de l'entité est requis"
 #: frontend/src/components/FilterManager.vue:386
 #: frontend/src/components/FolderTree.vue:881
 #: frontend/src/components/FolderTree.vue:912
-#: frontend/src/pages/Webmail.vue:1943 frontend/src/pages/Webmail.vue:1965
+#: frontend/src/pages/Webmail.vue:1950 frontend/src/pages/Webmail.vue:1972
 msgid "Error"
 msgstr "Erreur"
 
@@ -1288,11 +1310,11 @@ msgstr "Erreur"
 msgid "Error applying filters"
 msgstr "Erreur lors de l'application des filtres"
 
-#: frontend/src/pages/Webmail.vue:2022
+#: frontend/src/pages/Webmail.vue:2029
 msgid "Error copying email"
 msgstr "Erreur lors de la copie de l'e-mail"
 
-#: frontend/src/pages/Webmail.vue:2232
+#: frontend/src/pages/Webmail.vue:2239
 msgid "Error copying emails"
 msgstr "Erreur lors de la copie des e-mails"
 
@@ -1305,11 +1327,11 @@ msgstr "Erreur lors de la création du dossier"
 msgid "Error deleting"
 msgstr "Erreur lors de la suppression"
 
-#: frontend/src/pages/Webmail.vue:2070
+#: frontend/src/pages/Webmail.vue:2077
 msgid "Error deleting email"
 msgstr "Erreur lors de la suppression de l'e-mail"
 
-#: frontend/src/pages/Webmail.vue:2160
+#: frontend/src/pages/Webmail.vue:2167
 msgid "Error deleting emails"
 msgstr "Erreur lors de la suppression des e-mails"
 
@@ -1318,12 +1340,12 @@ msgstr "Erreur lors de la suppression des e-mails"
 msgid "Error deleting folder"
 msgstr "Erreur lors de la suppression du dossier"
 
-#: frontend/src/pages/Webmail.vue:1190
+#: frontend/src/pages/Webmail.vue:1197
 msgid "Error loading accounts"
 msgstr "Erreur de chargement des comptes"
 
-#: frontend/src/pages/Webmail.vue:1293 frontend/src/pages/Webmail.vue:1903
-#: frontend/src/pages/Webmail.vue:1921
+#: frontend/src/pages/Webmail.vue:1300 frontend/src/pages/Webmail.vue:1910
+#: frontend/src/pages/Webmail.vue:1928
 msgid "Error loading email"
 msgstr "Erreur de chargement de l'email"
 
@@ -1336,11 +1358,11 @@ msgstr "Erreur de chargement des filtres"
 msgid "Error loading folders"
 msgstr "Erreur de chargement des dossiers"
 
-#: frontend/src/pages/Webmail.vue:1789 frontend/src/pages/Webmail.vue:1999
+#: frontend/src/pages/Webmail.vue:1796 frontend/src/pages/Webmail.vue:2006
 msgid "Error moving email"
 msgstr "Erreur lors du déplacement de l'e-mail"
 
-#: frontend/src/pages/Webmail.vue:2206
+#: frontend/src/pages/Webmail.vue:2213
 msgid "Error moving emails"
 msgstr "Erreur lors du déplacement des e-mails"
 
@@ -1361,7 +1383,7 @@ msgstr "Erreur de sauvegarde du brouillon"
 msgid "Error sending reply"
 msgstr "Erreur lors de l'envoi"
 
-#: frontend/src/pages/Webmail.vue:2275
+#: frontend/src/pages/Webmail.vue:2282
 msgid "Error updating emails"
 msgstr "Erreur lors de la mise à jour des e-mails"
 
@@ -1621,7 +1643,7 @@ msgstr "Dossier renommé"
 msgid "Folders"
 msgstr "Dossiers"
 
-#: frappe_webmail/mailcraft_jmap.py:1601
+#: frappe_webmail/mailcraft_jmap.py:1644
 msgid "Folders are managed in the webmail for now."
 msgstr "Les dossiers se gèrent pour l'instant dans la messagerie."
 
@@ -1699,7 +1721,7 @@ msgid "Full name"
 msgstr "Nom complet"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:659
-#: frontend/src/pages/Webmail.vue:1353
+#: frontend/src/pages/Webmail.vue:1360
 msgid "Fwd: {0}"
 msgstr "Tr : {0}"
 
@@ -2083,7 +2105,7 @@ msgstr "Chargement des fichiers Drive…"
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/EmailList.vue:544
 #: frontend/src/components/SignatureEditor.vue:272
-#: frontend/src/pages/Webmail.vue:1751
+#: frontend/src/pages/Webmail.vue:1758
 msgid "Loading error"
 msgstr "Erreur de chargement"
 
@@ -2232,7 +2254,7 @@ msgstr ""
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1036
+#: frappe_webmail/mailcraft_jmap.py:1079
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
@@ -2289,7 +2311,7 @@ msgstr "Mon style"
 msgid "Name of the folder"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/mailcraft_jmap.py:902
+#: frappe_webmail/mailcraft_jmap.py:945
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
@@ -2544,7 +2566,7 @@ msgstr ""
 "Le modèle de Nora n'a pas répondu (service surchargé). Veuillez réessayer "
 "dans un instant."
 
-#: frappe_webmail/signatures.py:868
+#: frappe_webmail/signatures.py:869
 msgid "Not a template"
 msgstr "Ce n'est pas un modèle."
 
@@ -2558,9 +2580,9 @@ msgstr "Introuvable dans la liste de confiance"
 msgid "Not in the Compact layout."
 msgstr "Non affiché dans la mise en page Compact."
 
-#: frappe_webmail/mailcraft_jmap.py:417 frappe_webmail/mailcraft_jmap.py:644
-#: frappe_webmail/signatures.py:886 frappe_webmail/webmail_api.py:2284
-#: frappe_webmail/webmail_api.py:2352
+#: frappe_webmail/mailcraft_jmap.py:420 frappe_webmail/mailcraft_jmap.py:653
+#: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:887
+#: frappe_webmail/webmail_api.py:2284 frappe_webmail/webmail_api.py:2352
 msgid "Not permitted"
 msgstr ""
 
@@ -2649,11 +2671,11 @@ msgstr "Le {0}, {1} a écrit :"
 msgid "Only Trash and Spam folders can be emptied"
 msgstr "Seuls les dossiers Corbeille et Indésirables peuvent être vidés"
 
-#: frappe_webmail/mailcraft_jmap.py:849
+#: frappe_webmail/mailcraft_jmap.py:892
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1430
+#: frappe_webmail/mailcraft_jmap.py:1473
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
@@ -2667,6 +2689,10 @@ msgstr ""
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
 msgid "Only https:// addresses are accepted."
 msgstr "Seules les adresses https:// sont acceptées."
+
+#: frappe_webmail/mailcraft_notes.py:551
+msgid "Only its owner deletes a note."
+msgstr "Seul le propriétaire peut supprimer une note."
 
 #: frappe_webmail/webmail_api.py:610
 msgid "Only the account owner can change the password"
@@ -2717,7 +2743,7 @@ msgstr ""
 msgid "Open the record"
 msgstr "Ouvrir l'enregistrement"
 
-#: frappe_webmail/www/neomail.html:114
+#: frappe_webmail/www/neomail.html:131
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -2780,7 +2806,7 @@ msgstr "En pause"
 msgid "People may use their own signature instead"
 msgstr "Les personnes peuvent utiliser leur propre signature à la place."
 
-#: frontend/src/pages/Webmail.vue:2129
+#: frontend/src/pages/Webmail.vue:2136
 msgid "Permanently delete {0} emails? This action cannot be undone."
 msgstr "Supprimer définitivement {0} e-mails ? Cette action est irréversible."
 
@@ -2795,7 +2821,7 @@ msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
-#: frappe_webmail/signatures.py:759
+#: frappe_webmail/signatures.py:760
 msgid "Photo"
 msgstr ""
 
@@ -3381,7 +3407,7 @@ msgstr "Colonne des dossiers repliée"
 msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
-#: frappe_webmail/www/neomail.html:119
+#: frappe_webmail/www/neomail.html:136
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -3634,13 +3660,13 @@ msgid "The base font size must be between {0} and {1} pixels."
 msgstr ""
 "La taille de la police de base doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1532
+#: frappe_webmail/mailcraft_jmap.py:1575
 msgid "The connection to the mail server ended before the message was sent."
 msgstr ""
 "La connexion au serveur de messagerie s'est interrompue avant l'envoi du "
 "message."
 
-#: frappe_webmail/mailcraft_jmap.py:1474
+#: frappe_webmail/mailcraft_jmap.py:1517
 msgid ""
 "The connection to the mail server failed while the message was on its way."
 msgstr ""
@@ -3693,23 +3719,23 @@ msgstr ""
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1528
+#: frappe_webmail/mailcraft_jmap.py:1571
 msgid "The mail server can't take the recipients just now."
 msgstr ""
 "Le serveur de messagerie ne peut pas accepter les destinataires pour le "
 "moment."
 
-#: frappe_webmail/mailcraft_jmap.py:428 frappe_webmail/mailcraft_jmap.py:557
-#: frappe_webmail/mailcraft_jmap.py:648
+#: frappe_webmail/mailcraft_jmap.py:431 frappe_webmail/mailcraft_jmap.py:565
+#: frappe_webmail/mailcraft_jmap.py:657
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1503
+#: frappe_webmail/mailcraft_jmap.py:1546
 msgid "The mail server could not be reached or signed in to."
 msgstr ""
 "Le serveur de messagerie est injoignable ou l'authentification a échoué."
 
-#: frappe_webmail/mailcraft_jmap.py:1525
+#: frappe_webmail/mailcraft_jmap.py:1568
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 
@@ -3721,19 +3747,19 @@ msgstr "La boîte entière"
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1438
+#: frappe_webmail/mailcraft_jmap.py:1481
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1288
+#: frappe_webmail/mailcraft_jmap.py:1331
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1436
+#: frappe_webmail/mailcraft_jmap.py:1479
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1312
+#: frappe_webmail/mailcraft_jmap.py:1355
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
 
@@ -3751,6 +3777,10 @@ msgid ""
 msgstr ""
 "Le modèle le plus précis l'emporte : celui du département de la personne, "
 "sinon celui de sa société, sinon celui qui vaut pour tout le monde."
+
+#: frappe_webmail/mailcraft_notes.py:423
+msgid "The note was changed elsewhere: read it again."
+msgstr "La note a été modifiée ailleurs : veuillez la relire."
 
 #. Description of the 'Preview As' (Link) field in DocType 'Email Signature
 #. Template'
@@ -3790,7 +3820,7 @@ msgstr "Ce fichier n'existe plus dans le Drive"
 msgid "This folder no longer exists in the Drive"
 msgstr "Ce dossier n'existe plus dans le Drive"
 
-#: frappe_webmail/mailcraft_jmap.py:1413 frappe_webmail/mailcraft_jmap.py:1417
+#: frappe_webmail/mailcraft_jmap.py:1456 frappe_webmail/mailcraft_jmap.py:1460
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -3798,16 +3828,21 @@ msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 msgid "This message"
 msgstr "Ce message"
 
-#: frappe_webmail/mailcraft_jmap.py:1020
+#: frappe_webmail/mailcraft_jmap.py:1063
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1024
+#: frappe_webmail/mailcraft_jmap.py:1067
 msgid ""
 "This message is no longer in its folder: refresh the list and try again."
 msgstr ""
 "Ce message ne se trouve plus dans son dossier : actualisez la liste et "
 "réessayez."
+
+#: frappe_webmail/mailcraft_notes.py:536
+msgid "This note is changed in Neoffice's Notes: open it there."
+msgstr ""
+"Cette note a été modifiée dans Notes de Neoffice : veuillez l'ouvrir là-bas."
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:43
 msgid "This signature has nothing a recipient could be shown."
@@ -3894,12 +3929,12 @@ msgstr "Étoile (activer/désactiver)"
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1433
+#: frappe_webmail/mailcraft_jmap.py:1476
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:610
+#: frappe_webmail/mailcraft_jmap.py:619
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
@@ -4028,7 +4063,7 @@ msgstr "Utiliser STARTTLS"
 msgid "User"
 msgstr "Utilisateur"
 
-#: frappe_webmail/signatures.py:871
+#: frappe_webmail/signatures.py:872
 msgid "User {0} not found"
 msgstr "Utilisateur {0} introuvable"
 
@@ -4051,7 +4086,7 @@ msgstr "Compte Webmail"
 msgid "Webmail Account User"
 msgstr "Utilisateur du compte Webmail"
 
-#: frappe_webmail/www/neomail.py:61 frappe_webmail/www/webmail.py:24
+#: frappe_webmail/www/neomail.py:66 frappe_webmail/www/webmail.py:24
 msgid "Webmail is part of the desk: your account has no access to it."
 msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 
@@ -4164,7 +4199,7 @@ msgstr "Vous ne pouvez pas ajouter de fichiers à ce dossier du Drive"
 msgid "You cannot read this file of the Drive"
 msgstr "Vous ne pouvez pas lire ce fichier du Drive"
 
-#: frappe_webmail/www/neomail.html:113
+#: frappe_webmail/www/neomail.html:130
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -4183,11 +4218,11 @@ msgstr "Vous n'avez pas encore configuré de compte email."
 msgid "YouTube"
 msgstr ""
 
-#: frappe_webmail/www/neomail.html:118
+#: frappe_webmail/www/neomail.html:27 frappe_webmail/www/neomail.html:135
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
-#: frappe_webmail/signatures.py:940
+#: frappe_webmail/signatures.py:941
 #: frontend/src/components/SignatureEditor.vue:303
 msgid "Your choice could not be saved"
 msgstr "Votre choix n'a pas pu être enregistré"
@@ -4226,7 +4261,7 @@ msgstr ""
 " en page prévoit une place pour elle. Décochez cette case pour la retirer : "
 "sa copie est alors supprimée."
 
-#: frappe_webmail/mailcraft_contacts.py:290
+#: frappe_webmail/mailcraft_contacts.py:331
 msgid "Your rights do not allow it."
 msgstr "Vos droits ne le permettent pas."
 
@@ -4417,13 +4452,13 @@ msgstr "votre compte e-mail"
 msgid "{0} attachments"
 msgstr "{0} pièces jointes"
 
-#: frontend/src/pages/Webmail.vue:2228
+#: frontend/src/pages/Webmail.vue:2235
 msgid "{0} emails copied"
 msgstr "{0} e-mails copiés"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:904
-#: frontend/src/pages/Webmail.vue:2155
+#: frontend/src/pages/Webmail.vue:2162
 msgid "{0} emails deleted"
 msgstr "{0} e-mails supprimés"
 
@@ -4432,11 +4467,11 @@ msgstr "{0} e-mails supprimés"
 msgid "{0} emails marked as read"
 msgstr "{0} e-mails marqués comme lus"
 
-#: frontend/src/pages/Webmail.vue:2202
+#: frontend/src/pages/Webmail.vue:2209
 msgid "{0} emails moved"
 msgstr "{0} e-mails déplacés"
 
-#: frontend/src/pages/Webmail.vue:2271
+#: frontend/src/pages/Webmail.vue:2278
 msgid "{0} emails updated"
 msgstr "{0} e-mails mis à jour"
 
@@ -4457,6 +4492,10 @@ msgstr "{0} filtre(s)"
 #: frontend/src/components/EmailViewer.vue:546
 msgid "{0} invoices this year"
 msgstr "{0} factures cette année"
+
+#: frappe_webmail/mailcraft_contacts.py:359
+msgid "{0} is longer than {1} characters."
+msgstr "{0} comporte plus de {1} caractères."
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/EmailList.vue:789
