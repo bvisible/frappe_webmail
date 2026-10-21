@@ -461,7 +461,7 @@ import {
 import NoraOrb from "../components/NoraOrb.vue";
 
 import { folderName } from "../utils/folderNames.js";
-import { webmailRoute } from "../utils/pageRoute.js";
+import { onWebmailPage, webmailRoute } from "../utils/pageRoute.js";
 export default {
 	name: "Webmail",
 
@@ -805,7 +805,8 @@ export default {
 		// The cockpit's sections: the mailbox and its special folders, the other mailboxes, the own folders, and the
 		// mailbox's storage at the foot — the board « Desk — Courrier » of the canvas « Neodesk »
 		publishNav() {
-			if (!this.lendsNav || !this.currentAccount) return;
+			// From the background (the page hidden, another page in front) the cockpit's navigation is another page's
+			if (!this.lendsNav || !this.currentAccount || !onWebmailPage()) return;
 			const tree = () => this.$refs.folderTree;
 			const folderOf = (name) => (tree()?.folders || []).find((f) => f.name === name);
 			const item = (f, special) => ({

@@ -12,3 +12,14 @@ export function webmailRoute(win = window) {
 		? router.make_url(["webmail"])
 		: "/app/webmail";
 }
+
+/**
+ * Whether the reader is on the webmail's desk page (or below it): the only place where its folders belong in the
+ * cockpit. The app stays mounted under the hidden page and refreshes from the background (the mailboxes' unread mail,
+ * every 60 s); lending from there replaced the navigation of the page in front, NeoMail's at /app/neomail (21.10.2026).
+ */
+export function onWebmailPage(win = window) {
+	const route = webmailRoute(win);
+	const path = ((win.location && win.location.pathname) || "").replace(/\/+$/, "");
+	return path === route || path.startsWith(route + "/");
+}
