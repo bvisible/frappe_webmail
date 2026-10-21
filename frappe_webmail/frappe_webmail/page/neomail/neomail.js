@@ -55,6 +55,7 @@
 	// Raven's methods Synk's view reads (raven/api of bvisible/Raven): the unread messages, the person's channels.
 	const UNREAD = "/api/method/raven.api.raven_message.get_unread_count_for_channels";
 	const CHANNELS = "/api/method/raven.api.raven_channel.get_all_channels?hide_archived=1";
+	const PEOPLE = "/api/method/raven.api.raven_users.get_list";
 	// Share in Synk (neomail_share.py): where the person may share a message, and the share itself.
 	const DESTINATIONS = "/api/method/frappe_webmail.neomail_share.destinations";
 	const SHARE = "/api/method/frappe_webmail.neomail_share.share";
@@ -87,7 +88,10 @@
 		frame: null,
 		// Synk's view: whether Raven answered the person (its icon shows only then), its frame once made, whether it is
 		// in front, the badge, the person's channels (a Set, null while unknown), the count being asked and whether to
-		// ask it once more when it is back, whether Raven's events are listened to
+		// ask it once more when it is back, whether Raven's events are listened to; and for the menu, which shows
+		// Raven's lists while Synk is in front where the desk's menu can (`menu`, decided as the frame is made):
+		// Raven's lists (get_all_channels), its unread messages by conversation, its people (for the names of the
+		// direct messages), and the path Raven last said it shows
 		synk: {
 			offered: false,
 			frame: null,
@@ -97,6 +101,11 @@
 			asking: null,
 			again: false,
 			listening: false,
+			menu: false,
+			lists: null,
+			unread: null,
+			users: null,
+			here: null,
 		},
 	};
 
@@ -129,6 +138,15 @@
 		notes: own(__("Notes", null, "NeoMail view"), "Notes", "NeoMail view"),
 		// The product's name, as the desk's menu and Raven's own app show it
 		synk: "Synk",
+		// Synk's lists in the menu (neomailHost.synkSections), in words of their own
+		activity: own(__("Activity", null, "Synk menu"), "Activity", "Synk menu"),
+		threads: own(__("Threads", null, "Synk menu"), "Threads", "Synk menu"),
+		later: own(__("Later", null, "Synk menu"), "Later", "Synk menu"),
+		direct: own(__("Direct Messages", null, "Synk menu"), "Direct Messages", "Synk menu"),
+		allDirect: own(__("All Direct Messages", null, "Synk menu"), "All Direct Messages", "Synk menu"),
+		allChannels: own(__("All Channels", null, "Synk menu"), "All Channels", "Synk menu"),
+		settings: own(__("Synk Settings", null, "Synk menu"), "Synk Settings", "Synk menu"),
+		self: own(__("{0} (you)", null, "Synk menu"), "{0} (you)", "Synk menu"),
 	});
 
 	// Asks NeoMail, putting it back in front if Synk was; a folder chosen in the menu is remembered with the list it was
@@ -158,21 +176,42 @@
 		const words = texts();
 		const dock = offers(menu, "dock");
 		const page = page_views(words);
-		const lent = {
-			app: { name: "mail", title: words.mail },
-			route: page_route(),
-			nav: window.neomailHost.navSections(state.where, ask, words, { dock, chosen: state.chosen, page }),
-		};
+		const synk = state.synk;
+		// Synk in front: its lists, where Raven draws none of its own; else NeoMail's folders
+		const lists = synk.front && synk.menu;
+		const nav = lists
+			? window.neomailHost.synkSections(synk.lists, synk.unread, synk.users, synk.here, synk_acts, words)
+			: window.neomailHost.navSections(state.where, ask, words, { dock, chosen: state.chosen, page });
+		const lent = { app: { name: "mail", title: words.mail }, route: page_route(), nav };
 		if (dock) lent.dock = window.neomailHost.viewDock(state.where, ask, words, page);
 		if (offers(menu, "search")) {
-			lent.search = {
-				placeholder: __("Search mail"),
-				onQuery: (query) => ask("search", { query: String(query || "") }),
-			};
+			// Synk in front with its lists here: the box searches Synk (Raven's search page reads its `q`); else NeoMail
+			lent.search = lists
+				? {
+						placeholder: __("Search in Synk"),
+						onQuery: (query) => {
+							if (query) show_synk(true, "/raven/search?q=" + encodeURIComponent(String(query)));
+						},
+				  }
+				: {
+						placeholder: __("Search mail"),
+						onQuery: (query) => ask("search", { query: String(query || "") }),
+				  };
 		}
 		menu.setPageNav(lent);
 		state.lent = true;
 	}
+
+	// What Synk's lists in the menu do (neomailHost.synkSections): open a page or a conversation of Raven's app in Synk's
+	// view, or ask Raven for its settings, which its rail opens and the menu takes the place of (Raven's
+	// apps/web/src/utils/embeddedInDesk.ts, deskCommandOf).
+	const synk_acts = {
+		open: (path) => show_synk(true, path),
+		settings: () => {
+			const inside = state.synk.frame && state.synk.frame.contentWindow;
+			if (inside) inside.postMessage({ type: "raven:command", name: "settings.open", tab: "profile" }, window.location.origin);
+		},
+	};
 
 	// The menu draws its own navigation again.
 	function give_back() {
@@ -207,14 +246,27 @@
 		const synk = state.synk;
 		if ((on === synk.front && !route) || (on && (!synk.offered || !state.box))) return;
 		if (on && !synk.frame) {
+			// The desk's menu shows Raven's lists where it can draw the page's navigation, and Raven then draws none
+			synk.menu = Boolean(cockpit());
 			synk.frame = document.createElement("iframe");
 			synk.frame.className = "neomail-desk-frame neomail-desk-synk";
 			synk.frame.title = texts().synk;
-			synk.frame.src = route ? route + "?embed=desk" : window.neomailHost.synk.address;
+			synk.frame.src = window.neomailHost.synkAddress(route, synk.menu);
 			state.box.append(synk.frame);
+			// Where Raven is, as it says at each move: the menu lights it
+			window.neomailHost.listen(window, synk.frame, {
+				"raven:route": (data) => {
+					if (typeof data.path !== "string" || data.path === synk.here) return;
+					synk.here = data.path;
+					if (synk.front) lend();
+				},
+			});
+			if (synk.menu) know_synk_people();
 		} else if (on && route) {
 			go_in_synk(synk.frame, route);
 		}
+		// The menu lights the page asked for at once, before Raven says it is there
+		if (on && route) synk.here = route;
 		synk.front = on;
 		put_away(synk.frame, !on);
 		put_away(state.frame, on);
@@ -239,7 +291,7 @@
 		} catch (e) {
 			// Below: the address itself
 		}
-		frame.src = route + "?embed=desk";
+		frame.src = window.neomailHost.synkAddress(route, state.synk.menu);
 	}
 
 	// What the server said went wrong, in the person's language: its message, else `fallback`.
@@ -441,7 +493,10 @@
 		if ("message" in answer) {
 			const badge = window.neomailHost.synkBadge(answer.message);
 			const first = !synk.offered;
-			if (first || badge !== synk.badge) {
+			// The menu's badges, conversation by conversation, while it shows Synk's lists
+			const moved = JSON.stringify(answer.message) !== JSON.stringify(synk.unread);
+			synk.unread = answer.message;
+			if (first || badge !== synk.badge || (moved && synk.front && synk.menu)) {
 				synk.offered = true;
 				synk.badge = badge;
 				lend();
@@ -462,8 +517,21 @@
 
 	// The person's channels and direct messages: a channel's message, broadcast to every Raven user, counts only there.
 	async function know_synk_channels() {
+		const synk = state.synk;
 		const answer = await from_raven(CHANNELS);
-		state.synk.mine = "message" in answer ? window.neomailHost.synkChannels(answer.message) : null;
+		synk.mine = "message" in answer ? window.neomailHost.synkChannels(answer.message) : null;
+		synk.lists = "message" in answer ? answer.message : null;
+		if (synk.front && synk.menu) lend();
+	}
+
+	// The people of Synk, for the names of the direct messages in the menu: asked once, as the menu first shows them.
+	async function know_synk_people() {
+		const synk = state.synk;
+		if (synk.users) return;
+		const answer = await from_raven(PEOPLE);
+		if (!("message" in answer) || !Array.isArray(answer.message)) return;
+		synk.users = answer.message;
+		if (synk.front && synk.menu) lend();
 	}
 
 	// Raven's events on the desk's own socket, once Raven answered the person. Neodesk's lessons: a channel's message is

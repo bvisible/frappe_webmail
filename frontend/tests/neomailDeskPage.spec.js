@@ -151,6 +151,9 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		if (String(url).includes("raven.api.raven_channel.get_all_channels")) {
 			return new Response(JSON.stringify({ message: (synk && synk.channels) || { channels: [], dm_channels: [] } }));
 		}
+		if (String(url).includes("raven.api.raven_users.get_list")) {
+			return new Response(JSON.stringify({ message: (synk && synk.people) || [] }));
+		}
 		if (String(url).includes("neomail_share.destinations")) {
 			return new Response(JSON.stringify({ message: (synk && synk.destinations) || { channels: [], people: [] } }));
 		}
@@ -605,7 +608,7 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		const frames = wrapper.querySelectorAll("iframe");
 		expect(frames.length).toBe(2);
 		const raven = frames[1];
-		expect(raven.getAttribute("src")).toBe("/raven?embed=desk");
+		expect(raven.getAttribute("src")).toBe("/raven?embed=desk&chrome=menu");
 		expect(raven.title).toBe("Synk");
 		expect(away(raven)).toBe(false);
 		expect(away(frame)).toBe(true);
@@ -626,22 +629,87 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		setPageNav.mock.lastCall[0].dock.at(-1).onClick();
 		expect(wrapper.querySelectorAll("iframe").length).toBe(2);
 		expect(away(raven)).toBe(false);
-		// A folder of the menu puts NeoMail back in front too, and asks it
+		// While Synk is in front the menu shows Synk's lists, not NeoMail's folders (NeoMail comes back by its icons)
 		lent = setPageNav.mock.lastCall[0];
-		lent.nav[0].items[0].onClick();
+		expect(lent.nav[0].items.map((item) => item.label)).toEqual(["Activity", "Threads", "Later"]);
+		// Mail's icon, then a folder of the menu: NeoMail asked
+		lent.dock[0].onClick();
+		setPageNav.mock.lastCall[0].nav[0].items[0].onClick();
 		expect(away(frame)).toBe(false);
 		expect(away(raven)).toBe(true);
 		expect(posted.at(-1)[0]).toMatchObject({ name: "folder.select", params: { folder: "F-inbox" } });
 	});
 
-	it("puts NeoMail back in front for what the menu's search box asks", async () => {
-		const { frame, tell, setPageNav, posted } = await open({ features: ["dock", "search"], synk: { unread: UNREAD } });
+	it("shows Synk's lists in the menu while Synk is in front, lights what Raven shows, and opens what is chosen there", async () => {
+		const synk = {
+			unread: [{ name: "synk-general", unread_count: 2 }],
+			channels: {
+				channels: [{ name: "synk-general", channel_name: "general", type: "Open", workspace: "Synk", member_id: "m1" }],
+				dm_channels: [{ name: "dm-1", peer_user_id: "bruno@example.org", last_message_timestamp: "2026-10-21 10:00:00" }],
+			},
+			people: [{ name: "bruno@example.org", full_name: "Bruno Keller", type: "User" }],
+		};
+		const { wrapper, tell, hear, setPageNav, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		(await synkDock(setPageNav)).at(-1).onClick();
+		const raven = wrapper.querySelectorAll("iframe")[1];
+		// A window that is not Raven's app yet: the page loads the address it opens
+		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/blank" } } });
+		const item = (label) => setPageNav.mock.lastCall[0].nav.flatMap((section) => section.items).find((it) => it.label === label);
+		await vi.waitFor(() => {
+			expect(item("general")).toBeTruthy();
+			expect(item("Bruno Keller")).toBeTruthy();
+		});
+		expect(item("general").badge).toBe(2);
+		expect(setPageNav.mock.lastCall[0].dock.at(-1).active).toBe(true);
+		// Raven says where it is: the menu lights it
+		hear({ source: raven.contentWindow, origin: window.location.origin, data: { type: "raven:route", path: "/raven/Synk/synk-general" } });
+		expect(item("general").active).toBe(true);
+		// What another window says is not heard
+		hear({ source: window, origin: window.location.origin, data: { type: "raven:route", path: "/raven/threads" } });
+		expect(item("general").active).toBe(true);
+		// A conversation chosen in the menu: Synk stays in front, on it, lit at once
+		item("Bruno Keller").onClick();
+		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk&chrome=menu");
+		expect(item("Bruno Keller").active).toBe(true);
+		expect(away(raven)).toBe(false);
+		// Synk's people are asked once
+		expect(fetch.mock.calls.filter(([url]) => String(url).includes("raven_users.get_list")).length).toBe(1);
+	});
+
+	it("has the menu's search box search Synk while Synk is in front, and NeoMail otherwise", async () => {
+		const { wrapper, frame, tell, setPageNav, posted } = await open({ features: ["dock", "search"], synk: { unread: UNREAD } });
 		tell(STATE);
 		(await synkDock(setPageNav)).at(-1).onClick();
 		expect(away(frame)).toBe(true);
-		setPageNav.mock.lastCall[0].search.onQuery("devis");
-		expect(away(frame)).toBe(false);
+		const raven = wrapper.querySelectorAll("iframe")[1];
+		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/blank" } } });
+		let search = setPageNav.mock.lastCall[0].search;
+		expect(search.placeholder).toBe("Search in Synk");
+		search.onQuery("devis cuisine");
+		expect(raven.getAttribute("src")).toBe("/raven/search?q=devis%20cuisine&embed=desk&chrome=menu");
+		expect(away(frame)).toBe(true);
+		// An emptied box asks nothing
+		search.onQuery("");
+		expect(raven.getAttribute("src")).toBe("/raven/search?q=devis%20cuisine&embed=desk&chrome=menu");
+		expect(posted).toEqual([]);
+		// Mail in front: the box searches NeoMail
+		setPageNav.mock.lastCall[0].dock[0].onClick();
+		search = setPageNav.mock.lastCall[0].search;
+		expect(search.placeholder).toBe("Search mail");
+		search.onQuery("devis");
 		expect(posted.at(-1)[0]).toMatchObject({ name: "search", params: { query: "devis" } });
+	});
+
+	it("asks Raven for its settings from the menu, where its rail is not drawn", async () => {
+		const { wrapper, tell, setPageNav } = await open({ features: ["dock"], synk: { unread: UNREAD } });
+		tell(STATE);
+		(await synkDock(setPageNav)).at(-1).onClick();
+		const raven = wrapper.querySelectorAll("iframe")[1];
+		const told = [];
+		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/raven" }, postMessage: (...args) => told.push(args) } });
+		setPageNav.mock.lastCall[0].nav.at(-1).items[0].onClick();
+		expect(told).toEqual([[{ type: "raven:command", name: "settings.open", tab: "profile" }, window.location.origin]]);
 	});
 
 	it("offers no Synk to someone Raven refuses, and asks Raven nothing without its role", async () => {
@@ -773,7 +841,7 @@ describe("Share in Synk, from NeoMail's button", () => {
 		expect(synk.said).toContainEqual(["alert", "Shared in Synk"]);
 		// Synk in front, on the post
 		const raven = wrapper.querySelectorAll("iframe")[1];
-		expect(raven.getAttribute("src")).toBe("/raven/message/m-42?embed=desk");
+		expect(raven.getAttribute("src")).toBe("/raven/message/m-42?embed=desk&chrome=menu");
 		expect(away(raven)).toBe(false);
 		expect(away(frame)).toBe(true);
 	});
@@ -843,7 +911,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		expect(synk.asked).toEqual([]);
 		expect(fetch.mock.calls.some(([url]) => String(url).includes("neomail_share.share"))).toBe(false);
 		const raven = wrapper.querySelectorAll("iframe")[1];
-		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk");
+		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk&chrome=menu");
 		expect(away(raven)).toBe(false);
 		expect(away(frame)).toBe(true);
 	});
@@ -868,7 +936,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 			"alert",
 			"1 person(s) on this message could not join: they are not in your Synk workspace.",
 		]);
-		expect(wrapper.querySelectorAll("iframe")[1].getAttribute("src")).toBe("/raven/Synk/synk-devis-k?embed=desk");
+		expect(wrapper.querySelectorAll("iframe")[1].getAttribute("src")).toBe("/raven/Synk/synk-devis-k?embed=desk&chrome=menu");
 	});
 
 	it("makes nothing when the person says no, and asks before adding people to a channel there is", async () => {
