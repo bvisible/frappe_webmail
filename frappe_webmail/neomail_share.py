@@ -43,17 +43,18 @@ MAX_FILE_NAME = 140
 DATE_FORMAT = "d MMMM yyyy, HH:mm"
 
 
+def installed():
+	"""Whether Synk (Raven) is installed on this site: without it, nothing here imports it."""
+	return "raven" in frappe.get_installed_apps()
+
+
 def offered(user=None):
 	"""Whether a message can be shared in Synk by `user` (the session's): one of the desk's people for whom the page
 	/app/neomail is offered, on a site with Raven, holding its role."""
 	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
 
 	user = user or frappe.session.user
-	return (
-		desk.in_desk_for(user)
-		and "raven" in frappe.get_installed_apps()
-		and RAVEN_ROLE in frappe.get_roles(user)
-	)
+	return desk.in_desk_for(user) and installed() and RAVEN_ROLE in frappe.get_roles(user)
 
 
 def _gate():
@@ -68,6 +69,10 @@ def _gate():
 	jmap.page_request_only()
 	neomail.desk_people_only()
 	jmap.csrf_token_required()
+	# A site without Raven says so, rather than failing to import it: NeoMail never offers the share there (the
+	# handover's `share` follows `offered`), but a call can still come.
+	if not installed():
+		frappe.throw(_("Synk is not installed here."), title=_("Synk"))
 	if not offered():
 		frappe.throw(_("Synk is not open for you."), frappe.PermissionError)
 

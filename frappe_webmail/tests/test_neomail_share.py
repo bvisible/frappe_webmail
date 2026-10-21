@@ -199,6 +199,24 @@ class TestNeoMailShare(FrappeTestCase):
 				self.assertFalse(share.offered())
 				self.assertRaises(frappe.PermissionError, share.destinations)
 
+	def test_a_site_without_synk_says_it_is_not_installed_here(self):
+		apps = [app for app in frappe.get_installed_apps() if app != "raven"]
+		with (
+			patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk", return_value=True),
+			patch("frappe_webmail.mailcraft_jmap.page_request_only"),
+			patch("frappe_webmail.mailcraft_jmap.csrf_token_required"),
+			patch.object(share.frappe, "get_installed_apps", return_value=apps),
+		):
+			frappe.set_user(STAFF)
+			self.assertFalse(share.installed())
+			self.assertFalse(share.offered())
+			for call, kwargs in (
+				(share.destinations, {}),
+				(share.share, {"account": MAILBOX, "email": EMAIL_ID, "to": "user:x"}),
+			):
+				with self.assertRaisesRegex(frappe.ValidationError, "Synk is not installed here"):
+					call(**kwargs)
+
 	def test_the_message_goes_where_the_person_chose_as_the_person(self):
 		sent = {}
 
