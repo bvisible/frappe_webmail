@@ -8,12 +8,148 @@ Provides a high-level interface for IMAP operations with connection pooling
 and error handling.
 """
 
+import time
+
 import frappe
 from frappe import _
 
 try:
-	from imapclient import IMAPClient
+	from imapclient import IMAPClient as _IMAPClient
+	from imapclient import SocketTimeout
+	from imapclient.imap4 import IMAP4WithTimeout
+	from imapclient.tls import IMAP4_TLS
 except ImportError:
+	_IMAPClient = SocketTimeout = IMAP4WithTimeout = IMAP4_TLS = None
+
+# How long a mail server may take, for every IMAP connection the app opens (imap_timeout). Without a limit, a server
+# whose name gives IPv6 addresses, on a host with no working IPv6 route, held the connection for about two minutes
+# before the IPv4 one was tried, and gunicorn killed the worker at 120 s (maintenance#1786). Each address that does not
+# accept a connection is given up after IMAP_CONNECT_TIMEOUT for the next one, and the TLS handshake and the server's
+# greeting have as long for each of their reads; once signed in, each read may take up to IMAP_READ_TIMEOUT.
+IMAP_CONNECT_TIMEOUT = 8
+IMAP_READ_TIMEOUT = 60
+# How long a pooled connection that sat idle has to answer the NOOP that checks it is still there (webmail_api,
+# _imap_is_alive): one the server dropped without a word answers nothing, and is replaced.
+IMAP_PROBE_TIMEOUT = 10
+# What one web request may spend waiting on mail servers, all its IMAP connections and reads together, from its first
+# IMAP operation: gunicorn kills a worker at 120 s, and a request may hold many reads (NeoMail sends up to 16 calls at
+# once, each with its own). Past it, every IMAP operation of the request fails at once, as a connection that failed.
+# A background job has no such budget: the limits of each operation only.
+IMAP_REQUEST_BUDGET = 90
+
+
+def imap_timeout():
+	"""The `timeout` every IMAPClient of the app is built with: IMAP_CONNECT_TIMEOUT, then IMAP_READ_TIMEOUT."""
+	return SocketTimeout(connect=IMAP_CONNECT_TIMEOUT, read=IMAP_READ_TIMEOUT)
+
+
+def _time_left():
+	"""The seconds the current web request has left for its mail servers (IMAP_REQUEST_BUDGET from its first IMAP
+	operation; Frappe releases frappe.local after each request), None outside a web request."""
+	if getattr(frappe.local, "request", None) is None:
+		return None
+	deadline = getattr(frappe.local, "imap_deadline", None)
+	if deadline is None:
+		deadline = frappe.local.imap_deadline = time.monotonic() + IMAP_REQUEST_BUDGET
+	return deadline - time.monotonic()
+
+
+def _within_budget(limit):
+	"""`limit` (seconds), or what the web request has left when that is less; TimeoutError when it has nothing left."""
+	left = _time_left()
+	if left is None:
+		return limit
+	if left <= 0:
+		raise TimeoutError("this request's time for its mail servers is spent")
+	return left if limit is None else min(limit, left)
+
+
+if _IMAPClient is not None:
+
+	class _Watched:
+		"""An IMAP connection that remembers its socket failed (`failed`: a read or a write timed out, or the connection
+		broke), so that nobody uses it again, whoever caught the error; and whose every read and write waits at most
+		its limit (`limit`: the connect timeout until imapclient sets the read timeout, then the read timeout), and
+		never past what the web request has left (_within_budget)."""
+
+		failed = False
+		limit = None
+
+		def _watch(self, operation, *args):
+			try:
+				limit = self.limit if self.limit is not None else self._timeout
+				self.sock.settimeout(_within_budget(limit))
+				return operation(*args)
+			except OSError:
+				self.failed = True
+				raise
+
+		def read(self, size):
+			return self._watch(super().read, size)
+
+		def readline(self):
+			return self._watch(super().readline)
+
+		def send(self, data):
+			return self._watch(super().send, data)
+
+	class _IMAP4TLSWithTimeout(_Watched, IMAP4_TLS):
+		"""imapclient's TLS connection, opened within its connect timeout. imapclient 3.1 keeps the timeout it is given
+		(`self._timeout`) but lets imaplib open the socket with none (`_create_socket(None)`): the connection, the TLS
+		handshake and the server's greeting waited without end, the read timeout being set only after them. To remove
+		when imapclient passes its timeout to the socket itself (test_imap_timeouts says when: its check of the stock
+		client then fails)."""
+
+		def _create_socket(self, timeout=None):
+			try:
+				return super()._create_socket(
+					_within_budget(timeout if timeout is not None else self._timeout)
+				)
+			except OSError:
+				self.failed = True
+				raise
+
+	class _IMAP4WithTimeout(_Watched, IMAP4WithTimeout):
+		"""imapclient's plain connection (it passes its connect timeout already), watched as the TLS one."""
+
+		def _create_socket(self, timeout=None):
+			try:
+				return super()._create_socket(
+					_within_budget(timeout if timeout is not None else self._timeout)
+				)
+			except OSError:
+				self.failed = True
+				raise
+
+	class BoundedIMAPClient(_IMAPClient):
+		"""The IMAPClient the app builds (as `IMAPClient`): with TLS too, its connect timeout bounds the connection, the
+		handshake and the greeting; it says when its socket failed (`socket_failed`); and its reads keep to the web
+		request's budget."""
+
+		def _create_IMAP4(self):
+			if self.stream:
+				return super()._create_IMAP4()
+			connect = getattr(self._timeout, "connect", None)
+			if self.ssl:
+				return _IMAP4TLSWithTimeout(self.host, self.port, self.ssl_context, connect)
+			return _IMAP4WithTimeout(self.host, self.port, connect)
+
+		def _set_read_timeout(self):
+			super()._set_read_timeout()
+			self._imap.limit = getattr(self._timeout, "read", None)
+
+		def set_read_timeout(self, seconds):
+			"""Each read from now on waits at most `seconds` (and never past the web request's budget)."""
+			self._imap.limit = seconds
+			self.socket().settimeout(seconds)
+
+		@property
+		def socket_failed(self):
+			"""Whether a read or a write of this connection failed: it is not to be used again."""
+			return bool(getattr(self._imap, "failed", False))
+
+	IMAPClient = BoundedIMAPClient
+else:
 	IMAPClient = None
 
 
@@ -60,11 +196,12 @@ class WebmailIMAPClient:
 				host=self.account.imap_host,
 				port=self.account.imap_port,
 				ssl=self.account.imap_ssl,
+				timeout=imap_timeout(),
 			)
 			self.client.login(self.account.email, self.account.get_password("imap_password"))
 			self._connected = True
 		except Exception as e:
-			frappe.log_error(f"IMAP connection error: {e!s}", "Frappe Webmail")
+			frappe.log_error("Webmail: IMAP connection failed", frappe.get_traceback())
 			frappe.throw(_("Failed to connect to IMAP server: {0}").format(e))
 
 	def disconnect(self):

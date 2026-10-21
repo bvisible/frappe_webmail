@@ -39,6 +39,9 @@ from frappe_webmail.mime_parts import iter_attachments
 from frappe_webmail.previews import fetch_previews
 from frappe_webmail.replies import appended_uid, reply_recipients
 
+# The IMAPClient the app builds: imapclient's, bounded with TLS too and watched (utils/imap_client.py)
+from frappe_webmail.utils.imap_client import IMAP_PROBE_TIMEOUT, IMAP_READ_TIMEOUT, IMAPClient, imap_timeout
+
 try:
 	import bleach
 except ImportError:
@@ -97,12 +100,6 @@ def email_css_sanitizer():
 	# No SVG property either (bleach keeps a list of its own by default, some of which take a url()): a message sent
 	# carries no SVG.
 	return CSSSanitizer(allowed_css_properties=EMAIL_CSS_PROPERTIES, allowed_svg_properties=[])
-
-
-try:
-	from imapclient import IMAPClient
-except ImportError:
-	IMAPClient = None
 
 
 class WebmailAuthenticationError(frappe.ValidationError):
@@ -433,8 +430,15 @@ class _PooledIMAP:
 
 
 def _imap_connect(account):
-	"""Open and authenticate a new IMAP connection (typed errors via imap_login)."""
-	client = IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl)
+	"""Open and authenticate a new IMAP connection (typed errors via imap_login), within imap_timeout."""
+	try:
+		client = IMAPClient(
+			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=imap_timeout()
+		)
+	except Exception as e:
+		# Refused, unreachable, too slow, a TLS failure: the server could not be reached, said as the webmail says it
+		# (WebmailConnectionError: NeoMail's facade answers 503 and tries again), never a raw error (a 500).
+		_raise_webmail_login_error("IMAP", e, account)
 	try:
 		imap_login(client, account)
 	except Exception:
@@ -447,6 +451,8 @@ def _imap_connect(account):
 
 
 def _imap_discard(entry):
+	"""Close a pooled connection. LOGOUT first; on a connection whose read timed out, or that is gone, it fails at once
+	(a socket that timed out refuses any further read) and the socket is shut down instead."""
 	try:
 		entry.client.logout()
 	except Exception:
@@ -456,14 +462,36 @@ def _imap_discard(entry):
 			pass
 
 
+def _socket_failed(client):
+	"""Whether a read or a write of this connection failed (it timed out, or broke), whoever caught the error."""
+	return getattr(client, "socket_failed", False) is True
+
+
+def _raise_connection_failure(exc, account):
+	"""A connection that failed while in use (it timed out, or broke) as the webmail says it: WebmailConnectionError
+	(NeoMail's facade answers 503 and tries again), raised from the socket's own error. Anything else is left as is."""
+	if not _imap_is_connection_error(exc):
+		return
+	try:
+		_raise_webmail_login_error("IMAP", exc, account)
+	except (WebmailConnectionError, WebmailAuthenticationError) as typed:
+		raise typed from exc
+
+
 def _imap_is_alive(entry):
+	if _socket_failed(entry.client):
+		return False
 	idle = _time.monotonic() - entry.last_used
 	if idle > _IMAP_MAX_IDLE:
 		return False
 	if idle < _IMAP_IDLE_RECHECK:
 		return True
+	# A live server answers a NOOP at once; one that dropped the connection without a word answers nothing, and the
+	# request should not wait a whole read (IMAP_READ_TIMEOUT) to find out.
 	try:
+		entry.client.set_read_timeout(IMAP_PROBE_TIMEOUT)
 		entry.client.noop()
+		entry.client.set_read_timeout(IMAP_READ_TIMEOUT)
 		return True
 	except Exception:
 		return False
@@ -496,9 +524,15 @@ def imap_session(account):
 		# The test suite mocks IMAPClient as a context manager and configures the
 		# client behind __enter__ — keep that contract (fresh connection, logout at
 		# exit) so the tests exercise the endpoints, not the pool.
-		with IMAPClient(host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl) as client:
+		with IMAPClient(
+			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=imap_timeout()
+		) as client:
 			imap_login(client, account)
-			yield client
+			try:
+				yield client
+			except Exception as exc:
+				_raise_connection_failure(exc, account)
+				raise
 		return
 
 	key = account.name
@@ -523,9 +557,12 @@ def imap_session(account):
 		yield entry.client
 	except Exception as exc:
 		broken = _imap_is_connection_error(exc)
+		_raise_connection_failure(exc, account)
 		raise
 	finally:
 		entry.last_used = _time.monotonic()
+		# A connection that failed is never used again, even when the caller caught the error and went on
+		broken = broken or _socket_failed(entry.client)
 		if broken:
 			with _IMAP_POOL_LOCK:
 				if _IMAP_POOL.get(key) is entry:
@@ -710,7 +747,7 @@ def _test_connection_internal(account):
 	# Test IMAP
 	try:
 		with IMAPClient(
-			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=15
+			host=account.imap_host, port=account.imap_port, ssl=account.imap_ssl, timeout=imap_timeout()
 		) as client:
 			_imap_login_raw(client, account)
 			imap_success = True
