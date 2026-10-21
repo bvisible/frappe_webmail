@@ -8,8 +8,9 @@ The Drive is Frappe's own File doctype as suite extends it: a folder is a File r
 from « Drive », each person's private tree from « Users/<user> », and `user_has_permission(folder, "upload")` decides
 who may add to a folder (owner, explicit grant, inherited share; a deny wins). suite only takes a file from a browser
 (a multipart, chunked upload), so `deposit` repeats the steps of `suite.drive.api.files.upload_file` for bytes the
-server already holds: the right to the folder, the owner's quota under its lock, a name free in the folder, the row,
-the bytes in place (or on S3) with their thumbnail, the folder sizes, the person's live list.
+server already holds: the right to the folder, its names held, the owner's quota under its lock, a name free in the
+folder, the row with the bytes' SHA-256, the bytes in place (or on S3) with their thumbnail, the folder sizes, the live
+lists.
 
 Every import from suite is made in this module: a change on its side breaks here, under this module's tests (run on a
 site with suite, the clone of osiris; the app's own CI installs no suite and skips them).
@@ -23,6 +24,8 @@ from frappe import _
 
 # How deep a search result's path is spelled out (« Mon Drive / Clients / … »)
 PATH_DEPTH = 6
+# The longest name a file gets in the Drive, and the longest name of a file or a folder taken from a request
+MAX_NAME = 140
 # A file name the Drive can store: what a sender wrote, without what would cut a path
 UNSAFE_IN_NAME = str.maketrans({"/": "-", "\\": "-", "\x00": "", "\r": " ", "\n": " ", "\t": " "})
 
@@ -49,6 +52,9 @@ def can_read(folder) -> bool:
 
 
 def _folder_row(folder):
+	# A folder's name, never an object a request slipped in: frappe.db.get_value would take it as filters.
+	if not isinstance(folder, str) or not folder:
+		return None
 	row = frappe.db.get_value(
 		"File", folder, ["name", "file_name", "folder", "is_folder", "status"], as_dict=True
 	)
@@ -177,7 +183,8 @@ def folder_entry(folder):
 
 
 def free_name(file_name, folder) -> str:
-	"""A name not yet taken in `folder`: « Facture.pdf », else « Facture (1).pdf », « Facture (2).pdf »…
+	"""A name not yet taken in `folder`: « Facture.pdf », else « Facture (1).pdf », « Facture (2).pdf »… without the
+	folder's lock: only for a suite older than its hold_folder_names (`_name_lock`).
 
 	Unfiltered on purpose: suite's own get_new_file_name counts siblings with frappe.db.get_list, which only sees the
 	rows the person may read, and so can miss a sibling in a shared folder (and, with a non-flat storage, overwrite its
@@ -201,13 +208,62 @@ def free_name(file_name, folder) -> str:
 def safe_name(file_name) -> str:
 	name = (file_name or "").translate(UNSAFE_IN_NAME).strip(" .") or "attachment"
 	stem, ext = os.path.splitext(name)
-	return stem[: 140 - len(ext)] + ext
+	return stem[: MAX_NAME - len(ext)] + ext
+
+
+def bounded_free(name, free) -> str:
+	"""`free(name)`, the name the folder gives `name` (numbered « (1) », « (2) »… when it is taken), MAX_NAME characters
+	at most: when the number takes it over, the stem is cut before the number, and the name asked again."""
+	chosen = free(name)
+	for _round in range(5):
+		over = len(chosen) - MAX_NAME
+		if over <= 0:
+			return chosen
+		stem, ext = os.path.splitext(name)
+		name = stem[: max(1, len(stem) - over)] + ext
+		chosen = free(name)
+	frappe.throw(_("No free name is left for this file in this folder of the Drive"))
+
+
+# Whether this process said already that its suite names deposits without the folder's lock (`_name_lock`)
+_UNLOCKED_SAID = False
+
+
+def _name_lock(utils):
+	"""suite's hold_folder_names and free_file_name in `utils` (suite.drive.utils, since the Suite of 16.10), or None on
+	an older suite: deposits are then named as they were before (`free_name`, without the folder's lock), and it is
+	logged once a process, rather than every Drive deposit failing (the old webmail's too)."""
+	global _UNLOCKED_SAID
+	hold = getattr(utils, "hold_folder_names", None)
+	free = getattr(utils, "free_file_name", None)
+	if callable(hold) and callable(free):
+		return hold, free
+	if not _UNLOCKED_SAID:
+		_UNLOCKED_SAID = True
+		frappe.log_error(
+			"Webmail: Drive deposits named without the folder's lock",
+			"This site's suite has no hold_folder_names and free_file_name (they came with the Suite of 16.10, "
+			"maintenance#1598): attachments saved in the Drive are named as before, and two saved at once under one "
+			"name may share one file on disk. Update suite.",
+		)
+	return None
 
 
 def deposit(payload: bytes, file_name: str, folder: str):
-	"""Put `payload` in the Drive folder `folder` as `file_name`, the way suite's own upload does. Returns the File."""
+	"""Put `payload` in the Drive folder `folder` as `file_name`, the way suite's own upload does
+	(suite.drive.api.files.upload_file). Returns the File.
+
+	The name is given out while this request holds the folder's names, after the commit that shows it what the requests
+	before it made (suite's hold_folder_names, free_file_name, maintenance#1598): chosen without it, two deposits of one
+	name at once got the same name, two rows for one file on disk, and deleting one deleted the other's bytes. Nothing
+	of this request may be written before (the commit would keep it), and the owner's storage lock comes after it (the
+	commit would release it). A suite older than those names them as before (`_name_lock`). MAX_NAME characters at
+	most, its number included (`bounded_free`)."""
 	_require()
+	import hashlib
+
 	import mimemapper
+	import suite.drive.utils as drive_utils
 	from suite.drive.api.files import get_upload_path
 	from suite.drive.api.storage import acquire_owner_storage_lock, validate_quota
 	from suite.drive.utils import apply_file_size_delta, create_drive_file, get_file_type
@@ -221,15 +277,26 @@ def deposit(payload: bytes, file_name: str, folder: str):
 	if not can_upload(row.name):
 		frappe.throw(_("You cannot add files to this folder of the Drive"), frappe.PermissionError)
 
-	file_name = free_name(safe_name(file_name), row.name)
+	lock = _name_lock(drive_utils)
 	size = len(payload)
+	# Staged under a name of its own: the file's name is given out below, under the folder's lock
 	temp_path = get_upload_path(
-		f"{frappe.generate_hash(length=12)}_{secure_filename(file_name) or 'attachment'}"
+		f"{frappe.generate_hash(length=12)}_{secure_filename(safe_name(file_name)) or 'attachment'}"
 	)
-	temp_path.write_bytes(payload)
 	try:
+		# In the try: a file written in part goes too
+		temp_path.write_bytes(payload)
+		if lock:
+			lock[0](row.name, commit=True)
 		acquire_owner_storage_lock(frappe.session.user)
 		validate_quota(incoming_size=size)
+		if lock:
+			# A plain read: this request committed once it held the folder's names
+			file_name = bounded_free(
+				safe_name(file_name), lambda name: lock[1](name, row.name, locking=False)
+			)
+		else:
+			file_name = bounded_free(safe_name(file_name), lambda name: free_name(name, row.name))
 
 		mime_type = mimemapper.get_mime_type(str(temp_path), native_first=False)
 		manager = FileManager()
@@ -246,6 +313,8 @@ def deposit(payload: bytes, file_name: str, folder: str):
 			Path(manager.site_folder / storage_key(drive_file.file_url)).parent.mkdir(
 				parents=True, exist_ok=True
 			)
+		# The SHA-256 of the bytes, as suite's upload keeps it: the WebDAV's ETag, a synchronising client's comparison
+		drive_file.db_set("content_hash", hashlib.sha256(payload).hexdigest(), update_modified=False)
 		manager.upload_file(temp_path, drive_file)
 		if manager.s3_enabled:
 			drive_file.file_url = get_s3_url(get_s3_key(drive_file.file_url))
@@ -255,10 +324,11 @@ def deposit(payload: bytes, file_name: str, folder: str):
 		temp_path.unlink(missing_ok=True)
 
 	apply_file_size_delta(row.name, size)
-	# To the person only: suite broadcasts its uploads to every session of the site
-	frappe.publish_realtime(
-		"list-add", {"file": prettify_file(drive_file.as_dict())}, user=frappe.session.user
-	)
+	# As suite's upload tells it: the room of the folder (a Drive page showing it, open only to those who may read it)
+	# and the person's own sessions, never every session of the site
+	added = {"file": prettify_file(drive_file.as_dict())}
+	frappe.publish_realtime("list-add", added, doctype="File", docname=row.name)
+	frappe.publish_realtime("list-add", added, user=frappe.session.user)
 	return drive_file
 
 
@@ -313,6 +383,9 @@ def listing(folder=None, search=None, limit=20) -> dict:
 def read(name):
 	"""(file name, MIME type, bytes) of a Drive file the person may read: for attaching it to a message."""
 	_require()
+	# A file's name, never an object a request slipped in: frappe.db.get_value would take it as filters
+	if not isinstance(name, str) or not name or len(name) > MAX_NAME:
+		frappe.throw(_("This file no longer exists in the Drive"), frappe.DoesNotExistError)
 	from suite.drive.utils.files import FileManager
 
 	row = frappe.db.get_value(

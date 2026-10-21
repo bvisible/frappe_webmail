@@ -24,6 +24,7 @@ from email.mime.text import MIMEText
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -291,14 +292,38 @@ class TestAttachToDocument(TestWebmailAPIBase):
 		self.assertFalse(frappe.db.exists("File", {"attached_to_name": self.todo.name}))
 
 
+def _remove_from_drive(name):
+	"""A Drive entry, the deepest first: a folder goes once it is empty."""
+	for child in frappe.get_all("File", {"folder": name}, pluck="name"):
+		_remove_from_drive(child)
+	if frappe.db.exists("File", name):
+		frappe.delete_doc("File", name, force=True, ignore_permissions=True)
+
+
 class DriveCase(TestWebmailAPIBase):
-	"""A folder of the test user's own Drive, removed afterwards, with everything put in it."""
+	"""A folder of the test user's own Drive, removed afterwards, with everything put in it.
+
+	A deposit commits once it holds the folder's names (drive.deposit, suite's hold_folder_names): what the tests made
+	is no longer taken back by the class's rollback. Every folder made is kept in the class's list and removed for good
+	at its end, with a commit."""
+
+	# Every folder a test of the class made
+	made: ClassVar[list] = []
 
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
 		if "suite" not in frappe.get_installed_apps():
 			raise unittest.SkipTest("the Drive (suite) is not installed on this site")
+		cls.made = []
+
+	@classmethod
+	def tearDownClass(cls):
+		frappe.set_user("Administrator")
+		for name in reversed(cls.made):
+			_remove_from_drive(name)
+		frappe.db.commit()
+		super().tearDownClass()
 
 	def setUp(self):
 		super().setUp()
@@ -307,19 +332,12 @@ class DriveCase(TestWebmailAPIBase):
 		self.created = []
 		self.folder = create_folder(f"Webmail test {frappe.generate_hash(length=6)}").name
 		self.created.append(self.folder)
+		type(self).made.append(self.folder)
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-
-		def remove(name):
-			# The deepest first: a folder goes once it is empty
-			for child in frappe.get_all("File", {"folder": name}, pluck="name"):
-				remove(child)
-			if frappe.db.exists("File", name):
-				frappe.delete_doc("File", name, force=True, ignore_permissions=True)
-
 		for name in reversed(self.created):
-			remove(name)
+			_remove_from_drive(name)
 		frappe.defaults.clear_user_default(LAST_DRIVE_FOLDER, self.test_user)
 		super().tearDown()
 
@@ -358,6 +376,15 @@ class TestSaveToDrive(DriveCase):
 		second = frappe.get_doc("File", self.save()["name"])
 		self.assertEqual(second.file_name, "Relevé 2026-118 (1).pdf")
 
+	def test_an_older_suite_names_deposits_as_before(self):
+		from frappe_webmail import drive
+
+		# A suite without hold_folder_names: the names as before, the deposit made all the same
+		with patch.object(drive, "_name_lock", return_value=None):
+			self.save()
+			second = frappe.get_doc("File", self.save()["name"])
+		self.assertEqual(second.file_name, "Relevé 2026-118 (1).pdf")
+
 	def test_a_folder_the_person_may_not_fill_is_refused_before_reading_the_mail(self):
 		from suite.drive.utils import get_user_folder
 
@@ -373,6 +400,7 @@ class TestSaveToDrive(DriveCase):
 			}
 		).insert(ignore_permissions=True)
 		self.created.append(private.name)
+		type(self).made.append(private.name)
 		frappe.set_user(self.test_user)
 
 		client = imap_client()

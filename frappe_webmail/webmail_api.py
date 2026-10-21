@@ -10,6 +10,7 @@ including IMAP/SMTP operations, email management, and signatures.
 
 import base64
 import email
+import email.policy
 import smtplib
 from email import encoders
 from email.header import decode_header
@@ -2001,14 +2002,28 @@ def read_attachment(account, folder, uid, attachment_id):
 	frappe.throw(_("Attachment not found"))
 
 
+# How an attached message (message/rfc822, message/global, a delivery report, a read receipt…) is written back: with
+# CRLF line ends and its headers as they were folded, which is how the message carries it. Python's own defaults end
+# lines with LF and fold long headers again: the file saved was not the one the message carried, nor of its size
+# (which neomail_attachments.find compares with NeoMail's). What Python's generator cannot keep, it still normalises:
+# a header without a space after its colon gets one, an empty header gets a space, lines ended by LF alone get CRLF, a
+# report's last block gets the blank line that ends it.
+_AS_CARRIED = email.policy.compat32.clone(linesep="\r\n", max_line_length=0)
+
+
 def attachment_bytes(part):
-	"""The bytes of an attachment. An attached e-mail (message/rfc822) has no payload to decode: its bytes are the
-	message it carries, which saves as a .eml file."""
+	"""The bytes of an attachment. An attached message (any message/*) has no payload to decode: its bytes are the
+	message it carries, written back as it carries it (_AS_CARRIED), which saves as a .eml file. Before, only
+	message/rfc822 was: a delivery report or a read receipt came out as no bytes at all."""
 	payload = part.get_payload(decode=True)
-	if payload is None and part.get_content_type() == "message/rfc822":
-		inner = part.get_payload()
-		if isinstance(inner, list) and inner:
-			return inner[0].as_bytes()
+	if payload is None and part.get_content_maintype() == "message":
+		# The part written again by its own generator (which knows each kind: an e-mail, a report's blocks), its own
+		# headers taken off; one without headers of its own starts with the blank line
+		written = part.as_bytes(policy=_AS_CARRIED)
+		if written.startswith(b"\r\n"):
+			return written[2:]
+		_headers, blank, body = written.partition(b"\r\n\r\n")
+		return body if blank else b""
 	return payload or b""
 
 

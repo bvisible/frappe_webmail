@@ -111,15 +111,19 @@ def get_drive_folders(parent=None, search=None):
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_drive_folder(parent, title):
-	"""« New folder » in the picker of « Save to the Drive… »."""
+	"""« New folder » in the picker of « Save to the Drive… ». POST only: a GET, which another site's page can make a
+	browser send with the person's cookie, made a folder in their Drive (every picker posts: the webmail's frappe.call,
+	the desk page of NeoMail, the phone)."""
 	if not drive.available():
 		frappe.throw(_("The Drive is not installed on this instance"))
 	return drive.create_folder(parent, title)
 
 
-@frappe.whitelist()
+# POST only, as every action that writes: a GET, which another site's page can make a browser send with the person's
+# cookie, would file the attachment. Every caller posts (the webmail's frappe.call, the phone's runAttachmentAction).
+@frappe.whitelist(methods=["POST"])
 def save_attachment_to_drive(account_name, folder, uid, attachment_id, drive_folder):
 	"""Put the attachment in the Drive folder the person chose (the right to add to it is checked by the Drive's rules)."""
 	account = get_account(account_name)
@@ -143,7 +147,7 @@ def save_attachment_to_drive(account_name, folder, uid, attachment_id, drive_fol
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_document_scan_from_attachment(account_name, folder, uid, attachment_id, document_type="Invoice"):
 	"""Send the attachment to the scanned documents (a supplier invoice, a receipt…), where the OCR reads it."""
 	account = get_account(account_name)
@@ -240,7 +244,7 @@ def get_attachable_doctypes():
 	]
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def attach_to_document(account_name, folder, uid, attachment_id, doctype, docname):
 	"""Join the attachment to a Neoffice document, as a private file in its attachments.
 
