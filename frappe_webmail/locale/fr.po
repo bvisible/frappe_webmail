@@ -4661,3 +4661,76 @@ msgstr "Corbeille"
 
 msgid "{0} filter(s) applied to {1} emails"
 msgstr "{0} filtre(s) appliqué(s) à {1} e-mails"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:291
+msgid "A channel, or a person"
+msgstr "Un canal ou une personne"
+
+#: frappe_webmail/neomail_share.py:168
+msgid "Choose where to share the message."
+msgstr "Choisissez où partager le message."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:661
+msgid "NeoMail could not be opened. Reload the page to try again."
+msgstr "NeoMail n’a pas pu s’ouvrir. Rechargez la page pour réessayer."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:641
+msgid "NeoMail is not offered on this site."
+msgstr "NeoMail n’est pas proposé sur ce site."
+
+#: frappe_webmail/neomail_share.py:243
+msgid "Open in NeoMail"
+msgstr "Ouvrir dans NeoMail"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:285
+msgid "Share in Synk"
+msgstr "Partager dans Synk"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:296
+msgid "Share the attachments too"
+msgstr "Partager aussi les pièces jointes"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:328
+msgid "Shared in Synk"
+msgstr "Partagé dans Synk"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:275
+msgid "Synk could not be reached. Try again in a moment."
+msgstr "Synk est injoignable. Réessayez dans un instant."
+
+#: frappe_webmail/neomail_share.py:70
+msgid "Synk is not open for you."
+msgstr "Synk n’est pas accessible pour vous."
+
+#: frappe_webmail/mailcraft_calendars.py:1209
+msgid "The dates of the ERP are read-only here: change them in the document they come from."
+msgstr "Les dates de l’ERP sont en lecture seule ici : modifiez-les dans le document d’origine."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:322
+msgid "The message could not be shared."
+msgstr "Le message n’a pas pu être partagé."
+
+#: frappe_webmail/mailcraft_calendars.py:1211
+msgid "This calendar is shared with you to read only: its events are changed by its owner."
+msgstr "Ce calendrier est partagé avec vous en lecture seule : ses événements sont modifiés par son propriétaire."
+
+#: frappe_webmail/neomail_share.py:127
+msgid "This message is too large to be shared."
+msgstr "Ce message est trop volumineux pour être partagé."
+
+#: frappe_webmail/tests/test_mailcraft_calendars.py:1401
+msgctxt "fr"
+msgid "To-dos and tasks"
+msgstr "À faire et tâches"
+
+#: frappe_webmail/neomail_share.py:162
+msgid "You can only share a message in a channel you are a member of."
+msgstr "Vous ne pouvez partager un message que dans un canal dont vous êtes membre."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:279
+msgid "You have no channel in Synk and nobody to write to yet."
+msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:331
+msgid "{0} attachment(s) could not be shared."
+msgstr "{0} pièce(s) jointe(s) n’ont pas pu être partagée(s)."
