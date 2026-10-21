@@ -504,11 +504,12 @@ def _create(note):
 	return name
 
 
-def _seen(name):
-	"""The note, when the person sees it (owned or shared with them); one they do not see is not there."""
+def _seen(name, lock=False):
+	"""The note, when the person sees it (owned or shared with them); one they do not see is not there. With `lock`, its
+	row stays locked until the request ends: two writes based on the same version cannot both pass its check."""
 	if not isinstance(name, str) or not _visible(["name"], names=[name]):
 		raise frappe.DoesNotExistError
-	return frappe.db.get_value(NOTE_DOCTYPE, name, FIELDS, as_dict=True)
+	return frappe.db.get_value(NOTE_DOCTYPE, name, FIELDS, as_dict=True, for_update=lock)
 
 
 def _update(name, patch):
@@ -517,7 +518,7 @@ def _update(name, patch):
 	the assistant): the client reads it again rather than write over it."""
 	from neoffice_theme import notes_api
 
-	row = _seen(name)
+	row = _seen(name, lock=True)
 	if isinstance(patch, dict) and any("/" in key for key in patch):
 		raise ValueError("A whole property replaces it: no patch of a part.")
 	fields = _fields(patch)

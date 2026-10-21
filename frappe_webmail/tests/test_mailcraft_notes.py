@@ -278,6 +278,27 @@ class TestMailCraftNotes(FrappeTestCase):
 			("Rich (renamed)", "<p><em>x</em></p>"),
 		)
 
+	def test_a_write_holds_its_note_until_the_request_ends(self):
+		"""The version is checked on a locked row: a second write based on the same version waits for the first, then
+		finds the note changed, instead of both passing the check and the second writing over the first."""
+		self._as(OWNER)
+		note = frappe.get_doc(
+			{"doctype": notes.NOTE_DOCTYPE, "title": "Locked", "content": "<p>a</p>", "status": "Draft"}
+		).insert()
+		read = self._get(OWNER_BOX, [note.name])["list"][0]
+		real = frappe.db.get_value
+		locked = []
+
+		def get_value(doctype, *args, **kwargs):
+			if doctype == notes.NOTE_DOCTYPE and kwargs.get("for_update"):
+				locked.append(args[0] if args else kwargs.get("filters"))
+			return real(doctype, *args, **kwargs)
+
+		with patch.object(frappe.db, "get_value", side_effect=get_value):
+			sent = self._set(OWNER_BOX, update={note.name: {"text": "b", "updated": read["updated"]}})
+		self.assertEqual(sent["notUpdated"], {}, sent)
+		self.assertIn(note.name, locked)
+
 	def test_only_its_owner_deletes_a_note_and_a_colleague_given_writing_edits_it(self):
 		import frappe.share
 
