@@ -23,6 +23,17 @@
 		window.frappe = window.frappe || {};
 		// The person's mailboxes, language and the product's name for the framed build, which reads them from this page (same origin).
 		window.mailcraftJmap = {{ host_json | safe }};
+		// What a refused call shows of an ended session, in the person's language.
+		const SESSION_ENDED = {{ _("Your Neoffice session has ended.") | tojson }};
+		// Frappe's answer to a page whose CSRF token is no longer its session's.
+		async function refusedAsStale(answer) {
+			if (answer.status !== 400) return false;
+			try {
+				return (await answer.clone().json()).exc_type === "CSRFTokenError";
+			} catch (e) {
+				return false;
+			}
+		}
 		// New facade tokens for this page's session, when the build's were refused (MailCraft calls it, then retries).
 		window.mailcraftJmapRenew = async function () {
 			const answer = await fetch("/api/method/frappe_webmail.mailcraft_jmap.renew", {
@@ -30,8 +41,12 @@
 				credentials: "same-origin",
 				headers: { Accept: "application/json", "X-Frappe-CSRF-Token": window.frappe.csrf_token || "" },
 			});
-			// The desk session ended: the page says so, and offers to sign in again and come back here.
-			if (answer.status === 401 || answer.status === 403) document.getElementById("signin").hidden = false;
+			// The desk session ended, or this page's CSRF token is a session's that another sign-in replaced: the page
+			// says so, and offers to sign in again and come back here (the sign-in page sends someone signed in straight
+			// back, with a page that has the new session's token).
+			if (answer.status === 401 || answer.status === 403 || (await refusedAsStale(answer))) {
+				document.getElementById("signin").hidden = false;
+			}
 			if (!answer.ok) return null;
 			document.getElementById("signin").hidden = true;
 			return (await answer.json()).message || null;
@@ -94,6 +109,8 @@
 							await pause(400 + Math.random() * 600);
 							continue;
 						}
+						// Refused again with a new token: the session itself ended (the page's banner says it too).
+						if (answer.status === 401 || answer.status === 403) throw new Error(SESSION_ENDED);
 						let detail = "";
 						try {
 							detail = (await answer.json()).detail || "";
@@ -116,8 +133,13 @@
 	{% else %}
 	<div id="signin" role="alert" hidden>
 		{{ _("Your Neoffice session has ended.") }}
-		<a href="/login?redirect-to=/neomail">{{ _("Sign in again") }}</a>
+		<a id="signin-link" href="/login?redirect-to=/neomail">{{ _("Sign in again") }}</a>
 	</div>
+	<script>
+		// Back to this very page after signing in, with what its address carries.
+		document.getElementById("signin-link").href =
+			"/login?redirect-to=" + encodeURIComponent(location.pathname + location.search);
+	</script>
 	<iframe src="{{ build_url }}" title="NeoMail"></iframe>
 	{% endif %}
 </body>
