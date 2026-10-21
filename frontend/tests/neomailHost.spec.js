@@ -469,6 +469,77 @@ describe("viewDock", () => {
 	});
 });
 
+describe("Synk, the page's own view after NeoMail's", () => {
+	const synkView = (host, badge) => ({ view: host.synk.view, title: "Synk", icon: host.synk.icon, badge, onClick: () => {} });
+
+	it("comes after NeoMail's views in the dock, with its badge, and alone lit while in front", () => {
+		const host = page().host;
+		const behind = host.viewDock(STATE, () => {}, TEXTS, { front: null, views: [synkView(host, 3)] });
+		expect(behind.map(({ id, icon, active, badge }) => [id, icon, active, badge])).toEqual([
+			["mail", "mail", true, undefined],
+			["calendar", "calendar", false, undefined],
+			["people", "users", false, undefined],
+			["notes", "sticky-note", false, undefined],
+			["synk", "message-circle", false, 3],
+		]);
+		// NeoMail's items carry no badge key at all: the cockpit draws one for any key it finds
+		expect("badge" in behind[0]).toBe(false);
+		const ahead = host.viewDock(STATE, () => {}, TEXTS, { front: "synk", views: [synkView(host)] });
+		expect(ahead.map((view) => view.active)).toEqual([false, false, false, false, true]);
+		expect("badge" in ahead[4]).toBe(false);
+	});
+
+	it("leaves no folder lit while it is in front, and joins the views at the end with an older cockpit", () => {
+		const host = page().host;
+		const nav = host.navSections(STATE, () => {}, TEXTS, { page: { front: "synk", views: [synkView(host, 2)] } });
+		const lit = nav.flatMap((section) => section.items.filter((item) => item.active).map((item) => item.label));
+		expect(lit).toEqual(["Synk"]);
+		expect(nav.at(-1).items.at(-1)).toMatchObject({ label: "Synk", icon: "lucide-message-circle", badge: 2 });
+	});
+
+	it("frames Raven's own app, which draws itself without the desk's menu there", () => {
+		expect(page().host.synk.address).toBe("/raven?embed=desk");
+	});
+
+	it("shows the sum of Raven's unread counts, none at 0, « 99+ » above 99", () => {
+		const { synkBadge } = page().host;
+		expect(synkBadge([{ name: "a", unread_count: 2 }, { name: "b", unread_count: 1 }])).toBe(3);
+		expect(synkBadge([])).toBeUndefined();
+		expect(synkBadge([{ name: "a", unread_count: 0 }])).toBeUndefined();
+		expect(synkBadge([{ name: "a", unread_count: 120 }])).toBe("99+");
+		// Whatever is not a count is no count
+		expect(synkBadge(null)).toBeUndefined();
+		expect(synkBadge([{ name: "a", unread_count: "4" }, null, { name: "b", unread_count: -1 }])).toBeUndefined();
+	});
+
+	it("asks the count again only for an event that can change it, as Neodesk does", () => {
+		const { synkCountMoved } = page().host;
+		const me = "ada@example.org";
+		const bruno = "bruno@example.org";
+		const mine = new Set(["general", "ada-bruno"]);
+		// A read on another screen
+		expect(synkCountMoved({ channel_id: "general", sent_by: me, event_type: "track_visit" }, me, mine)).toBe(true);
+		// One's own message, in a channel or a direct message
+		expect(synkCountMoved({ channel_id: "general", sent_by: me, is_dm_channel: false }, me, mine)).toBe(false);
+		expect(synkCountMoved({ channel_id: "ada-bruno", sent_by: me, is_dm_channel: true }, me, mine)).toBe(false);
+		// Someone else's direct message, even in a conversation the page does not know yet
+		expect(synkCountMoved({ channel_id: "new-dm", sent_by: bruno, is_dm_channel: true }, me, mine)).toBe(true);
+		// A channel's message: only in a channel of the person's
+		expect(synkCountMoved({ channel_id: "general", sent_by: bruno }, me, mine)).toBe(true);
+		expect(synkCountMoved({ channel_id: "elsewhere", sent_by: bruno }, me, mine)).toBe(false);
+		// The channels not known yet: asked, to be safe
+		expect(synkCountMoved({ channel_id: "elsewhere", sent_by: bruno }, me, null)).toBe(true);
+		expect(synkCountMoved(null, me, mine)).toBe(false);
+	});
+
+	it("knows the person's channels and direct messages from get_all_channels", () => {
+		const { synkChannels } = page().host;
+		const names = synkChannels({ channels: [{ name: "general" }, { name: 4 }], dm_channels: [{ name: "ada-bruno" }] });
+		expect([...names]).toEqual(["general", "ada-bruno"]);
+		expect([...synkChannels(null)]).toEqual([]);
+	});
+});
+
 describe("followChoice", () => {
 	const { followChoice } = page().host;
 	const inbox = { type: "mailcraft:state", module: "mail", account: "ada@example.org", folder: "F-inbox" };

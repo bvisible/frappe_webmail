@@ -181,6 +181,10 @@ window.neomailHost = (function () {
 	// NeoMail's views, in its order, and their icons (lucide names, without the prefix the menu's items take).
 	const VIEW_ICONS = { mail: "mail", calendar: "calendar", people: "users", notes: "sticky-note" };
 	const VIEWS = Object.keys(VIEW_ICONS);
+	// Synk, the instance's Raven, a view the desk's page adds after NeoMail's own (neoffice-apps,
+	// docs/raven-in-neomail-study.md, section 8): Raven's app in a frame of its own, which it draws without the desk's
+	// menu because it is framed by this page and asked to (`embed=desk`, Raven's apps/web/src/utils/embeddedInDesk.ts).
+	const SYNK = { view: "synk", icon: "message-circle", address: "/raven?embed=desk" };
 	// The deepest a folder is drawn under its parents.
 	const MAX_DEPTH = 8;
 
@@ -200,31 +204,74 @@ window.neomailHost = (function () {
 
 	/*
 	 * NeoMail's views as the menu shows them: those it offers here (`views`, in its order; the four from a NeoMail
-	 * that does not say), each with its name (`texts[view]`), its icon, whether it is in front, and its click.
+	 * that does not say), each with its name (`texts[view]`), its icon, whether it is in front, and its click; then the
+	 * page's own (`page.views`: {view, title, icon, badge, onClick}, Synk). While one of the page's is in front
+	 * (`page.front`, its `view`), it is the one lit, and none of NeoMail's.
 	 */
-	function viewsOf(state, send, texts) {
+	function viewsOf(state, send, texts, page) {
 		const now = state || {};
+		const own = page || {};
 		const offered = Array.isArray(now.views) ? now.views.filter((view) => VIEW_ICONS[view]) : VIEWS;
-		return offered.map((view) => ({
+		const views = offered.map((view) => ({
 			view,
 			title: texts[view],
 			icon: VIEW_ICONS[view],
-			active: now.module === view,
+			active: !own.front && now.module === view,
 			onClick: () => send("view." + view, {}),
 		}));
+		for (const extra of Array.isArray(own.views) ? own.views : []) {
+			views.push({ ...extra, active: own.front === extra.view });
+		}
+		return views;
 	}
 
 	/*
-	 * The views as the menu's dock draws them: a row of icons always in sight, their names as tooltips.
+	 * The views as the menu's dock draws them: a row of icons always in sight, their names as tooltips, a view's
+	 * number (Synk's unread messages) as its badge.
 	 */
-	function viewDock(state, send, texts) {
-		return viewsOf(state, send, texts).map((view) => ({
-			id: view.view,
-			title: view.title,
-			icon: view.icon,
-			active: view.active,
-			onClick: view.onClick,
-		}));
+	function viewDock(state, send, texts, page) {
+		return viewsOf(state, send, texts, page).map((view) => {
+			const item = { id: view.view, title: view.title, icon: view.icon, active: view.active, onClick: view.onClick };
+			if (view.badge !== undefined) item.badge = view.badge;
+			return item;
+		});
+	}
+
+	/* Raven's unread messages as Synk's badge: the sum of `get_unread_count_for_channels`, none at 0, « 99+ » above 99. */
+	function synkBadge(counts) {
+		const count = (row) => (row && Number.isFinite(row.unread_count) && row.unread_count > 0 ? row.unread_count : 0);
+		const total = (Array.isArray(counts) ? counts : []).reduce((sum, row) => sum + count(row), 0);
+		if (!total) return undefined;
+		return total > 99 ? "99+" : total;
+	}
+
+	/*
+	 * Whether one of Raven's `raven:unread_channel_count_updated` events may change the person's unread messages, so that
+	 * the page asks for them again; the rules Neodesk follows (neoffice-mobile, apps/mobile/hooks/useDesktopChat.ts):
+	 * - a read on another screen (`track_visit`) does;
+	 * - one's own message never does (Raven counts only the others');
+	 * - a direct message does: Raven sends it to its two people's rooms only;
+	 * - a channel's message is broadcast to everyone holding the Raven role, its text left out: it does only in a channel
+	 *   the person is a member of (`mine`, a Set of channel names; while the page does not know them, it does).
+	 */
+	function synkCountMoved(event, me, mine) {
+		if (!event || typeof event !== "object") return false;
+		if (event.event_type === "track_visit") return true;
+		if (me && event.sent_by === me) return false;
+		if (event.is_dm_channel) return true;
+		if (!(mine instanceof Set)) return true;
+		return mine.has(event.channel_id);
+	}
+
+	/* The names of the person's channels and direct messages, from `get_all_channels` (its `channels`, `dm_channels`). */
+	function synkChannels(answer) {
+		const names = new Set();
+		for (const list of [answer && answer.channels, answer && answer.dm_channels]) {
+			for (const channel of Array.isArray(list) ? list : []) {
+				if (channel && typeof channel.name === "string") names.add(channel.name);
+			}
+		}
+		return names;
 	}
 
 	/*
@@ -238,15 +285,17 @@ window.neomailHost = (function () {
 	 *
 	 * The folder shown is marked once, while Mail is in front: in the list it was chosen from (`options.chosen`, the
 	 * page's last click: {account, folder, from}), else, when NeoMail changed folder by itself, in its mailbox's
-	 * section. The cockpit's sections cannot be folded.
+	 * section; never while one of the page's own views is in front (`options.page`, as viewsOf takes it). The cockpit's
+	 * sections cannot be folded.
 	 */
 	function navSections(state, send, texts, options) {
 		const now = state || {};
 		const opts = options || {};
+		const page = opts.page || {};
 		const accounts = Array.isArray(now.accounts) ? now.accounts : [];
 		const favorites = Array.isArray(now.favorites) ? now.favorites : [];
 		const shown = (account, folder) =>
-			now.module === "mail" && folder != null && account === now.account && folder === now.folder;
+			!page.front && now.module === "mail" && folder != null && account === now.account && folder === now.folder;
 		const chosen = opts.chosen;
 		const fromFavorites =
 			Boolean(chosen) &&
@@ -308,12 +357,11 @@ window.neomailHost = (function () {
 		}
 		if (!opts.dock) {
 			nav.push({
-				items: viewsOf(now, send, texts).map((view) => ({
-					label: view.title,
-					icon: "lucide-" + view.icon,
-					active: view.active,
-					onClick: view.onClick,
-				})),
+				items: viewsOf(now, send, texts, page).map((view) => {
+					const item = { label: view.title, icon: "lucide-" + view.icon, active: view.active, onClick: view.onClick };
+					if (view.badge !== undefined) item.badge = view.badge;
+					return item;
+				}),
 			});
 		}
 		return nav;
@@ -418,6 +466,10 @@ window.neomailHost = (function () {
 		navSections,
 		viewDock,
 		badgeOf,
+		synk: SYNK,
+		synkBadge,
+		synkCountMoved,
+		synkChannels,
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,
