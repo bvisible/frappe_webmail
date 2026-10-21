@@ -14,10 +14,16 @@ Run with:
 """
 
 import ast
+import datetime
+import ipaddress
 import os
 import socket
+import ssl
+import tempfile
 import threading
 import time
+from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -39,10 +45,11 @@ SLACK = 1.5
 
 class _Server:
 	"""A server on this machine. Silent (no `greeting`): it accepts a connection and says nothing, no IMAP greeting
-	and no TLS handshake. Else it greets, answers CAPABILITY and the commands in `answers`, and from the first other
-	command says nothing more."""
+	and no TLS handshake. Else it greets (over TLS with `tls`, a server context), answers CAPABILITY and the commands
+	in `answers`, and at the first other command, as `then` says: says nothing more ("silent"), closes the connection
+	("close"), or says BYE and closes it ("bye")."""
 
-	def __init__(self, greeting=None, answers=()):
+	def __init__(self, greeting=None, answers=(), then="silent", tls=None):
 		self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.listener.bind(("127.0.0.1", 0))
@@ -50,6 +57,8 @@ class _Server:
 		self.port = self.listener.getsockname()[1]
 		self.greeting = greeting
 		self.answers = {command.upper().encode() for command in answers}
+		self.then = then
+		self.tls = tls
 		self.connections = []
 		self.accepted = 0
 		threading.Thread(target=self._serve, daemon=True).start()
@@ -68,6 +77,9 @@ class _Server:
 		if self.greeting is None:
 			return
 		try:
+			if self.tls is not None:
+				connection = self.tls.wrap_socket(connection, server_side=True)
+				self.connections.append(connection)
 			connection.sendall(self.greeting)
 			pending = b""
 			while True:
@@ -81,18 +93,28 @@ class _Server:
 					command = rest.split(b" ", 1)[0].upper()
 					if command == b"CAPABILITY":
 						connection.sendall(b"* CAPABILITY IMAP4rev1\r\n" + tag + b" OK done\r\n")
+					elif command == b"LOGOUT" and command in self.answers:
+						connection.sendall(b"* BYE logging out\r\n" + tag + b" OK done\r\n")
 					elif command in self.answers:
 						connection.sendall(tag + b" OK done\r\n")
 					else:
+						if self.then == "bye":
+							connection.sendall(b"* BYE going away\r\n")
+						if self.then in ("bye", "close"):
+							connection.shutdown(socket.SHUT_RDWR)
+							connection.close()
 						return
 		except OSError:
 			return
 
 	def close(self):
-		self.listener.close()
-		for connection in self.connections:
+		for sock in (self.listener, *self.connections):
 			try:
-				connection.close()
+				sock.shutdown(socket.SHUT_RDWR)
+			except OSError:
+				pass
+			try:
+				sock.close()
 			except OSError:
 				pass
 
@@ -115,6 +137,69 @@ def _in_thread(open_connection, wait):
 	thread.start()
 	thread.join(wait)
 	return outcome
+
+
+def _certificate(folder):
+	"""A certificate for 127.0.0.1 and its key, made for the test, as PEM files in `folder`: (certificate, key)."""
+	from cryptography import x509
+	from cryptography.hazmat.primitives import hashes, serialization
+	from cryptography.hazmat.primitives.asymmetric import ec
+	from cryptography.x509.oid import NameOID
+
+	key = ec.generate_private_key(ec.SECP256R1())
+	name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
+	now = datetime.datetime.now(datetime.timezone.utc)
+	certificate = (
+		x509.CertificateBuilder()
+		.subject_name(name)
+		.issuer_name(name)
+		.public_key(key.public_key())
+		.serial_number(x509.random_serial_number())
+		.not_valid_before(now - datetime.timedelta(minutes=5))
+		.not_valid_after(now + datetime.timedelta(hours=1))
+		.add_extension(
+			x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]), False
+		)
+		.add_extension(x509.BasicConstraints(ca=True, path_length=None), True)
+		.sign(key, hashes.SHA256())
+	)
+	paths = (os.path.join(folder, "certificate.pem"), os.path.join(folder, "key.pem"))
+	with open(paths[0], "wb") as handle:
+		handle.write(certificate.public_bytes(serialization.Encoding.PEM))
+	with open(paths[1], "wb") as handle:
+		handle.write(
+			key.private_bytes(
+				serialization.Encoding.PEM,
+				serialization.PrivateFormat.PKCS8,
+				serialization.NoEncryption(),
+			)
+		)
+	return paths
+
+
+class _Unanswering:
+	"""A socket whose connect waits its whole timeout, as an address that does not answer; `tried` keeps each address
+	and the timeout it was given."""
+
+	tried: ClassVar[list] = []
+
+	def __init__(self, *args):
+		self.timeout = None
+
+	def settimeout(self, timeout):
+		self.timeout = timeout
+
+	def connect(self, address):
+		_Unanswering.tried.append((address[0], self.timeout))
+		time.sleep(self.timeout)
+		raise TimeoutError(f"timed out: {address[0]}")
+
+	def close(self):
+		pass
+
+
+# A name with six addresses (documentation addresses, RFC 5737)
+SIX_ADDRESSES = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (f"192.0.2.{n}", 993)) for n in range(1, 7)]
 
 
 def _measured(label, seconds):
@@ -336,34 +421,163 @@ class TestImapTimeouts(FrappeTestCase):
 		server = self._server(greeting=b"* OK ready\r\n", answers=("LOGIN", "LOGOUT"))
 		account = _account(port=server.port, ssl=0)
 		budget = 1.5
-		try:
-			with (
-				patch.object(frappe.local, "request", object(), create=True),
-				patch.dict(frappe.local.flags, {"in_test": False}),
-				patch.object(imap_client, "IMAP_REQUEST_BUDGET", budget),
-				patch.object(webmail_api, "imap_login", side_effect=_sign_in),
-			):
-				start = time.monotonic()
-				with self.assertRaises(webmail_api.WebmailConnectionError):
-					with webmail_api.imap_session(account) as client:
-						# A read whose own limit is 60 s, cut at what the request has left
-						client.select_folder("INBOX")
-				spent = time.monotonic() - start
-				_measured(f"a read with 60 s of its own, in a request with {budget} s", spent)
-				self.assertLess(spent, budget + SLACK)
-				before = server.accepted
-				start = time.monotonic()
-				with self.assertRaises(webmail_api.WebmailConnectionError):
-					with webmail_api.imap_session(account):
-						pass
-				_measured("the request's next session, its budget spent", time.monotonic() - start)
-				self.assertLess(time.monotonic() - start, 0.5)
-				self.assertEqual(server.accepted, before, "no new connection")
-		finally:
-			if getattr(frappe.local, "imap_deadline", None) is not None:
-				del frappe.local.imap_deadline
+		with (
+			patch.object(frappe.local, "request", SimpleNamespace(), create=True),
+			patch.dict(frappe.local.flags, {"in_test": False}),
+			patch.object(imap_client, "IMAP_REQUEST_BUDGET", budget),
+			patch.object(webmail_api, "imap_login", side_effect=_sign_in),
+		):
+			start = time.monotonic()
+			with self.assertRaises(webmail_api.WebmailConnectionError):
+				with webmail_api.imap_session(account) as client:
+					# A read whose own limit is 60 s, cut at what the request has left
+					client.select_folder("INBOX")
+			spent = time.monotonic() - start
+			_measured(f"a read with 60 s of its own, in a request with {budget} s", spent)
+			self.assertLess(spent, budget + SLACK)
+			before = server.accepted
+			start = time.monotonic()
+			with self.assertRaises(webmail_api.WebmailConnectionError):
+				with webmail_api.imap_session(account):
+					pass
+			_measured("the request's next session, its budget spent", time.monotonic() - start)
+			self.assertLess(time.monotonic() - start, 0.5)
+			self.assertEqual(server.accepted, before, "no new connection")
 
 	def test_a_background_job_has_the_limits_of_each_operation_only(self):
 		self.assertIsNone(getattr(frappe.local, "request", None))
 		self.assertIsNone(imap_client._time_left())
 		self.assertEqual(imap_client._within_budget(7), 7)
+
+	def test_the_budget_belongs_to_its_request(self):
+		"""Kept on the request itself: a request that never reached Frappe's release of its locals (a callback that
+		failed first) can't pass a spent budget on to the next one, which would fail every IMAP operation of the
+		worker."""
+		first, second = SimpleNamespace(), SimpleNamespace()
+		with (
+			patch.object(frappe.local, "request", first, create=True),
+			patch.object(imap_client, "IMAP_REQUEST_BUDGET", 0.2),
+		):
+			imap_client._time_left()
+			time.sleep(0.3)
+			with self.assertRaises(imap_client.MailServerTooSlow) as caught:
+				imap_client._within_budget(8)
+			self.assertEqual(
+				str(caught.exception), frappe._("The mail server is not answering quickly enough.")
+			)
+			# The next request, frappe.local left as it was
+			frappe.local.request = second
+			self.assertGreater(imap_client._within_budget(8), 0.1)
+
+	# The addresses of a name ------------------------------------------------------------------------------------
+
+	def test_each_address_has_the_connect_timeout_in_turn_outside_a_request(self):
+		_Unanswering.tried = []
+		start = time.monotonic()
+		with (
+			patch.object(imap_client.socket, "getaddrinfo", return_value=SIX_ADDRESSES),
+			patch.object(imap_client.socket, "socket", _Unanswering),
+			self.assertRaises(TimeoutError) as caught,
+		):
+			imap_client._connect("mail.example.org", 993, 0.1)
+		_measured("six addresses that do not answer, 0.1 s each, no request", time.monotonic() - start)
+		self.assertEqual(_Unanswering.tried, [(f"192.0.2.{n}", 0.1) for n in range(1, 7)], "in their order")
+		self.assertEqual(str(caught.exception), "timed out: 192.0.2.6", "the last address's error")
+
+	def test_a_name_with_many_addresses_stays_within_the_request_s_budget(self):
+		"""socket.create_connection gives each address the whole timeout: six that do not answer took six times
+		min(8 s, what was left), past gunicorn's 120 s when opened late in a request."""
+		_Unanswering.tried = []
+		with (
+			patch.object(frappe.local, "request", SimpleNamespace(), create=True),
+			patch.object(imap_client, "IMAP_REQUEST_BUDGET", 0.4),
+			patch.object(imap_client.socket, "getaddrinfo", return_value=SIX_ADDRESSES),
+			patch.object(imap_client.socket, "socket", _Unanswering),
+		):
+			start = time.monotonic()
+			with self.assertRaises(TimeoutError):
+				imap_client._connect("mail.example.org", 993, 8)
+			spent = time.monotonic() - start
+		_measured("six addresses that do not answer, 8 s each, in a request with 0.4 s", spent)
+		self.assertLess(spent, 0.4 + 0.3)
+		self.assertLess(len(_Unanswering.tried), 6)
+
+	# How a connection ends --------------------------------------------------------------------------------------
+
+	def test_a_server_that_closes_or_says_bye_leaves_a_connection_never_used_again(self):
+		"""imaplib says « socket error: EOF » or BYE outside the socket's reads: the connection is marked all the
+		same, and a caller that went on (as _delete_draft in save_draft_imap does) leaves it out of the pool."""
+		for then in ("close", "bye"):
+			server = self._server(greeting=b"* OK ready\r\n", answers=("LOGIN", "LOGOUT"), then=then)
+			account = _account(port=server.port, ssl=0)
+			with (
+				patch.dict(frappe.local.flags, {"in_test": False}),
+				patch.object(webmail_api, "imap_login", side_effect=_sign_in),
+			):
+				with webmail_api.imap_session(account) as client:
+					try:
+						client.select_folder("INBOX")
+					except Exception:
+						pass
+			self.assertTrue(client.socket_failed, then)
+			self.assertNotIn(account.name, webmail_api._IMAP_POOL, then)
+
+	def test_a_connection_lost_after_a_change_was_sent_says_the_change_may_have_been_made(self):
+		"""An APPEND whose answer never came may have filed the message: NeoMail's facade must not say « nothing
+		done, ask again » (it would be filed twice). A read cut off the same way changed nothing."""
+		server = self._server(greeting=b"* OK ready\r\n", answers=("LOGIN", "LOGOUT"))
+		account = _account(port=server.port, ssl=0)
+		with (
+			patch.dict(frappe.local.flags, {"in_test": False}),
+			patch.object(imap_client, "IMAP_READ_TIMEOUT", SHORT),
+			patch.object(webmail_api, "imap_login", side_effect=_sign_in),
+		):
+			with self.assertRaises(webmail_api.WebmailConnectionLost):
+				with webmail_api.imap_session(account) as client:
+					client.append("INBOX", b"Subject: kept\r\n\r\nKept.\r\n")
+			with self.assertRaises(webmail_api.WebmailConnectionError) as caught:
+				with webmail_api.imap_session(account) as client:
+					client.select_folder("INBOX")
+			self.assertNotIsInstance(caught.exception, webmail_api.WebmailConnectionLost)
+
+	def test_the_commands_that_change_something_are_told_from_the_others(self):
+		writes = imap_client._writes
+		for line in (
+			b"A1 APPEND INBOX {5}\r\n",
+			b"A2 UID STORE 7 +FLAGS (\\Seen)\r\n",
+			b"A3 uid move 7 Archive\r\n",
+		):
+			self.assertTrue(writes(line), line)
+		for line in (b"A4 SELECT INBOX\r\n", b"A5 UID FETCH 7 (FLAGS)\r\n", b"A6 NOOP\r\n", b"x"):
+			self.assertFalse(writes(line), line)
+
+	def test_a_tls_connection_that_answers_signs_in_and_goes_on_and_one_not_trusted_is_refused(self):
+		with tempfile.TemporaryDirectory() as folder:
+			certificate, key = _certificate(folder)
+			served = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+			served.load_cert_chain(certificate, key)
+			trusted = ssl.create_default_context(cafile=certificate)
+			server = self._server(greeting=b"* OK ready\r\n", answers=("LOGIN", "NOOP", "LOGOUT"), tls=served)
+			start = time.monotonic()
+			client = imap_client.IMAPClient(
+				host="127.0.0.1",
+				port=server.port,
+				ssl=True,
+				ssl_context=trusted,
+				timeout=imap_client.imap_timeout(),
+			)
+			client.login("user", "secret")
+			client.noop()
+			_measured("a TLS connection, signed in, then NOOP", time.monotonic() - start)
+			self.assertFalse(client.socket_failed)
+			self.assertEqual(client.socket().gettimeout(), imap_client.IMAP_READ_TIMEOUT)
+			client.logout()
+			# The certificate is still checked: a context that does not trust it refuses the connection
+			with self.assertRaises(ssl.SSLCertVerificationError):
+				imap_client.IMAPClient(
+					host="127.0.0.1",
+					port=server.port,
+					ssl=True,
+					ssl_context=ssl.create_default_context(),
+					timeout=imap_client.imap_timeout(),
+				)

@@ -8,6 +8,7 @@ Provides a high-level interface for IMAP operations with connection pooling
 and error handling.
 """
 
+import socket
 import time
 
 import frappe
@@ -17,9 +18,9 @@ try:
 	from imapclient import IMAPClient as _IMAPClient
 	from imapclient import SocketTimeout
 	from imapclient.imap4 import IMAP4WithTimeout
-	from imapclient.tls import IMAP4_TLS
+	from imapclient.tls import IMAP4_TLS, wrap_socket
 except ImportError:
-	_IMAPClient = SocketTimeout = IMAP4WithTimeout = IMAP4_TLS = None
+	_IMAPClient = SocketTimeout = IMAP4WithTimeout = IMAP4_TLS = wrap_socket = None
 
 # How long a mail server may take, for every IMAP connection the app opens (imap_timeout). Without a limit, a server
 # whose name gives IPv6 addresses, on a host with no working IPv6 route, held the connection for about two minutes
@@ -36,6 +37,26 @@ IMAP_PROBE_TIMEOUT = 10
 # once, each with its own). Past it, every IMAP operation of the request fails at once, as a connection that failed.
 # A background job has no such budget: the limits of each operation only.
 IMAP_REQUEST_BUDGET = 90
+# The IMAP commands that change something on the server (UID ones included): one sent on a connection that then fails
+# may have been done (WebmailConnectionLost in webmail_api).
+WRITES = frozenset(
+	(
+		b"APPEND",
+		b"STORE",
+		b"COPY",
+		b"MOVE",
+		b"EXPUNGE",
+		b"CREATE",
+		b"DELETE",
+		b"RENAME",
+		b"SETACL",
+		b"DELETEACL",
+	)
+)
+
+
+class MailServerTooSlow(TimeoutError):
+	"""The web request's time for its mail servers is spent (IMAP_REQUEST_BUDGET): nothing more is asked of them."""
 
 
 def imap_timeout():
@@ -45,53 +66,130 @@ def imap_timeout():
 
 def _time_left():
 	"""The seconds the current web request has left for its mail servers (IMAP_REQUEST_BUDGET from its first IMAP
-	operation; Frappe releases frappe.local after each request), None outside a web request."""
-	if getattr(frappe.local, "request", None) is None:
+	operation), None outside a web request. The deadline is kept on the request itself: one that never reached its
+	end (a callback that failed before Frappe released its locals) can't pass its own on to the next."""
+	request = getattr(frappe.local, "request", None)
+	if request is None:
 		return None
-	deadline = getattr(frappe.local, "imap_deadline", None)
+	deadline = getattr(request, "neoffice_imap_deadline", None)
 	if deadline is None:
-		deadline = frappe.local.imap_deadline = time.monotonic() + IMAP_REQUEST_BUDGET
+		deadline = time.monotonic() + IMAP_REQUEST_BUDGET
+		request.neoffice_imap_deadline = deadline
 	return deadline - time.monotonic()
 
 
 def _within_budget(limit):
-	"""`limit` (seconds), or what the web request has left when that is less; TimeoutError when it has nothing left."""
+	"""`limit` (seconds), or what the web request has left when that is less; MailServerTooSlow when it has nothing
+	left."""
 	left = _time_left()
 	if left is None:
 		return limit
 	if left <= 0:
-		raise TimeoutError("this request's time for its mail servers is spent")
+		raise MailServerTooSlow(_("The mail server is not answering quickly enough."))
 	return left if limit is None else min(limit, left)
+
+
+def _connect(host, port, limit):
+	"""socket.create_connection, whose `timeout` bounds each address alone: here each address of the name has `limit`
+	and never more than what the web request has left, so that a name with many addresses that do not answer stays
+	within the request's budget. The addresses in getaddrinfo's order; when none answers, the last one's error."""
+	error = None
+	for family, kind, protocol, _name, address in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+		timeout = _within_budget(limit)
+		sock = None
+		try:
+			sock = socket.socket(family, kind, protocol)
+			sock.settimeout(timeout)
+			sock.connect(address)
+			return sock
+		except OSError as e:
+			error = e
+			if sock is not None:
+				sock.close()
+	if error is not None:
+		raise error
+	raise OSError("getaddrinfo returns an empty list")
 
 
 if _IMAPClient is not None:
 
 	class _Watched:
-		"""An IMAP connection that remembers its socket failed (`failed`: a read or a write timed out, or the connection
-		broke), so that nobody uses it again, whoever caught the error; and whose every read and write waits at most
+		"""An IMAP connection that remembers its socket failed (`failed`: a read or a write timed out, the server
+		closed it or said BYE, the connection broke), so that nobody uses it again, whoever caught the error; that
+		notes when a command that changes something was sent (`wrote`); and whose every read and write waits at most
 		its limit (`limit`: the connect timeout until imapclient sets the read timeout, then the read timeout), and
 		never past what the web request has left (_within_budget)."""
 
 		failed = False
+		wrote = False
 		limit = None
+
+		def _bound(self):
+			limit = self.limit if self.limit is not None else self._timeout
+			self.sock.settimeout(_within_budget(limit))
 
 		def _watch(self, operation, *args):
 			try:
-				limit = self.limit if self.limit is not None else self._timeout
-				self.sock.settimeout(_within_budget(limit))
+				self._bound()
 				return operation(*args)
 			except OSError:
 				self.failed = True
 				raise
 
 		def read(self, size):
-			return self._watch(super().read, size)
+			data = self._watch(super().read, size)
+			if size and not data:
+				self.failed = True
+			return data
 
 		def readline(self):
-			return self._watch(super().readline)
+			line = self._watch(super().readline)
+			# The server closed the connection (imaplib then says « socket error: EOF »)
+			if not line:
+				self.failed = True
+			return line
 
 		def send(self, data):
+			try:
+				self._bound()
+			except OSError:
+				self.failed = True
+				raise
+			if _writes(data):
+				self.wrote = True
 			return self._watch(super().send, data)
+
+		def _get_response(self):
+			try:
+				return super()._get_response()
+			except self.abort:
+				self.failed = True
+				raise
+
+		def _command(self, *args):
+			try:
+				return super()._command(*args)
+			except self.abort:
+				self.failed = True
+				raise
+
+		def _command_complete(self, *args):
+			try:
+				return super()._command_complete(*args)
+			except self.abort:
+				self.failed = True
+				raise
+
+	def _writes(data):
+		"""Whether the line sent is a command that changes something on the server (`tag WRITE …`, `tag UID WRITE …`).
+		A literal sent after its command (an APPENDed message) is no command, and may read as one: then it says yes."""
+		words = bytes(data[:64]).split(b" ", 3)
+		if len(words) < 2:
+			return False
+		command = words[1].upper()
+		if command == b"UID" and len(words) > 2:
+			command = words[2].upper()
+		return command in WRITES
 
 	class _IMAP4TLSWithTimeout(_Watched, IMAP4_TLS):
 		"""imapclient's TLS connection, opened within its connect timeout. imapclient 3.1 keeps the timeout it is given
@@ -101,30 +199,30 @@ if _IMAPClient is not None:
 		client then fails)."""
 
 		def _create_socket(self, timeout=None):
+			limit = timeout if timeout is not None else self._timeout
 			try:
-				return super()._create_socket(
-					_within_budget(timeout if timeout is not None else self._timeout)
-				)
+				sock = _connect(self.host, self.port, limit)
+				sock.settimeout(_within_budget(limit))
+				return wrap_socket(sock, self.ssl_context, self.host)
 			except OSError:
 				self.failed = True
 				raise
 
 	class _IMAP4WithTimeout(_Watched, IMAP4WithTimeout):
-		"""imapclient's plain connection (it passes its connect timeout already), watched as the TLS one."""
+		"""imapclient's plain connection, opened as the TLS one is, and watched the same way."""
 
 		def _create_socket(self, timeout=None):
 			try:
-				return super()._create_socket(
-					_within_budget(timeout if timeout is not None else self._timeout)
-				)
+				return _connect(self.host, self.port, timeout if timeout is not None else self._timeout)
 			except OSError:
 				self.failed = True
 				raise
 
 	class BoundedIMAPClient(_IMAPClient):
 		"""The IMAPClient the app builds (as `IMAPClient`): with TLS too, its connect timeout bounds the connection, the
-		handshake and the greeting; it says when its socket failed (`socket_failed`); and its reads keep to the web
-		request's budget."""
+		handshake and the greeting; it says when its socket failed (`socket_failed`) and when it sent a command that
+		changes something since its session began (`wrote`, begin_session); and its reads keep to the web request's
+		budget."""
 
 		def _create_IMAP4(self):
 			if self.stream:
@@ -143,10 +241,19 @@ if _IMAPClient is not None:
 			self._imap.limit = seconds
 			self.socket().settimeout(seconds)
 
+		def begin_session(self):
+			"""A session of the pool begins with this connection: nothing written yet."""
+			self._imap.wrote = False
+
 		@property
 		def socket_failed(self):
 			"""Whether a read or a write of this connection failed: it is not to be used again."""
 			return bool(getattr(self._imap, "failed", False))
+
+		@property
+		def wrote(self):
+			"""Whether a command that changes something was sent since the session began."""
+			return bool(getattr(self._imap, "wrote", False))
 
 	IMAPClient = BoundedIMAPClient
 else:

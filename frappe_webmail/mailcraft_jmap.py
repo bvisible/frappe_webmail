@@ -456,6 +456,9 @@ def _answer(build):
 		return _problem("about:blank", 404, "Not found")
 	except frappe.PermissionError:
 		return _problem("about:blank", 403, _("Not permitted"))
+	except webmail.WebmailConnectionLost as e:
+		# A change may have been made before the connection failed: not a 503 (nothing done, MailCraft asks again)
+		return _problem("about:blank", 500, str(e))
 	except (webmail.WebmailConnectionError, webmail.WebmailAuthenticationError) as e:
 		return _problem("about:blank", 503, str(e))
 	except frappe.ValidationError as e:
@@ -594,7 +597,10 @@ def _api():
 		except JmapError as e:
 			out = ("error", {"type": e.type, "description": e.description, **e.properties})
 		except (webmail.WebmailConnectionError, webmail.WebmailAuthenticationError) as e:
-			out = ("error", {"type": "serverUnavailable", "description": str(e)})
+			# serverUnavailable says nothing was changed, and MailCraft makes the change again; a connection lost after
+			# a change was sent may have made it (a message filed twice if asked again): serverFail, a doubt it checks.
+			kind = "serverFail" if isinstance(e, webmail.WebmailConnectionLost) else "serverUnavailable"
+			out = ("error", {"type": kind, "description": str(e)})
 		except frappe.ValidationError as e:
 			# The webmail's refusals: an account not one's own, a disabled one.
 			out = ("error", {"type": "forbidden", "description": str(e)})
@@ -1329,7 +1335,10 @@ def _apply(items, failed, changes, run):
 	try:
 		run([uid for _jid, uid in items])
 	except Exception as e:
-		if isinstance(e, webmail.WebmailConnectionError | webmail.WebmailAuthenticationError):
+		if isinstance(e, webmail.WebmailConnectionLost):
+			# The change may have been made before the connection failed: a doubt, not « nothing done, ask again »
+			kind = "serverFail"
+		elif isinstance(e, webmail.WebmailConnectionError | webmail.WebmailAuthenticationError):
 			kind = "serverUnavailable"
 		elif isinstance(e, frappe.ValidationError):
 			kind = "forbidden"

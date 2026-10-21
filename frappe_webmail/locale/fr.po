@@ -3649,6 +3649,10 @@ msgstr ""
 "Le numéro de mobile de l'employé, sinon celui de l'utilisateur : souvent un "
 "numéro privé, il reste désactivé sauf si la société le souhaite."
 
+#: frappe_webmail/utils/imap_client.py:88
+msgid "The mail server is not answering quickly enough."
+msgstr "Le serveur de messagerie ne répond pas assez vite."
+
 #. Description of the 'Phone' (Check) field in DocType 'Email Signature
 #. Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json

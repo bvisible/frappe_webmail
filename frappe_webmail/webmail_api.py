@@ -119,6 +119,12 @@ class WebmailConnectionError(frappe.ValidationError):
 	"""
 
 
+class WebmailConnectionLost(WebmailConnectionError):
+	"""The IMAP connection failed after a command that changes something was sent on it (APPEND, STORE, MOVE…): the
+	server may have done it, its answer lost. Asking again could do it twice (a message filed twice): NeoMail's facade
+	says `serverFail` (it may have been done) rather than `serverUnavailable` (nothing was done, try again)."""
+
+
 def to_bool(value, default=False):
 	"""Convert a value to boolean, handling string 'true'/'false' from JS"""
 	if value is None:
@@ -467,14 +473,20 @@ def _socket_failed(client):
 	return getattr(client, "socket_failed", False) is True
 
 
-def _raise_connection_failure(exc, account):
-	"""A connection that failed while in use (it timed out, or broke) as the webmail says it: WebmailConnectionError
-	(NeoMail's facade answers 503 and tries again), raised from the socket's own error. Anything else is left as is."""
+def _raise_connection_failure(exc, account, client=None):
+	"""A connection that failed while in use (it timed out, or broke) as the webmail says it, raised from the socket's
+	own error: WebmailConnectionError (nothing was changed: NeoMail's facade says the server is unavailable, and it
+	tries again), or WebmailConnectionLost once a command that changes something was sent in this session (it may have
+	been done). Anything else is left as is."""
 	if not _imap_is_connection_error(exc):
 		return
 	try:
 		_raise_webmail_login_error("IMAP", exc, account)
-	except (WebmailConnectionError, WebmailAuthenticationError) as typed:
+	except WebmailConnectionError as typed:
+		if getattr(client, "wrote", False) is True:
+			raise WebmailConnectionLost(str(typed)) from exc
+		raise typed from exc
+	except WebmailAuthenticationError as typed:
 		raise typed from exc
 
 
@@ -531,7 +543,7 @@ def imap_session(account):
 			try:
 				yield client
 			except Exception as exc:
-				_raise_connection_failure(exc, account)
+				_raise_connection_failure(exc, account, client)
 				raise
 		return
 
@@ -551,13 +563,17 @@ def imap_session(account):
 	if entry is None:
 		entry = _PooledIMAP(_imap_connect(account))
 		entry.lock.acquire()
+	# Nothing written yet in this session (a failure then reads as one that changed nothing)
+	begin = getattr(entry.client, "begin_session", None)
+	if callable(begin):
+		begin()
 
 	broken = False
 	try:
 		yield entry.client
 	except Exception as exc:
 		broken = _imap_is_connection_error(exc)
-		_raise_connection_failure(exc, account)
+		_raise_connection_failure(exc, account, entry.client)
 		raise
 	finally:
 		entry.last_used = _time.monotonic()

@@ -1437,6 +1437,28 @@ class TestMailCraftJmap(FrappeTestCase):
 		with patch("frappe.get_request_header", side_effect=_page_headers()):
 			self.assertIn(MAILBOX, [a["email"] for a in jmap.renew()["accounts"]])
 
+	def test_a_change_cut_off_with_its_connection_is_a_doubt_not_a_retry(self):
+		"""serverUnavailable says nothing was changed, and MailCraft makes the change again: an APPEND the server had
+		taken, its answer lost, would be filed twice. A connection lost after a change was sent says serverFail (it
+		may have been made, MailCraft checks); one lost before, or on a read, stays serverUnavailable."""
+		lost = jmap.webmail.WebmailConnectionLost("IMAP: Connection timeout.")
+		down = jmap.webmail.WebmailConnectionError("IMAP: Connection timeout.")
+		for error, kind in ((lost, "serverFail"), (down, "serverUnavailable")):
+
+			def fail(args, error=error):
+				raise error
+
+			with patch.dict(jmap.METHODS, {"Email/import": fail}):
+				name, answer, _call_id = self._call("Email/import", {"accountId": self.aid})
+			self.assertEqual((name, answer["type"]), ("error", kind), kind)
+
+			def cut(uids, error=error):
+				raise error
+
+			failed = {}
+			jmap._apply([("E1", 1)], failed, {}, cut)
+			self.assertEqual(failed["E1"]["type"], kind, "one object of Email/set")
+
 	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
 		for path in (
 			"/neomail",
