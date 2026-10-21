@@ -442,11 +442,12 @@
 	}
 
 	// A toast that says where a file went, with a link to it: every word escaped, the link one the page checked.
-	// `away`: the link opens a new tab (the Drive is not a page of the desk).
+	// `away`: the link opens a new tab (the Drive is not a page of the desk). « Open it », not the bare « Open », which
+	// other apps translate as a state (« Ouvert »).
 	function filed(message, link, away) {
 		const escape = frappe.utils.escape_html;
 		const open = link
-			? ` <a href="${escape(link)}"${away ? ' target="_blank" rel="noopener"' : ""}>${escape(__("Open"))}</a>`
+			? ` <a href="${escape(link)}"${away ? ' target="_blank" rel="noopener"' : ""}>${escape(__("Open it"))}</a>`
 			: "";
 		frappe.show_alert({ message: escape(String(message || "")) + open, indicator: "green" }, 8);
 	}

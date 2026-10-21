@@ -301,7 +301,7 @@ describe("Save to Drive…, from an attachment's menu", () => {
 		expect(said).toEqual([
 			[
 				"alert",
-				'Saved in the Drive: My Drive / Invoices <a href="/drive/f/a1B2c3" target="_blank" rel="noopener">Open</a>',
+				'Saved in the Drive: My Drive / Invoices <a href="/drive/f/a1B2c3" target="_blank" rel="noopener">Open it</a>',
 			],
 		]);
 	});
@@ -509,7 +509,7 @@ describe("Send to Scanned Documents, from an attachment's menu", () => {
 		await vi.waitFor(() => expect(said.length).toBe(1));
 		expect(sent(fetch, "to_scans")).toEqual([{ method: "POST", csrf: "csrf-1", body: { ...MESSAGE, attachment: INVOICE } }]);
 		expect(dialogs.length).toBe(0);
-		expect(said[0]).toEqual(["alert", 'Sent &lt;b&gt;now&lt;/b&gt; <a href="/app/document-scan/SCAN-118">Open</a>']);
+		expect(said[0]).toEqual(["alert", 'Sent &lt;b&gt;now&lt;/b&gt; <a href="/app/document-scan/SCAN-118">Open it</a>']);
 		// Done: a new click sends it again (the server says it is there already)
 		tell(ASKED);
 		await vi.waitFor(() => expect(sent(fetch, "to_scans").length).toBe(2));
