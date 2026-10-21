@@ -140,6 +140,14 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		frappe.user = { has_role: (role) => role === "Raven User" && synk.role !== false };
 		frappe.session = { user: "ada@example.org" };
 		if (synk.realtime) frappe.realtime = synk.realtime;
+		// The tabs the page opened (Synk on the web is Raven's own tab), refused when the test says (`blocked`)
+		synk.tabs = [];
+		vi.spyOn(window, "open").mockImplementation((url) => {
+			if (synk.blocked) return null;
+			const tab = { location: { href: url }, opener: window, closed: false, close: () => (tab.closed = true) };
+			synk.tabs.push(tab);
+			return tab;
+		});
 	}
 	const fetch = vi.fn(async (url, init) => {
 		if (String(url).includes("raven.api.raven_message.get_unread_count_for_channels")) {
@@ -557,14 +565,6 @@ function socket() {
 	};
 }
 
-// Whether a frame is behind the other one: kept at its size, out of sight, out of reach (never `display: none`).
-const away = (frame) => {
-	const behind = frame.classList.contains("neomail-desk-away");
-	expect(frame.inert).toBe(behind);
-	expect(frame.hidden).toBe(false);
-	return behind;
-};
-
 // What the page asked Raven for the unread messages, so far.
 const unreadAsked = (fetch) => fetch.mock.calls.filter(([url]) => String(url).includes("get_unread_count_for_channels")).length;
 
@@ -574,15 +574,7 @@ async function synkDock(setPageNav) {
 	return setPageNav.mock.lastCall[0].dock;
 }
 
-describe("Synk, a view of the desk's page after NeoMail's", () => {
-	// Raven's frame stays empty here: happy-dom would try to load /raven itself
-	beforeEach(() => {
-		window.happyDOM.settings.disableIframePageLoading = true;
-	});
-	afterEach(() => {
-		window.happyDOM.settings.disableIframePageLoading = false;
-	});
-
+describe("Synk, an icon of the desk's page after NeoMail's views", () => {
 	const UNREAD = [
 		{ name: "general", is_direct_message: 0, unread_count: 2 },
 		{ name: "ada-bruno", is_direct_message: 1, unread_count: 1 },
@@ -601,115 +593,24 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		]);
 	});
 
-	it("shows Raven in a frame of its own in place of NeoMail, and NeoMail again from any of its views", async () => {
-		const { wrapper, frame, tell, setPageNav, posted, fetch } = await open({ features: ["dock"], synk: { unread: UNREAD } });
+	it("opens Raven's own app in a tab of its own, NeoMail staying as it is", async () => {
+		const synk = { unread: UNREAD };
+		const { wrapper, tell, setPageNav, posted } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		(await synkDock(setPageNav)).at(-1).onClick();
-		const frames = wrapper.querySelectorAll("iframe");
-		expect(frames.length).toBe(2);
-		const raven = frames[1];
-		expect(raven.getAttribute("src")).toBe("/raven?embed=desk&chrome=menu");
-		expect(raven.title).toBe("Synk");
-		expect(away(raven)).toBe(false);
-		expect(away(frame)).toBe(true);
-		// The menu shows Synk in front: its icon lit, no folder lit, NeoMail asked nothing
-		let lent = setPageNav.mock.lastCall[0];
-		expect(lent.dock.map((view) => view.active)).toEqual([false, false, false, false, true]);
-		expect(lent.nav.flatMap((section) => section.items).some((item) => item.active)).toBe(false);
+		expect(synk.tabs.map((tab) => [tab.location.href, tab.opener])).toEqual([["/raven", null]]);
+		// No frame of Raven's in the page, Synk never the view in front, NeoMail asked nothing
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
+		expect(setPageNav.mock.lastCall[0].dock.map((view) => view.active)).toEqual([true, false, false, false, false]);
 		expect(posted).toEqual([]);
-		// NeoMail's Mail icon: NeoMail back in front, Raven alive under it, the count asked again
-		const before = unreadAsked(fetch);
-		lent.dock[0].onClick();
-		expect(away(frame)).toBe(false);
-		expect(away(raven)).toBe(true);
-		expect(raven.isConnected).toBe(true);
-		expect(posted.map(([message]) => message.name)).toEqual(["view.mail"]);
-		await vi.waitFor(() => expect(unreadAsked(fetch)).toBe(before + 1));
-		// Synk again: the same frame, not a new one
-		setPageNav.mock.lastCall[0].dock.at(-1).onClick();
-		expect(wrapper.querySelectorAll("iframe").length).toBe(2);
-		expect(away(raven)).toBe(false);
-		// While Synk is in front the menu shows Synk's lists, not NeoMail's folders (NeoMail comes back by its icons)
-		lent = setPageNav.mock.lastCall[0];
-		expect(lent.nav[0].items.map((item) => item.label)).toEqual(["Activity", "Threads", "Later"]);
-		// Mail's icon, then a folder of the menu: NeoMail asked
-		lent.dock[0].onClick();
-		setPageNav.mock.lastCall[0].nav[0].items[0].onClick();
-		expect(away(frame)).toBe(false);
-		expect(away(raven)).toBe(true);
-		expect(posted.at(-1)[0]).toMatchObject({ name: "folder.select", params: { folder: "F-inbox" } });
 	});
 
-	it("shows Synk's lists in the menu while Synk is in front, lights what Raven shows, and opens what is chosen there", async () => {
-		const synk = {
-			unread: [{ name: "synk-general", unread_count: 2 }],
-			channels: {
-				channels: [{ name: "synk-general", channel_name: "general", type: "Open", workspace: "Synk", member_id: "m1" }],
-				dm_channels: [{ name: "dm-1", peer_user_id: "bruno@example.org", last_message_timestamp: "2026-10-21 10:00:00" }],
-			},
-			people: [{ name: "bruno@example.org", full_name: "Bruno Keller", type: "User" }],
-		};
-		const { wrapper, tell, hear, setPageNav, fetch } = await open({ features: ["dock"], synk });
+	it("leaves the person a link where the browser refuses the tab", async () => {
+		const synk = { unread: UNREAD, blocked: true };
+		const { tell, setPageNav } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		(await synkDock(setPageNav)).at(-1).onClick();
-		const raven = wrapper.querySelectorAll("iframe")[1];
-		// A window that is not Raven's app yet: the page loads the address it opens
-		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/blank" } } });
-		const item = (label) => setPageNav.mock.lastCall[0].nav.flatMap((section) => section.items).find((it) => it.label === label);
-		await vi.waitFor(() => {
-			expect(item("general")).toBeTruthy();
-			expect(item("Bruno Keller")).toBeTruthy();
-		});
-		expect(item("general").badge).toBe(2);
-		expect(setPageNav.mock.lastCall[0].dock.at(-1).active).toBe(true);
-		// Raven says where it is: the menu lights it
-		hear({ source: raven.contentWindow, origin: window.location.origin, data: { type: "raven:route", path: "/raven/Synk/synk-general" } });
-		expect(item("general").active).toBe(true);
-		// What another window says is not heard
-		hear({ source: window, origin: window.location.origin, data: { type: "raven:route", path: "/raven/threads" } });
-		expect(item("general").active).toBe(true);
-		// A conversation chosen in the menu: Synk stays in front, on it, lit at once
-		item("Bruno Keller").onClick();
-		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk&chrome=menu");
-		expect(item("Bruno Keller").active).toBe(true);
-		expect(away(raven)).toBe(false);
-		// Synk's people are asked once
-		expect(fetch.mock.calls.filter(([url]) => String(url).includes("raven_users.get_list")).length).toBe(1);
-	});
-
-	it("has the menu's search box search Synk while Synk is in front, and NeoMail otherwise", async () => {
-		const { wrapper, frame, tell, setPageNav, posted } = await open({ features: ["dock", "search"], synk: { unread: UNREAD } });
-		tell(STATE);
-		(await synkDock(setPageNav)).at(-1).onClick();
-		expect(away(frame)).toBe(true);
-		const raven = wrapper.querySelectorAll("iframe")[1];
-		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/blank" } } });
-		let search = setPageNav.mock.lastCall[0].search;
-		expect(search.placeholder).toBe("Search in Synk");
-		search.onQuery("devis cuisine");
-		expect(raven.getAttribute("src")).toBe("/raven/search?q=devis%20cuisine&embed=desk&chrome=menu");
-		expect(away(frame)).toBe(true);
-		// An emptied box asks nothing
-		search.onQuery("");
-		expect(raven.getAttribute("src")).toBe("/raven/search?q=devis%20cuisine&embed=desk&chrome=menu");
-		expect(posted).toEqual([]);
-		// Mail in front: the box searches NeoMail
-		setPageNav.mock.lastCall[0].dock[0].onClick();
-		search = setPageNav.mock.lastCall[0].search;
-		expect(search.placeholder).toBe("Search mail");
-		search.onQuery("devis");
-		expect(posted.at(-1)[0]).toMatchObject({ name: "search", params: { query: "devis" } });
-	});
-
-	it("asks Raven for its settings from the menu, where its rail is not drawn", async () => {
-		const { wrapper, tell, setPageNav } = await open({ features: ["dock"], synk: { unread: UNREAD } });
-		tell(STATE);
-		(await synkDock(setPageNav)).at(-1).onClick();
-		const raven = wrapper.querySelectorAll("iframe")[1];
-		const told = [];
-		Object.defineProperty(raven, "contentWindow", { value: { location: { pathname: "/raven" }, postMessage: (...args) => told.push(args) } });
-		setPageNav.mock.lastCall[0].nav.at(-1).items[0].onClick();
-		expect(told).toEqual([[{ type: "raven:command", name: "settings.open", tab: "profile" }, window.location.origin]]);
+		expect(synk.said).toEqual([["msgprint", '<a href="/raven" target="_blank" rel="noopener">Open in Synk</a>']]);
 	});
 
 	it("offers no Synk to someone Raven refuses, and asks Raven nothing without its role", async () => {
@@ -775,18 +676,16 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		await vi.waitFor(() => expect(asked()).toBe(count));
 	});
 
-	it("takes Synk away when Raven later refuses the person, NeoMail back in front", async () => {
+	it("takes Synk's icon away when Raven later refuses the person", async () => {
 		const realtime = socket();
 		const synk = { unread: UNREAD, realtime };
-		const { frame, tell, setPageNav } = await open({ features: ["dock"], synk });
+		const { tell, setPageNav } = await open({ features: ["dock"], synk });
 		tell(STATE);
-		(await synkDock(setPageNav)).at(-1).onClick();
-		expect(away(frame)).toBe(true);
+		await synkDock(setPageNav);
 		// The role taken away meanwhile: Raven's next answer is a refusal
 		synk.unread = 403;
 		realtime.emit("raven:unread_channel_count_updated", { channel_id: "x", sent_by: "bruno@example.org", is_dm_channel: true });
-		await vi.waitFor(() => expect(away(frame)).toBe(false));
-		expect(setPageNav.mock.lastCall[0].dock.map((view) => view.id)).not.toContain("synk");
+		await vi.waitFor(() => expect(setPageNav.mock.lastCall[0].dock.map((view) => view.id)).not.toContain("synk"));
 	});
 });
 
@@ -810,9 +709,9 @@ describe("Share in Synk, from NeoMail's button", () => {
 			.filter(([url]) => String(url).includes("neomail_share.share"))
 			.map(([, init]) => ({ method: init.method, csrf: init.headers["X-Frappe-CSRF-Token"], body: JSON.parse(init.body) }));
 
-	it("asks where, shares as asked, and shows the post in Synk", async () => {
+	it("asks where, shares as asked, and leaves the post a click away in Synk", async () => {
 		const synk = { unread: [], destinations: DESTINATIONS, shared: { channel: "synk-atelier", message: "m-42", files: 1, left_out: 0 } };
-		const { wrapper, frame, tell, fetch } = await open({ features: ["dock"], synk });
+		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		tell(ASKED);
 		await vi.waitFor(() => expect(synk.dialogs.length).toBe(1));
@@ -838,12 +737,13 @@ describe("Share in Synk, from NeoMail's button", () => {
 			},
 		]);
 		expect(dialog.shown).toBe(false);
-		expect(synk.said).toContainEqual(["alert", "Shared in Synk"]);
-		// Synk in front, on the post
-		const raven = wrapper.querySelectorAll("iframe")[1];
-		expect(raven.getAttribute("src")).toBe("/raven/message/m-42?embed=desk&chrome=menu");
-		expect(away(raven)).toBe(false);
-		expect(away(frame)).toBe(true);
+		// The person stays in their mail: the post is a link away, in Synk's own tab
+		expect(synk.said).toContainEqual([
+			"alert",
+			'Shared in Synk <a href="/raven/message/m-42" target="_blank" rel="noopener">Open in Synk</a>',
+		]);
+		expect(synk.tabs).toEqual([]);
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 
 	it("says what the server refused, and lets the person try again", async () => {
@@ -883,13 +783,6 @@ describe("Share in Synk, from NeoMail's button", () => {
 });
 
 describe("Chat in Synk, from NeoMail's button", () => {
-	beforeEach(() => {
-		window.happyDOM.settings.disableIframePageLoading = true;
-	});
-	afterEach(() => {
-		window.happyDOM.settings.disableIframePageLoading = false;
-	});
-
 	const MESSAGE = { account: "ada@example.org", email: "E7V31ZSU5CT1g" };
 
 	// The chat's requests to the server, as the page made them: their method, their CSRF token and what they sent.
@@ -903,17 +796,16 @@ describe("Chat in Synk, from NeoMail's button", () => {
 			unread: [],
 			chat: { channel: "dm-1", route: "/raven/dm-channel/dm-1", with: ["Grace Hopper"], left_out: 0 },
 		};
-		const { wrapper, frame, tell, fetch } = await open({ features: ["dock"], synk });
+		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "sender" });
-		await vi.waitFor(() => expect(wrapper.querySelectorAll("iframe").length).toBe(2));
+		await vi.waitFor(() => expect(synk.tabs.length).toBe(1));
 		expect(chatSent(fetch)).toEqual([{ method: "POST", csrf: "csrf-1", body: { ...MESSAGE, who: "sender", confirmed: 0 } }]);
 		expect(synk.asked).toEqual([]);
 		expect(fetch.mock.calls.some(([url]) => String(url).includes("neomail_share.share"))).toBe(false);
-		const raven = wrapper.querySelectorAll("iframe")[1];
-		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk&chrome=menu");
-		expect(away(raven)).toBe(false);
-		expect(away(frame)).toBe(true);
+		// The conversation in Synk's own tab
+		expect(synk.tabs.map((tab) => [tab.location.href, tab.opener])).toEqual([["/raven/dm-channel/dm-1", null]]);
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 
 	it("asks before making a channel with everyone, makes it on yes, and says who could not join", async () => {
@@ -925,10 +817,10 @@ describe("Chat in Synk, from NeoMail's button", () => {
 					? { channel: "synk-devis-k", route: "/raven/Synk/synk-devis-k", with: ["Grace", "Ada"], left_out: 1 }
 					: { ask: true, with: ["Grace <b>Hopper</b>", "Ada"], adds: false, left_out: 1 },
 		};
-		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
+		const { tell, fetch } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
-		await vi.waitFor(() => expect(wrapper.querySelectorAll("iframe").length).toBe(2));
+		await vi.waitFor(() => expect(synk.tabs[0] && synk.tabs[0].location.href).toBe("/raven/Synk/synk-devis-k"));
 		expect(chatSent(fetch).map((sent) => sent.body.confirmed)).toEqual([0, 1]);
 		// The names as words, never as markup
 		expect(synk.asked).toEqual(["Make a private channel in Synk with Grace &lt;b&gt;Hopper&lt;/b&gt;, Ada about this message?"]);
@@ -936,7 +828,23 @@ describe("Chat in Synk, from NeoMail's button", () => {
 			"alert",
 			"1 person(s) on this message could not join: they are not in your Synk workspace.",
 		]);
-		expect(wrapper.querySelectorAll("iframe")[1].getAttribute("src")).toBe("/raven/Synk/synk-devis-k?embed=desk&chrome=menu");
+		// The tab opened empty on the « yes » (the browser lets a page open one on a click only), then on the channel
+		expect(synk.tabs.length).toBe(1);
+		expect(synk.tabs[0].opener).toBe(null);
+	});
+
+	it("closes the tab opened on « yes » when the conversation could not be made", async () => {
+		const synk = {
+			unread: [],
+			confirm: true,
+			chat: (body) => (body.confirmed ? 417 : { ask: true, with: ["Grace", "Ada"], adds: false, left_out: 0 }),
+		};
+		const { tell } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
+		await vi.waitFor(() => expect(synk.said).toContainEqual(["msgprint", "Refused <b>here</b>"]));
+		expect(synk.tabs.length).toBe(1);
+		expect(synk.tabs[0].closed).toBe(true);
 	});
 
 	it("makes nothing when the person says no, and asks before adding people to a channel there is", async () => {
@@ -948,6 +856,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		expect(synk.asked[0]).toBe("Add Linus to this message's channel in Synk?");
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(chatSent(fetch).length).toBe(1);
+		expect(synk.tabs).toEqual([]);
 		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 
@@ -958,6 +867,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "sender" });
 		await vi.waitFor(() => expect(synk.said.length).toBe(1));
 		expect(synk.said[0]).toEqual(["msgprint", "Refused <b>here</b>"]);
+		expect(synk.tabs).toEqual([]);
 		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 
@@ -972,6 +882,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
 		await vi.waitFor(() => expect(chatSent(fetch).length).toBe(1));
 		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(synk.tabs).toEqual([]);
 		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 });

@@ -181,10 +181,9 @@ window.neomailHost = (function () {
 	// NeoMail's views, in its order, and their icons (lucide names, without the prefix the menu's items take).
 	const VIEW_ICONS = { mail: "mail", calendar: "calendar", people: "users", notes: "sticky-note" };
 	const VIEWS = Object.keys(VIEW_ICONS);
-	// Synk, the instance's Raven, a view the desk's page adds after NeoMail's own (neoffice-apps,
-	// docs/raven-in-neomail-study.md, section 8): Raven's app in a frame of its own, which it draws without the desk's
-	// menu because it is framed by this page and asked to (`embed=desk`, Raven's apps/web/src/utils/embeddedInDesk.ts).
-	const SYNK = { view: "synk", icon: "message-circle", address: "/raven?embed=desk" };
+	// Synk, the instance's Raven, an icon the desk's page adds after NeoMail's views (neoffice-apps,
+	// docs/raven-in-neomail-study.md, section 8): on the web, Raven's own app, opened in a tab of its own.
+	const SYNK = { view: "synk", icon: "message-circle", address: "/raven" };
 	// The deepest a folder is drawn under its parents.
 	const MAX_DEPTH = 8;
 
@@ -272,138 +271,6 @@ window.neomailHost = (function () {
 			}
 		}
 		return names;
-	}
-
-	// Raven's own pages the menu opens while Synk is in front, before the conversations: their path in Raven's app and
-	// their icon (lucide names, with the prefix the menu's items take; only those the cockpit draws, its lucideIconMap:
-	// it has no « # », lock, person, bot nor bookmark, a name it lacks draws an empty circle).
-	const SYNK_PAGES = [
-		{ key: "activity", path: "/raven/notifications", icon: "lucide-bell" },
-		{ key: "threads", path: "/raven/threads", icon: "lucide-message-square" },
-		{ key: "later", path: "/raven/later", icon: "lucide-clock" },
-	];
-	// The icons of Synk's conversations in the menu, among those the cockpit draws (see above).
-	const SYNK_ICONS = {
-		channel: "lucide-message-circle",
-		privateChannel: "lucide-key-round",
-		person: "lucide-contact",
-		bot: "lucide-sparkles",
-		whole: "lucide-layout-grid",
-		settings: "lucide-settings",
-	};
-	// The direct messages the menu lists, the latest first; those with unread messages come too, however old.
-	const SYNK_DIRECT = 15;
-
-	/*
-	 * The address Synk's frame loads: `route` (a path of Raven's app; Raven's own start without one), asked to draw
-	 * itself for the desk (`embed=desk`) and, where the desk's menu shows its lists (`menu`), to draw none of its own
-	 * (`chrome=menu`).
-	 */
-	function synkAddress(route, menu) {
-		const path = route || "/raven";
-		return path + (path.includes("?") ? "&" : "?") + "embed=desk" + (menu ? "&chrome=menu" : "");
-	}
-
-	/* A path of Raven's app as the menu compares it: decoded, without its query nor a trailing slash. */
-	function synkPath(path) {
-		let decoded = String(path || "").split("?")[0];
-		try {
-			decoded = decodeURIComponent(decoded);
-		} catch (e) {
-			// A path that does not decode stays as it is
-		}
-		return decoded.length > 1 ? decoded.replace(/\/+$/, "") : decoded;
-	}
-
-	/*
-	 * Synk's lists as the desk menu's sections, while Synk is in front (Raven, asked to, draws no list of its own then:
-	 * `chrome=menu`, Raven's apps/web/src/utils/embeddedInDesk.ts). Raven's own pages first (Activity, Threads, Later);
-	 * then, for each workspace, the channels the person is a member of (`lists`, get_all_channels: those with a
-	 * `member_id`), by name, a private one with a key, and last the workspace's whole list in Raven (`?all`, where Raven
-	 * browses, joins and makes channels); then their direct messages, the latest first (SYNK_DIRECT of them, and any
-	 * other with unread messages), each by the other person's name (`users`, Raven's raven_users.get_list; one whose
-	 * account is disabled is left out, as Raven does), and last all of them in Raven; then Synk's settings, which
-	 * Raven's rail opens and the menu takes the place of. A conversation's unread messages (`unread`,
-	 * get_unread_count_for_channels) are its badge, in the accent for a direct message; a muted channel shows none.
-	 * Lit: the page Raven last said it shows (`here`, its path), or a conversation under it (a thread of it). A click is
-	 * `act.open(path)`, a path of Raven's app, or `act.settings()`; the words are `texts`.
-	 */
-	function synkSections(lists, unread, users, here, act, texts) {
-		const open = (path) => act.open(path);
-		const at = synkPath(here);
-		const lit = (path) => {
-			const own = synkPath(path);
-			return Boolean(at) && (at === own || at.startsWith(own + "/"));
-		};
-		const counts = new Map();
-		for (const row of Array.isArray(unread) ? unread : []) {
-			if (row && typeof row.name === "string" && Number.isFinite(row.unread_count) && row.unread_count > 0) {
-				counts.set(row.name, row.unread_count);
-			}
-		}
-		const badge = (name) => {
-			const count = counts.get(name);
-			if (!count) return undefined;
-			return count > 99 ? "99+" : count;
-		};
-		const item = (label, icon, path, extra) => ({ label, icon, active: lit(path), onClick: () => open(path), ...extra });
-		// A whole list in Raven: lit only on it, not on a conversation it holds
-		const whole = (label, path) => item(label, SYNK_ICONS.whole, path + "?all", { active: at === synkPath(path) });
-		const nav = [{ items: SYNK_PAGES.map((page) => item(texts[page.key], page.icon, page.path)) }];
-		const known = lists && typeof lists === "object" ? lists : {};
-		const named = (channel) => channel && typeof channel.name === "string" && channel.name;
-		// Every workspace Raven lists a channel of (the person's, joined or not: its open and public ones come too), so
-		// that its whole list stays within reach; under it, the channels the person is a member of
-		const workspaces = new Map();
-		for (const channel of Array.isArray(known.channels) ? known.channels : []) {
-			const workspace = named(channel) && typeof channel.workspace === "string" ? channel.workspace : "";
-			if (!workspace) continue;
-			if (!workspaces.has(workspace)) workspaces.set(workspace, []);
-			if (channel.member_id && !channel.is_archived) workspaces.get(workspace).push(channel);
-		}
-		const byName = (a, b) => String(a.channel_name || a.name).localeCompare(String(b.channel_name || b.name));
-		for (const [workspace, list] of [...workspaces].sort(([a], [b]) => a.localeCompare(b))) {
-			const home = "/raven/" + encodeURIComponent(workspace);
-			const items = list.sort(byName).map((channel) =>
-				item(
-					channel.channel_name || channel.name,
-					channel.type === "Private" ? SYNK_ICONS.privateChannel : SYNK_ICONS.channel,
-					home + "/" + encodeURIComponent(channel.name),
-					{ badge: channel.muted ? undefined : badge(channel.name) }
-				)
-			);
-			items.push(whole(texts.allChannels, home));
-			nav.push({ label: workspace, items });
-		}
-		const people = new Map();
-		for (const user of Array.isArray(users) ? users : []) {
-			if (user && typeof user.name === "string") people.set(user.name, user);
-		}
-		// Once the people are known, a direct message with someone gone from them, or disabled, is left out (DMSidebar)
-		const reachable = (channel) => {
-			if (!people.size || channel.is_self_message) return true;
-			const peer = people.get(channel.peer_user_id);
-			return Boolean(peer) && peer.enabled !== 0;
-		};
-		const direct = (Array.isArray(known.dm_channels) ? known.dm_channels : []).filter(
-			(channel) => named(channel) && reachable(channel)
-		);
-		const latest = (channel) => String(channel.last_message_timestamp || channel.creation || "");
-		direct.sort((a, b) => latest(b).localeCompare(latest(a)));
-		const shown = direct.filter((channel, index) => index < SYNK_DIRECT || counts.has(channel.name));
-		const directItems = shown.map((channel) => {
-			const peer = people.get(channel.peer_user_id);
-			const name = (peer && (peer.full_name || peer.first_name)) || channel.peer_user_id || channel.channel_name;
-			const label = channel.is_self_message ? texts.self.replace("{0}", name) : name;
-			return item(label, peer && peer.type === "Bot" ? SYNK_ICONS.bot : SYNK_ICONS.person, "/raven/dm-channel/" + encodeURIComponent(channel.name), {
-				badge: badge(channel.name),
-				badgeTone: "accent",
-			});
-		});
-		directItems.push(whole(texts.allDirect, "/raven/dm-channel"));
-		nav.push({ label: texts.direct, items: directItems });
-		nav.push({ items: [{ label: texts.settings, icon: SYNK_ICONS.settings, onClick: () => act.settings() }] });
-		return nav;
 	}
 
 	/*
@@ -654,8 +521,6 @@ window.neomailHost = (function () {
 		shareChoices,
 		chatOf,
 		synkRoute,
-		synkAddress,
-		synkSections,
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,
