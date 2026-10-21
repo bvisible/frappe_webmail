@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-21 17:23+0000\n"
-"PO-Revision-Date: 2026-10-21 17:23+0000\n"
+"POT-Creation-Date: 2026-10-21 18:36+0000\n"
+"PO-Revision-Date: 2026-10-21 18:36+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -61,7 +61,7 @@ msgstr ""
 msgid "A call to action needs both its label and its address."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:292
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:344
 msgid "A channel, or a person"
 msgstr ""
 
@@ -218,8 +218,13 @@ msgstr ""
 msgid "Active on this mailbox"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:726
-#: frappe_webmail/www/neomail.html:576
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
+msgctxt "Synk menu"
+msgid "Activity"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:794
+#: frappe_webmail/www/neomail.html:701
 msgid "Add a mailbox"
 msgstr ""
 
@@ -241,7 +246,7 @@ msgstr ""
 msgid "Add to contacts"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:380
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:432
 msgid "Add {0} to this message's channel in Synk?"
 msgstr ""
 
@@ -271,6 +276,16 @@ msgstr ""
 #: frontend/src/components/AttachmentPicker.vue:482
 #: frontend/src/components/EmailList.vue:78
 msgid "All"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:147
+msgctxt "Synk menu"
+msgid "All Channels"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:146
+msgctxt "Synk menu"
+msgid "All Direct Messages"
 msgstr ""
 
 #: frontend/src/components/FilterManager.vue:122
@@ -575,7 +590,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:127
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:136
 msgctxt "NeoMail view"
 msgid "Calendar"
 msgstr ""
@@ -971,6 +986,11 @@ msgstr ""
 
 #: frontend/src/components/FilterManager.vue:337
 msgid "Destination folder is required"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:145
+msgctxt "Synk menu"
+msgid "Direct Messages"
 msgstr ""
 
 #: frontend/src/components/FilterManager.vue:59
@@ -1485,7 +1505,7 @@ msgstr ""
 msgid "Failing"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:125
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:134
 msgctxt "NeoMail pane"
 msgid "Favourites"
 msgstr ""
@@ -2013,6 +2033,11 @@ msgstr ""
 msgid "Late"
 msgstr ""
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:144
+msgctxt "Synk menu"
+msgid "Later"
+msgstr ""
+
 #. Label of a Section Break field in DocType 'Email Signature Template'
 #. Label of a Select field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
@@ -2125,7 +2150,7 @@ msgstr ""
 msgid "Mail"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:126
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:135
 msgctxt "NeoMail view"
 msgid "Mail"
 msgstr ""
@@ -2146,7 +2171,7 @@ msgstr ""
 msgid "Main action"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:381
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:433
 msgid "Make a private channel in Synk with {0} about this message?"
 msgstr ""
 
@@ -2275,15 +2300,15 @@ msgstr ""
 msgid "Name the messages to read."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:803
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:871
 msgid "NeoMail"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:717
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:785
 msgid "NeoMail could not be opened. Reload the page to try again."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:697
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:765
 msgid "NeoMail is not offered on this site."
 msgstr ""
 
@@ -2540,7 +2565,7 @@ msgstr ""
 msgid "Not permitted"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:129
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:138
 msgctxt "NeoMail view"
 msgid "Notes"
 msgstr ""
@@ -2692,11 +2717,11 @@ msgstr ""
 msgid "Open the record"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:697
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:765
 msgid "Open the webmail"
 msgstr ""
 
-#: frappe_webmail/www/neomail.html:578
+#: frappe_webmail/www/neomail.html:703
 msgid "Open the webmail to add one"
 msgstr ""
 
@@ -2754,7 +2779,7 @@ msgstr ""
 msgid "Paused"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:128
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:137
 msgctxt "NeoMail view"
 msgid "People"
 msgstr ""
@@ -3180,6 +3205,10 @@ msgstr ""
 msgid "Search for a folder"
 msgstr ""
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:191
+msgid "Search in Synk"
+msgstr ""
+
 #: frontend/src/pages/Webmail.vue:68
 msgid "Search in Webmail…"
 msgstr ""
@@ -3188,7 +3217,7 @@ msgstr ""
 msgid "Search in all fields…"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:169
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:197
 msgid "Search mail"
 msgstr ""
 
@@ -3287,19 +3316,19 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:299
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:351
 msgid "Share"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:286
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:338
 msgid "Share in Synk"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:297
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:349
 msgid "Share the attachments too"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:291
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:343
 msgid "Share with"
 msgstr ""
 
@@ -3321,7 +3350,7 @@ msgstr ""
 msgid "Shared by {0}"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:329
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:381
 msgid "Shared in Synk"
 msgstr ""
 
@@ -3375,8 +3404,8 @@ msgstr ""
 msgid "Sidebar Width"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:578
-#: frappe_webmail/www/neomail.html:584
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:646
+#: frappe_webmail/www/neomail.html:709
 msgid "Sign in again"
 msgstr ""
 
@@ -3515,7 +3544,12 @@ msgstr ""
 msgid "Synk"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:276
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:148
+msgctxt "Synk menu"
+msgid "Synk Settings"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:328
 msgid "Synk could not be reached. Try again in a moment."
 msgstr ""
 
@@ -3645,7 +3679,7 @@ msgstr ""
 msgid "The contact could not be created"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:369
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:421
 msgid "The conversation could not be opened in Synk."
 msgstr ""
 
@@ -3706,7 +3740,7 @@ msgstr ""
 msgid "The mailbox"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:323
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:375
 msgid "The message could not be shared."
 msgstr ""
 
@@ -3834,6 +3868,11 @@ msgstr ""
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:492
 msgid "Those of the recipients first, then the most recent"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
+msgctxt "Synk menu"
+msgid "Threads"
 msgstr ""
 
 #. Label of a Int field in DocType 'Email Filter'
@@ -4165,12 +4204,12 @@ msgstr ""
 msgid "You cannot read this file of the Drive"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:280
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:332
 msgid "You have no channel in Synk and nobody to write to yet."
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:724
-#: frappe_webmail/www/neomail.html:574
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:792
+#: frappe_webmail/www/neomail.html:699
 msgid "You have no mailbox in Neoffice yet."
 msgstr ""
 
@@ -4193,9 +4232,9 @@ msgstr ""
 msgid "YouTube"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:576
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:743
-#: frappe_webmail/www/neomail.html:563 frappe_webmail/www/neomail.html:583
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:644
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:811
+#: frappe_webmail/www/neomail.html:688 frappe_webmail/www/neomail.html:708
 msgid "Your Neoffice session has ended."
 msgstr ""
 
@@ -4208,7 +4247,7 @@ msgstr ""
 msgid "Your draft"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:296
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:348
 msgid "Your message"
 msgstr ""
 
@@ -4407,7 +4446,12 @@ msgstr ""
 msgid "your email account"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:332
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:149
+msgctxt "Synk menu"
+msgid "{0} (you)"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:384
 msgid "{0} attachment(s) could not be shared."
 msgstr ""
 
@@ -4477,7 +4521,7 @@ msgstr ""
 msgid "{0} other messages in this conversation"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:390
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:442
 msgid "{0} person(s) on this message could not join: they are not in your Synk workspace."
 msgstr ""
 

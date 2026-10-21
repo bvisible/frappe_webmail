@@ -4794,3 +4794,47 @@ msgstr "{0} n’utilise pas Synk."
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:390
 msgid "{0} person(s) on this message could not join: they are not in your Synk workspace."
 msgstr "{0} personne(s) de ce message n’ont pas pu être ajoutées : elles ne font pas partie de votre espace de travail Synk."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
+msgctxt "Synk menu"
+msgid "Activity"
+msgstr "Activité"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:147
+msgctxt "Synk menu"
+msgid "All Channels"
+msgstr "Tous les canaux"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:146
+msgctxt "Synk menu"
+msgid "All Direct Messages"
+msgstr "Tous les messages directs"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:145
+msgctxt "Synk menu"
+msgid "Direct Messages"
+msgstr "Messages directs"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:144
+msgctxt "Synk menu"
+msgid "Later"
+msgstr "Plus tard"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:191
+msgid "Search in Synk"
+msgstr "Rechercher dans Synk"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:148
+msgctxt "Synk menu"
+msgid "Synk Settings"
+msgstr "Paramètres de Synk"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
+msgctxt "Synk menu"
+msgid "Threads"
+msgstr "Fils de discussion"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:149
+msgctxt "Synk menu"
+msgid "{0} (you)"
+msgstr "{0} (vous)"
