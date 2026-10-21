@@ -18,6 +18,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from frappe_webmail import mailcraft_jmap as jmap
 from frappe_webmail import neomail_share as share
 
 PORTAL = "webmail_neomail_share_portal@example.com"
@@ -203,6 +204,57 @@ class TestNeoMailShare(FrappeTestCase):
 			):
 				self.assertFalse(share.offered())
 				self.assertRaises(frappe.PermissionError, share.destinations)
+
+	def test_neodesk_s_window_comes_in_with_the_person_s_own_bearer_only(self):
+		"""Synk in Neodesk's NeoMail window calls with the person's bearer token, as hand_over takes it, not with the
+		desk page's cookie and CSRF token: the token alive and the person's, a desk account that has Synk, wherever the
+		desk's page is offered or not; anything else that signs a request in (an API key) is refused."""
+		synk = [
+			patch.object(share, "installed", return_value=True),
+			patch.object(share.frappe, "get_roles", return_value=["Raven User", "All"]),
+			# The desk's page is not offered here: Neodesk does not need it
+			patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk", return_value=False),
+		]
+
+		def gate(header, user=STAFF, alive=True):
+			frappe.set_user(user)
+			with (
+				synk[0],
+				synk[1],
+				synk[2],
+				patch("frappe.get_request_header", return_value=header),
+				patch("frappe_webmail.mailcraft_jmap._bearer_alive", return_value=alive) as checked,
+			):
+				share._gate()
+				return checked
+
+		checked = gate("Bearer lent-token")
+		checked.assert_called_once_with(STAFF, jmap._digest("lent-token"))
+		for header, user, alive, why in (
+			("Bearer lent-token", STAFF, False, "a token Frappe would not take"),
+			("token key:secret", STAFF, True, "an API key"),
+			("Basic c3RhZmY6cGFzcw==", STAFF, True, "a password"),
+			("Bearer lent-token", PORTAL, True, "a portal account"),
+		):
+			with self.assertRaises(frappe.PermissionError, msg=why):
+				gate(header, user, alive)
+		# Without Raven's role: not open for them
+		frappe.set_user(STAFF)
+		with (
+			patch.object(share, "installed", return_value=True),
+			patch.object(share.frappe, "get_roles", return_value=["Blogger", "All"]),
+			patch("frappe.get_request_header", return_value="Bearer lent-token"),
+			patch("frappe_webmail.mailcraft_jmap._bearer_alive", return_value=True),
+			self.assertRaisesRegex(frappe.PermissionError, "Synk is not open for you"),
+		):
+			share._gate()
+		# Where NeoMail is off, there is nothing to share from
+		with (
+			patch.dict(frappe.local.conf, {"neomail_disabled": 1}),
+			patch("frappe.get_request_header", return_value="Bearer lent-token"),
+			self.assertRaises(frappe.PageDoesNotExistError),
+		):
+			share._gate()
 
 	def test_synk_is_had_where_raven_is_by_whom_holds_its_role(self):
 		with (

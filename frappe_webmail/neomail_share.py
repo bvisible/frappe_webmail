@@ -13,7 +13,8 @@ Who may is the webmail's rule for the mailbox (owned or shared with the person: 
 another's as one that does not exist) and Raven's for the conversation: a channel the person is a member of, or a
 direct message with someone who uses Synk, found or made by Raven itself. The post is the person's own, made by Raven's
 own method, so Raven's permissions apply to it as to a message written in Synk. Desk people only, on the page's session
-with its CSRF token, as the page's other calls.
+with its CSRF token, as the page's other calls; or Neodesk's NeoMail window, whose Synk (Neodesk's own chat, drawn in
+NeoMail's place) shares and opens conversations with a bearer token of the person's own, as hand_over takes it.
 
 Chat in Synk about a message (`mailcraft:chat`, section 8.6): `chat` opens the conversation with its sender (their
 direct message) or with everyone on it who uses Synk (the direct message for one person, else a private channel of the
@@ -78,22 +79,34 @@ def offered(user=None):
 
 
 def _gate():
-	"""The page's calls only: where the page is offered, on the desk's cookie with the session's CSRF token, for one
-	of the desk's people who may share in Synk."""
+	"""The calls of the desk's page, where it is offered, on the desk's cookie with the session's CSRF token; or of
+	Neodesk's NeoMail window, with a bearer token of the person's own (mailcraft_jmap.neodesk_request_only), where it
+	offers Synk (hand_over's `synk`). For one of the desk's people who may share in Synk."""
 	from frappe_webmail import mailcraft_jmap as jmap
 	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
 	from frappe_webmail.www import neomail
 
-	if not desk.in_desk():
-		raise frappe.PageDoesNotExistError
-	jmap.page_request_only()
-	neomail.desk_people_only()
-	jmap.csrf_token_required()
+	try:
+		signed = frappe.get_request_header("Authorization")
+	except RuntimeError:
+		# No request: a console, a test
+		signed = None
+	if signed:
+		# Neodesk: its token, never anything else that signs a request in (an API key, a password)
+		jmap.neodesk_request_only()
+		may = has_synk
+	else:
+		if not desk.in_desk():
+			raise frappe.PageDoesNotExistError
+		jmap.page_request_only()
+		neomail.desk_people_only()
+		jmap.csrf_token_required()
+		may = offered
 	# A site without Raven says so, rather than failing to import it: NeoMail never offers the share there (the
-	# handover's `share` follows `offered`), but a call can still come.
+	# handover's `share` follows `offered`, Neodesk's Synk `has_synk`), but a call can still come.
 	if not installed():
 		frappe.throw(_("Synk is not installed here."), title=_("Synk"))
-	if not offered():
+	if not may():
 		frappe.throw(_("Synk is not open for you."), frappe.PermissionError)
 
 

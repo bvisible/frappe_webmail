@@ -309,14 +309,8 @@ def hand_over(**kwargs):
 	make a browser send. Wherever NeoMail is on, the build installed here or not: Neodesk brings its own (pinned in its
 	desktop/src/editors/manifest.json and the Suite's craft_editors.json). The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
 	refresh revokes the old one, so Neodesk hands its renewed one over again."""
-	if not neomail_enabled():
-		raise frappe.PageDoesNotExistError
+	bearer = neodesk_request_only()
 	user = frappe.session.user
-	bearer = _request_bearer()
-	# A bearer token of this very person that Frappe itself would take: the one Frappe signed the request in with, or,
-	# when a desk cookie signed it in, one Frappe would have taken all the same.
-	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
-		raise frappe.PermissionError
 	from frappe_webmail.neomail_share import has_synk
 	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes, nora_installed, signatures_url
 
@@ -351,6 +345,21 @@ def renew(**kwargs):
 	from frappe_webmail.www.neomail import host_mailboxes
 
 	return {"accounts": host_mailboxes()}
+
+
+def neodesk_request_only():
+	"""A request of Neodesk's, where NeoMail is on: it carries an OAuth bearer token of this very person, one of the
+	desk's people, that Frappe itself would take (the one Frappe signed the request in with, or, when a desk cookie
+	signed it in, one Frappe would have taken all the same), never a desk cookie alone, which a page of another site
+	could make a browser send. Answers the token. hand_over, and the calls of Synk in Neodesk's NeoMail window
+	(neomail_share)."""
+	if not neomail_enabled():
+		raise frappe.PageDoesNotExistError
+	user = frappe.session.user
+	bearer = _request_bearer()
+	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
+		raise frappe.PermissionError
+	return bearer
 
 
 def page_request_only():
