@@ -4734,3 +4734,63 @@ msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:331
 msgid "{0} attachment(s) could not be shared."
 msgstr "{0} pièce(s) jointe(s) n’ont pas pu être partagée(s)."
+
+#: frappe_webmail/neomail_share.py:407
+msgid "About the e-mail \"{0}\""
+msgstr "À propos de l’e-mail « {0} »"
+
+#: frappe_webmail/neomail_share.py:406
+msgid "About the e-mail \"{0}\" from {1}"
+msgstr "À propos de l’e-mail « {0} » de {1}"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:380
+msgid "Add {0} to this message's channel in Synk?"
+msgstr "Ajouter {0} au canal de ce message dans Synk ?"
+
+#: frappe_webmail/neomail_share.py:198
+msgid "Choose with whom to chat."
+msgstr "Choisissez avec qui discuter."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:381
+msgid "Make a private channel in Synk with {0} about this message?"
+msgstr "Créer un canal privé dans Synk avec {0} à propos de ce message ?"
+
+#: frappe_webmail/neomail_share.py:304
+msgid "No one else on this message is in your Synk workspace."
+msgstr "Aucune autre personne de ce message ne fait partie de votre espace de travail Synk."
+
+#: frappe_webmail/neomail_share.py:214
+msgid "No one else on this message uses Synk."
+msgstr "Aucune autre personne de ce message n’utilise Synk."
+
+#: frappe_webmail/neomail_share.py:88
+msgid "Synk is not installed here."
+msgstr "Synk n’est pas installé ici."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:369
+msgid "The conversation could not be opened in Synk."
+msgstr "La conversation n’a pas pu être ouverte dans Synk."
+
+#: frappe_webmail/neomail_share.py:205
+msgid "This message has no sender."
+msgstr "Ce message n’a pas d’expéditeur."
+
+#: frappe_webmail/neomail_share.py:289
+msgid "This message's channel in Synk is archived: open it again in Synk, or ask one of its admins."
+msgstr "Le canal de ce message dans Synk est archivé : rouvrez-le dans Synk ou demandez à l’un de ses administrateurs."
+
+#: frappe_webmail/neomail_share.py:396
+msgid "You cannot make a channel in Synk: ask an admin of your workspace."
+msgstr "Vous ne pouvez pas créer de canal dans Synk : demandez à un administrateur de votre espace de travail."
+
+#: frappe_webmail/neomail_share.py:208
+msgid "You wrote this message: chat with everyone on it instead."
+msgstr "Vous avez écrit ce message : discutez plutôt avec tout le monde qui y figure."
+
+#: frappe_webmail/neomail_share.py:210
+msgid "{0} does not use Synk."
+msgstr "{0} n’utilise pas Synk."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:390
+msgid "{0} person(s) on this message could not join: they are not in your Synk workspace."
+msgstr "{0} personne(s) de ce message n’ont pas pu être ajoutées : elles ne font pas partie de votre espace de travail Synk."
