@@ -58,6 +58,7 @@
 	// Share in Synk (neomail_share.py): where the person may share a message, and the share itself.
 	const DESTINATIONS = "/api/method/frappe_webmail.neomail_share.destinations";
 	const SHARE = "/api/method/frappe_webmail.neomail_share.share";
+	const CHAT = "/api/method/frappe_webmail.neomail_share.chat";
 
 	// One page for the desk's tab: its box, the banner, whether NeoMail said it holds work, whether the page is in
 	// front, what NeoMail last said of where it is, and what asks it.
@@ -339,6 +340,61 @@
 			},
 		});
 		dialog.show();
+	}
+
+	// Chat in Synk about a message (`mailcraft:chat`): with its sender, or with everyone on it. The server finds or makes
+	// the conversation (neomail_share.chat) and asks first when it would make a channel or add people to one (Raven
+	// tells them); Synk then opens on it. Nothing is posted in the person's name: they write in Synk.
+	async function chat_in_synk(data) {
+		const asked = window.neomailHost.chatOf(data);
+		if (!asked) return;
+		const ask = async (confirmed) => {
+			let answer = null;
+			try {
+				answer = await fetch(CHAT, {
+					method: "POST",
+					credentials: "same-origin",
+					cache: "no-store",
+					headers: {
+						Accept: "application/json",
+						"Content-Type": "application/json",
+						"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+					},
+					body: JSON.stringify({ ...asked, confirmed: confirmed ? 1 : 0 }),
+				});
+			} catch (e) {
+				answer = null;
+			}
+			if (!answer || !answer.ok) {
+				const fallback = __("The conversation could not be opened in Synk.");
+				frappe.msgprint(answer ? await refusal(answer, fallback) : fallback);
+				return null;
+			}
+			return (await answer.json()).message || {};
+		};
+		let done = await ask(false);
+		if (done && done.ask) {
+			const people = (Array.isArray(done.with) ? done.with : []).map((name) => frappe.utils.escape_html(String(name)));
+			const names = frappe.utils.comma_and ? frappe.utils.comma_and(people) : people.join(", ");
+			const question = done.adds
+				? __("Add {0} to this message's channel in Synk?", [names])
+				: __("Make a private channel in Synk with {0} about this message?", [names]);
+			const yes = await new Promise((resolve) => frappe.confirm(question, () => resolve(true), () => resolve(false)));
+			if (!yes) return;
+			done = await ask(true);
+		}
+		const route = done && window.neomailHost.synkRoute(done.route);
+		if (!route) return;
+		if (done.left_out > 0) {
+			frappe.show_alert({
+				message: __("{0} person(s) on this message could not join: they are not in your Synk workspace.", [done.left_out]),
+				indicator: "orange",
+			});
+		}
+		// Raven answered the person: Synk is theirs, and shows the conversation
+		state.synk.offered = true;
+		show_synk(true, route);
+		count_synk();
 	}
 
 	// Whether Raven is here for the person at all, before asking it anything: installed, and the person holding its role.
@@ -700,6 +756,7 @@
 			"mailcraft:dirty": (data) => (state.dirty = data.dirty === true),
 			// Share in Synk, on the person's click: the dialog that asks where
 			"mailcraft:share": (data) => share_message(data),
+			"mailcraft:chat": (data) => chat_in_synk(data),
 			// Where it is, once it started and at each change: the desk's menu follows
 			"mailcraft:state": (data) => {
 				state.where = data;

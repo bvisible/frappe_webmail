@@ -572,6 +572,39 @@ describe("Share in Synk, what NeoMail asks and where it may go", () => {
 	});
 });
 
+describe("Chat in Synk, what NeoMail asks and where Synk opens", () => {
+	it("takes a message as the share does, and with whom: the sender or everyone", () => {
+		const { chatOf } = page().host;
+		const asked = { type: "mailcraft:chat", account: "ada@example.org", email: "E7V31ZSU5CT1g", who: "all" };
+		expect(chatOf(asked)).toEqual({ account: "ada@example.org", email: "E7V31ZSU5CT1g", who: "all" });
+		expect(chatOf({ ...asked, who: "sender" }).who).toBe("sender");
+		for (const wrong of [null, { ...asked, who: "boss" }, { ...asked, who: undefined }, { ...asked, email: "M7" }]) {
+			expect(chatOf(wrong)).toBeNull();
+		}
+	});
+
+	it("opens a conversation of Raven's app only", () => {
+		const { synkRoute } = page().host;
+		expect(synkRoute("/raven/dm-channel/dm-1")).toBe("/raven/dm-channel/dm-1");
+		expect(synkRoute("/raven/Synk/synk-devis-cuisine-3f9a2b")).toBe("/raven/Synk/synk-devis-cuisine-3f9a2b");
+		expect(synkRoute("/raven/Mon%20espace/x")).toBe("/raven/Mon%20espace/x");
+		for (const wrong of [
+			null,
+			"",
+			"/raven",
+			"/raven/x",
+			"https://elsewhere.example/raven/a/b",
+			"//elsewhere.example/raven/a/b",
+			"/raven/../app/a",
+			"/raven/a/b?embed=x",
+			"/raven/a/b/c",
+			"/app/neomail/a",
+		]) {
+			expect(synkRoute(wrong)).toBeNull();
+		}
+	});
+});
+
 describe("followChoice", () => {
 	const { followChoice } = page().host;
 	const inbox = { type: "mailcraft:state", module: "mail", account: "ada@example.org", folder: "F-inbox" };

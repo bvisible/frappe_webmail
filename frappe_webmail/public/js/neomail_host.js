@@ -426,6 +426,24 @@ window.neomailHost = (function () {
 	}
 
 	/*
+	 * What NeoMail asks with `mailcraft:chat` (Chat in Synk): a message as `shareOf` takes one, and with whom,
+	 * "sender" or "all"; null when it is not that.
+	 */
+	function chatOf(data) {
+		const message = shareOf(data);
+		const who = data && data.who;
+		return message && (who === "sender" || who === "all") ? { ...message, who } : null;
+	}
+
+	/*
+	 * A conversation's address in Synk as neomail_share.chat answers it (`/raven/dm-channel/<id>`,
+	 * `/raven/<workspace>/<id>`, each part URL-encoded): a path of Raven's app, nothing else; null otherwise.
+	 */
+	function synkRoute(route) {
+		return typeof route === "string" && /^\/raven(\/[A-Za-z0-9%._~-]+){2}$/.test(route) ? route : null;
+	}
+
+	/*
 	 * Where the person may share a message, as the share dialog lists them (neomail_share.destinations: {channels:
 	 * [{id, label, private}], people: [{id, label}]}): the channels first, « # name », then the people by name, each
 	 * with what `share` takes (`channel:<id>`, `user:<id>`).
@@ -502,6 +520,8 @@ window.neomailHost = (function () {
 		synkChannels,
 		shareOf,
 		shareChoices,
+		chatOf,
+		synkRoute,
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,

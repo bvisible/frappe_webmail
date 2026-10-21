@@ -14,11 +14,19 @@ another's as one that does not exist) and Raven's for the conversation: a channe
 direct message with someone who uses Synk, found or made by Raven itself. The post is the person's own, made by Raven's
 own method, so Raven's permissions apply to it as to a message written in Synk. Desk people only, on the page's session
 with its CSRF token, as the page's other calls.
+
+Chat in Synk about a message (`mailcraft:chat`, section 8.6): `chat` opens the conversation with its sender (their
+direct message) or with everyone on it who uses Synk (the direct message for one person, else a private channel of the
+message's thread, the same one whoever opens it from the thread), and posts nothing in the person's name: they write in
+Synk. A channel to make, or people to add to one, is asked first, as Raven tells them.
 """
 
+import hashlib
+import re
+import unicodedata
 from email import message_from_bytes, policy
-from email.utils import parsedate_to_datetime
-from urllib.parse import urlencode
+from email.utils import getaddresses, parsedate_to_datetime
+from urllib.parse import quote, urlencode
 
 import frappe
 from frappe import _
@@ -41,6 +49,11 @@ MAX_FILES_TOTAL = 25 * 1024 * 1024
 MAX_FILE_NAME = 140
 # How the post writes the message's date (babel's pattern, in the person's language).
 DATE_FORMAT = "d MMMM yyyy, HH:mm"
+# A thread's channel: the words of its subject that its name keeps (in characters), and the key of the thread after them.
+MAX_CHAT_WORDS = 40
+CHAT_KEY = 6
+# The prefixes a reply or a forward puts before a subject, in the languages of the site's people.
+_REPLY_PREFIX = re.compile(r"^\s*((re|fwd?|tr|aw|wg|sv|antw|rif|r)\s*(\[\d+\])?\s*:\s*)+", re.IGNORECASE)
 
 
 def installed():
@@ -119,20 +132,12 @@ def share(account=None, email=None, to=None, note=None, attachments=None, client
 	`attachments`: 1 to share its attachments too; `client_id`: what makes a send that is asked again (a double
 	click) one send only (Raven's idempotency key). Answers {channel, message (the post's last message), files (the
 	attachments shared), left_out (those that did not fit)}."""
-	from frappe_webmail import mailcraft_jmap as jmap
 	from frappe_webmail import webmail_api as webmail
 	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
 
 	_gate()
 	mailbox = webmail.get_account(desk._mailbox_name(account))
-	if str(email or "")[:1] != "E" or not jmap._message_of(email):
-		frappe.throw(_("This message cannot be found."))
-	raw = jmap._source(mailbox, email)
-	if not raw:
-		frappe.throw(_("This message is no longer in its folder: refresh the list and try again."))
-	if len(raw) > MAX_SOURCE:
-		frappe.throw(_("This message is too large to be shared."))
-	message = message_from_bytes(raw, policy=policy.default)
+	message = _message(mailbox, email)
 	channel = _conversation(to)
 	files, left_out = _attachments(message) if cint(attachments) else ([], 0)
 	content = _content(message, note, mailbox.email, email)
@@ -152,6 +157,254 @@ def share(account=None, email=None, to=None, note=None, attachments=None, client
 		"files": len(files),
 		"left_out": left_out,
 	}
+
+
+def _message(mailbox, email, headers_only=False):
+	"""The message of `mailbox` whose JMAP email id is `email`, read from its server: an id that is not a message's is
+	refused before any mail is read. `headers_only`: its headers alone, whatever its size (who is on it); otherwise
+	all of it, MAX_SOURCE at most."""
+	from email.parser import BytesHeaderParser
+
+	from frappe_webmail import mailcraft_jmap as jmap
+
+	if str(email or "")[:1] != "E" or not jmap._message_of(email):
+		frappe.throw(_("This message cannot be found."))
+	raw = jmap._source(mailbox, email)
+	if not raw:
+		frappe.throw(_("This message is no longer in its folder: refresh the list and try again."))
+	if headers_only:
+		return BytesHeaderParser(policy=policy.default).parsebytes(raw)
+	if len(raw) > MAX_SOURCE:
+		frappe.throw(_("This message is too large to be shared."))
+	return message_from_bytes(raw, policy=policy.default)
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=20, seconds=60)
+def chat(account=None, email=None, who=None, confirmed=None):
+	"""Open in Synk a conversation about the message of the mailbox `account` whose JMAP email id is `email` (as
+	`share` takes them), `who`: "sender", the direct message with its sender; "all", everyone on it who uses Synk (its
+	sender, To and Cc: never a Bcc, which would tell the others who was hidden), the person aside: the direct message
+	when that is one person, else the private channel of the message's thread (`_thread_channel`). Nothing is posted
+	in the person's name. A channel to make, or people to add to it, is asked first: the answer is then {ask: true,
+	with (the names of those it adds), adds (to a channel there already is), left_out}, and the same call with
+	`confirmed` 1 does it. Otherwise {channel, route (Raven's address of the conversation), with (the names of the
+	people in it), left_out (those Raven would not take: not in the channel's workspace)}."""
+	from frappe_webmail import webmail_api as webmail
+	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
+
+	_gate()
+	if who not in ("sender", "all"):
+		frappe.throw(_("Choose with whom to chat."))
+	mailbox = webmail.get_account(desk._mailbox_name(account))
+	message = _message(mailbox, email, headers_only=True)
+	me = frappe.session.user
+	senders = _addresses(message, ("from",))
+	if who == "sender":
+		if not senders:
+			frappe.throw(_("This message has no sender."))
+		found = _people(senders[:1])
+		if found and found[0]["user"] == me:
+			frappe.throw(_("You wrote this message: chat with everyone on it instead."))
+		if not found:
+			frappe.throw(_("{0} does not use Synk.").format(senders[0]))
+		return _direct(found[0])
+	people = [p for p in _people(senders + _addresses(message, ("to", "cc"))) if p["user"] != me]
+	if not people:
+		frappe.throw(_("No one else on this message uses Synk."))
+	if len(people) == 1:
+		return _direct(people[0])
+	return _group(message, people, cint(confirmed))
+
+
+def _addresses(message, headers):
+	"""The addresses of the message's `headers`, in lower case, each once, in their order."""
+	values = [str(value) for header in headers for value in (message.get_all(header) or [])]
+	found = []
+	for _name, address in getaddresses(values):
+		address = address.strip().lower()
+		if "@" in address and address not in found:
+			found.append(address)
+	return found
+
+
+def _people(addresses):
+	"""The people who use Synk among `addresses`, in their order: [{user, label}] (an enabled account of the site
+	with that e-mail address, a Raven user of the person kind), the person included (the caller leaves them out),
+	never Administrator nor Guest."""
+	if not addresses:
+		return []
+	accounts = {}
+	for row in frappe.get_all(
+		"User", filters={"email": ["in", addresses], "enabled": 1}, fields=["name", "email"]
+	):
+		accounts.setdefault(str(row.email or "").lower(), row.name)
+	users = [user for user in accounts.values() if user not in ("Administrator", "Guest")]
+	if not users:
+		return []
+	labels = {
+		row.user: row.full_name or row.user
+		for row in frappe.get_all(
+			"Raven User",
+			filters={"enabled": 1, "type": "User", "user": ["in", users]},
+			fields=["user", "full_name"],
+		)
+	}
+	people = []
+	for address in addresses:
+		user = accounts.get(address)
+		if user in labels and all(p["user"] != user for p in people):
+			people.append({"user": user, "label": labels[user]})
+	return people
+
+
+def _direct(person):
+	"""The direct message with `person`, found or made by Raven (whose own rules apply): the conversation `chat`
+	answers."""
+	from raven.api.raven_channel import create_direct_message_channel
+
+	channel = create_direct_message_channel(person["user"])
+	return {
+		"channel": channel,
+		"route": "/raven/dm-channel/" + quote(channel, safe=""),
+		"with": [person["label"]],
+		"left_out": 0,
+	}
+
+
+def _group(message, people, confirmed):
+	"""The private channel of the message's thread with `people` (two or more): the person's channel of that thread,
+	with whoever is missing added, or one made in their workspace, asked first (see `chat`). Raven takes in a channel
+	only the members of its workspace (raven.permissions.channel_member_has_permission); its `add_members` does not
+	ask, so the others are left out here, and counted."""
+	me = frappe.session.user
+	key = _thread_key(message)
+	found, taken = _thread_channel(key)
+	if not found and taken:
+		# The thread's channel is someone else's (or archived): the person's own, under a key of theirs.
+		key = _thread_key(message, me)
+		found, taken = _thread_channel(key)
+		if not found and taken:
+			frappe.throw(
+				_(
+					"This message's channel in Synk is archived: open it again in Synk, or ask one of its admins."
+				)
+			)
+	workspace = found.workspace if found else _workspace(people)
+	in_workspace = set(
+		frappe.get_all(
+			"Raven Workspace Member",
+			filters={"workspace": workspace, "user": ["in", [p["user"] for p in people]]},
+			pluck="user",
+		)
+	)
+	welcome = [p for p in people if p["user"] in in_workspace]
+	left_out = len(people) - len(welcome)
+	if not welcome:
+		frappe.throw(_("No one else on this message is in your Synk workspace."))
+	if not found and len(welcome) == 1:
+		return {**_direct(welcome[0]), "left_out": left_out}
+	members = (
+		set(frappe.get_all("Raven Channel Member", filters={"channel_id": found.name}, pluck="user_id"))
+		if found
+		else set()
+	)
+	adding = [p for p in welcome if p["user"] not in members]
+	if (adding or not found) and not confirmed:
+		return {"ask": True, "with": [p["label"] for p in adding], "adds": bool(found), "left_out": left_out}
+	if found:
+		channel = frappe.get_doc("Raven Channel", found.name)
+	else:
+		channel = frappe.get_doc(
+			{
+				"doctype": "Raven Channel",
+				"channel_name": _chat_name(message, key),
+				"channel_description": _about(message),
+				"type": "Private",
+				"workspace": workspace,
+			}
+		).insert()
+	if adding:
+		channel.add_members([p["user"] for p in adding])
+	return {
+		"channel": channel.name,
+		"route": "/raven/" + quote(workspace, safe="") + "/" + quote(channel.name, safe=""),
+		"with": [p["label"] for p in welcome],
+		"left_out": left_out,
+	}
+
+
+def _thread_key(message, salt=""):
+	"""The key of the message's thread, the same for every message of it: from the first message it answers
+	(`References`, else `In-Reply-To`), else from its own id; `salt` makes another, the person's own."""
+	root = ""
+	for header in ("references", "in-reply-to", "message-id"):
+		ids = re.findall(r"<[^<>\s]+>", str(message.get(header) or ""))
+		if ids:
+			root = ids[0].lower()
+			break
+	if not root:
+		root = (str(message.get("subject") or "") + str(message.get("from") or "")).lower()
+	return hashlib.sha1((root + "\n" + salt).encode()).hexdigest()[:CHAT_KEY]
+
+
+def _chat_name(message, key):
+	"""The name of the thread's channel, as Raven writes one (lower case, hyphens): the words of the message's
+	subject without « Re: » or « Fwd: », then the thread's key (`_thread_key`), which finds it again whatever the
+	subject became."""
+	subject = _REPLY_PREFIX.sub("", str(message.get("subject") or "")).strip() or _("(no subject)")
+	words = unicodedata.normalize("NFKD", subject).encode("ascii", "ignore").decode().lower()
+	slug = "-".join(re.findall(r"[a-z0-9]+", words))[:MAX_CHAT_WORDS].strip("-") or "e-mail"
+	return f"{slug}-{key}"
+
+
+def _thread_channel(key):
+	"""(the person's channel of the thread whose key is `key`, whether there is one of that thread that is not: not
+	theirs, or archived)."""
+	rows = frappe.get_all(
+		"Raven Channel",
+		filters={"channel_name": ["like", f"%-{key}"], "is_direct_message": 0, "is_thread": 0},
+		fields=["name", "workspace", "is_archived"],
+	)
+	for row in rows:
+		if not row.is_archived and frappe.db.exists(
+			"Raven Channel Member", {"channel_id": row.name, "user_id": frappe.session.user}
+		):
+			return row, True
+	return None, bool(rows)
+
+
+def _workspace(people):
+	"""The workspace a channel for `people` is made in: one of the person's in which they may make a channel (a
+	workspace admin, or one open to every member), with the most of `people` among its members."""
+	users = [p["user"] for p in people]
+	best, most = None, -1
+	for row in frappe.get_all(
+		"Raven Workspace Member",
+		filters={"user": frappe.session.user},
+		fields=["workspace", "is_admin"],
+		order_by="workspace asc",
+	):
+		if not row.is_admin and frappe.db.get_value(
+			"Raven Workspace", row.workspace, "only_admins_can_create_channels"
+		):
+			continue
+		count = frappe.db.count("Raven Workspace Member", {"workspace": row.workspace, "user": ["in", users]})
+		if count > most:
+			best, most = row.workspace, count
+	if not best:
+		frappe.throw(_("You cannot make a channel in Synk: ask an admin of your workspace."))
+	return best
+
+
+def _about(message):
+	"""The thread's channel's description: the message it is about, its subject and its sender."""
+	subject = str(message.get("subject") or "").strip()[:200] or _("(no subject)")
+	senders = getaddresses([str(value) for value in (message.get_all("from") or [])])
+	sender = (senders[0][0] or senders[0][1]) if senders else ""
+	if sender:
+		return _('About the e-mail "{0}" from {1}').format(subject, sender)
+	return _('About the e-mail "{0}"').format(subject)
 
 
 def _conversation(to):

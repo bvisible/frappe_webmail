@@ -63,10 +63,12 @@ const STATE = {
 let desk;
 
 // Frappe's __ (frappe/public/js/frappe/translate.js): the translation in the context, else the word's without
-// context, else the word.
+// context, else the word; then `replace` in its {0}, {1}… ($.format).
 function translator(messages) {
-	return (text, replace, context) =>
-		(context && messages[`${text}:${context}`]) || messages[text] || text;
+	return (text, replace, context) => {
+		const said = (context && messages[`${text}:${context}`]) || messages[text] || text;
+		return Array.isArray(replace) ? said.replace(/\{(\d+)\}/g, (all, n) => (n in replace ? String(replace[n]) : all)) : said;
+	};
 }
 
 // The desk with the page loaded and shown, its frame there: what the page heard, what it lent, what it posted.
@@ -126,12 +128,20 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		frappe.msgprint = (text) => synk.said.push(["msgprint", text]);
 		frappe.show_alert = (alert) => synk.said.push(["alert", alert.message]);
 		frappe.utils.get_random = () => "client-1";
+		frappe.utils.escape_html = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		frappe.utils.comma_and = (list) => list.join(", ");
+		// The desk's confirm: what it asked, answered as the test says (`confirm`: true, false)
+		synk.asked = [];
+		frappe.confirm = (question, yes, no) => {
+			synk.asked.push(question);
+			(synk.confirm ? yes : no)();
+		};
 		frappe.boot = { ...boot, versions: { raven: "3.0.0" } };
 		frappe.user = { has_role: (role) => role === "Raven User" && synk.role !== false };
 		frappe.session = { user: "ada@example.org" };
 		if (synk.realtime) frappe.realtime = synk.realtime;
 	}
-	const fetch = vi.fn(async (url) => {
+	const fetch = vi.fn(async (url, init) => {
 		if (String(url).includes("raven.api.raven_message.get_unread_count_for_channels")) {
 			const unread = synk && synk.unread;
 			return typeof unread === "number"
@@ -151,6 +161,15 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 						status: shared,
 				  })
 				: new Response(JSON.stringify({ message: shared || {} }));
+		}
+		if (String(url).includes("neomail_share.chat")) {
+			const chat = synk && synk.chat;
+			const said = typeof chat === "function" ? chat(JSON.parse(init.body)) : chat;
+			return typeof said === "number"
+				? new Response(JSON.stringify({ _server_messages: JSON.stringify([JSON.stringify({ message: "Refused <b>here</b>" })]) }), {
+						status: said,
+				  })
+				: new Response(JSON.stringify({ message: said || {} }));
 		}
 		if (String(url).includes("message_key")) {
 			return key ? new Response(JSON.stringify({ message: key })) : new Response("{}", { status: 417 });
@@ -792,5 +811,99 @@ describe("Share in Synk, from NeoMail's button", () => {
 		await vi.waitFor(() => expect(synk.said.length).toBe(1));
 		expect(synk.said[0]).toEqual(["msgprint", "You have no channel in Synk and nobody to write to yet."]);
 		expect(synk.dialogs.length).toBe(0);
+	});
+});
+
+describe("Chat in Synk, from NeoMail's button", () => {
+	beforeEach(() => {
+		window.happyDOM.settings.disableIframePageLoading = true;
+	});
+	afterEach(() => {
+		window.happyDOM.settings.disableIframePageLoading = false;
+	});
+
+	const MESSAGE = { account: "ada@example.org", email: "E7V31ZSU5CT1g" };
+
+	// The chat's requests to the server, as the page made them: their method, their CSRF token and what they sent.
+	const chatSent = (fetch) =>
+		fetch.mock.calls
+			.filter(([url]) => String(url).includes("neomail_share.chat"))
+			.map(([, init]) => ({ method: init.method, csrf: init.headers["X-Frappe-CSRF-Token"], body: JSON.parse(init.body) }));
+
+	it("opens the direct message with the sender, asking nothing and posting nothing", async () => {
+		const synk = {
+			unread: [],
+			chat: { channel: "dm-1", route: "/raven/dm-channel/dm-1", with: ["Grace Hopper"], left_out: 0 },
+		};
+		const { wrapper, frame, tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "sender" });
+		await vi.waitFor(() => expect(wrapper.querySelectorAll("iframe").length).toBe(2));
+		expect(chatSent(fetch)).toEqual([{ method: "POST", csrf: "csrf-1", body: { ...MESSAGE, who: "sender", confirmed: 0 } }]);
+		expect(synk.asked).toEqual([]);
+		expect(fetch.mock.calls.some(([url]) => String(url).includes("neomail_share.share"))).toBe(false);
+		const raven = wrapper.querySelectorAll("iframe")[1];
+		expect(raven.getAttribute("src")).toBe("/raven/dm-channel/dm-1?embed=desk");
+		expect(away(raven)).toBe(false);
+		expect(away(frame)).toBe(true);
+	});
+
+	it("asks before making a channel with everyone, makes it on yes, and says who could not join", async () => {
+		const synk = {
+			unread: [],
+			confirm: true,
+			chat: (body) =>
+				body.confirmed
+					? { channel: "synk-devis-k", route: "/raven/Synk/synk-devis-k", with: ["Grace", "Ada"], left_out: 1 }
+					: { ask: true, with: ["Grace <b>Hopper</b>", "Ada"], adds: false, left_out: 1 },
+		};
+		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
+		await vi.waitFor(() => expect(wrapper.querySelectorAll("iframe").length).toBe(2));
+		expect(chatSent(fetch).map((sent) => sent.body.confirmed)).toEqual([0, 1]);
+		// The names as words, never as markup
+		expect(synk.asked).toEqual(["Make a private channel in Synk with Grace &lt;b&gt;Hopper&lt;/b&gt;, Ada about this message?"]);
+		expect(synk.said).toContainEqual([
+			"alert",
+			"1 person(s) on this message could not join: they are not in your Synk workspace.",
+		]);
+		expect(wrapper.querySelectorAll("iframe")[1].getAttribute("src")).toBe("/raven/Synk/synk-devis-k?embed=desk");
+	});
+
+	it("makes nothing when the person says no, and asks before adding people to a channel there is", async () => {
+		const synk = { unread: [], confirm: false, chat: { ask: true, with: ["Linus"], adds: true, left_out: 0 } };
+		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
+		await vi.waitFor(() => expect(synk.asked.length).toBe(1));
+		expect(synk.asked[0]).toBe("Add Linus to this message's channel in Synk?");
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(chatSent(fetch).length).toBe(1);
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
+	});
+
+	it("says what the server refused, and opens nothing", async () => {
+		const synk = { unread: [], chat: 417 };
+		const { wrapper, tell } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "sender" });
+		await vi.waitFor(() => expect(synk.said.length).toBe(1));
+		expect(synk.said[0]).toEqual(["msgprint", "Refused <b>here</b>"]);
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
+	});
+
+	it("takes nothing but a message and with whom from NeoMail, and opens nothing but Raven", async () => {
+		const synk = { unread: [], chat: { route: "https://elsewhere.example/raven/x" } };
+		const { wrapper, tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "boss" });
+		tell({ type: "mailcraft:chat", account: "nobody", email: MESSAGE.email, who: "all" });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(chatSent(fetch).length).toBe(0);
+		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
+		await vi.waitFor(() => expect(chatSent(fetch).length).toBe(1));
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 });

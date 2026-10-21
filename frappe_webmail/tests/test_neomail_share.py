@@ -2,7 +2,8 @@
 # For license information, please see license.txt
 
 """Share an e-mail in Synk from NeoMail (neomail_share.py): what the post says and never says, which attachments go,
-and who may share, where. The server's mail and Raven's send are stood in for: nothing reaches a mailbox or a channel.
+and who may share, where; chat in Synk about it: with whom, in which conversation, asked when. The server's mail and
+Raven are stood in for: nothing reaches a mailbox or a channel.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_neomail_share
@@ -21,6 +22,8 @@ from frappe_webmail import neomail_share as share
 
 PORTAL = "webmail_neomail_share_portal@example.com"
 STAFF = "webmail_neomail_share_staff@example.com"
+# The person chatting, by their address alone: no account is made for it (`_people` is stood in for).
+STAFF_CHAT = "webmail_neomail_chat_staff@example.com"
 MAILBOX = "webmail_neomail_share_box@webmail.test"
 EMAIL_ID = "E7V31ZSU5CT1g"
 
@@ -215,6 +218,7 @@ class TestNeoMailShare(FrappeTestCase):
 			for call, kwargs in (
 				(share.destinations, {}),
 				(share.share, {"account": MAILBOX, "email": EMAIL_ID, "to": "user:x"}),
+				(share.chat, {"account": MAILBOX, "email": EMAIL_ID, "who": "sender"}),
 			):
 				with self.assertRaisesRegex(frappe.ValidationError, "Synk is not installed here"):
 					call(**kwargs)
@@ -275,3 +279,236 @@ class TestNeoMailShare(FrappeTestCase):
 		with _raven("raven.api.raven_channel", create_direct_message_channel=direct_message):
 			self.assertEqual(share._conversation("user:bruno@example.org"), "dm-1")
 		self.assertEqual(asked, ["bruno@example.org"])
+
+
+def _thread(subject, own_id, answers=(), to=MAILBOX, cc=None, bcc=None):
+	"""A message of a thread: its subject, its own id, the ids of those it answers (the first is the thread's)."""
+	message = EmailMessage()
+	message["Subject"] = subject
+	message["From"] = "Grace Hopper <grace@example.org>"
+	message["To"] = to
+	if cc:
+		message["Cc"] = cc
+	if bcc:
+		message["Bcc"] = bcc
+	message["Message-ID"] = own_id
+	if answers:
+		message["In-Reply-To"] = answers[-1]
+		message["References"] = " ".join(answers)
+	message.set_content("Bonjour")
+	return message
+
+
+def _no_post(**kwargs):
+	raise AssertionError("chat posts nothing in the person's name")
+
+
+class TestNeoMailChat(FrappeTestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+
+	def _chat(self, raw, who, people, **more):
+		"""`chat` on the message `raw`, the Synk users among its addresses being `people` ({address: (user,
+		label)}); answers (its answer, the addresses it asked about, the direct messages Raven was asked for)."""
+		asked, direct = [], []
+
+		def found(addresses):
+			asked.append(list(addresses))
+			return [{"user": people[a][0], "label": people[a][1]} for a in addresses if a in people]
+
+		def direct_message(user_id):
+			direct.append(user_id)
+			return "dm-" + user_id.split("@")[0]
+
+		with (
+			patch.object(share, "_gate"),
+			patch("frappe_webmail.webmail_api.get_account", return_value=SimpleNamespace(email=MAILBOX)),
+			patch("frappe_webmail.mailcraft_jmap._source", return_value=raw),
+			patch.object(share, "_people", side_effect=found),
+			_raven("raven.api.raven_channel", create_direct_message_channel=direct_message),
+			_raven("raven.api.raven_message", send_message_with_attachments=_no_post),
+		):
+			answer = share.chat(account=MAILBOX, email=EMAIL_ID, who=who, **more)
+		return answer, asked, direct
+
+	def test_chat_reads_who_is_on_a_message_whatever_its_size(self):
+		message = _thread("Plans", "<a1@example.org>")
+		message.set_content("x" * (share.MAX_SOURCE + 1))
+		answer, asked, _direct = self._chat(
+			message.as_bytes(), "sender", {"grace@example.org": ("grace@example.org", "Grace Hopper")}
+		)
+		self.assertEqual(asked, [["grace@example.org"]])
+		self.assertEqual(answer["channel"], "dm-grace")
+
+	def test_the_thread_s_channel_is_named_the_same_from_every_message_of_it(self):
+		first = _thread("Devis cuisine", "<a1@example.org>")
+		reply = _thread("RE: Fwd: Devis cuisine", "<b2@example.org>", answers=["<a1@example.org>"])
+		later = _thread(
+			"Re: Devis cuisine (suite)", "<c3@example.org>", answers=["<a1@example.org>", "<b2@example.org>"]
+		)
+		key = share._thread_key(first)
+		self.assertEqual(share._thread_key(reply), key)
+		self.assertEqual(share._thread_key(later), key)
+		self.assertEqual(len(key), share.CHAT_KEY)
+		self.assertEqual(share._chat_name(reply, key), "devis-cuisine-" + key)
+		# Another thread, and the person's own key of the same one, are other channels
+		self.assertNotEqual(share._thread_key(_thread("Devis cuisine", "<z9@example.org>")), key)
+		self.assertNotEqual(share._thread_key(first, "staff@example.org"), key)
+		# As Raven writes a name: lower case, words joined by hyphens, accents left out, the subject's words cut
+		accents = _thread("Réunion d'équipe : l'été / « bilan »", "<d4@example.org>")
+		self.assertEqual(share._chat_name(accents, "k"), "reunion-d-equipe-l-ete-bilan-k")
+		long_words = _thread("mot " * 100, "<e5@example.org>")
+		self.assertLessEqual(
+			len(share._chat_name(long_words, key)), share.MAX_CHAT_WORDS + 1 + share.CHAT_KEY
+		)
+		self.assertIn('"Devis cuisine" from Grace Hopper', share._about(first))
+
+	def test_chat_with_the_sender_opens_their_direct_message_and_posts_nothing(self):
+		raw = _thread("Devis", "<a1@example.org>").as_bytes()
+		answer, asked, direct = self._chat(
+			raw, "sender", {"grace@example.org": ("grace@example.org", "Grace Hopper")}
+		)
+		self.assertEqual(asked, [["grace@example.org"]])
+		self.assertEqual(direct, ["grace@example.org"])
+		self.assertEqual(
+			answer,
+			{
+				"channel": "dm-grace",
+				"route": "/raven/dm-channel/dm-grace",
+				"with": ["Grace Hopper"],
+				"left_out": 0,
+			},
+		)
+
+	def test_chat_with_the_sender_is_refused_on_one_s_own_message_and_when_they_do_not_use_synk(self):
+		raw = _thread("Devis", "<a1@example.org>").as_bytes()
+		with self.assertRaisesRegex(frappe.ValidationError, "does not use Synk"):
+			self._chat(raw, "sender", {})
+		frappe.set_user(STAFF_CHAT)
+		with self.assertRaisesRegex(frappe.ValidationError, "You wrote this message"):
+			self._chat(raw, "sender", {"grace@example.org": (STAFF_CHAT, "Me")})
+		with self.assertRaisesRegex(frappe.ValidationError, "with whom"):
+			self._chat(raw, "boss", {})
+
+	def test_chat_with_everyone_never_reads_a_bcc_and_leaves_the_person_aside(self):
+		raw = _thread(
+			"Devis",
+			"<a1@example.org>",
+			to=f"Staff <{STAFF_CHAT}>, ada@example.org",
+			cc="Linus <linus@example.org>",
+			bcc="hidden@example.org",
+		).as_bytes()
+		frappe.set_user(STAFF_CHAT)
+		people = {
+			STAFF_CHAT: (STAFF_CHAT, "Me"),
+			"linus@example.org": ("linus@example.org", "Linus"),
+		}
+		answer, asked, direct = self._chat(raw, "all", people)
+		self.assertEqual(asked, [["grace@example.org", STAFF_CHAT, "ada@example.org", "linus@example.org"]])
+		# One other person who uses Synk: their direct message
+		self.assertEqual(direct, ["linus@example.org"])
+		self.assertEqual(answer["route"], "/raven/dm-channel/dm-linus")
+		with self.assertRaisesRegex(frappe.ValidationError, "No one else"):
+			self._chat(raw, "all", {STAFF_CHAT: (STAFF_CHAT, "Me")})
+
+	def test_a_new_thread_channel_is_asked_first_then_made_private_with_those_of_its_workspace(self):
+		raw = _thread(
+			"Re: Livraison scie",
+			"<b2@example.org>",
+			answers=["<a1@example.org>"],
+			cc="ada@example.org, linus@example.org",
+		).as_bytes()
+		people = {
+			"grace@example.org": ("grace@example.org", "Grace Hopper"),
+			"ada@example.org": ("ada@example.org", "Ada Lovelace"),
+			"linus@example.org": ("linus@example.org", "Linus"),
+		}
+		made, added = [], []
+
+		class Channel:
+			name = "synk-livraison-scie-k"
+
+			def __init__(self, doc):
+				made.append(doc)
+
+			def insert(self):
+				return self
+
+			def add_members(self, members):
+				added.append(list(members))
+
+		def get_all(doctype, filters=None, **kwargs):
+			# Linus is not in the workspace: Raven would not take him in a channel of it
+			if doctype == "Raven Workspace Member":
+				return [u for u in filters["user"][1] if u != "linus@example.org"]
+			raise AssertionError(doctype)
+
+		with (
+			patch.object(share, "_thread_channel", return_value=(None, False)),
+			patch.object(share, "_workspace", return_value="Synk"),
+			patch.object(share.frappe, "get_all", side_effect=get_all),
+			patch.object(share.frappe, "get_doc", side_effect=lambda doc: Channel(doc)),
+		):
+			asked_first, _asked, _direct = self._chat(raw, "all", people)
+			self.assertEqual(made, [])
+			self.assertEqual(
+				asked_first,
+				{"ask": True, "with": ["Grace Hopper", "Ada Lovelace"], "adds": False, "left_out": 1},
+			)
+			answer, _asked, direct = self._chat(raw, "all", people, confirmed="1")
+		self.assertEqual(direct, [])
+		self.assertEqual(len(made), 1)
+		self.assertEqual(made[0]["type"], "Private")
+		self.assertEqual(made[0]["workspace"], "Synk")
+		key = share._thread_key(_thread("Livraison scie", "<a1@example.org>"))
+		self.assertEqual(made[0]["channel_name"], "livraison-scie-" + key)
+		self.assertEqual(added, [["grace@example.org", "ada@example.org"]])
+		self.assertEqual(
+			answer,
+			{
+				"channel": "synk-livraison-scie-k",
+				"route": "/raven/Synk/synk-livraison-scie-k",
+				"with": ["Grace Hopper", "Ada Lovelace"],
+				"left_out": 1,
+			},
+		)
+
+	def test_the_thread_s_channel_held_by_others_gives_the_person_their_own_and_adds_only_who_is_missing(
+		self,
+	):
+		raw = _thread("Devis", "<a1@example.org>", cc="ada@example.org").as_bytes()
+		people = {
+			"grace@example.org": ("grace@example.org", "Grace Hopper"),
+			"ada@example.org": ("ada@example.org", "Ada Lovelace"),
+		}
+		mine = SimpleNamespace(name="synk-devis-mine", workspace="Synk")
+		keys, added = [], []
+
+		def thread_channel(key):
+			keys.append(key)
+			# The thread's channel is someone else's; the person's own, under their key, is there already
+			return (None, True) if len(keys) == 1 else (mine, True)
+
+		def get_all(doctype, filters=None, **kwargs):
+			if doctype == "Raven Workspace Member":
+				return list(filters["user"][1])
+			if doctype == "Raven Channel Member":
+				return ["grace@example.org"]
+			raise AssertionError(doctype)
+
+		channel = SimpleNamespace(name=mine.name, add_members=lambda members: added.append(list(members)))
+		with (
+			patch.object(share, "_thread_channel", side_effect=thread_channel),
+			patch.object(share.frappe, "get_all", side_effect=get_all),
+			patch.object(share.frappe, "get_doc", return_value=channel),
+		):
+			asked_first, _asked, _direct = self._chat(raw, "all", people)
+			self.assertEqual(
+				asked_first, {"ask": True, "with": ["Ada Lovelace"], "adds": True, "left_out": 0}
+			)
+			self.assertEqual(added, [])
+			answer, _asked, _direct = self._chat(raw, "all", people, confirmed=1)
+		self.assertEqual(keys[1], share._thread_key(_thread("x", "<a1@example.org>"), "Administrator"))
+		self.assertEqual(added, [["ada@example.org"]])
+		self.assertEqual(answer["route"], "/raven/Synk/synk-devis-mine")
+		self.assertEqual(answer["with"], ["Grace Hopper", "Ada Lovelace"])
