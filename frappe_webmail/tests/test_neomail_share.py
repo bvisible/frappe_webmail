@@ -8,6 +8,8 @@ Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_neomail_share
 """
 
+import sys
+import types
 from email.message import EmailMessage
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -36,6 +38,16 @@ def _make_user(email, desk_user, raven=False):
 	if raven:
 		user.append("roles", {"role": share.RAVEN_ROLE})
 	user.insert(ignore_permissions=True)
+
+
+def _raven(module, **functions):
+	"""Raven's `module` with `functions`, stood in for as `share` imports it (`from raven.api… import …`), whether
+	Raven is installed on the bench or not (the CI's bench has no Raven)."""
+	stand_in = types.ModuleType(module)
+	for name, function in functions.items():
+		setattr(stand_in, name, function)
+	parents = {name: sys.modules.get(name) or types.ModuleType(name) for name in ("raven", "raven.api")}
+	return patch.dict(sys.modules, {**parents, module: stand_in})
 
 
 def _mail(text="Bonjour,\nla scie sera prête demain.", html=None, attachments=()):
@@ -200,7 +212,7 @@ class TestNeoMailShare(FrappeTestCase):
 			patch("frappe_webmail.webmail_api.get_account", return_value=box) as account,
 			patch("frappe_webmail.mailcraft_jmap._source", return_value=_mail()) as source,
 			patch.object(share, "_conversation", return_value="synk-atelier") as conversation,
-			patch("raven.api.raven_message.send_message_with_attachments", side_effect=send),
+			_raven("raven.api.raven_message", send_message_with_attachments=send),
 		):
 			answer = share.share(
 				account=MAILBOX, email=EMAIL_ID, to="channel:synk-atelier", note="Pour info", client_id="c-1"
@@ -234,6 +246,12 @@ class TestNeoMailShare(FrappeTestCase):
 			self.assertRaises(frappe.ValidationError, share._conversation, "channel:synk-someone-elses")
 		self.assertRaises(frappe.ValidationError, share._conversation, "")
 		self.assertRaises(frappe.ValidationError, share._conversation, "team:everyone")
-		with patch("raven.api.raven_channel.create_direct_message_channel", return_value="dm-1") as dm:
+		asked = []
+
+		def direct_message(user_id):
+			asked.append(user_id)
+			return "dm-1"
+
+		with _raven("raven.api.raven_channel", create_direct_message_channel=direct_message):
 			self.assertEqual(share._conversation("user:bruno@example.org"), "dm-1")
-			dm.assert_called_once_with("bruno@example.org")
+		self.assertEqual(asked, ["bruno@example.org"])
