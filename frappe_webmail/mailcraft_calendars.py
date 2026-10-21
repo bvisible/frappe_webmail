@@ -17,19 +17,36 @@ write (their rights on each, as the Suite reads them).
 Offered where the Suite is installed, in the same one mailbox of the person as the address book
 (mailcraft_contacts.contacts_mailbox). The calendar account is the person's own, chosen here and never named by the
 client (`suite.calendar.feed._account_of`: their mailbox's, else the one kept in the instance, never created here): an
-administrator's client would otherwise reach anyone's. Left out for now: the calendars others share with the person, and
-the ERP's dates (`erp:`), whose titles carry customers, amounts and leaves that MailCraft would keep on the computer.
+administrator's client would otherwise reach anyone's.
+
+Beside the person's own calendars, the ones the desk's calendar shows them too, read-only (`_read_only_calendars`):
+- the dates of the ERP (tasks, reminders, interventions, leaves, bookings, invoices…), the Suite's calendars `erp:<source>`
+  (suite.calendar.sources, maintenance#1428), each with the desk's name in the person's language, the colour of its
+  palette, and switched on or off as the person switched it in the desk (a source that is off sends no events);
+- the calendars colleagues share with the person read-only, kept in their owner's account on the mail server (named
+  `<account>|<id>`, as the Suite names them).
+They are listed by the desk's own call (suite.calendar.api.get_calendars_with_shared, with the ERP's dates), and their
+events read as the desk reads them, as the person and with their rights: the ERP's dates by the Suite's batch for a
+window (sources.virtual_events, a chunk of 90 days at a time, as the Suite's own feed reads them), a shared calendar's
+events from its account. Nothing is written there: a create, a change or a deletion is refused, each with its reason.
+Their titles carry customers, amounts and leaves, which MailCraft keeps on the computer as it keeps the person's mail.
+
+No change is recorded, for any calendar: `/changes` answers `cannotCalculateChanges` and the client reads its window
+again (RFC 8620 §5.2), as MailCraft does at each synchronisation; the read-only events are read where they live at each
+query, and a query's `queryState` changes when one of them changes, its title or its time as much as its id.
 """
 
 import hashlib
 import inspect
 import json
 import re
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import frappe
+from frappe import _
 from frappe.utils import cint
 
 from frappe_webmail import mailcraft_jmap as jmap
@@ -50,6 +67,31 @@ _READ_ONLY = {
 	"mayAdmin": False,
 	"mayDelete": False,
 }
+# The ids of the ERP's calendars and of their dates begin so (suite.calendar.sources.PREFIX, not imported: this module
+# is read where the Suite may not be installed); a calendar or an event shared from another account is named
+# `<account>|<id>`, as the Suite names it. The person's own ids have neither.
+ERP_PREFIX = "erp:"
+# The colours the desk draws a source of the ERP's dates in, by the name of its palette: the hexes of its calendar
+# palette (frontend/src/apps/calendar/utils/calendars.ts, CALENDAR_COLORS), which frappe-ui reads back as its own.
+ERP_COLORS = {
+	"green": "#30a66d",
+	"blue": "#0289f7",
+	"violet": "#6846e3",
+	"amber": "#db7706",
+	"pink": "#e34aa6",
+	"cyan": "#3bbde5",
+	"orange": "#e86c13",
+}
+# The ERP's dates are read a chunk at a time, as the Suite's feed reads them (suite.calendar.feed.CHUNK_DAYS): a source
+# gives at most 300 entries a read (sources.MAX_PER_SOURCE), which a whole window of MailCraft's could pass.
+ERP_CHUNK = timedelta(days=90)
+# A CalendarEvent/get of a date of the ERP that no query of the same request read: read again in the windows the person
+# queried last (kept an hour), then in MailCraft's own window around today (90 days back, a year and a day ahead).
+WINDOWS_KEPT = 4
+WINDOWS_SECONDS = 3600
+TODAY_BEFORE, TODAY_AFTER = timedelta(days=90), timedelta(days=366)
+# The longest id RFC 8620 allows (§1.2).
+MAX_ID = 255
 
 
 def suite_installed():
@@ -267,12 +309,105 @@ def calendar_get(args):
 				"myRights": _rights(calendar.get("myRights")),
 			}
 		)
+	# Then those the desk shows besides, read-only, in the desk's order: after the person's own.
+	after = 1 + max((cint(calendar.get("sortOrder")) for calendar in every), default=0)
+	for index, (raw, (kind, row)) in enumerate(_read_only_calendars(suite_account).items()):
+		cid = _calendar_id(raw)
+		if ids is None or cid in ids:
+			listed.append(_read_only_calendar(cid, kind, row, after + index))
 	found = {c["id"] for c in listed}
 	return {
 		"accountId": aid,
 		"state": "0",
 		"list": listed,
 		"notFound": [i for i in (ids or []) if i not in found],
+	}
+
+
+@contextmanager
+def _persons_language():
+	"""The person's language for what the Suite writes in words (the names of the ERP's calendars, their dates'
+	details, its refusals), as the desk speaks to them: the request's own was settled before its token named the
+	person (frappe.auth.HTTPRequest.set_lang, then the auth hooks), from the client's headers or the instance's."""
+	from frappe.translate import get_user_lang
+
+	previous = getattr(frappe.local, "lang", None)
+	frappe.local.lang = get_user_lang(frappe.session.user) or previous
+	try:
+		yield
+	finally:
+		frappe.local.lang = previous
+
+
+def _read_only_kind(raw):
+	"""The kind of a calendar or an event the person only reads, by its raw id: `erp` (a date of the ERP) or `shared`
+	(from another account); None for one of their own."""
+	if not isinstance(raw, str):
+		return None
+	if raw.startswith(ERP_PREFIX):
+		return "erp"
+	return "shared" if "|" in raw else None
+
+
+def _shared_parts(raw):
+	"""(its account, its id there) of a calendar's or an event's raw id shared from another account; None otherwise."""
+	account, sep, rest = str(raw or "").partition("|")
+	return (account, rest) if sep and account and rest else None
+
+
+def _read_only_calendars(suite_account):
+	"""{raw id: (kind, the desk's row)} of the calendars the desk shows the person beside their own, in its order:
+	those shared with them read-only from other accounts, then the ERP's dates. Read by the desk's own call, as the
+	person, once a request."""
+	request = getattr(frappe.local, "request", None)
+	kept = getattr(frappe.local, "mailcraft_read_only_calendars", None)
+	if request is not None and kept and kept[0] is request and kept[1] == suite_account:
+		return kept[2]
+	from suite.calendar import api
+
+	listing = getattr(api, "get_calendars_with_shared", None)
+	if listing is None:
+		return {}
+	try:
+		with_erp = "erp_dates" in inspect.signature(listing).parameters
+	except (TypeError, ValueError):
+		with_erp = False
+	with _persons_language():
+		rows = _reading(lambda: listing(suite_account, erp_dates=1) if with_erp else listing(suite_account))
+	found = {}
+	for row in rows or []:
+		raw = str(row.get("id") or "") if isinstance(row, dict) else ""
+		if raw.startswith(ERP_PREFIX):
+			found[raw] = ("erp", row)
+		elif raw and "|" not in raw and row.get("account") and row["account"] != suite_account:
+			found[f"{row['account']}|{raw}"] = ("shared", row)
+	if request is not None:
+		frappe.local.mailcraft_read_only_calendars = (request, suite_account, found)
+	return found
+
+
+def _read_only_calendar(cid, kind, row, sort_order):
+	"""A calendar the person only reads, as JMAP lists it: the desk's name and description, its colour (a source of the
+	ERP's in the colour of its palette), shown or hidden as the desk shows it, and every right but reading off."""
+	if kind == "erp":
+		color = _color(row.get("color")) or ERP_COLORS.get(str(row.get("palette") or ""))
+		# The switch the person keeps in the desk: a source that is off sends no events.
+		visible = bool(cint(row.get("visible")))
+	else:
+		color = _color(row.get("color"))
+		# The desk shows a calendar shared read-only unless the person hid it in their browser.
+		visible = True
+	return {
+		"id": cid,
+		"name": str(row.get("_name") or row.get("id") or ""),
+		"description": row.get("description") or None,
+		"color": color,
+		"sortOrder": sort_order,
+		"isSubscribed": True,
+		"isVisible": visible,
+		"isDefault": False,
+		"includeInAvailability": "none",
+		"myRights": dict(_READ_ONLY),
 	}
 
 
@@ -317,7 +452,9 @@ def _utc_date(value, name):
 
 def event_query(args):
 	"""The ids of the events of a window (`after`, `before`, both asked, 500 days at most), in the person's calendars
-	or those named (`inCalendars`); each occurrence apart when `expandRecurrences` is asked."""
+	or those named (`inCalendars`); each occurrence apart when `expandRecurrences` is asked. The person's own events
+	come first, as the server pages them; then those of the calendars they only read (_read_only_events), read when a
+	page reaches them or a total is asked: positions and the total count both."""
 	aid, suite_account = _calendar_account(args)
 	criteria = args.get("filter") or {}
 	if not isinstance(criteria, dict) or set(criteria) - {"after", "before", "inCalendars"}:
@@ -345,6 +482,10 @@ def event_query(args):
 	}
 	if limit is None or limit > MAX_EVENTS:
 		answer["limit"] = used
+	expand = bool(args.get("expandRecurrences"))
+	# Which of the calendars the person only reads are asked for: all of them, or those named.
+	read_only_named = None
+	own_asked = True
 	if criteria.get("inCalendars") is not None:
 		named = criteria["inCalendars"]
 		if not isinstance(named, list) or len(named) > jmap.MAX_OBJECTS:
@@ -352,10 +493,17 @@ def event_query(args):
 		raws = [r for r in (_raw(c, "C") for c in named) if r]
 		if not raws:
 			return {**answer, "position": 0, **({"total": 0} if asked_total else {})}
-		query = {
-			"operator": "AND",
-			"conditions": [query, {"operator": "OR", "conditions": [{"inCalendar": r} for r in raws]}],
-		}
+		own_raws = [r for r in raws if not _read_only_kind(r)]
+		read_only_named = {r for r in raws if _read_only_kind(r)}
+		own_asked = bool(own_raws)
+		if own_raws:
+			query = {
+				"operator": "AND",
+				"conditions": [
+					query,
+					{"operator": "OR", "conditions": [{"inCalendar": r} for r in own_raws]},
+				],
+			}
 	from suite.calendar.jmap_events import query_events
 
 	def read(start, size):
@@ -366,30 +514,227 @@ def event_query(args):
 				position=start,
 				limit=size,
 				time_zone=_person_zone().key,
-				expand_recurrences=bool(args.get("expandRecurrences")),
+				expand_recurrences=expand,
 			)
 		)
 
-	# The Suite reads from a position on, and returns nothing for a limit of 0: the total, when it is needed first (a
-	# position from the end, RFC 8620 §5.5) or alone, comes from a read of one.
+	read_only = []
+
+	def others():
+		"""The read-only events of the window, read once, when first needed."""
+		if not read_only:
+			read_only.append(_read_only_events(suite_account, after, before, read_only_named, expand))
+		return read_only[0]
+
+	# The Suite reads from a position on, and returns nothing for a limit of 0: the total of the person's own events,
+	# when it is needed first (a position from the end, RFC 8620 §5.5) or alone, comes from a read of one.
+	own_total = None if own_asked else 0
+	if own_asked and (position < 0 or not used):
+		own_total = cint(read(0, 1).get("total"))
 	total = None
-	if position < 0 or (asked_total and not used):
-		total = cint(read(0, 1).get("total"))
-		position = max(0, total + position) if position < 0 else position
-	found = read(position, used) if used else {"ids": [], "total": total}
-	raws = found.get("ids") or []
-	if args.get("expandRecurrences") and raws:
-		ids = _named_by_series(suite_account, raws)
-	else:
-		ids = [_event_id(i) for i in raws]
-	if total is None and found.get("total") is not None:
-		total = cint(found["total"])
-	answer.update(
-		position=position, ids=ids, queryState=hashlib.sha256("|".join(ids).encode()).hexdigest()[:16]
-	)
+	if position < 0:
+		total = own_total + len(others())
+		position = max(0, total + position)
+	ids = []
+	_request_events().clear()
+	if used and own_asked and (own_total is None or position < own_total):
+		found = read(position, used)
+		raws = found.get("ids") or []
+		ids = _named_by_series(suite_account, raws) if expand and raws else [_event_id(i) for i in raws]
+		if found.get("total") is not None:
+			own_total = cint(found["total"])
+		elif own_total is None:
+			own_total = position + len(raws)
+	own_total = own_total or 0
+	page = []
+	if used and len(ids) < used:
+		# The person's own events are over: the read-only ones follow, from where this page is past them.
+		start = max(0, position + len(ids) - own_total)
+		page = others()[start : start + used - len(ids)]
+		kept = _request_events()
+		for facade, event in page:
+			kept[facade] = event
+			ids.append(facade)
+	state = "|".join(ids)
+	if page:
+		# A date of the ERP renamed or moved keeps its id: what it says is in the state too.
+		state += "#" + json.dumps([event for _facade, event in page], sort_keys=True, default=str)
+	answer.update(position=position, ids=ids, queryState=hashlib.sha256(state.encode()).hexdigest()[:16])
 	if asked_total:
-		answer["total"] = total if total is not None else position + len(ids)
+		answer["total"] = total if total is not None else own_total + len(others())
 	return answer
+
+
+def _read_only_events(suite_account, after, before, named=None, expand=False):
+	"""[(facade id, event)] of the window in the calendars the person only reads (all of them, or those `named` by
+	their raw ids), as the desk reads them: the ERP's dates, then the events of each calendar shared with them."""
+	calendars = _read_only_calendars(suite_account)
+	chosen = {raw: kind for raw, (kind, _row) in calendars.items() if named is None or raw in named}
+	events = []
+	if any(kind == "erp" for kind in chosen.values()):
+		_remember_window(after, before)
+		events += [
+			(facade, event)
+			for facade, event in _erp_events(suite_account, after, before)
+			if any(raw in chosen for raw in event["calendarIds"])
+		]
+	shared = {}
+	for raw, kind in chosen.items():
+		if kind == "shared":
+			account, calendar = _shared_parts(raw)
+			shared.setdefault(account, []).append(calendar)
+	if shared:
+		events += _shared_events(shared, after, before, expand)
+	return events[:MAX_EVENTS]
+
+
+def _utc_text(moment):
+	return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _erp_events(suite_account, after, before):
+	"""[(facade id, event)] of the ERP's dates between two moments (aware datetimes), as JSCalendar events, in the
+	order of their start: the Suite's batch (sources.virtual_events, the sources the person switched on, read as them)
+	a chunk at a time, each date once."""
+	try:
+		from suite.calendar import sources
+	except ImportError:
+		return []
+	rows = {}
+	start = after
+	with _persons_language():
+		while start < before:
+			end = min(start + ERP_CHUNK, before)
+			chunk = _reading(
+				lambda start=start, end=end: sources.virtual_events(
+					suite_account, _utc_text(start), _utc_text(end)
+				)
+			)
+			for row in chunk or []:
+				if isinstance(row, dict) and row.get("id"):
+					rows.setdefault(str(row["id"]), row)
+			start = end
+		events = [_erp_event(row) for row in rows.values()]
+	events.sort(key=lambda event: (event["start"], event["id"]))
+	return [(_erp_event_id(event), event) for event in events[:MAX_EVENTS]]
+
+
+def _erp_event(row):
+	"""A date of the ERP (the Suite's row, as its calendar page reads it) as a JSCalendar event, ids still raw: a day
+	or a time on the instance's wall clock; free time, as the Suite's feed publishes it (a date blocks nobody); its
+	details and whether it is late in its description, as the feed writes them; the document it comes from as a link."""
+	all_day = bool(cint(row.get("show_without_time")))
+	lines = [str(row.get(key) or "") for key in ("description", "meta")]
+	if cint(row.get("late")):
+		lines.append(_("Late"))
+	event = {
+		"@type": "Event",
+		"id": str(row["id"]),
+		"uid": str(row.get("uid") or row["id"]),
+		"calendarIds": {
+			str(calendar["calendar_id"]): True
+			for calendar in row.get("calendars") or []
+			if isinstance(calendar, dict) and calendar.get("calendar_id")
+		},
+		"title": str(row.get("title") or ""),
+		"description": "\n".join(dict.fromkeys(line for line in lines if line)),
+		"start": str(row.get("start") or ""),
+		"duration": str(row.get("duration") or ("P1D" if all_day else "PT0S")),
+		"timeZone": None if all_day else (row.get("time_zone") or None),
+		"showWithoutTime": all_day,
+		"status": str(row.get("status") or "confirmed").lower(),
+		"freeBusyStatus": "free",
+		"sequence": 0,
+	}
+	# Only a page of the desk, as the desk's own card follows it (erpEventRoute): never another site.
+	route = str(row.get("route") or "")
+	if re.fullmatch(r"/app/\S*", route):
+		event["links"] = {
+			"document": {"@type": "Link", "href": frappe.utils.get_url(route), "contentType": "text/html"}
+		}
+	return event
+
+
+def _erp_event_id(event):
+	"""The facade id of a date of the ERP: its own (the Suite's, stable while its document is there), or, past the
+	length of an id, its calendar's and a digest of it."""
+	facade = _event_id(event["id"])
+	if len(facade) <= MAX_ID:
+		return facade
+	calendar = next(iter(event["calendarIds"]), ERP_PREFIX)
+	return _event_id(f"{calendar}:#{hashlib.sha256(event['id'].encode()).hexdigest()[:32]}")
+
+
+def _windows_key():
+	return f"mailcraft_calendar_windows:{frappe.session.user}"
+
+
+def _remember_window(after, before):
+	"""The windows the person queried last, for a CalendarEvent/get of the ERP's dates outside its query's request."""
+	window = [_utc_text(after), _utc_text(before)]
+	kept = frappe.cache().get_value(_windows_key())
+	kept = [w for w in kept if w != window] if isinstance(kept, list) else []
+	frappe.cache().set_value(_windows_key(), [window, *kept][:WINDOWS_KEPT], expires_in_sec=WINDOWS_SECONDS)
+
+
+def _shared_events(shared, after, before, expand):
+	"""[(facade id, event)] of the window in calendars shared with the person, {account: [calendar ids there]}: read
+	from each account as the person (its mail server's rights), named under it."""
+	from suite.calendar.jmap_events import get_events, query_events
+
+	found = []
+	for account, calendar_ids in shared.items():
+		client = _reading(lambda account=account: _client(account))
+		window = {
+			"operator": "AND",
+			"conditions": [
+				{"after": _utc_text(after), "before": _utc_text(before)},
+				{"operator": "OR", "conditions": [{"inCalendar": c} for c in calendar_ids]},
+			],
+		}
+		raws = (
+			_reading(
+				lambda client=client, window=window: query_events(
+					client,
+					filter=window,
+					limit=MAX_EVENTS,
+					time_zone=_person_zone().key,
+					expand_recurrences=expand,
+				)
+			).get("ids")
+			or []
+		)
+		read = (
+			{
+				e.get("id"): e
+				for e in _with_series(
+					client, _reading(lambda client=client, raws=raws: get_events(client, raws))
+				)
+			}
+			if raws
+			else {}
+		)
+		for raw in raws:
+			event = read.get(raw)
+			if event and _in_calendars(event, calendar_ids):
+				named = _namespaced(event, account)
+				found.append((_facade_id(named), named))
+	return found
+
+
+def _in_calendars(event, calendar_ids):
+	return any(on and k in calendar_ids for k, on in (event.get("calendarIds") or {}).items())
+
+
+def _namespaced(event, account):
+	"""An event of another account with its ids named under it (`<account>|<id>`), as the Suite names them: its facade
+	ids then never meet the person's own."""
+	out = dict(event)
+	out["id"] = f"{account}|{event.get('id')}"
+	if event.get("baseEventId"):
+		out["baseEventId"] = f"{account}|{event['baseEventId']}"
+	out["calendarIds"] = {f"{account}|{k}": on for k, on in (event.get("calendarIds") or {}).items()}
+	return out
 
 
 def _named_by_series(suite_account, raws):
@@ -423,7 +768,10 @@ def event_get(args):
 		not isinstance(properties, list) or not all(isinstance(p, str) for p in properties)
 	):
 		raise jmap.JmapError("invalidArguments", "properties")
-	raws = {r: i for i, r in ((i, _raw(i, "V")) for i in ids) if r}
+	# The events of the calendars the person only reads apart (_read_only_again): the rest is their own.
+	read_only = [i for i in ids if _read_only_kind(_event_raw(i))]
+	own = [i for i in ids if i not in set(read_only)]
+	raws = {r: i for i, r in ((i, _raw(i, "V")) for i in own) if r}
 	from suite.calendar.jmap_events import get_events
 
 	found = {}
@@ -433,15 +781,92 @@ def event_get(args):
 			found[raws[event["id"]]] = event
 	# An occurrence by its series and its start: from what this request's query read, else as the server holds it now.
 	kept = _request_events()
-	occurrences = {i: o for i, o in ((i, _occurrence_of(i)) for i in ids) if o}
+	occurrences = {i: o for i, o in ((i, _occurrence_of(i)) for i in own) if o}
 	missing = {o: i for i, o in occurrences.items() if i not in kept}
 	now = _occurrences_now(suite_account, list(missing)) if missing else {}
 	for i, o in occurrences.items():
 		event = kept.get(i) or now.get(o)
 		if event:
 			found[i] = event
+	# A read-only one from what this request's query read, else read again.
+	found.update({i: kept[i] for i in read_only if i in kept})
+	again = [i for i in dict.fromkeys(read_only) if i not in kept]
+	if again:
+		found.update(_read_only_again(suite_account, again))
 	listed = [_facade_event(found[i], properties, as_id=i) for i in ids if i in found]
 	return {"accountId": aid, "state": "0", "list": listed, "notFound": [i for i in ids if i not in found]}
+
+
+def _event_raw(jmap_id):
+	"""The raw id an event's facade id names (an occurrence's series), or None."""
+	occurrence = _occurrence_of(jmap_id)
+	return occurrence[0] if occurrence else _raw(jmap_id, "V")
+
+
+def _read_only_again(suite_account, ids):
+	"""{facade id: event} of the read-only events asked for by id that no query of this request read: the ERP's dates
+	in the windows the person queried last, then around today; a shared calendar's from its account, by id."""
+	found = {}
+	erp = {i for i in ids if _read_only_kind(_event_raw(i)) == "erp"}
+	if erp:
+		kept = frappe.cache().get_value(_windows_key())
+		windows = [w for w in kept if isinstance(w, list) and len(w) == 2] if isinstance(kept, list) else []
+		today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+		windows.append([_utc_text(today - TODAY_BEFORE), _utc_text(today + TODAY_AFTER)])
+		for after, before in windows:
+			try:
+				after, before = _utc_date(after, "after"), _utc_date(before, "before")
+			except jmap.JmapError:
+				continue
+			found.update(
+				(facade, event)
+				for facade, event in _erp_events(suite_account, after, min(before, after + MAX_SPAN))
+				if facade in erp
+			)
+			if erp <= set(found):
+				break
+	shared = [i for i in ids if _read_only_kind(_event_raw(i)) == "shared"]
+	if shared:
+		found.update(_shared_again(suite_account, shared))
+	return found
+
+
+def _shared_again(suite_account, ids):
+	"""{facade id: event} of events of calendars shared with the person, asked for by id: read from their account as
+	the person, and only those of a calendar the desk shows them (one of an account they write to is no shared one)."""
+	from suite.calendar.jmap_events import get_events
+
+	shown = {}
+	for raw, (kind, _row) in _read_only_calendars(suite_account).items():
+		if kind == "shared":
+			account, calendar = _shared_parts(raw)
+			shown.setdefault(account, set()).add(calendar)
+	asked = {}
+	for i in ids:
+		occurrence = _occurrence_of(i)
+		parts = _shared_parts(occurrence[0] if occurrence else _raw(i, "V"))
+		if parts and parts[0] in shown:
+			named = asked.setdefault(parts[0], ({}, {}))
+			if occurrence:
+				named[1][(parts[1], occurrence[1])] = i
+			else:
+				named[0][parts[1]] = i
+	found = {}
+	for account, (by_id, by_start) in asked.items():
+		client = _reading(lambda account=account: _client(account))
+		read = (
+			_with_series(client, _reading(lambda client=client, by_id=by_id: get_events(client, list(by_id))))
+			if by_id
+			else []
+		)
+		now = _occurrences_now(account, list(by_start)) if by_start else {}
+		pairs = [(by_id.get(e.get("id")), e) for e in read] + [
+			(i, now.get(key)) for key, i in by_start.items()
+		]
+		for i, event in pairs:
+			if i and event and _in_calendars(event, shown[account]):
+				found[i] = _namespaced(event, account)
+	return found
 
 
 def _rights(given):
@@ -463,12 +888,14 @@ MAX_EVENTS_PER_SET = 50
 
 
 def event_set(args):
-	"""Events created, changed and deleted in the person's own calendars, as the desk does it (see the module's text).
-	A whole property replaces it; an occurrence of a series is changed or deleted alone. Invitations go out when the
-	client asks (`sendSchedulingMessages`) and the person organizes the event, never for a draft, as in the desk; the
-	person's answer to someone else's invitation, when the client asks for it to be sent, reaches its organizer as the
-	desk's answer does (`_answer_of`). Each refusal is said for its event; what a refused one had begun to write in the
-	instance is undone (a savepoint per event: the instance's own records, not what a mail server already did)."""
+	"""Events created, changed and deleted in the person's own calendars, as the desk does it (see the module's text);
+	never in those they only read (the ERP's dates, a calendar shared with them), each refused with its reason before
+	anything is written. A whole property replaces it; an occurrence of a series is changed or deleted alone.
+	Invitations go out when the client asks (`sendSchedulingMessages`) and the person organizes the event, never for a
+	draft, as in the desk; the person's answer to someone else's invitation, when the client asks for it to be sent,
+	reaches its organizer as the desk's answer does (`_answer_of`). Each refusal is said for its event; what a refused
+	one had begun to write in the instance is undone (a savepoint per event: the instance's own records, not what a mail
+	server already did)."""
 	aid, suite_account = _calendar_account(args)
 	creates, updates, destroys = args.get("create") or {}, args.get("update") or {}, args.get("destroy") or []
 	if not isinstance(creates, dict) or not isinstance(updates, dict) or not isinstance(destroys, list):
@@ -495,12 +922,20 @@ def event_set(args):
 		return _one_event(write)
 
 	for key, event in creates.items():
+		refused = _read_only_refusal(_named_read_only(event))
+		if refused:
+			not_created[key] = refused
+			continue
 		outcome = written(lambda event=event: _create_event(suite_account, client, calendars, event, notify))
 		if isinstance(outcome, tuple):
 			created[key] = {"id": _event_id(outcome[0]), "uid": outcome[1], **outcome[2]}
 		else:
 			not_created[key] = outcome
 	for vid, patch in updates.items():
+		refused = _read_only_refusal(_read_only_kind(_event_raw(vid)) or _named_read_only(patch))
+		if refused:
+			not_updated[vid] = refused
+			continue
 		outcome = written(
 			lambda vid=vid, patch=patch: _update_event(suite_account, client, calendars, vid, patch, notify)
 		)
@@ -511,6 +946,10 @@ def event_set(args):
 			updated[vid] = (outcome[1] or None) if isinstance(outcome, tuple) else None
 	for vid in destroys:
 		if not isinstance(vid, str):
+			continue
+		refused = _read_only_refusal(_read_only_kind(_event_raw(vid)))
+		if refused:
+			not_destroyed[vid] = refused
 			continue
 		outcome = written(lambda vid=vid: _destroy_event(suite_account, client, calendars, vid, notify))
 		if isinstance(outcome, dict):
@@ -528,6 +967,27 @@ def event_set(args):
 		"notUpdated": not_updated,
 		"notDestroyed": not_destroyed,
 	}
+
+
+def _named_read_only(event):
+	"""The kind ("erp", "shared") of a calendar the person only reads that an event or a patch puts it in, or None."""
+	named = event.get("calendarIds") if isinstance(event, dict) else None
+	if not isinstance(named, dict):
+		return None
+	kinds = [_read_only_kind(_raw(cid, "C")) for cid, on in named.items() if on and isinstance(cid, str)]
+	return next((kind for kind in kinds if kind), None)
+
+
+def _read_only_refusal(kind):
+	"""The SetError of a write into a calendar the person only reads, said in their language; None for their own."""
+	if not kind:
+		return None
+	with _persons_language():
+		if kind == "erp":
+			text = _("The dates of the ERP are read-only here: change them in the document they come from.")
+		else:
+			text = _("This calendar is shared with you to read only: its events are changed by its owner.")
+	return {"type": "forbidden", "description": text}
 
 
 EVENT_SAVEPOINT = "mailcraft_event"
