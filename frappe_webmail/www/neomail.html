@@ -38,7 +38,11 @@
 	<main id="none">
 		<h1>NeoMail</h1>
 		<p>{{ _("You have no mailbox in Neoffice yet.") }}</p>
+		{% if add_mailbox_in_form %}
+		<p><a href="/app/webmail-account/new">{{ _("Add a mailbox") }}</a></p>
+		{% else %}
 		<p><a href="/app/webmail">{{ _("Open the webmail to add one") }}</a></p>
+		{% endif %}
 	</main>
 	{% else %}
 	<div id="signin" role="alert" hidden>

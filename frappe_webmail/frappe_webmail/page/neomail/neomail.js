@@ -17,6 +17,10 @@
  *   (neomailHost.navSections), its views into the menu's dock (a row of icons always in sight; at the end of the
  *   navigation with a cockpit that has none), and the menu's search box searches in NeoMail where the cockpit lends it.
  *   A click there asks NeoMail (`mailcraft:command`).
+ * - An address may ask NeoMail to open something (the webmail's links, which lead here: a message by its account,
+ *   folder and UID, a folder, a new message; or a message by its JMAP id): the page takes it off the address, asks
+ *   the server the message's JMAP id (neomail.message_key), and once NeoMail said where it is, sends `message.open`,
+ *   or `folder.select` of its folder when this NeoMail does not open a message by its id.
  * - All the space: while the page is in front, the desk's panel draws no border, rounding or padding around it
  *   (`neomail-desk-full` on the body, neomail.css), and the frame fills the panel.
  * - Leaving the page for another of the desk keeps the frame under the hidden page, as the webmail's page keeps its
@@ -31,6 +35,7 @@
 
 (function () {
 	const HANDOVER = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.hand_over";
+	const MESSAGE_KEY = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.message_key";
 	const PAGE = "neomail";
 	// On the body while the page is in front: the desk's panel draws nothing around it (neomail.css).
 	const FULL = "neomail-desk-full";
@@ -52,6 +57,12 @@
 		pending: null,
 		// The menu's last folder click: {account, folder, from, id, seen} (neomailHost.followChoice)
 		chosen: null,
+		// What the address asked (neomailHost.intentOf), as NeoMail takes it: {compose}, {account, email, mailbox} or
+		// {account, mailbox}; sent once (`delivered`); the message.open waiting for its answer (`opening`)
+		intent: null,
+		key: null,
+		delivered: false,
+		opening: null,
 	};
 
 	// The desk's menu, where it can draw a page's navigation: NeoCockpit is the desk's chrome (it can be switched off
@@ -231,9 +242,70 @@
 		}
 	}
 
+	// What the address asks NeoMail to open, read once and taken off the address (its `build` and `sample` stay)
+	function take_intent() {
+		state.intent = window.neomailHost.intentOf(window.location.search);
+		if (!state.intent) return;
+		const rest = window.neomailHost.withoutIntent(window.location.search);
+		window.history.replaceState(
+			window.history.state,
+			"",
+			window.location.pathname + rest + window.location.hash
+		);
+	}
+
+	// The intent as NeoMail takes it: a message by its JMAP id (the server makes it from the webmail's account, folder
+	// and UID), a folder by its mailbox's id, a new message. One the server does not find (another's mailbox, a message
+	// gone) is left: NeoMail opens as it would without it.
+	async function resolve_intent() {
+		const intent = state.intent;
+		if (!intent) return;
+		if (intent.compose) {
+			state.key = { compose: true };
+		} else if (intent.email) {
+			state.key = {
+				account: intent.account,
+				email: intent.email,
+				mailbox: window.neomailHost.mailboxOfEmail(intent.email),
+			};
+		} else {
+			const asked = new URLSearchParams({ account: intent.account, folder: intent.folder });
+			if (intent.uid) asked.set("uid", intent.uid);
+			try {
+				const answer = await fetch(MESSAGE_KEY + "?" + asked.toString(), {
+					method: "GET",
+					credentials: "same-origin",
+					cache: "no-store",
+					headers: { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" },
+				});
+				const found = answer.ok ? (await answer.json()).message : null;
+				if (found && found.account && found.mailbox) state.key = found;
+			} catch (e) {
+				state.key = null;
+			}
+		}
+		deliver();
+	}
+
+	// The address's intent, sent once NeoMail said where it is (it has started and read its mailboxes)
+	function deliver() {
+		const key = state.key;
+		if (!key || state.delivered || !state.where || !state.send) return;
+		state.delivered = true;
+		if (key.compose) {
+			ask("mail.new", {});
+		} else if (key.email) {
+			const id = state.send("message.open", { account: key.account, id: key.email });
+			state.opening = { id, account: key.account, mailbox: key.mailbox };
+		} else if (key.mailbox) {
+			ask("folder.select", { account: key.account, folder: key.mailbox }, "mailbox");
+		}
+	}
+
 	async function open() {
 		state.banner = make_banner();
-		const answer = await ask_handover();
+		take_intent();
+		const [answer] = await Promise.all([ask_handover(), resolve_intent()]);
 		if (answer && answer.status === 404) {
 			say(__("NeoMail is not offered on this site."), "/app/webmail", __("Open the webmail"));
 			return;
@@ -258,12 +330,13 @@
 			say(__("NeoMail could not be opened. Reload the page to try again."));
 			return;
 		}
-		// Made-up mail would pass for theirs: without a mailbox the page says so, and frames nothing.
+		// Made-up mail would pass for theirs: without a mailbox the page says so, and frames nothing. A mailbox is added
+		// by its form: the webmail, where it used to be added, leads here now.
 		if (given.no_mailbox) {
 			say(
 				__("You have no mailbox in Neoffice yet."),
-				"/app/webmail",
-				__("Open the webmail to add one")
+				"/app/webmail-account/new",
+				__("Add a mailbox")
 			);
 			return;
 		}
@@ -296,9 +369,19 @@
 				state.where = data;
 				state.chosen = window.neomailHost.followChoice(state.chosen, data);
 				lend();
+				deliver();
 			},
 			// A command it refused: the menu reflects what NeoMail says next, the console keeps why
 			"mailcraft:command-done": (data) => {
+				const opening = state.opening;
+				if (opening && opening.id === data.id) {
+					state.opening = null;
+					// A NeoMail that does not open a message by its id (older than the command): its folder, quietly
+					if (data.ok === false && opening.mailbox) {
+						ask("folder.select", { account: opening.account, folder: opening.mailbox }, "mailbox");
+					}
+					return;
+				}
 				if (data.ok === false) {
 					console.warn("NeoMail refused a command from the desk's menu", data.id, data.error);
 					if (state.chosen && state.chosen.id === data.id) state.chosen = null;

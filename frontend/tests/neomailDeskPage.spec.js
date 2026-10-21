@@ -72,7 +72,8 @@ function translator(messages) {
 // The desk with the page loaded and shown, its frame there: what the page heard, what it lent, what it posted.
 // `features`: what the cockpit says it draws of a page's navigation (none: an older cockpit).
 // `answer`: the handover's answer, a promise the test settles itself (the page may be hidden by then).
-async function open({ cockpit = true, features = null, boot = {}, messages = {}, answer = null } = {}) {
+// `key`: what the server answers the page's message_key (a message the address names), or a failure (null).
+async function open({ cockpit = true, features = null, boot = {}, messages = {}, answer = null, key } = {}) {
 	const heard = [];
 	const listen = window.addEventListener.bind(window);
 	vi.spyOn(window, "addEventListener").mockImplementation((type, fn, options) => {
@@ -95,9 +96,12 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		ui: { make_app_page },
 		utils: { debounce: (fn) => fn },
 	};
-	const fetch = vi.fn(
-		async () => answer || new Response(JSON.stringify({ message: structuredClone(HANDOVER) }))
-	);
+	const fetch = vi.fn(async (url) => {
+		if (String(url).includes("message_key")) {
+			return key ? new Response(JSON.stringify({ message: key })) : new Response("{}", { status: 417 });
+		}
+		return answer || new Response(JSON.stringify({ message: structuredClone(HANDOVER) }));
+	});
 	new Function("window", HOST)(window);
 	new Function("frappe", "$", "__", "fetch", PAGE)(frappe, $, translator(messages), fetch);
 	frappe.pages.neomail.on_page_load(wrapper);
@@ -123,7 +127,13 @@ beforeEach(() => {
 	document.body.className = "neoffice-cockpit";
 });
 
+// The address the page is at (happy-dom's history does not move its location: its URL is set instead)
+const at = (address) => window.happyDOM.setURL("http://localhost:3000" + address);
+// What the page left in the address, from its last history.replaceState
+const left = (replaced) => replaced.mock.lastCall && replaced.mock.lastCall[2];
+
 afterEach(() => {
+	at("/app/neomail");
 	vi.restoreAllMocks();
 	if (desk) desk.wrapper.remove();
 	desk = null;
@@ -359,5 +369,66 @@ describe("the desk's page", () => {
 		setPageNav.mock.calls[0][0].nav[0].items[0].onClick();
 		expect(setPageNav).toHaveBeenCalledTimes(2);
 		expect(lit(1)).toEqual([1, 0, 1]);
+	});
+
+	// A message an address names ---------------------------------------------------------------------------------
+
+	it("opens the message a webmail's link names, once NeoMail said where it is, and takes it off the address", async () => {
+		at("/app/neomail?build=ucs&account=ada%40example.org&folder=Archive&uid=31");
+		const replaced = vi.spyOn(window.history, "replaceState");
+		const key = { account: "ada@example.org", mailbox: "MQXJjaGl2ZQ", email: "E7V31ZQXJjaGl2ZQ" };
+		const { tell, posted, fetch } = await open({ key });
+		expect(left(replaced)).toBe("/app/neomail?build=ucs");
+		const asked = fetch.mock.calls.find(([url]) => String(url).includes("message_key"));
+		expect(asked[0]).toContain("account=ada%40example.org&folder=Archive&uid=31");
+		expect(asked[1].method).toBe("GET");
+		expect(asked[1].headers["X-Frappe-CSRF-Token"]).toBe("csrf-1");
+		expect(posted).toEqual([], "nothing before NeoMail said where it is");
+		tell(STATE);
+		expect(posted.map(([message]) => [message.name, message.params])).toEqual([
+			["message.open", { account: "ada@example.org", id: "E7V31ZQXJjaGl2ZQ" }],
+		]);
+		// Once only
+		tell({ ...STATE, folder: null });
+		expect(posted.length).toBe(1);
+	});
+
+	it("shows the message's folder where NeoMail does not open a message by its id", async () => {
+		at("/app/neomail?account=ada%40example.org&folder=Archive&uid=31");
+		const key = { account: "ada@example.org", mailbox: "MQXJjaGl2ZQ", email: "E7V31ZQXJjaGl2ZQ" };
+		const { tell, posted } = await open({ key });
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		tell(STATE);
+		const id = posted[0][0].id;
+		tell({ type: "mailcraft:command-done", id, ok: false, error: "Unknown command" });
+		expect(posted.map(([message]) => [message.name, message.params])).toEqual([
+			["message.open", { account: "ada@example.org", id: "E7V31ZQXJjaGl2ZQ" }],
+			["folder.select", { account: "ada@example.org", folder: "MQXJjaGl2ZQ" }],
+		]);
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	it("opens a message named by its JMAP id, and a new message, without asking the server", async () => {
+		at("/app/neomail?account=ada%40example.org&email=E7V31ZQXJjaGl2ZQ");
+		const replaced = vi.spyOn(window.history, "replaceState");
+		let desk_ = await open();
+		desk_.tell(STATE);
+		expect(desk_.posted[0][0]).toMatchObject({ name: "message.open", params: { id: "E7V31ZQXJjaGl2ZQ" } });
+		expect(desk_.fetch.mock.calls.some(([url]) => String(url).includes("message_key"))).toBe(false);
+		expect(left(replaced)).toBe("/app/neomail");
+		desk_.wrapper.remove();
+		at("/app/neomail?compose=1");
+		desk_ = await open();
+		desk_.tell(STATE);
+		expect(desk_.posted.map(([message]) => message.name)).toEqual(["mail.new"]);
+	});
+
+	it("opens NeoMail as it is when the server does not find the message (another's mailbox)", async () => {
+		at("/app/neomail?account=someone%40example.org&uid=4");
+		const replaced = vi.spyOn(window.history, "replaceState");
+		const { tell, posted } = await open({ key: null });
+		tell(STATE);
+		expect(posted).toEqual([]);
+		expect(left(replaced)).toBe("/app/neomail");
 	});
 });

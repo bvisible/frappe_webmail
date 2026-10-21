@@ -7,7 +7,8 @@ The /webmail address.
 The webmail lives in the desk (/app/webmail, loaded by app_include_js). This website page only had the website's
 scripts, so `frappe.webmail` never existed and it waited forever on « Chargement de Webmail… » (03.10). A typed
 address or an old bookmark now lands in the desk, its query kept (a link to a message); a visitor signs in first;
-a portal account, which has no desk, is told so instead of waiting.
+a portal account, which has no desk, is told so instead of waiting. Where NeoMail is in the desk for the person,
+the address leads to it instead (page/neomail/neomail.py, neomail_address).
 """
 
 import frappe
@@ -24,6 +25,15 @@ def get_context(context):
 			_("Webmail is part of the desk: your account has no access to it."), frappe.PermissionError
 		)
 	request = getattr(frappe, "request", None)
+	# Where NeoMail is in the desk for the person, the webmail gives way to it (page/neomail/neomail.py), its
+	# signatures aside
+	from frappe_webmail.frappe_webmail.page.neomail import neomail
+
+	if neomail.in_desk_for():
+		args = getattr(request, "args", None) or {}
+		target = neomail.neomail_address({key: args.get(key) for key in args})
+		if target:
+			_redirect(target)
 	query = request.query_string.decode() if request is not None and request.query_string else ""
 	_redirect(DESK_ROUTE + ("?" + query if query else ""))
 

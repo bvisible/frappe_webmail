@@ -490,6 +490,63 @@ describe("followChoice", () => {
 	});
 });
 
+describe("what an address asks NeoMail's page", () => {
+	const host = page().host;
+
+	it("reads a message, a folder or a new message from the webmail's links and NeoMail's", () => {
+		expect(host.intentOf("?compose=1&uid=4")).toEqual({ compose: true });
+		expect(host.intentOf("?account=ada%40example.org&folder=Archive&uid=31")).toEqual({
+			account: "ada@example.org",
+			folder: "Archive",
+			uid: "31",
+		});
+		// The webmail's links that name no folder mean the inbox
+		expect(host.intentOf("?account=ada@example.org&uid=31")).toEqual({
+			account: "ada@example.org",
+			folder: "INBOX",
+			uid: "31",
+		});
+		expect(host.intentOf("?account=ada@example.org&email=E7V31ZSU5CT1g")).toEqual({
+			account: "ada@example.org",
+			email: "E7V31ZSU5CT1g",
+		});
+		expect(host.intentOf("?account=ada@example.org&folder=Sent")).toEqual({
+			account: "ada@example.org",
+			folder: "Sent",
+		});
+	});
+
+	it("asks nothing of an address without a mailbox, or with what is not a message", () => {
+		for (const search of ["", "?build=ucs", "?uid=31", "?account=a@b.c", "?account=a@b.c&uid=x", "?account=a@b.c&email=nope"]) {
+			expect(host.intentOf(search)).toBeNull();
+		}
+	});
+
+	it("takes the intent off the address, and leaves the rest", () => {
+		expect(host.withoutIntent("?build=ucs&account=a%40b.c&folder=INBOX&uid=3&sample")).toBe("?build=ucs&sample=");
+		expect(host.withoutIntent("?account=a%40b.c&email=E1V2ZSU5CT1g")).toBe("");
+		expect(host.withoutIntent("")).toBe("");
+	});
+
+	it("knows the folder of a message by its JMAP id", () => {
+		expect(host.mailboxOfEmail("E7V31ZSU5CT1g")).toBe("MSU5CT1g");
+		expect(host.mailboxOfEmail("MSU5CT1g")).toBeNull();
+		expect(host.mailboxOfEmail(undefined)).toBeNull();
+	});
+
+	it("leads the webmail's addresses to NeoMail's, its signatures aside, as the server does", () => {
+		expect(host.deskAddress("")).toBe("/app/neomail");
+		expect(host.deskAddress("?compose=1&uid=4")).toBe("/app/neomail?compose=1");
+		expect(host.deskAddress("?account=a%40example.org&uid=9&other=x")).toBe(
+			"/app/neomail?account=a%40example.org&uid=9"
+		);
+		expect(host.deskAddress("?account=a%40example.org&email=E7V9ZSU5CT1g")).toBe(
+			"/app/neomail?account=a%40example.org&email=E7V9ZSU5CT1g"
+		);
+		expect(host.deskAddress("?signatures=1&uid=4")).toBeNull();
+	});
+});
+
 describe("badgeOf", () => {
 	it("reads a folder's count as NeoMail's pane shows it, else its unread mail", () => {
 		const { badgeOf } = page().host;

@@ -223,6 +223,11 @@ msgstr "Active"
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:339
+#: frappe_webmail/www/neomail.html:42
+msgid "Add a mailbox"
+msgstr "Ajouter une boîte aux lettres"
+
 #: frappe_webmail/mailcraft_jmap.py:1468
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."

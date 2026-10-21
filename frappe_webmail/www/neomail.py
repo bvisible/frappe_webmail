@@ -71,6 +71,11 @@ def get_context(context):
 	framed = handover(sample="sample" in frappe.form_dict, build=frappe.form_dict.get("build"))
 	context.lang = framed["host"]["language"]
 	context.no_mailbox = framed["no_mailbox"]
+	# Where the webmail leads to NeoMail in the desk, a mailbox is added by its form (page/neomail/neomail.py)
+	if context.no_mailbox:
+		from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
+
+		context.add_mailbox_in_form = desk.in_desk_for()
 	context.build_url = framed["build_url"]
 	context.host_json = _script_json(framed["host"])
 

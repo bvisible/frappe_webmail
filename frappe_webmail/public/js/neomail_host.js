@@ -332,6 +332,64 @@ window.neomailHost = (function () {
 		return chosen.seen ? null : chosen;
 	}
 
+	// The keys of an address that ask the desk's NeoMail page to open something (intentOf): the webmail's own links
+	// (Webmail.vue, applyUrlIntent: `account`, `folder`, `uid`, `compose`) and NeoMail's (`account`, `email`).
+	const INTENT_KEYS = ["account", "folder", "uid", "email", "compose"];
+
+	/*
+	 * What an address's query asks the desk's NeoMail page to open: a new message ({compose: true}); a message by its
+	 * JMAP id ({account, email}); a message as the webmail's links name it ({account, folder, uid}: the page asks the
+	 * server its id); a folder ({account, folder}); null for nothing. A folder left out is the inbox's.
+	 */
+	function intentOf(search) {
+		const query = new URLSearchParams(search || "");
+		if (query.has("compose")) return { compose: true };
+		const account = (query.get("account") || "").trim();
+		if (!account) return null;
+		const email = (query.get("email") || "").trim();
+		if (/^E[0-9]+V[0-9]+Z[A-Za-z0-9_-]+$/.test(email)) return { account, email };
+		const uid = (query.get("uid") || "").trim();
+		const folder = (query.get("folder") || "").trim();
+		if (/^[1-9][0-9]*$/.test(uid)) return { account, folder: folder || "INBOX", uid };
+		if (folder) return { account, folder };
+		return null;
+	}
+
+	/* An address's query without the keys of its intent (what else it carries stays: `build`, `sample`). */
+	function withoutIntent(search) {
+		const query = new URLSearchParams(search || "");
+		INTENT_KEYS.forEach((key) => query.delete(key));
+		const rest = query.toString();
+		return rest ? "?" + rest : "";
+	}
+
+	/* The JMAP id of the mailbox an email id of the facade names (`E<validity>V<uid>Z<folder>`, `M<folder>`). */
+	function mailboxOfEmail(id) {
+		const found = /^E[0-9]+V[0-9]+Z([A-Za-z0-9_-]+)$/.exec(String(id || ""));
+		return found ? "M" + found[1] : null;
+	}
+
+	/*
+	 * Where an address of the webmail's desk page leads where NeoMail is in the desk: /app/neomail with what the address
+	 * asked (a message, a folder, a new message); null for what only the webmail does, its signatures. Kept the same
+	 * as the server's own (page/neomail/neomail.py, neomail_address).
+	 */
+	function deskAddress(search) {
+		const query = new URLSearchParams(search || "");
+		if (query.has("signatures")) return null;
+		const kept = new URLSearchParams();
+		if (query.has("compose")) {
+			kept.set("compose", "1");
+		} else {
+			for (const key of ["account", "folder", "uid", "email"]) {
+				const value = (query.get(key) || "").trim();
+				if (value) kept.set(key, value);
+			}
+		}
+		const rest = kept.toString();
+		return "/app/neomail" + (rest ? "?" + rest : "");
+	}
+
 	/*
 	 * What asks NeoMail in `frame` to do something (`mailcraft:command`): `send(name, params)` posts it to the frame's
 	 * window on the page's own origin, each with the next id, and gives that id (null while the frame has no window).
@@ -349,5 +407,19 @@ window.neomailHost = (function () {
 		};
 	}
 
-	return { install, listen, frameHeight, navSections, viewDock, badgeOf, followChoice, commander, refusedAsStale };
+	return {
+		install,
+		listen,
+		frameHeight,
+		navSections,
+		viewDock,
+		badgeOf,
+		followChoice,
+		intentOf,
+		withoutIntent,
+		mailboxOfEmail,
+		deskAddress,
+		commander,
+		refusedAsStale,
+	};
 })();

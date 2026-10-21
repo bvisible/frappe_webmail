@@ -13,6 +13,7 @@ import json
 import os
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -277,8 +278,168 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertIn("window.neomailHost.install(window, " + context.host_json, html)
 		from frappe.model.utils import render_include
 
-		with open(os.path.join(_page_folder(), "neomail.js")) as handle:
-			script = render_include(handle.read())
-		self.assertIn("// " + shared.split("\n", 1)[0], script)
-		self.assertIn(DEFINED, script)
-		self.assertNotIn("{% include", script)
+		for page in (
+			_page_folder(),
+			frappe.get_app_path("frappe_webmail", "frappe_webmail", "page", "webmail"),
+		):
+			name = os.path.basename(page) + ".js"
+			with open(os.path.join(page, name)) as handle:
+				script = render_include(handle.read())
+			self.assertIn("// " + shared.split("\n", 1)[0], script, name)
+			self.assertIn(DEFINED, script, name)
+			self.assertNotIn("{% include", script, name)
+
+	# The webmail gives way to NeoMail ----------------------------------------------------------------------------
+
+	def _loaded(self, path, **args):
+		"""lead_to_neomail for a load of `path` with that query: the address it leads to, or None."""
+		request = SimpleNamespace(path=path, args=args)
+		with patch.object(frappe.local, "request", request, create=True):
+			try:
+				desk.lead_to_neomail(frappe._dict())
+			except frappe.Redirect as redirect:
+				self.assertEqual(redirect.http_status_code, 302)
+				return frappe.local.flags.redirect_location
+		return None
+
+	def test_the_webmail_leads_to_neomail_for_the_desk_s_people_where_the_site_says_so(self):
+		frappe.set_user(STAFF)
+		self.assertEqual(self._loaded("/app/webmail"), "/app/neomail")
+		self.assertEqual(
+			self._loaded("/app/webmail", account=MAILBOX, folder="Archive", uid="31"),
+			"/app/neomail?" + urlencode({"account": MAILBOX, "folder": "Archive", "uid": "31"}),
+		)
+		self.assertEqual(self._loaded("/app/webmail/INBOX/", compose="1"), "/app/neomail?compose=1")
+		# The webmail's signatures stay the webmail's; its mailboxes' settings and other pages are not its address
+		for path, args in (
+			("/app/webmail", {"signatures": "1"}),
+			("/app/webmail-account/new", {}),
+			("/app/neomail", {}),
+			("/app/home", {}),
+		):
+			self.assertIsNone(self._loaded(path, **args), path)
+		with patch.dict(frappe.local.conf, {desk.FLAG: 0}):
+			self.assertIsNone(self._loaded("/app/webmail"), "the rest of the fleet: nothing changes")
+		for user in (PORTAL, "Guest"):
+			frappe.set_user(user)
+			self.assertIsNone(self._loaded("/app/webmail"), user)
+		self.assertIn(
+			"frappe_webmail.frappe_webmail.page.neomail.neomail.lead_to_neomail",
+			frappe.get_hooks("update_website_context", app_name="frappe_webmail"),
+		)
+
+	def test_the_webmail_s_addresses_and_neomail_s_say_the_same(self):
+		address = desk.neomail_address
+		self.assertEqual(address({}), "/app/neomail")
+		self.assertEqual(address({"compose": "1", "uid": "4"}), "/app/neomail?compose=1")
+		self.assertEqual(
+			address({"account": "a@example.org", "uid": "9", "other": "x"}),
+			"/app/neomail?account=a%40example.org&uid=9",
+		)
+		self.assertEqual(
+			address({"account": "a@example.org", "email": "E7V9ZSU5CT1g"}),
+			"/app/neomail?account=a%40example.org&email=E7V9ZSU5CT1g",
+		)
+		self.assertIsNone(address({"signatures": "1", "uid": "4"}))
+
+	def test_the_website_s_webmail_address_leads_the_same_way(self):
+		from frappe_webmail.www import webmail
+
+		def loaded(**args):
+			request = SimpleNamespace(path="/webmail", args=args, query_string=urlencode(args).encode())
+			with (
+				patch.object(frappe.local, "request", request, create=True),
+				self.assertRaises(frappe.Redirect),
+			):
+				webmail.get_context(frappe._dict())
+			return frappe.local.flags.redirect_location
+
+		frappe.set_user(STAFF)
+		self.assertEqual(
+			loaded(uid="5", account=MAILBOX), "/app/neomail?" + urlencode({"account": MAILBOX, "uid": "5"})
+		)
+		self.assertEqual(loaded(signatures="1"), "/app/webmail?signatures=1")
+		with patch.dict(frappe.local.conf, {desk.FLAG: 0}):
+			self.assertEqual(loaded(uid="5"), "/app/webmail?uid=5")
+		frappe.set_user(PORTAL)
+		with (
+			patch.object(
+				frappe.local,
+				"request",
+				SimpleNamespace(path="/webmail", args={}, query_string=b""),
+				create=True,
+			),
+			self.assertRaises(frappe.PermissionError),
+		):
+			webmail.get_context(frappe._dict())
+		frappe.set_user("Guest")
+		self.assertEqual(loaded(), "/login?redirect-to=/app/webmail")
+
+	def test_the_desk_tells_the_webmail_s_page_whether_to_lead_to_neomail(self):
+		frappe.set_user(STAFF)
+		boot = frappe._dict(page_info={desk.PAGE: {}})
+		desk.extend_bootinfo(boot)
+		self.assertEqual(boot.neomail_in_desk, 1)
+		with patch.dict(frappe.local.conf, {desk.FLAG: 0}):
+			boot = frappe._dict(page_info={desk.PAGE: {}})
+			desk.extend_bootinfo(boot)
+		self.assertEqual(boot.neomail_in_desk, 0)
+
+	# A message the webmail's links name, as NeoMail opens it -----------------------------------------------------
+
+	def test_a_message_of_one_s_own_mailbox_is_named_as_the_facade_names_it(self):
+		from frappe_webmail import mailcraft_jmap as jmap
+
+		frappe.set_user(STAFF)
+		with patch.object(jmap, "_validities", return_value={"Archive": 7}) as validities:
+			first = desk.message_key(account=MAILBOX, folder="Archive", uid="31")
+			again = desk.message_key(account=MAILBOX, folder="Archive", uid="31")
+		self.assertEqual(
+			first,
+			{
+				"account": MAILBOX,
+				"mailbox": jmap.mailbox_id("Archive"),
+				"email": jmap.email_id("Archive", 7, 31),
+			},
+		)
+		self.assertEqual(again, first, "the same message, the same id")
+		self.assertEqual(validities.call_args.args[1], ["Archive"])
+		# Its folder alone, without a message; the inbox when the link names no folder
+		self.assertEqual(
+			desk.message_key(account=MAILBOX), {"account": MAILBOX, "mailbox": jmap.mailbox_id("INBOX")}
+		)
+		self.assertIn(
+			"GET", list(frappe.allowed_http_methods_for_whitelisted_func[desk.message_key]), "a GET, as asked"
+		)
+
+	def test_a_message_of_another_s_mailbox_is_not_named(self):
+		other = "webmail_neomail_desk_other@webmail.test"
+		if not frappe.db.exists("Webmail Account", other):
+			frappe.get_doc(
+				{
+					"doctype": "Webmail Account",
+					"email": other,
+					"user": "Administrator",
+					"sender_name": "Other",
+					"auth_type": "Password",
+					"imap_host": "imap.test.local",
+					"imap_password": "x",
+					"smtp_host": "smtp.test.local",
+					"smtp_password": "x",
+					"enabled": 1,
+				}
+			).insert(ignore_permissions=True)
+		frappe.set_user(STAFF)
+		with self.assertRaises(frappe.ValidationError):
+			desk.message_key(account=other, folder="INBOX", uid="1")
+		with self.assertRaises(frappe.ValidationError, msg="a mailbox that is not there, answered the same"):
+			desk.message_key(account="webmail_neomail_nobody@webmail.test", folder="INBOX", uid="1")
+		self.sent = {"X-Frappe-CSRF-Token": None}
+		with self.assertRaises(frappe.CSRFTokenError):
+			desk.message_key(account=MAILBOX, folder="INBOX", uid="1")
+		self.sent = {}
+		with patch.dict(frappe.local.conf, {desk.FLAG: 0}), self.assertRaises(frappe.PageDoesNotExistError):
+			desk.message_key(account=MAILBOX, folder="INBOX", uid="1")
+		frappe.set_user(PORTAL)
+		with self.assertRaises(frappe.PermissionError):
+			desk.message_key(account=MAILBOX, folder="INBOX", uid="1")

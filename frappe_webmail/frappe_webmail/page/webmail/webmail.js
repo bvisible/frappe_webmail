@@ -1,8 +1,17 @@
 /**
  * Webmail Desk Page
  *
- * This page provides the webmail interface within Frappe Desk.
+ * This page provides the webmail interface within Frappe Desk. Where NeoMail is in the desk for the person
+ * (`frappe.boot.neomail_in_desk`, page/neomail/neomail.py), it gives way to it: the page leads to /app/neomail with what
+ * its address asked (a message, a folder, a new message), in place of itself in the history, and builds nothing; only
+ * its signatures (?signatures=1) stay here, where they are written. A load of the address is led there by the server
+ * already (neomail.lead_to_neomail); this is the desk's own navigation (its menu, its links).
  */
+
+// The rule of where the webmail's addresses lead, shared with NeoMail's page (window.neomailHost.deskAddress): Frappe
+// puts the file in place of the next line when it serves this script (render_include). The line stays a comment for
+// linters; the file's own first line is a comment too, so the line Frappe leaves behind is one.
+// {% include "frappe_webmail/public/js/neomail_host.js" %}
 
 // Auto-collapse the NeoCockpit menu while the webmail is open: the mailbox needs
 // the width far more than the module tree does (folders + list + reader + soon an
@@ -63,7 +72,34 @@ const webmail_cockpit = {
 // folders (Webmail.vue lends them): it is not folded any more, there is no second sidebar to make room for.
 const webmail_lends_nav = () => Boolean(window.NeoCockpit && window.NeoCockpit.setPageNav);
 
+// Where NeoMail is in the desk for the person, the webmail leads there: true when it does (the page then builds
+// nothing). Done once the desk has finished showing this page, so that NeoMail's takes its place, its address
+// replacing this one in the history (the back button goes to the page before).
+// Once for both the page's load and its show, which the desk calls one after the other.
+let webmail_leading = false;
+const webmail_leads_to_neomail = () => {
+	if (!(frappe.boot && frappe.boot.neomail_in_desk && window.neomailHost)) return false;
+	const target = window.neomailHost.deskAddress(window.location.search);
+	if (!target) return false;
+	if (!webmail_leading) {
+		webmail_leading = true;
+		setTimeout(() => {
+			webmail_leading = false;
+			if ((frappe.get_route() || [])[0] !== "webmail") return;
+			frappe.route_flags.replace_route = true;
+			frappe.router.push_state(target);
+			frappe.route_flags.replace_route = false;
+		}, 0);
+	}
+	return true;
+};
+
 frappe.pages["webmail"].on_page_load = function (wrapper) {
+	if (webmail_leads_to_neomail()) return;
+	webmail_build(wrapper);
+};
+
+function webmail_build(wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Webmail"),
@@ -148,11 +184,14 @@ frappe.pages["webmail"].on_page_load = function (wrapper) {
 			}
 		}, 1000);
 	}
-};
+}
 
 // Re-entering the page (route change back to /app/webmail) does not call
 // on_page_load again — collapse the cockpit on every show.
 frappe.pages["webmail"].on_page_show = function (wrapper) {
+	if (webmail_leads_to_neomail()) return;
+	// First reached for what stays the webmail's (its signatures), after a visit that led to NeoMail: built now
+	if (!wrapper.page) webmail_build(wrapper);
 	// An app that something unmounted (frappe.webmail.destroy) is mounted again on the way back: it stayed blank
 	const container = wrapper && wrapper.querySelector("#webmail-app");
 	if (container && frappe.webmail && frappe.webmail.mounted && !frappe.webmail.mounted()) {
