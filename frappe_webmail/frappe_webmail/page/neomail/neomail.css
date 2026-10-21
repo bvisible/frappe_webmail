@@ -1,0 +1,49 @@
+/* The desk's page /app/neomail (neomail.js): NeoMail's frame fills the page under the desk's header. */
+.neomail-desk-body.container.page-body {
+	padding: 15px;
+	overflow: hidden;
+}
+.neomail-desk {
+	position: relative;
+	box-sizing: border-box;
+	overflow: hidden;
+	height: calc(100vh - 120px);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-lg);
+	background: var(--bg-color);
+}
+.neomail-desk-frame {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+.neomail-desk-signin {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 2;
+	padding: 8px 16px;
+	font-size: var(--text-md, 14px);
+	background: var(--yellow-100, #fdf3d8);
+	color: var(--yellow-800, #4a3a12);
+	border-bottom: 1px solid var(--yellow-300, #e8d7a4);
+}
+.neomail-desk-signin a {
+	color: inherit;
+	font-weight: 600;
+	margin-left: 8px;
+	text-decoration: underline;
+}
+.neomail-desk-note {
+	max-width: 36rem;
+	margin: 18vh auto 0;
+	padding: 0 24px;
+	font-size: var(--text-base, 15px);
+	color: var(--text-color);
+}
+.neomail-desk-note a {
+	font-weight: 600;
+}

@@ -67,8 +67,12 @@ METHOD_PREFIX = "frappe_webmail.mailcraft_jmap."
 _OWN_PATH = re.compile(
 	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(session|api|download|upload|picture)/*$"
 )
-# The two that hand tokens out, which a token never opens.
-_HANDING_OUT = re.compile(r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\.mailcraft_jmap\.(hand_over|renew)/*$")
+# The three that hand tokens out, which a token never opens: Neodesk's, the renewal of /neomail and of the desk's
+# page, and the desk's page's handover (page/neomail).
+_HANDING_OUT = re.compile(
+	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\."
+	r"(?:mailcraft_jmap\.(?:hand_over|renew)|frappe_webmail\.page\.neomail\.neomail\.hand_over)/*$"
+)
 
 TOKEN_SECONDS = 12 * 3600
 UPLOAD_SECONDS = 15 * 60
@@ -322,9 +326,10 @@ def hand_over(**kwargs):
 
 @frappe.whitelist(methods=["POST"])
 def renew(**kwargs):
-	"""For /neomail: fresh facade tokens for the page's own desk session, when the framed build's were refused (they die
-	with the cache, or after twelve hours), so that it carries on without a reload. A desk cookie only: Neodesk, which
-	signs in with a bearer token, asks hand_over. Only where the page can be opened: nothing else calls it."""
+	"""For /neomail and the desk's page /app/neomail: fresh facade tokens for the page's own desk session, when the
+	framed build's were refused (they die with the cache, or after twelve hours), so that it carries on without a
+	reload. A desk cookie only: Neodesk, which signs in with a bearer token, asks hand_over. Only where /neomail can be
+	opened (the desk's page is offered only there too): nothing else calls it."""
 	from frappe_webmail.www.neomail import available
 
 	if not available():
@@ -337,8 +342,8 @@ def renew(**kwargs):
 
 
 def no_store(response=None, request=None):
-	"""after_request: /neomail and the answers of hand_over and renew hold tokens, the facade's answers hold mail; no
-	cache keeps any of them."""
+	"""after_request: /neomail and the answers of hand_over, renew and the desk page's handover hold tokens, the facade's
+	answers hold mail; no cache keeps any of them."""
 	path = (getattr(request, "path", "") or "") if request is not None else ""
 	if response is not None and (
 		path.rstrip("/") in ("/neomail", "/mailcraft") or _OWN_PATH.match(path) or _HANDING_OUT.match(path)

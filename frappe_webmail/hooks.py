@@ -248,6 +248,8 @@ user_data_fields = [
 auth_hooks = ["frappe_webmail.mailcraft_jmap.authenticate"]
 # /neomail holds that token and the facade's answers hold mail: no cache keeps them.
 after_request = ["frappe_webmail.mailcraft_jmap.no_store"]
+# The desk's page /app/neomail is listed only where the site offers it (`neomail_in_desk`, page/neomail/neomail.py).
+extend_bootinfo = ["frappe_webmail.frappe_webmail.page.neomail.neomail.extend_bootinfo"]
 
 # Automatically update python controller files with type annotations for this app.
 export_python_type_annotations = True

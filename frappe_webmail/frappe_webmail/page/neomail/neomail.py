@@ -1,0 +1,54 @@
+# Copyright (c) 2026, Neoservice and contributors
+# For license information, please see license.txt
+
+"""
+The desk's page /app/neomail: NeoMail inside Neoffice's shell, under the desk's header and beside its menu, framing the
+build /neomail frames, with the same handover (www/neomail.py, `handover`) and the same functions on the page
+(public/js/neomail_host.js). The contract it follows: neoffice-apps, docs/neomail-desk-menu-contract.md, sections 5
+and 1 (NeoMail as it is for now: the page lends nothing to the desk's menu yet).
+
+Off unless the site's configuration says `neomail_in_desk: 1`, and only where /neomail can be opened (NeoMail on, its
+build installed); /neomail and /app/webmail stay as they are. The desk's people only, as /neomail: the page's role is
+Desk User, and its handover refuses a portal account and a visitor.
+
+The handover holds tokens: the page asks for it each time it opens (`hand_over`, never in the page's script, which the
+desk keeps in the browser's storage, nor in the boot), and no cache keeps the answer (mailcraft_jmap.no_store).
+"""
+
+import frappe
+from frappe.utils import cint
+
+# The site's configuration key that puts NeoMail in the desk.
+FLAG = "neomail_in_desk"
+PAGE = "neomail"
+
+
+def in_desk():
+	"""Whether the desk's page /app/neomail is offered here: the site says so, and /neomail can be opened."""
+	from frappe_webmail.www import neomail
+
+	return bool(cint(frappe.conf.get(FLAG))) and neomail.available()
+
+
+@frappe.whitelist(methods=["POST"])
+def hand_over(sample=None, build=None):
+	"""What the page gives the build it frames, for the session's person: {build_url, host, no_mailbox}, made as
+	/neomail makes it (www/neomail.py, `handover`; `sample` and `build` are its address's `?sample` and `?build=`).
+	Refused where the page is not offered (as a page that does not exist), to a portal account and a visitor, and to a
+	request signed in by a bearer token rather than the desk's cookie: the facade tokens given are bound to the desk
+	session (Neodesk, which signs in with its OAuth token, asks mailcraft_jmap.hand_over)."""
+	from frappe_webmail.mailcraft_jmap import _request_bearer
+	from frappe_webmail.www import neomail
+
+	if not in_desk():
+		raise frappe.PageDoesNotExistError
+	if _request_bearer():
+		raise frappe.PermissionError
+	neomail.desk_people_only()
+	return neomail.handover(sample=bool(cint(sample)), build=build)
+
+
+def extend_bootinfo(bootinfo):
+	"""The desk does not list the page where it is not offered (its search finds pages by the boot's `page_info`)."""
+	if not in_desk() and isinstance(bootinfo.get("page_info"), dict):
+		bootinfo["page_info"].pop(PAGE, None)

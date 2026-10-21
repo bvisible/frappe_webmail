@@ -17,6 +17,9 @@ MailCraft's own signatures name for them: they come from here, and what MailCraf
 by the page's at the next visit. The build reaches Nora with this page's session (it reads this page's CSRF token, same origin) and Nora's
 methods apply their own rights. The desk's people only: a visitor signs in first, a portal account is refused, as for
 the webmail.
+
+The desk's page /app/neomail (page/neomail) frames the same build with the same handover (`handover`), and both pages
+give the build the same functions (public/js/neomail_host.js).
 """
 
 import os
@@ -61,31 +64,55 @@ def get_context(context):
 		raise frappe.PageDoesNotExistError
 	if frappe.session.user == "Guest":
 		_redirect("/login?redirect-to=" + ROUTE)
-	if frappe.get_cached_value("User", frappe.session.user, "user_type") != "System User":
-		frappe.throw(
-			_("Webmail is part of the desk: your account has no access to it."), frappe.PermissionError
-		)
+	desk_people_only()
 	# The framed build's calls to Nora carry this session's token: make sure the session has one.
 	frappe.sessions.get_csrf_token()
 	context.no_cache = 1
-	context.lang = frappe.local.lang or "en"
-	sample = "sample" in frappe.form_dict
+	framed = handover(sample="sample" in frappe.form_dict, build=frappe.form_dict.get("build"))
+	context.lang = framed["host"]["language"]
+	context.no_mailbox = framed["no_mailbox"]
+	context.build_url = framed["build_url"]
+	context.host_json = _script_json(framed["host"])
+
+
+def desk_people_only():
+	"""The desk's people only, as for the webmail: a portal account (and a visitor) is refused."""
+	if frappe.session.user == "Guest" or (
+		frappe.get_cached_value("User", frappe.session.user, "user_type") != "System User"
+	):
+		frappe.throw(
+			_("Webmail is part of the desk: your account has no access to it."), frappe.PermissionError
+		)
+
+
+def handover(sample=False, build=None):
+	"""What a page that frames NeoMail gives it, for the session's person: the build's address (`build_url`), what the
+	build reads from the page that frames it (`host`: the mailboxes, the language, the product's name and where the
+	signatures are written) and whether the person has no mailbox (`no_mailbox`: the page then says so and frames
+	nothing). /neomail and the desk's page /app/neomail (page/neomail) both make it here.
+
+	The person's mailboxes go through the JMAP facade (maintenance#1630). Without any, the page says so (made-up mail
+	would pass for theirs); `sample` opens the sample mailbox, for a demonstration. Nora where the instance has her:
+	elsewhere each of her calls would fail. `build` "ucs" frames the trial build where it is installed."""
+	language = frappe.local.lang or "en"
 	mailboxes = [] if sample else host_mailboxes()
-	# The person's mailboxes, through the JMAP facade (maintenance#1630). Without any, the page says so (made-up mail would
-	# pass for theirs); `?sample` opens the sample mailbox, for a demonstration. Nora where the instance has her: elsewhere
-	# each of her calls would fail.
-	context.no_mailbox = not mailboxes and not sample
 	query = (["sample"] if sample else []) + (["nora"] if nora_installed() else [])
 	# The person signed in, named as the Drive names them to the document editors: NeoMail's account button shows their
 	# initials, the same as everywhere else.
 	author = frappe.utils.get_fullname(frappe.session.user)
 	if author:
 		query.append("author=" + quote(author, safe=""))
-	trial = frappe.form_dict.get("build") == "ucs" and build_installed(TRIAL)
-	context.build_url = (TRIAL_BUILD if trial else BUILD) + ("?" + "&".join(query) if query else "")
-	context.host_json = _script_json(
-		{"accounts": mailboxes, "language": context.lang, "product": PRODUCT, "signatures": signatures_url()}
-	)
+	trial = build == "ucs" and build_installed(TRIAL)
+	return {
+		"build_url": (TRIAL_BUILD if trial else BUILD) + ("?" + "&".join(query) if query else ""),
+		"host": {
+			"accounts": mailboxes,
+			"language": language,
+			"product": PRODUCT,
+			"signatures": signatures_url(),
+		},
+		"no_mailbox": not mailboxes and not sample,
+	}
 
 
 def signatures_url():
