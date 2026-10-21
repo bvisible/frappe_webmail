@@ -158,9 +158,16 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertFalse(given["no_mailbox"])
 		self.assertEqual(given["build_url"], context.build_url, "the build /neomail frames")
 		www = json.loads(context.host_json)
-		self.assertEqual(set(given["host"]), {*www, "chrome"}, "the fields /neomail hands over, and one more")
+		self.assertEqual(
+			set(given["host"]) - {"share"}, {*www, "chrome"}, "the fields /neomail hands over, and one more"
+		)
 		self.assertEqual(given["host"]["chrome"], "menu", "the desk's menu draws NeoMail's navigation")
 		self.assertNotIn("chrome", www, "/neomail has no menu: NeoMail keeps its own navigation there")
+		# Share in Synk, for someone who may share there, and only on this page (neomail_share.py)
+		from frappe_webmail import neomail_share
+
+		self.assertEqual(given["host"].get("share") is True, neomail_share.offered(STAFF))
+		self.assertNotIn("share", www, "/neomail has no Synk view")
 		with patch.dict(frappe.local.conf, {"neoffice_cockpit_disable": 1}):
 			self.assertNotIn(
 				"chrome", desk.hand_over()["host"], "a site without the desk's menu: NeoMail keeps its own"
