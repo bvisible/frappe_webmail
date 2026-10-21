@@ -39,6 +39,8 @@ MAX_FILE = 10 * 1024 * 1024
 MAX_FILES_TOTAL = 25 * 1024 * 1024
 # The longest name an attachment keeps.
 MAX_FILE_NAME = 140
+# How the post writes the message's date (babel's pattern, in the person's language).
+DATE_FORMAT = "d MMMM yyyy, HH:mm"
 
 
 def offered(user=None):
@@ -169,7 +171,9 @@ def _conversation(to):
 
 
 def _date(message):
-	"""The message's date as the site writes it, in the site's time zone; empty when it has none that can be read."""
+	"""The message's date in the site's time zone, its month in words in the person's language (« 4 juillet 2026,
+	10:50 »); empty when it has none that can be read."""
+	from datetime import timezone
 	from zoneinfo import ZoneInfo
 
 	from frappe.utils import format_datetime, get_system_timezone
@@ -180,9 +184,12 @@ def _date(message):
 		return ""
 	if moment is None:
 		return ""
-	if moment.tzinfo:
-		moment = moment.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
-	return format_datetime(moment)
+	# A date without a zone (`-0000`) is in UTC (RFC 5322 3.3): seen as it is, it read two hours early in summer.
+	if moment.tzinfo is None:
+		moment = moment.replace(tzinfo=timezone.utc)
+	moment = moment.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
+	# The month in words: Raven takes digits such as « 04-07-2026 08 » for a telephone number and links them.
+	return format_datetime(moment, DATE_FORMAT)
 
 
 def _text(message):

@@ -143,6 +143,24 @@ class TestNeoMailShare(FrappeTestCase):
 		# The inline picture is not an attachment; the one too large is left out, and counted
 		self.assertEqual(left_out, 1)
 
+	def test_the_date_is_the_site_s_hour_its_month_in_words(self):
+		with patch("frappe.utils.get_system_timezone", return_value="Europe/Zurich"):
+			for header in (
+				"Sat, 04 Jul 2026 08:50:00 -0000",
+				"Sat, 04 Jul 2026 08:50:00 +0000",
+				"Sat, 04 Jul 2026 10:50:00 +0200",
+			):
+				message = EmailMessage()
+				message["Date"] = header
+				written = share._date(message)
+				# Summer in Zurich: two hours after UTC; no run of digits Raven would take for a telephone number
+				self.assertIn("2026", written, header)
+				self.assertIn("10:50", written, header)
+				self.assertNotIn("04-07", written, header)
+			message = EmailMessage()
+			message["Date"] = "not a date"
+			self.assertEqual(share._date(message), "")
+
 	def test_an_attachment_s_name_keeps_nothing_a_path_or_a_header_could_slip_in(self):
 		self.assertEqual(share._file_name("../../etc/passwd"), "passwd")
 		self.assertEqual(share._file_name('C:\\temp\\fac<t>ure".pdf'), "facture.pdf")
