@@ -159,6 +159,10 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertEqual(set(given["host"]), {*www, "chrome"}, "the fields /neomail hands over, and one more")
 		self.assertEqual(given["host"]["chrome"], "menu", "the desk's menu draws NeoMail's navigation")
 		self.assertNotIn("chrome", www, "/neomail has no menu: NeoMail keeps its own navigation there")
+		with patch.dict(frappe.local.conf, {"neoffice_cockpit_disable": 1}):
+			self.assertNotIn(
+				"chrome", desk.hand_over()["host"], "a site without the desk's menu: NeoMail keeps its own"
+			)
 		self.assertEqual(given["host"]["product"], "NeoMail")
 		self.assertEqual(given["host"]["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
 		self.assertEqual(given["host"]["language"], www["language"])

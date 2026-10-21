@@ -62,8 +62,17 @@ const STATE = {
 
 let desk;
 
+// Frappe's __ (frappe/public/js/frappe/translate.js): the translation in the context, else the word's without
+// context, else the word.
+function translator(messages) {
+	return (text, replace, context) =>
+		(context && messages[`${text}:${context}`]) || messages[text] || text;
+}
+
 // The desk with the page loaded and shown, its frame there: what the page heard, what it lent, what it posted.
-async function open({ cockpit = true } = {}) {
+// `features`: what the cockpit says it draws of a page's navigation (none: an older cockpit).
+// `answer`: the handover's answer, a promise the test settles itself (the page may be hidden by then).
+async function open({ cockpit = true, features = null, boot = {}, messages = {}, answer = null } = {}) {
 	const heard = [];
 	const listen = window.addEventListener.bind(window);
 	vi.spyOn(window, "addEventListener").mockImplementation((type, fn, options) => {
@@ -71,7 +80,7 @@ async function open({ cockpit = true } = {}) {
 		return listen(type, fn, options);
 	});
 	const setPageNav = vi.fn();
-	if (cockpit) window.NeoCockpit = { setPageNav };
+	if (cockpit) window.NeoCockpit = features ? { setPageNav, pageNavFeatures: features } : { setPageNav };
 	else delete window.NeoCockpit;
 	const wrapper = document.createElement("div");
 	wrapper.className = "content page-container";
@@ -79,30 +88,39 @@ async function open({ cockpit = true } = {}) {
 	document.body.append(wrapper);
 	const frappe = {
 		csrf_token: "csrf-1",
+		boot,
+		_messages: messages,
 		pages: { neomail: wrapper },
 		router: { make_url: (parts) => "/app/" + parts.join("/") },
 		ui: { make_app_page },
 		utils: { debounce: (fn) => fn },
 	};
-	const fetch = vi.fn(async () => new Response(JSON.stringify({ message: structuredClone(HANDOVER) })));
+	const fetch = vi.fn(
+		async () => answer || new Response(JSON.stringify({ message: structuredClone(HANDOVER) }))
+	);
 	new Function("window", HOST)(window);
-	new Function("frappe", "$", "__", "fetch", PAGE)(frappe, $, (text) => text, fetch);
+	new Function("frappe", "$", "__", "fetch", PAGE)(frappe, $, translator(messages), fetch);
 	frappe.pages.neomail.on_page_load(wrapper);
 	frappe.pages.neomail.on_page_show(wrapper);
+	if (answer) {
+		desk = { wrapper, frappe, setPageNav, fetch, heard };
+		return desk;
+	}
 	await vi.waitFor(() => expect(wrapper.querySelector("iframe")).toBeTruthy());
 	const frame = wrapper.querySelector("iframe");
 	const posted = [];
 	Object.defineProperty(frame, "contentWindow", {
 		value: { postMessage: (message, origin) => posted.push([message, origin]) },
 	});
-	const tell = (data) =>
-		heard.forEach((fn) => fn({ source: frame.contentWindow, origin: window.location.origin, data }));
-	desk = { wrapper, frappe, frame, posted, tell, setPageNav, fetch };
+	const hear = (event) => heard.forEach((fn) => fn(event));
+	const tell = (data) => hear({ source: frame.contentWindow, origin: window.location.origin, data });
+	desk = { wrapper, frappe, frame, posted, tell, hear, setPageNav, fetch };
 	return desk;
 }
 
 beforeEach(() => {
-	document.body.className = "";
+	// The desk's chrome is NeoCockpit (frappe's desk.js puts the class on the body)
+	document.body.className = "neoffice-cockpit";
 });
 
 afterEach(() => {
@@ -124,6 +142,36 @@ describe("the desk's page", () => {
 		expect(document.body.classList.contains("neomail-desk-full")).toBe(false);
 		frappe.pages.neomail.on_page_show(wrapper);
 		expect(document.body.classList.contains("neomail-desk-full")).toBe(true);
+	});
+
+	it("keeps the handover on the window only while the page is in front, and the frame's functions always", async () => {
+		const { wrapper, frappe } = await open();
+		expect(window.mailcraftJmap.accounts[0].secret).toBe("token-1");
+		$(wrapper).trigger("hide");
+		expect("mailcraftJmap" in window).toBe(false);
+		// The frame goes on under the hidden page: a renewal it asks for then still has the page's function
+		expect(typeof window.mailcraftJmapRenew).toBe("function");
+		expect(typeof window.mailcraftFetchUrl).toBe("function");
+		// The frame keeps what it read as it started; a reload of it once the page is back finds it again
+		frappe.pages.neomail.on_page_show(wrapper);
+		expect(window.mailcraftJmap.accounts[0].secret).toBe("token-1");
+	});
+
+	it("starts NeoMail only once the page is in front, when the handover came while it was hidden", async () => {
+		let settle;
+		const answer = new Promise((resolve) => (settle = resolve));
+		delete window.mailcraftJmapRenew;
+		delete window.mailcraftFetchUrl;
+		const { wrapper, frappe } = await open({ answer });
+		$(wrapper).trigger("hide");
+		settle(new Response(JSON.stringify({ message: structuredClone(HANDOVER) })));
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(wrapper.querySelector("iframe")).toBeNull();
+		expect("mailcraftJmap" in window).toBe(false);
+		expect("mailcraftJmapRenew" in window).toBe(false);
+		frappe.pages.neomail.on_page_show(wrapper);
+		expect(wrapper.querySelector("iframe")).toBeTruthy();
+		expect(window.mailcraftJmap.accounts[0].secret).toBe("token-1");
 	});
 
 	it("lends the menu NeoMail's navigation as NeoMail says it is, and a click there asks NeoMail", async () => {
@@ -166,23 +214,150 @@ describe("the desk's page", () => {
 	});
 
 	it("hears only its frame, and keeps a refused command in the console", async () => {
-		const { tell, setPageNav, frame } = await open();
+		const { tell, hear, setPageNav, frame } = await open();
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		tell({ type: "mailcraft:command-done", id: 4, ok: false, error: "Notes are not offered" });
 		tell({ type: "mailcraft:command-done", id: 5, ok: true });
 		expect(warn).toHaveBeenCalledTimes(1);
 		expect(warn.mock.calls[0]).toContain("Notes are not offered");
-		// Another frame, another origin
-		window.dispatchEvent(new MessageEvent("message", { data: STATE, origin: window.location.origin }));
+		// The page's own origin, but not its frame's window (another frame's, or none)
+		hear({ source: {}, origin: window.location.origin, data: STATE });
+		hear({ source: null, origin: window.location.origin, data: STATE });
+		// Its frame's window, but another origin
+		hear({ source: frame.contentWindow, origin: "https://elsewhere.example", data: STATE });
 		expect(setPageNav).not.toHaveBeenCalled();
-		expect(frame.contentWindow).toBeTruthy();
 	});
 
 	it("asks NeoMail to leave its navigation to the menu only where the menu can draw it", async () => {
 		await open();
 		expect(window.mailcraftJmap.chrome).toBe("menu");
 		desk.wrapper.remove();
+		// No NeoCockpit
 		await open({ cockpit: false });
 		expect("chrome" in window.mailcraftJmap).toBe(false);
+		desk.wrapper.remove();
+		// NeoCockpit loaded, but not the desk's chrome
+		document.body.className = "";
+		await open();
+		expect("chrome" in window.mailcraftJmap).toBe(false);
+		desk.wrapper.remove();
+		// The site switched NeoCockpit off
+		document.body.className = "neoffice-cockpit";
+		await open({ boot: { neoffice_cockpit_disable: 1 } });
+		expect("chrome" in window.mailcraftJmap).toBe(false);
+	});
+
+	it("puts the views in the cockpit's dock and lends it the search box, where the cockpit offers them", async () => {
+		const { tell, setPageNav, posted } = await open({ features: ["dock", "search"] });
+		tell({ ...STATE, views: ["mail", "calendar", "people"] });
+		const lent = setPageNav.mock.calls[0][0];
+		expect(lent.nav.map((section) => section.label)).toEqual(["ada@example.org"]);
+		expect(lent.dock.map((view) => [view.id, view.icon, view.active])).toEqual([
+			["mail", "mail", true],
+			["calendar", "calendar", false],
+			["people", "users", false],
+		]);
+		expect(lent.search.placeholder).toBe("Search mail");
+		lent.search.onQuery("devis 2026");
+		lent.search.onQuery("");
+		lent.dock[1].onClick();
+		expect(posted.map(([message]) => [message.name, message.params])).toEqual([
+			["search", { query: "devis 2026" }],
+			["search", { query: "" }],
+			["view.calendar", {}],
+		]);
+	});
+
+	it("keeps the views at the end of the navigation, and the desk's search, with an older cockpit", async () => {
+		const { tell, setPageNav } = await open();
+		tell(STATE);
+		const lent = setPageNav.mock.calls[0][0];
+		expect(lent.dock).toBeUndefined();
+		expect(lent.search).toBeUndefined();
+		expect(lent.nav.at(-1).items.map((item) => item.icon)).toEqual([
+			"lucide-mail",
+			"lucide-calendar",
+			"lucide-users",
+			"lucide-sticky-note",
+		]);
+	});
+
+	it("names the views in NeoMail's words, never in another app's", async () => {
+		// What other apps made of the same English words, and NeoMail's own in their context
+		const messages = {
+			Mail: "Messagerie",
+			People: "Personnes",
+			Notes: "Remarques",
+			Favourites: "Favoris d'ailleurs",
+			"Mail:NeoMail view": "Courrier",
+			"Calendar:NeoMail view": "Calendrier",
+			"People:NeoMail view": "Contacts",
+			"Favourites:NeoMail pane": "Favoris",
+		};
+		const { tell, setPageNav } = await open({ features: ["dock"], messages });
+		const favorites = [{ account: "ada@example.org", folder: "F-inbox", name: "Inbox - ada", unread: 2 }];
+		tell({ ...STATE, favorites });
+		const lent = setPageNav.mock.calls[0][0];
+		expect(lent.dock.map((view) => view.title)).toEqual(["Courrier", "Calendrier", "Contacts", "Notes"]);
+		expect(lent.nav[0].label).toBe("Favoris");
+		// The module card too: « Courrier », not what another app made of « Mail »
+		expect(lent.app).toEqual({ name: "mail", title: "Courrier" });
+	});
+
+	it("lights a folder once, in the list it was chosen from", async () => {
+		const { tell, setPageNav } = await open();
+		const favorites = [{ account: "ada@example.org", folder: "F-inbox", name: "Inbox - ada", unread: 2 }];
+		tell({ ...STATE, favorites, folder: null });
+		setPageNav.mock.calls[0][0].nav[0].items[0].onClick();
+		tell({ ...STATE, favorites });
+		const lit = setPageNav.mock.lastCall[0].nav.map(
+			(section) => section.items.filter((item) => item.active).length
+		);
+		// Favoris, the mailbox, the views (Mail in front)
+		expect(lit).toEqual([1, 0, 1]);
+	});
+
+	it("forgets the list a folder was chosen from once NeoMail goes elsewhere by itself", async () => {
+		const { tell, setPageNav } = await open();
+		const favorites = [{ account: "ada@example.org", folder: "F-inbox", name: "Inbox - ada", unread: 2 }];
+		const sent = { id: "F-sent", name: "Sent", role: "sent", parent: null, unread: 0, selectable: true };
+		const accounts = [{ ...STATE.accounts[0], folders: [...STATE.accounts[0].folders, sent] }];
+		const lit = () =>
+			setPageNav.mock.lastCall[0].nav.map((section) => section.items.filter((item) => item.active).length);
+		tell({ ...STATE, accounts, favorites, folder: null });
+		setPageNav.mock.lastCall[0].nav[0].items[0].onClick();
+		tell({ ...STATE, accounts, favorites });
+		expect(lit()).toEqual([1, 0, 1]);
+		// NeoMail goes to Sent by itself (the keyboard), then back to the inbox by itself: its mailbox's section
+		tell({ ...STATE, accounts, favorites, folder: "F-sent" });
+		tell({ ...STATE, accounts, favorites });
+		expect(lit()).toEqual([0, 1, 1]);
+	});
+
+	it("forgets a choice NeoMail refused", async () => {
+		const { tell, setPageNav, posted } = await open();
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		const favorites = [{ account: "ada@example.org", folder: "F-inbox", name: "Inbox - ada", unread: 2 }];
+		tell({ ...STATE, favorites, folder: null });
+		setPageNav.mock.lastCall[0].nav[0].items[0].onClick();
+		const id = posted.at(-1)[0].id;
+		tell({ type: "mailcraft:command-done", id, ok: false, error: "No such folder" });
+		// Later NeoMail shows the inbox by itself: lit in its mailbox's section, not in Favoris
+		tell({ ...STATE, favorites });
+		const lit = setPageNav.mock.lastCall[0].nav.map((section) => section.items.filter((item) => item.active).length);
+		expect(lit).toEqual([0, 1, 1]);
+	});
+
+	it("draws the menu again at once when the favourite of the folder already shown is chosen", async () => {
+		const { tell, setPageNav } = await open();
+		const favorites = [{ account: "ada@example.org", folder: "F-inbox", name: "Inbox - ada", unread: 2 }];
+		tell({ ...STATE, favorites });
+		const lit = (call) =>
+			setPageNav.mock.calls[call][0].nav.map((section) => section.items.filter((item) => item.active).length);
+		expect(lit(0)).toEqual([0, 1, 1]);
+		// NeoMail says nothing new (the folder does not change): the menu moves the light by itself
+		setPageNav.mock.calls[0][0].nav[0].items[0].onClick();
+		expect(setPageNav).toHaveBeenCalledTimes(2);
+		expect(lit(1)).toEqual([1, 0, 1]);
 	});
 });

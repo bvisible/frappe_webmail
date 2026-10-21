@@ -51,8 +51,10 @@ def hand_over(sample=None, build=None):
 	csrf_token_required()
 	framed = neomail.handover(sample=bool(cint(sample)), build=build)
 	# NeoMail leaves its navigation to the desk's menu (docs/neomail-desk-menu-contract.md, section 1): this page only,
-	# never /neomail, whose page has no menu. The page takes it back where the desk's menu cannot draw it (neomail.js).
-	framed["host"]["chrome"] = CHROME
+	# never /neomail, whose page has no menu, and not where the site switched the desk's menu (NeoCockpit) off. The page
+	# takes it back too where the menu cannot draw it in the browser (neomail.js).
+	if not frappe.conf.get("neoffice_cockpit_disable"):
+		framed["host"]["chrome"] = CHROME
 	return framed
 
 

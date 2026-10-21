@@ -2,8 +2,9 @@
    panel's left edge (docs/neomail-desk-menu-contract.md, « All the space »). While the page is in front the body has
    `neomail-desk-full`: the panel (.main-section, white, bordered and rounded by the desk's cockpit.css) draws no
    border, rounding or scrollbar gutter, and none of the page's own containers add padding, margins or a maximum
-   width. Every other page keeps the panel as it is. */
-body.neomail-desk-full .main-section {
+   width. Every other page keeps the panel as it is. The panel's rule names the desk's own class too
+   (body.neoffice-cockpit .main-section, frappe's cockpit.css), so that it wins whichever file loads last. */
+body.neoffice-cockpit.neomail-desk-full .main-section {
 	border: 0 !important;
 	border-radius: 0 !important;
 	scrollbar-gutter: auto !important;

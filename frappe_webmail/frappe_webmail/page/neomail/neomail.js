@@ -7,10 +7,16 @@
  * page says NeoMail is not offered here. The contract: neoffice-apps, docs/neomail-desk-menu-contract.md.
  *
  * - The handover holds tokens: it is asked for each time the page opens (neomail.hand_over), never written into this
- *   script, which the desk keeps in the browser's storage. It asks NeoMail to leave its navigation to the desk's menu
- *   (`chrome: "menu"`), where the menu can draw it (NeoCockpit's setPageNav); elsewhere NeoMail keeps its own.
- * - NeoMail says where it is (`mailcraft:state`): its favourites, its mailboxes and their folders, its views go into
- *   the menu (neomailHost.navSections), and a click there asks NeoMail (`mailcraft:command`).
+ *   script, which the desk keeps in the browser's storage. NeoMail starts only once the page is in front, and its
+ *   handover (`mailcraftJmap`, the mailboxes and their tokens) is on the window only while the page is in front; the
+ *   functions the frame calls (the tokens' renewal, the pictures' fetching) stay while it works under the hidden page,
+ *   since a renewal it would ask for then, without them, would leave the mailbox asking for a reload. It asks NeoMail
+ *   to leave its navigation to the desk's menu (`chrome: "menu"`) where the menu can draw it (NeoCockpit on, with its
+ *   setPageNav); elsewhere NeoMail keeps its own.
+ * - NeoMail says where it is (`mailcraft:state`): its favourites, its mailboxes and their folders go into the menu
+ *   (neomailHost.navSections), its views into the menu's dock (a row of icons always in sight; at the end of the
+ *   navigation with a cockpit that has none), and the menu's search box searches in NeoMail where the cockpit lends it.
+ *   A click there asks NeoMail (`mailcraft:command`).
  * - All the space: while the page is in front, the desk's panel draws no border, rounding or padding around it
  *   (`neomail-desk-full` on the body, neomail.css), and the frame fills the panel.
  * - Leaving the page for another of the desk keeps the frame under the hidden page, as the webmail's page keeps its
@@ -40,13 +46,55 @@
 		where: null,
 		send: null,
 		lent: false,
+		// The handover, put back on the window when the page comes to the front again
+		host: null,
+		// The handover answered while the page was hidden: NeoMail starts when the page comes to the front
+		pending: null,
+		// The menu's last folder click: {account, folder, from, id, seen} (neomailHost.followChoice)
+		chosen: null,
 	};
 
-	// The desk's menu, where it can draw a page's navigation.
+	// The desk's menu, where it can draw a page's navigation: NeoCockpit is the desk's chrome (it can be switched off
+	// for a site, `neoffice_cockpit_disable`, and then draws nothing) and lends its navigation to pages.
 	const cockpit = () =>
-		window.NeoCockpit && typeof window.NeoCockpit.setPageNav === "function"
+		window.NeoCockpit &&
+		typeof window.NeoCockpit.setPageNav === "function" &&
+		document.body.classList.contains("neoffice-cockpit") &&
+		!(frappe.boot && frappe.boot.neoffice_cockpit_disable)
 			? window.NeoCockpit
 			: null;
+
+	// What this cockpit draws of a page's navigation beyond its sections: `dock`, `search` (an older one says nothing).
+	const offers = (menu, feature) =>
+		Array.isArray(menu.pageNavFeatures) && menu.pageNavFeatures.includes(feature);
+
+	// The names of NeoMail's views and of its Favourites, in NeoMail's words: their translation in a context of their
+	// own, or else the English word itself. Never what other apps made of the same English word, which is what Frappe
+	// gives when a context has no translation (« Mail » read « Messagerie », « People » « Personnes », « Notes »
+	// « Remarques »). French « Notes » is the English word: it has no entry (no msgstr may repeat its msgid) and shows
+	// as it is.
+	const own = (translated, text, context) =>
+		frappe._messages && frappe._messages[text + ":" + context] ? translated : text;
+	const texts = () => ({
+		favorites: own(__("Favourites", null, "NeoMail pane"), "Favourites", "NeoMail pane"),
+		mail: own(__("Mail", null, "NeoMail view"), "Mail", "NeoMail view"),
+		calendar: own(__("Calendar", null, "NeoMail view"), "Calendar", "NeoMail view"),
+		people: own(__("People", null, "NeoMail view"), "People", "NeoMail view"),
+		notes: own(__("Notes", null, "NeoMail view"), "Notes", "NeoMail view"),
+	});
+
+	// Asks NeoMail; a folder chosen in the menu is remembered with the list it was chosen from, and the menu is drawn
+	// again at once: NeoMail never says the same state twice, so a favourite of the folder already shown (lit in its
+	// mailbox's section) would otherwise stay unlit.
+	function ask(name, params, from) {
+		if (!state.send) return null;
+		const id = state.send(name, params);
+		if (name === "folder.select") {
+			state.chosen = window.neomailHost.followChoice({ ...params, from, id }, state.where);
+			lend();
+		}
+		return id;
+	}
 
 	// The address the navigation belongs to: the menu draws it only there (its pageNav.ts compares whole paths).
 	const page_route = () =>
@@ -58,17 +106,21 @@
 	function lend() {
 		const menu = cockpit();
 		if (!menu || !state.shown || !state.where || !state.send) return;
-		menu.setPageNav({
-			app: { name: "mail", title: __("Mail") },
+		const words = texts();
+		const dock = offers(menu, "dock");
+		const lent = {
+			app: { name: "mail", title: words.mail },
 			route: page_route(),
-			nav: window.neomailHost.navSections(state.where, state.send, {
-				favorites: __("Favorites"),
-				mail: __("Mail"),
-				calendar: __("Calendar"),
-				people: __("People"),
-				notes: __("Notes"),
-			}),
-		});
+			nav: window.neomailHost.navSections(state.where, ask, words, { dock, chosen: state.chosen }),
+		};
+		if (dock) lent.dock = window.neomailHost.viewDock(state.where, ask, words);
+		if (offers(menu, "search")) {
+			lent.search = {
+				placeholder: __("Search mail"),
+				onQuery: (query) => ask("search", { query: String(query || "") }),
+			};
+		}
+		menu.setPageNav(lent);
 		state.lent = true;
 	}
 
@@ -215,9 +267,18 @@
 			);
 			return;
 		}
-		// A desk whose menu cannot draw NeoMail's navigation (no NeoCockpit): NeoMail keeps its own.
+		state.pending = given;
+		if (state.shown) start();
+	}
+
+	// NeoMail in its frame, from the handover the page was given, once the page is in front.
+	function start() {
+		const given = state.pending;
+		state.pending = null;
+		// A desk whose menu cannot draw NeoMail's navigation (NeoCockpit off or missing): NeoMail keeps its own.
 		if (!cockpit()) delete given.host.chrome;
 		// What the build reads from the page that frames it, there before the frame starts.
+		state.host = given.host;
 		window.neomailHost.install(window, given.host, {
 			sessionEnded: __("Your Neoffice session has ended."),
 			onSession: (alive) => (state.banner.hidden = alive),
@@ -233,12 +294,14 @@
 			// Where it is, once it started and at each change: the desk's menu follows
 			"mailcraft:state": (data) => {
 				state.where = data;
+				state.chosen = window.neomailHost.followChoice(state.chosen, data);
 				lend();
 			},
 			// A command it refused: the menu reflects what NeoMail says next, the console keeps why
 			"mailcraft:command-done": (data) => {
 				if (data.ok === false) {
 					console.warn("NeoMail refused a command from the desk's menu", data.id, data.error);
+					if (state.chosen && state.chosen.id === data.id) state.chosen = null;
 				}
 			},
 		});
@@ -248,6 +311,11 @@
 	function front(on) {
 		state.shown = on;
 		document.body.classList.toggle(FULL, on);
+		// The handover (the mailboxes and their tokens) is on the window only while the page is in front: NeoMail reads
+		// it as it starts, and a frame that starts again (a reload) finds it there. The functions the frame calls stay
+		// (see above).
+		if (on && state.host) window.mailcraftJmap = state.host;
+		else if (!on) delete window.mailcraftJmap;
 		// The frame scrolls, the desk does not
 		document.documentElement.style.overflow = on ? "hidden" : "";
 		document.body.style.overflow = on ? "hidden" : "";
@@ -282,6 +350,7 @@
 	// Each time the page comes to the front, its first time included.
 	frappe.pages[PAGE].on_page_show = function () {
 		front(true);
+		if (state.pending) start();
 		point_sign_in();
 		lend();
 		requestAnimationFrame(fit);

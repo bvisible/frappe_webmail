@@ -178,54 +178,103 @@ window.neomailHost = (function () {
 		trash: "lucide-trash-2",
 		outbox: "lucide-clock",
 	};
-	// NeoMail's four views, in its order, with their icons in the desk's menu.
-	const VIEWS = [
-		["mail", "lucide-mail"],
-		["calendar", "lucide-calendar"],
-		["people", "lucide-users"],
-		["notes", "lucide-sticky-note"],
-	];
+	// NeoMail's views, in its order, and their icons (lucide names, without the prefix the menu's items take).
+	const VIEW_ICONS = { mail: "mail", calendar: "calendar", people: "users", notes: "sticky-note" };
+	const VIEWS = Object.keys(VIEW_ICONS);
 	// The deepest a folder is drawn under its parents.
 	const MAX_DEPTH = 8;
 
 	/*
+	 * The number NeoMail's own pane shows beside a folder, as the menu's badge: its `count` (a total in brackets, `[4]`;
+	 * nothing when the pane shows none), or, from a NeoMail that does not say it, its unread messages.
+	 */
+	function badgeOf(folder) {
+		if (!folder) return undefined;
+		if (Object.prototype.hasOwnProperty.call(folder, "count")) {
+			const count = folder.count;
+			if (!count || typeof count.value !== "number") return undefined;
+			return count.kind === "total" ? "[" + count.value + "]" : count.value;
+		}
+		return typeof folder.unread === "number" && folder.unread > 0 ? folder.unread : undefined;
+	}
+
+	/*
+	 * NeoMail's views as the menu shows them: those it offers here (`views`, in its order; the four from a NeoMail
+	 * that does not say), each with its name (`texts[view]`), its icon, whether it is in front, and its click.
+	 */
+	function viewsOf(state, send, texts) {
+		const now = state || {};
+		const offered = Array.isArray(now.views) ? now.views.filter((view) => VIEW_ICONS[view]) : VIEWS;
+		return offered.map((view) => ({
+			view,
+			title: texts[view],
+			icon: VIEW_ICONS[view],
+			active: now.module === view,
+			onClick: () => send("view." + view, {}),
+		}));
+	}
+
+	/*
+	 * The views as the menu's dock draws them: a row of icons always in sight, their names as tooltips.
+	 */
+	function viewDock(state, send, texts) {
+		return viewsOf(state, send, texts).map((view) => ({
+			id: view.view,
+			title: view.title,
+			icon: view.icon,
+			active: view.active,
+			onClick: view.onClick,
+		}));
+	}
+
+	/*
 	 * The desk menu's sections for what NeoMail said of itself (`mailcraft:state`): its own pane, in its order.
 	 * Favourites first (`texts.favorites`), when it has any; then one section per mailbox, titled with its address, with
-	 * every folder of it in NeoMail's order, under its parent (`depth`); then the four views (`texts.mail`, `calendar`,
-	 * `people`, `notes`), small items at the end, the one in front marked. A folder's count of unread mail is its badge,
-	 * an inbox's in the accent; the folder shown is marked while Mail is in front. A click asks NeoMail through
-	 * `send(name, params)`: `folder.select` for a folder (a folder NeoMail cannot open has no click), `view.*` for a view.
-	 * The cockpit's sections cannot be folded and it has no row of icons: these are its own items.
+	 * every folder of it in NeoMail's order, under its parent (`depth`); then, unless the menu draws them in its dock
+	 * (`options.dock`), the views as small items at the end. A folder's badge is the number NeoMail's pane shows
+	 * (badgeOf), an inbox's in the accent. A click asks NeoMail through `send(name, params, from)`: `folder.select`
+	 * for a folder, `from` saying the list it was chosen from ("favorites" or "mailbox"; a folder NeoMail cannot open
+	 * has no click), `view.*` for a view.
+	 *
+	 * The folder shown is marked once, while Mail is in front: in the list it was chosen from (`options.chosen`, the
+	 * page's last click: {account, folder, from}), else, when NeoMail changed folder by itself, in its mailbox's
+	 * section. The cockpit's sections cannot be folded.
 	 */
-	function navSections(state, send, texts) {
+	function navSections(state, send, texts, options) {
 		const now = state || {};
+		const opts = options || {};
 		const accounts = Array.isArray(now.accounts) ? now.accounts : [];
 		const favorites = Array.isArray(now.favorites) ? now.favorites : [];
-		const inMail = now.module === "mail";
 		const shown = (account, folder) =>
-			inMail && folder != null && account === now.account && folder === now.folder;
-		const unread = (count) => (typeof count === "number" && count > 0 ? count : undefined);
+			now.module === "mail" && folder != null && account === now.account && folder === now.folder;
+		const chosen = opts.chosen;
+		const fromFavorites =
+			Boolean(chosen) &&
+			chosen.from === "favorites" &&
+			favorites.some((favorite) => shown(favorite.account, favorite.folder)) &&
+			shown(chosen.account, chosen.folder);
 		const tone = (role) => (role === "inbox" ? "accent" : undefined);
 		const icon = (role) => ROLE_ICONS[role] || "lucide-folder";
-		const select = (account, folder) => () => send("folder.select", { account, folder });
+		const select = (account, folder, from) => () => send("folder.select", { account, folder }, from);
 		const key = (account, folder) => JSON.stringify([account, folder]);
-		const roles = new Map();
+		const known = new Map();
 		for (const box of accounts) {
-			for (const folder of box.folders || []) roles.set(key(box.email, folder.id), folder.role);
+			for (const folder of box.folders || []) known.set(key(box.email, folder.id), folder);
 		}
 		const nav = [];
 		if (favorites.length) {
 			nav.push({
 				label: texts.favorites,
 				items: favorites.map((favorite) => {
-					const role = roles.get(key(favorite.account, favorite.folder)) || null;
+					const folder = known.get(key(favorite.account, favorite.folder));
+					const role = (folder && folder.role) || null;
 					return {
 						label: favorite.name,
 						icon: icon(role),
-						badge: unread(favorite.unread),
+						badge: badgeOf(folder || favorite),
 						badgeTone: tone(role),
-						active: shown(favorite.account, favorite.folder),
-						onClick: select(favorite.account, favorite.folder),
+						active: fromFavorites && shown(favorite.account, favorite.folder),
+						onClick: select(favorite.account, favorite.folder, "favorites"),
 					};
 				}),
 			});
@@ -249,22 +298,38 @@ window.neomailHost = (function () {
 					label: folder.name,
 					icon: icon(folder.role),
 					depth: depth(folder) || undefined,
-					badge: unread(folder.unread),
+					badge: badgeOf(folder),
 					badgeTone: tone(folder.role),
-					active: shown(box.email, folder.id),
-					onClick: folder.selectable === false ? undefined : select(box.email, folder.id),
+					active: !fromFavorites && shown(box.email, folder.id),
+					onClick:
+						folder.selectable === false ? undefined : select(box.email, folder.id, "mailbox"),
 				})),
 			});
 		}
-		nav.push({
-			items: VIEWS.map(([view, viewIcon]) => ({
-				label: texts[view],
-				icon: viewIcon,
-				active: now.module === view,
-				onClick: () => send("view." + view, {}),
-			})),
-		});
+		if (!opts.dock) {
+			nav.push({
+				items: viewsOf(now, send, texts).map((view) => ({
+					label: view.title,
+					icon: "lucide-" + view.icon,
+					active: view.active,
+					onClick: view.onClick,
+				})),
+			});
+		}
 		return nav;
+	}
+
+	/*
+	 * What the page remembers of the menu's last folder click ({account, folder, from, id}) as NeoMail's states come:
+	 * kept until NeoMail shows that folder (`seen`), then forgotten as soon as it shows another one, or another view,
+	 * having gone there by itself. Coming back to the folder by itself, NeoMail has it lit in its mailbox's section.
+	 */
+	function followChoice(chosen, state) {
+		if (!chosen) return null;
+		const now = state || {};
+		const showing = now.module === "mail" && now.account === chosen.account && now.folder === chosen.folder;
+		if (showing) return chosen.seen ? chosen : { ...chosen, seen: true };
+		return chosen.seen ? null : chosen;
 	}
 
 	/*
@@ -284,5 +349,5 @@ window.neomailHost = (function () {
 		};
 	}
 
-	return { install, listen, frameHeight, navSections, commander, refusedAsStale };
+	return { install, listen, frameHeight, navSections, viewDock, badgeOf, followChoice, commander, refusedAsStale };
 })();

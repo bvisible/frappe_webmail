@@ -273,11 +273,20 @@ const STATE = {
 const TEXTS = { favorites: "Favoris", mail: "Courrier", calendar: "Calendrier", people: "Contacts", notes: "Notes" };
 
 describe("navSections", () => {
-	function lent(state = STATE) {
+	function lent(state = STATE, options) {
 		const sent = [];
-		const nav = page().host.navSections(state, (name, params) => sent.push({ name, params }), TEXTS);
+		const nav = page().host.navSections(
+			state,
+			(name, params, from) => sent.push(from ? { name, params, from } : { name, params }),
+			TEXTS,
+			options
+		);
 		return { nav, sent };
 	}
+	const active = (nav) =>
+		nav.flatMap((section) =>
+			section.items.filter((item) => item.active).map((item) => (section.label || "") + " › " + item.label)
+		);
 
 	it("reproduces NeoMail's pane: favourites, then each mailbox with all its folders, then the views", () => {
 		const { nav } = lent();
@@ -305,7 +314,7 @@ describe("navSections", () => {
 		]);
 	});
 
-	it("draws a folder under its parents, with its unread mail, an inbox's in the accent", () => {
+	it("draws a folder under its parents, with its unread mail from a NeoMail that gives no count", () => {
 		const [favorites, ada, team] = lent().nav;
 		expect(ada.items.map((item) => item.depth)).toEqual([undefined, 1, 2, undefined, undefined]);
 		expect(ada.items.map((item) => item.badge)).toEqual([3, undefined, 2, undefined, undefined]);
@@ -325,27 +334,59 @@ describe("navSections", () => {
 		]);
 	});
 
-	it("marks the folder shown, in its mailbox only, while Mail is in front", () => {
-		const active = (nav) =>
-			nav.flatMap((section) => section.items.filter((item) => item.active).map((item) => item.label));
-		expect(active(lent().nav)).toEqual(["Projets", "Courrier"]);
-		const inbox = { ...STATE, folder: "F-inbox" };
-		expect(active(lent(inbox).nav)).toEqual([
-			"Boîte de réception - ada@example.org",
-			"Boîte de réception",
-			"Courrier",
+	it("shows the number NeoMail's pane shows: its count, a total in brackets, nothing when it shows none", () => {
+		const counted = structuredClone(STATE);
+		const [inbox, clients, projects, sent] = counted.accounts[0].folders;
+		inbox.count = { value: 3, kind: "unread" };
+		clients.count = null;
+		projects.count = { value: 5, kind: "total" };
+		sent.count = { value: 0, kind: "unread" };
+		counted.accounts[1].folders[1].count = { value: 2, kind: "total" };
+		const [favorites, ada] = lent(counted).nav;
+		// `count` decides, not `unread`: the projects' 2 unread give way to its total, the inbox's tone stays
+		expect(ada.items.map((item) => item.badge)).toEqual([3, undefined, "[5]", 0, undefined]);
+		expect(ada.items[0].badgeTone).toBe("accent");
+		// A favourite shows its folder's count: the team's Sent its total, though the favourite says 0 unread
+		expect(favorites.items.map((item) => item.badge)).toEqual([3, "[2]"]);
+	});
+
+	it("marks the folder shown once, while Mail is in front: in its mailbox when NeoMail chose it", () => {
+		expect(active(lent().nav)).toEqual(["ada@example.org › Projets", " › Courrier"]);
+		// An inbox that is a favourite too: lit in its mailbox only, when nobody chose it from the menu
+		expect(active(lent({ ...STATE, folder: "F-inbox" }).nav)).toEqual([
+			"ada@example.org › Boîte de réception",
+			" › Courrier",
 		]);
 		// The same folder's id in another mailbox is another folder
-		expect(active(lent({ ...STATE, account: "team@example.org", folder: "F-inbox" }).nav)).toEqual(["Courrier"]);
+		expect(active(lent({ ...STATE, account: "team@example.org", folder: "F-inbox" }).nav)).toEqual([" › Courrier"]);
 		// Several folders, a search: none
-		expect(active(lent({ ...STATE, folder: null }).nav)).toEqual(["Courrier"]);
+		expect(active(lent({ ...STATE, folder: null }).nav)).toEqual([" › Courrier"]);
 		// Another view in front: the folders stay, that view is marked
 		const calendar = lent({ ...STATE, module: "calendar" }).nav;
 		expect(calendar.length).toBe(4);
-		expect(active(calendar)).toEqual(["Calendrier"]);
+		expect(active(calendar)).toEqual([" › Calendrier"]);
 	});
 
-	it("asks NeoMail for the folder or the view clicked, and nothing for a folder it cannot open", () => {
+	it("marks the folder in the list it was chosen from, until NeoMail goes elsewhere by itself", () => {
+		const inbox = { ...STATE, folder: "F-inbox" };
+		const fromFavorites = { account: "ada@example.org", folder: "F-inbox", from: "favorites" };
+		expect(active(lent(inbox, { chosen: fromFavorites }).nav)).toEqual([
+			"Favoris › Boîte de réception - ada@example.org",
+			" › Courrier",
+		]);
+		const fromMailbox = { ...fromFavorites, from: "mailbox" };
+		expect(active(lent(inbox, { chosen: fromMailbox }).nav)).toEqual([
+			"ada@example.org › Boîte de réception",
+			" › Courrier",
+		]);
+		// Chosen from Favoris, then NeoMail went to Projets by itself (the keyboard): its mailbox's section
+		expect(active(lent(STATE, { chosen: fromFavorites }).nav)).toEqual([
+			"ada@example.org › Projets",
+			" › Courrier",
+		]);
+	});
+
+	it("asks NeoMail for the folder or the view clicked, saying the list, and nothing for a folder it cannot open", () => {
 		const { nav, sent } = lent();
 		nav[0].items[1].onClick();
 		nav[1].items[2].onClick();
@@ -353,9 +394,9 @@ describe("navSections", () => {
 		expect(nav[1].items[4].onClick).toBeUndefined();
 		nav[3].items.forEach((item) => item.onClick());
 		expect(sent).toEqual([
-			{ name: "folder.select", params: { account: "team@example.org", folder: "T-sent" } },
-			{ name: "folder.select", params: { account: "ada@example.org", folder: "F-projects" } },
-			{ name: "folder.select", params: { account: "team@example.org", folder: "T-inbox" } },
+			{ name: "folder.select", params: { account: "team@example.org", folder: "T-sent" }, from: "favorites" },
+			{ name: "folder.select", params: { account: "ada@example.org", folder: "F-projects" }, from: "mailbox" },
+			{ name: "folder.select", params: { account: "team@example.org", folder: "T-inbox" }, from: "mailbox" },
 			{ name: "view.mail", params: {} },
 			{ name: "view.calendar", params: {} },
 			{ name: "view.people", params: {} },
@@ -363,7 +404,7 @@ describe("navSections", () => {
 		]);
 	});
 
-	it("draws the four views, small items with their icons, the last section", () => {
+	it("draws the views NeoMail offers as small items at the end, with a cockpit that has no dock", () => {
 		const views = lent().nav.at(-1);
 		expect(views.label).toBeUndefined();
 		expect(views.items.map((item) => [item.label, item.icon])).toEqual([
@@ -372,6 +413,13 @@ describe("navSections", () => {
 			["Contacts", "lucide-users"],
 			["Notes", "lucide-sticky-note"],
 		]);
+		const noNotes = lent({ ...STATE, views: ["mail", "calendar", "people", "tasks"] }).nav.at(-1);
+		expect(noNotes.items.map((item) => item.label)).toEqual(["Courrier", "Calendrier", "Contacts"]);
+	});
+
+	it("leaves the views to the cockpit's dock when it has one", () => {
+		const { nav } = lent(STATE, { dock: true });
+		expect(nav.map((section) => section.label)).toEqual(["Favoris", "ada@example.org", "team@example.org"]);
 	});
 
 	it("takes a state with nothing yet, folders listed before their parents, and a loop", () => {
@@ -400,6 +448,57 @@ describe("navSections", () => {
 			["Y", 1],
 			["Lost", undefined],
 		]);
+	});
+});
+
+describe("viewDock", () => {
+	it("gives the cockpit's dock the views NeoMail offers, in its order, the one in front marked", () => {
+		const sent = [];
+		const host = page().host;
+		const dock = host.viewDock({ ...STATE, module: "people" }, (name, params) => sent.push(name), TEXTS);
+		expect(dock.map(({ id, title, icon, active }) => ({ id, title, icon, active }))).toEqual([
+			{ id: "mail", title: "Courrier", icon: "mail", active: false },
+			{ id: "calendar", title: "Calendrier", icon: "calendar", active: false },
+			{ id: "people", title: "Contacts", icon: "users", active: true },
+			{ id: "notes", title: "Notes", icon: "sticky-note", active: false },
+		]);
+		dock[3].onClick();
+		expect(sent).toEqual(["view.notes"]);
+		const offered = host.viewDock({ ...STATE, views: ["calendar", "mail"] }, () => {}, TEXTS);
+		expect(offered.map((view) => view.id)).toEqual(["calendar", "mail"]);
+	});
+});
+
+describe("followChoice", () => {
+	const { followChoice } = page().host;
+	const inbox = { type: "mailcraft:state", module: "mail", account: "ada@example.org", folder: "F-inbox" };
+	const chosen = { account: "ada@example.org", folder: "F-inbox", from: "favorites", id: 3 };
+
+	it("keeps a choice until NeoMail shows its folder, and while it does", () => {
+		expect(followChoice(chosen, { ...inbox, folder: "F-sent" })).toBe(chosen);
+		const seen = followChoice(chosen, inbox);
+		expect(seen).toEqual({ ...chosen, seen: true });
+		expect(followChoice(seen, inbox)).toBe(seen);
+	});
+
+	it("forgets it once NeoMail shows another folder or another view, having gone there by itself", () => {
+		const seen = followChoice(chosen, inbox);
+		expect(followChoice(seen, { ...inbox, folder: "F-sent" })).toBeNull();
+		expect(followChoice(seen, { ...inbox, module: "calendar" })).toBeNull();
+		expect(followChoice(seen, { ...inbox, folder: null })).toBeNull();
+		expect(followChoice(null, inbox)).toBeNull();
+	});
+});
+
+describe("badgeOf", () => {
+	it("reads a folder's count as NeoMail's pane shows it, else its unread mail", () => {
+		const { badgeOf } = page().host;
+		expect(badgeOf({ count: { value: 4, kind: "unread" }, unread: 9 })).toBe(4);
+		expect(badgeOf({ count: { value: 4, kind: "total" }, unread: 0 })).toBe("[4]");
+		expect(badgeOf({ count: null, unread: 9 })).toBeUndefined();
+		expect(badgeOf({ unread: 2 })).toBe(2);
+		expect(badgeOf({ unread: 0 })).toBeUndefined();
+		expect(badgeOf(undefined)).toBeUndefined();
 	});
 });
 
