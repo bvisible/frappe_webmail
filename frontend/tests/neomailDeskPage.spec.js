@@ -498,6 +498,14 @@ function socket() {
 	};
 }
 
+// Whether a frame is behind the other one: kept at its size, out of sight, out of reach (never `display: none`).
+const away = (frame) => {
+	const behind = frame.classList.contains("neomail-desk-away");
+	expect(frame.inert).toBe(behind);
+	expect(frame.hidden).toBe(false);
+	return behind;
+};
+
 // What the page asked Raven for the unread messages, so far.
 const unreadAsked = (fetch) => fetch.mock.calls.filter(([url]) => String(url).includes("get_unread_count_for_channels")).length;
 
@@ -543,8 +551,8 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		const raven = frames[1];
 		expect(raven.getAttribute("src")).toBe("/raven?embed=desk");
 		expect(raven.title).toBe("Synk");
-		expect(raven.hidden).toBe(false);
-		expect(frame.hidden).toBe(true);
+		expect(away(raven)).toBe(false);
+		expect(away(frame)).toBe(true);
 		// The menu shows Synk in front: its icon lit, no folder lit, NeoMail asked nothing
 		let lent = setPageNav.mock.lastCall[0];
 		expect(lent.dock.map((view) => view.active)).toEqual([false, false, false, false, true]);
@@ -553,20 +561,20 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		// NeoMail's Mail icon: NeoMail back in front, Raven alive under it, the count asked again
 		const before = unreadAsked(fetch);
 		lent.dock[0].onClick();
-		expect(frame.hidden).toBe(false);
-		expect(raven.hidden).toBe(true);
+		expect(away(frame)).toBe(false);
+		expect(away(raven)).toBe(true);
 		expect(raven.isConnected).toBe(true);
 		expect(posted.map(([message]) => message.name)).toEqual(["view.mail"]);
 		await vi.waitFor(() => expect(unreadAsked(fetch)).toBe(before + 1));
 		// Synk again: the same frame, not a new one
 		setPageNav.mock.lastCall[0].dock.at(-1).onClick();
 		expect(wrapper.querySelectorAll("iframe").length).toBe(2);
-		expect(raven.hidden).toBe(false);
+		expect(away(raven)).toBe(false);
 		// A folder of the menu puts NeoMail back in front too, and asks it
 		lent = setPageNav.mock.lastCall[0];
 		lent.nav[0].items[0].onClick();
-		expect(frame.hidden).toBe(false);
-		expect(raven.hidden).toBe(true);
+		expect(away(frame)).toBe(false);
+		expect(away(raven)).toBe(true);
 		expect(posted.at(-1)[0]).toMatchObject({ name: "folder.select", params: { folder: "F-inbox" } });
 	});
 
@@ -574,9 +582,9 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		const { frame, tell, setPageNav, posted } = await open({ features: ["dock", "search"], synk: { unread: UNREAD } });
 		tell(STATE);
 		(await synkDock(setPageNav)).at(-1).onClick();
-		expect(frame.hidden).toBe(true);
+		expect(away(frame)).toBe(true);
 		setPageNav.mock.lastCall[0].search.onQuery("devis");
-		expect(frame.hidden).toBe(false);
+		expect(away(frame)).toBe(false);
 		expect(posted.at(-1)[0]).toMatchObject({ name: "search", params: { query: "devis" } });
 	});
 
@@ -649,11 +657,11 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		const { frame, tell, setPageNav } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		(await synkDock(setPageNav)).at(-1).onClick();
-		expect(frame.hidden).toBe(true);
+		expect(away(frame)).toBe(true);
 		// The role taken away meanwhile: Raven's next answer is a refusal
 		synk.unread = 403;
 		realtime.emit("raven:unread_channel_count_updated", { channel_id: "x", sent_by: "bruno@example.org", is_dm_channel: true });
-		await vi.waitFor(() => expect(frame.hidden).toBe(false));
+		await vi.waitFor(() => expect(away(frame)).toBe(false));
 		expect(setPageNav.mock.lastCall[0].dock.map((view) => view.id)).not.toContain("synk");
 	});
 });

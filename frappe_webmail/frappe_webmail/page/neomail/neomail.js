@@ -45,6 +45,9 @@
 	const PAGE = "neomail";
 	// On the body while the page is in front: the desk's panel draws nothing around it (neomail.css).
 	const FULL = "neomail-desk-full";
+	// On the frame of the view that is not in front, NeoMail's or Synk's: in place and at its size, out of sight and out
+	// of reach (neomail.css).
+	const AWAY = "neomail-desk-away";
 	// Raven's methods Synk's view reads (raven/api of bvisible/Raven): the unread messages, the person's channels.
 	const UNREAD = "/api/method/raven.api.raven_message.get_unread_count_for_channels";
 	const CHANNELS = "/api/method/raven.api.raven_channel.get_all_channels?hide_archived=1";
@@ -180,6 +183,15 @@
 		return { front: synk.front ? host.synk.view : null, views };
 	}
 
+	// A frame in front (`away` false), or behind the other: kept at its size, never `display: none`, which gives an egui
+	// app a zero size and has it lay its panes out again (NeoMail's message list came back narrower); `inert` keeps the
+	// clicks and the keyboard off it.
+	function put_away(frame, away) {
+		if (!frame) return;
+		frame.classList.toggle(AWAY, away);
+		frame.inert = away;
+	}
+
 	// Synk in front (`on`), in its own frame, made the first time; or NeoMail back in front. The frame left behind stays
 	// alive under the other, as both stay under the page when the person leaves it.
 	function show_synk(on) {
@@ -193,8 +205,8 @@
 			state.box.append(synk.frame);
 		}
 		synk.front = on;
-		if (synk.frame) synk.frame.hidden = !on;
-		if (state.frame) state.frame.hidden = on;
+		put_away(synk.frame, !on);
+		put_away(state.frame, on);
 		const shown = on ? synk.frame : state.frame;
 		if (shown && typeof shown.focus === "function") shown.focus();
 		// What the person read there: the badge follows at once, without waiting for Raven's event
@@ -554,7 +566,7 @@
 		frame.src = given.build_url;
 		state.frame = frame;
 		// Synk was put in front before NeoMail was made: NeoMail stays under it
-		frame.hidden = state.synk.front;
+		put_away(frame, state.synk.front);
 		state.send = window.neomailHost.commander(window, frame);
 		window.neomailHost.listen(window, frame, {
 			// Whether closing it would lose work: said as it starts, then at each change

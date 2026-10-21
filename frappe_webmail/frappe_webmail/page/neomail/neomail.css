@@ -37,6 +37,12 @@ body.neomail-desk-full .page-container[data-page-route="neomail"] .layout-main-s
 	height: 100%;
 	border: 0;
 }
+/* The frame of the view that is not in front, NeoMail's or Synk's (neomail.js, put_away): in place and at its size,
+   out of sight. Not `display: none`: an egui app given a zero size lays its panes out again. */
+.neomail-desk-frame.neomail-desk-away {
+	visibility: hidden;
+	pointer-events: none;
+}
 .neomail-desk-signin {
 	position: absolute;
 	top: 0;
