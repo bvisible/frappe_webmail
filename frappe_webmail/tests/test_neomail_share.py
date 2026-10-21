@@ -192,9 +192,11 @@ class TestNeoMailShare(FrappeTestCase):
 			self.assertRaises(frappe.PermissionError, share.destinations)
 			frappe.set_user(STAFF)
 			# A desk account without the Raven role (Raven may give it to every desk account it adds: taken away here)
+			# (Raven taken as installed, whether the bench has it or not: this is about the role.)
 			with (
 				patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk_for", return_value=True),
 				patch.object(share.frappe, "get_roles", return_value=["Blogger", "All"]),
+				patch.object(share, "installed", return_value=True),
 			):
 				self.assertFalse(share.offered())
 				self.assertRaises(frappe.PermissionError, share.destinations)
