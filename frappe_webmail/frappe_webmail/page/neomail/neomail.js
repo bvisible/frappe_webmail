@@ -2,15 +2,20 @@
 // For license information, please see license.txt
 
 /*
- * The desk's page /app/neomail (neomail.py): NeoMail's browser build in one frame, the full height under the desk's
- * header, given what /neomail gives it. Offered only where the site says so (`neomail_in_desk`); elsewhere the page
- * says NeoMail is not offered here.
+ * The desk's page /app/neomail (neomail.py): NeoMail's browser build in one frame, given what /neomail gives it, and
+ * the desk's menu lent to NeoMail's navigation. Offered only where the site says so (`neomail_in_desk`); elsewhere the
+ * page says NeoMail is not offered here. The contract: neoffice-apps, docs/neomail-desk-menu-contract.md.
  *
- * The handover holds tokens: it is asked for each time the page opens (neomail.hand_over), never written into this
- * script, which the desk keeps in the browser's storage. Leaving the page for another of the desk keeps the frame under
- * the hidden page, as the webmail's page keeps its app: nothing is lost, and coming back is instant. Closing the tab or
- * reloading it would lose what the frame holds: while NeoMail says it holds such work (`mailcraft:dirty`), the browser
- * asks first.
+ * - The handover holds tokens: it is asked for each time the page opens (neomail.hand_over), never written into this
+ *   script, which the desk keeps in the browser's storage. It asks NeoMail to leave its navigation to the desk's menu
+ *   (`chrome: "menu"`), where the menu can draw it (NeoCockpit's setPageNav); elsewhere NeoMail keeps its own.
+ * - NeoMail says where it is (`mailcraft:state`): its favourites, its mailboxes and their folders, its views go into
+ *   the menu (neomailHost.navSections), and a click there asks NeoMail (`mailcraft:command`).
+ * - All the space: while the page is in front, the desk's panel draws no border, rounding or padding around it
+ *   (`neomail-desk-full` on the body, neomail.css), and the frame fills the panel.
+ * - Leaving the page for another of the desk keeps the frame under the hidden page, as the webmail's page keeps its
+ *   app: nothing is lost, and coming back is instant. Closing the tab or reloading it would lose what the frame holds:
+ *   while NeoMail says it holds such work (`mailcraft:dirty`), the browser asks first.
  */
 
 // The functions /neomail gives the build, shared with it (window.neomailHost): Frappe puts the file in place of the
@@ -21,10 +26,58 @@
 (function () {
 	const HANDOVER = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.hand_over";
 	const PAGE = "neomail";
+	// On the body while the page is in front: the desk's panel draws nothing around it (neomail.css).
+	const FULL = "neomail-desk-full";
 
 	// One page for the desk's tab: its box, the banner, whether NeoMail said it holds work, whether the page is in
-	// front.
-	const state = { box: null, banner: null, link: null, dirty: false, shown: false };
+	// front, what NeoMail last said of where it is, and what asks it.
+	const state = {
+		box: null,
+		banner: null,
+		link: null,
+		dirty: false,
+		shown: false,
+		where: null,
+		send: null,
+		lent: false,
+	};
+
+	// The desk's menu, where it can draw a page's navigation.
+	const cockpit = () =>
+		window.NeoCockpit && typeof window.NeoCockpit.setPageNav === "function"
+			? window.NeoCockpit
+			: null;
+
+	// The address the navigation belongs to: the menu draws it only there (its pageNav.ts compares whole paths).
+	const page_route = () =>
+		frappe.router && typeof frappe.router.make_url === "function"
+			? frappe.router.make_url([PAGE])
+			: "/app/" + PAGE;
+
+	// The menu lent NeoMail's navigation, as NeoMail last said it is, while the page is in front.
+	function lend() {
+		const menu = cockpit();
+		if (!menu || !state.shown || !state.where || !state.send) return;
+		menu.setPageNav({
+			app: { name: "mail", title: __("Mail") },
+			route: page_route(),
+			nav: window.neomailHost.navSections(state.where, state.send, {
+				favorites: __("Favorites"),
+				mail: __("Mail"),
+				calendar: __("Calendar"),
+				people: __("People"),
+				notes: __("Notes"),
+			}),
+		});
+		state.lent = true;
+	}
+
+	// The menu draws its own navigation again.
+	function give_back() {
+		const menu = cockpit();
+		if (menu && state.lent) menu.setPageNav(null);
+		state.lent = false;
+	}
 
 	// Closing the tab or reloading it loses what the frame holds, whether the page is in front or not.
 	function ask_before_unload() {
@@ -38,13 +91,13 @@
 	const pixels = (element, property) =>
 		element ? parseFloat(getComputedStyle(element)[property]) || 0 : 0;
 
-	// The frame fills the page down to the bottom of what shows: the inside of NeoCockpit's panel, or the window
-	// (neomailHost.frameHeight). In the panel, what the page's own layout adds below the box (a margin the measure does
-	// not know) would make it scroll: the box gives that back.
+	// The frame fills the page down to the bottom of what shows: the inside of the desk's panel (`.main-section`, or
+	// a surface's `.nc-panel`), or the window (neomailHost.frameHeight). What the page's own layout adds below the box
+	// (a margin the measure does not know) would make the panel scroll: the box gives that back.
 	function fit() {
 		const box = state.box;
 		if (!box || !box.isConnected || !state.shown) return;
-		const panel = box.closest(".nc-panel");
+		const panel = box.closest(".nc-panel, .main-section");
 		const height = window.neomailHost.frameHeight({
 			boxTop: box.getBoundingClientRect().top,
 			panel: panel && {
@@ -162,6 +215,8 @@
 			);
 			return;
 		}
+		// A desk whose menu cannot draw NeoMail's navigation (no NeoCockpit): NeoMail keeps its own.
+		if (!cockpit()) delete given.host.chrome;
 		// What the build reads from the page that frames it, there before the frame starts.
 		window.neomailHost.install(window, given.host, {
 			sessionEnded: __("Your Neoffice session has ended."),
@@ -171,11 +226,31 @@
 		frame.className = "neomail-desk-frame";
 		frame.title = "NeoMail";
 		frame.src = given.build_url;
-		// The frame says as it starts, then at each change, whether closing it would lose work.
+		state.send = window.neomailHost.commander(window, frame);
 		window.neomailHost.listen(window, frame, {
+			// Whether closing it would lose work: said as it starts, then at each change
 			"mailcraft:dirty": (data) => (state.dirty = data.dirty === true),
+			// Where it is, once it started and at each change: the desk's menu follows
+			"mailcraft:state": (data) => {
+				state.where = data;
+				lend();
+			},
+			// A command it refused: the menu reflects what NeoMail says next, the console keeps why
+			"mailcraft:command-done": (data) => {
+				if (data.ok === false) {
+					console.warn("NeoMail refused a command from the desk's menu", data.id, data.error);
+				}
+			},
 		});
 		state.box.append(frame);
+	}
+
+	function front(on) {
+		state.shown = on;
+		document.body.classList.toggle(FULL, on);
+		// The frame scrolls, the desk does not
+		document.documentElement.style.overflow = on ? "hidden" : "";
+		document.body.style.overflow = on ? "hidden" : "";
 	}
 
 	frappe.pages[PAGE].on_page_load = function (wrapper) {
@@ -188,8 +263,6 @@
 		// NeoMail has its own ribbon: no page header above it.
 		const head = wrapper.querySelector(".page-head");
 		if (head) head.style.display = "none";
-		const body = wrapper.querySelector(".container.page-body");
-		if (body) body.classList.add("neomail-desk-body");
 
 		state.box = document.createElement("div");
 		state.box.className = "neomail-desk";
@@ -199,9 +272,8 @@
 		// The desk hides the page itself; a dialog's or a dropdown's own `hide.bs.*`, bubbling from inside it, is not that.
 		$(wrapper).on("hide", (event) => {
 			if (event.namespace || event.target !== wrapper) return;
-			state.shown = false;
-			document.documentElement.style.overflow = "";
-			document.body.style.overflow = "";
+			front(false);
+			give_back();
 		});
 		ask_before_unload();
 		open();
@@ -209,11 +281,9 @@
 
 	// Each time the page comes to the front, its first time included.
 	frappe.pages[PAGE].on_page_show = function () {
-		state.shown = true;
+		front(true);
 		point_sign_in();
-		// The frame scrolls, the desk does not.
-		document.documentElement.style.overflow = "hidden";
-		document.body.style.overflow = "hidden";
+		lend();
 		requestAnimationFrame(fit);
 		setTimeout(fit, 400);
 	};

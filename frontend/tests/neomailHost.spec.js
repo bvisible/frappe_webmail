@@ -233,3 +233,200 @@ describe("frameHeight", () => {
 function window_host() {
 	return page().host;
 }
+
+// What NeoMail says of itself (docs/neomail-desk-menu-contract.md, section 2): two mailboxes, favourites, folders
+// under folders, listed in NeoMail's order.
+const STATE = {
+	type: "mailcraft:state",
+	module: "mail",
+	account: "ada@example.org",
+	folder: "F-projects",
+	favorites: [
+		{ account: "ada@example.org", folder: "F-inbox", name: "Boîte de réception - ada@example.org", unread: 3 },
+		{ account: "team@example.org", folder: "T-sent", name: "Éléments envoyés - team@example.org", unread: 0 },
+	],
+	accounts: [
+		{
+			email: "ada@example.org",
+			name: "Ada Marlow",
+			unread: 3,
+			folders: [
+				{ id: "F-inbox", name: "Boîte de réception", role: "inbox", parent: null, unread: 3, selectable: true },
+				{ id: "F-clients", name: "Clients", role: null, parent: "F-inbox", unread: 0, selectable: true },
+				{ id: "F-projects", name: "Projets", role: null, parent: "F-clients", unread: 2, selectable: true },
+				{ id: "F-sent", name: "Éléments envoyés", role: "sent", parent: null, unread: 0, selectable: true },
+				{ id: "F-shelf", name: "Rayon", role: null, parent: null, unread: 0, selectable: false },
+			],
+		},
+		{
+			email: "team@example.org",
+			name: "",
+			unread: 1,
+			folders: [
+				{ id: "T-inbox", name: "Boîte de réception", role: "inbox", parent: null, unread: 1, selectable: true },
+				{ id: "T-sent", name: "Éléments envoyés", role: "sent", parent: null, unread: 0, selectable: true },
+				{ id: "T-trash", name: "Éléments supprimés", role: "trash", parent: null, unread: 0, selectable: true },
+			],
+		},
+	],
+};
+const TEXTS = { favorites: "Favoris", mail: "Courrier", calendar: "Calendrier", people: "Contacts", notes: "Notes" };
+
+describe("navSections", () => {
+	function lent(state = STATE) {
+		const sent = [];
+		const nav = page().host.navSections(state, (name, params) => sent.push({ name, params }), TEXTS);
+		return { nav, sent };
+	}
+
+	it("reproduces NeoMail's pane: favourites, then each mailbox with all its folders, then the views", () => {
+		const { nav } = lent();
+		expect(nav.map((section) => section.label)).toEqual([
+			"Favoris",
+			"ada@example.org",
+			"team@example.org",
+			undefined,
+		]);
+		expect(nav[0].items.map((item) => item.label)).toEqual([
+			"Boîte de réception - ada@example.org",
+			"Éléments envoyés - team@example.org",
+		]);
+		expect(nav[1].items.map((item) => item.label)).toEqual([
+			"Boîte de réception",
+			"Clients",
+			"Projets",
+			"Éléments envoyés",
+			"Rayon",
+		]);
+		expect(nav[2].items.map((item) => item.label)).toEqual([
+			"Boîte de réception",
+			"Éléments envoyés",
+			"Éléments supprimés",
+		]);
+	});
+
+	it("draws a folder under its parents, with its unread mail, an inbox's in the accent", () => {
+		const [favorites, ada, team] = lent().nav;
+		expect(ada.items.map((item) => item.depth)).toEqual([undefined, 1, 2, undefined, undefined]);
+		expect(ada.items.map((item) => item.badge)).toEqual([3, undefined, 2, undefined, undefined]);
+		expect(ada.items.map((item) => item.badgeTone)).toEqual(["accent", undefined, undefined, undefined, undefined]);
+		expect(ada.items.map((item) => item.icon)).toEqual([
+			"lucide-inbox",
+			"lucide-folder",
+			"lucide-folder",
+			"lucide-send",
+			"lucide-folder",
+		]);
+		expect(team.items.map((item) => item.icon)).toEqual(["lucide-inbox", "lucide-send", "lucide-trash-2"]);
+		// A favourite has its folder's look: an inbox's count in the accent, a sent folder's icon
+		expect(favorites.items.map((item) => [item.icon, item.badge, item.badgeTone])).toEqual([
+			["lucide-inbox", 3, "accent"],
+			["lucide-send", undefined, undefined],
+		]);
+	});
+
+	it("marks the folder shown, in its mailbox only, while Mail is in front", () => {
+		const active = (nav) =>
+			nav.flatMap((section) => section.items.filter((item) => item.active).map((item) => item.label));
+		expect(active(lent().nav)).toEqual(["Projets", "Courrier"]);
+		const inbox = { ...STATE, folder: "F-inbox" };
+		expect(active(lent(inbox).nav)).toEqual([
+			"Boîte de réception - ada@example.org",
+			"Boîte de réception",
+			"Courrier",
+		]);
+		// The same folder's id in another mailbox is another folder
+		expect(active(lent({ ...STATE, account: "team@example.org", folder: "F-inbox" }).nav)).toEqual(["Courrier"]);
+		// Several folders, a search: none
+		expect(active(lent({ ...STATE, folder: null }).nav)).toEqual(["Courrier"]);
+		// Another view in front: the folders stay, that view is marked
+		const calendar = lent({ ...STATE, module: "calendar" }).nav;
+		expect(calendar.length).toBe(4);
+		expect(active(calendar)).toEqual(["Calendrier"]);
+	});
+
+	it("asks NeoMail for the folder or the view clicked, and nothing for a folder it cannot open", () => {
+		const { nav, sent } = lent();
+		nav[0].items[1].onClick();
+		nav[1].items[2].onClick();
+		nav[2].items[0].onClick();
+		expect(nav[1].items[4].onClick).toBeUndefined();
+		nav[3].items.forEach((item) => item.onClick());
+		expect(sent).toEqual([
+			{ name: "folder.select", params: { account: "team@example.org", folder: "T-sent" } },
+			{ name: "folder.select", params: { account: "ada@example.org", folder: "F-projects" } },
+			{ name: "folder.select", params: { account: "team@example.org", folder: "T-inbox" } },
+			{ name: "view.mail", params: {} },
+			{ name: "view.calendar", params: {} },
+			{ name: "view.people", params: {} },
+			{ name: "view.notes", params: {} },
+		]);
+	});
+
+	it("draws the four views, small items with their icons, the last section", () => {
+		const views = lent().nav.at(-1);
+		expect(views.label).toBeUndefined();
+		expect(views.items.map((item) => [item.label, item.icon])).toEqual([
+			["Courrier", "lucide-mail"],
+			["Calendrier", "lucide-calendar"],
+			["Contacts", "lucide-users"],
+			["Notes", "lucide-sticky-note"],
+		]);
+	});
+
+	it("takes a state with nothing yet, folders listed before their parents, and a loop", () => {
+		expect(lent({ type: "mailcraft:state", module: "mail" }).nav.length).toBe(1);
+		const odd = {
+			module: "mail",
+			accounts: [
+				{
+					email: "ada@example.org",
+					folders: [
+						{ id: "c", name: "C", parent: "b" },
+						{ id: "b", name: "B", parent: "a" },
+						{ id: "a", name: "A", parent: null },
+						{ id: "x", name: "X", parent: "y" },
+						{ id: "y", name: "Y", parent: "x" },
+						{ id: "lost", name: "Lost", parent: "gone" },
+					],
+				},
+			],
+		};
+		expect(lent(odd).nav[0].items.map((item) => [item.label, item.depth])).toEqual([
+			["C", 2],
+			["B", 1],
+			["A", undefined],
+			["X", 1],
+			["Y", 1],
+			["Lost", undefined],
+		]);
+	});
+});
+
+describe("commander", () => {
+	it("posts each command to the frame on the page's own origin, with the next id", () => {
+		const { win, host } = page();
+		const posted = [];
+		const frame = { contentWindow: { postMessage: (message, origin) => posted.push([message, origin]) } };
+		const send = host.commander(win, frame);
+		expect(send("folder.select", { account: "ada@example.org", folder: "F-inbox" })).toBe(1);
+		expect(send("view.calendar")).toBe(2);
+		expect(posted).toEqual([
+			[
+				{
+					type: "mailcraft:command",
+					id: 1,
+					name: "folder.select",
+					params: { account: "ada@example.org", folder: "F-inbox" },
+				},
+				ORIGIN,
+			],
+			[{ type: "mailcraft:command", id: 2, name: "view.calendar", params: {} }, ORIGIN],
+		]);
+	});
+
+	it("sends nothing while the frame has no window", () => {
+		const { win, host } = page();
+		expect(host.commander(win, { contentWindow: null })("view.mail")).toBeNull();
+	});
+});

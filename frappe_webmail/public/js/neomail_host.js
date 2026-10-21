@@ -7,7 +7,10 @@
  * - `window.mailcraftJmap`: the person's mailboxes, their language, the product's name, where signatures are written;
  * - `window.mailcraftJmapRenew()`: new facade tokens for the page's desk session, when the build's were refused;
  * - `window.mailcraftFetchUrl(url)`: a picture on the web that a message links to, fetched by the server.
- * And what the build tells the page that frames it, by `postMessage` on their common origin (`mailcraft:dirty`).
+ * And what the page and the build tell each other by `postMessage` on their common origin: the build says whether it
+ * holds unsent work (`mailcraft:dirty`) and, with `chrome: "menu"`, where it is (`mailcraft:state`), which the desk's
+ * page turns into the desk's menu (`navSections`); the page asks it to do things (`mailcraft:command`, `commander`).
+ * The contract: neoffice-apps, docs/neomail-desk-menu-contract.md.
  *
  * /neomail (www/neomail.html) and the desk's page /app/neomail (page/neomail/neomail.js) both include this file where
  * they are rendered (Jinja's include, Frappe's render_include): it holds no template delimiter of Jinja.
@@ -165,5 +168,121 @@ window.neomailHost = (function () {
 		return Math.max(300, Math.round(bottom - measured.bodyPaddingBottom - measured.boxTop));
 	}
 
-	return { install, listen, frameHeight, refusedAsStale };
+	// The icons of NeoMail's special folders in the desk's menu, as the webmail's folders have them (FolderTree.vue).
+	const ROLE_ICONS = {
+		inbox: "lucide-inbox",
+		sent: "lucide-send",
+		drafts: "lucide-file-pen",
+		archive: "lucide-archive",
+		spam: "lucide-shield-alert",
+		trash: "lucide-trash-2",
+		outbox: "lucide-clock",
+	};
+	// NeoMail's four views, in its order, with their icons in the desk's menu.
+	const VIEWS = [
+		["mail", "lucide-mail"],
+		["calendar", "lucide-calendar"],
+		["people", "lucide-users"],
+		["notes", "lucide-sticky-note"],
+	];
+	// The deepest a folder is drawn under its parents.
+	const MAX_DEPTH = 8;
+
+	/*
+	 * The desk menu's sections for what NeoMail said of itself (`mailcraft:state`): its own pane, in its order.
+	 * Favourites first (`texts.favorites`), when it has any; then one section per mailbox, titled with its address, with
+	 * every folder of it in NeoMail's order, under its parent (`depth`); then the four views (`texts.mail`, `calendar`,
+	 * `people`, `notes`), small items at the end, the one in front marked. A folder's count of unread mail is its badge,
+	 * an inbox's in the accent; the folder shown is marked while Mail is in front. A click asks NeoMail through
+	 * `send(name, params)`: `folder.select` for a folder (a folder NeoMail cannot open has no click), `view.*` for a view.
+	 * The cockpit's sections cannot be folded and it has no row of icons: these are its own items.
+	 */
+	function navSections(state, send, texts) {
+		const now = state || {};
+		const accounts = Array.isArray(now.accounts) ? now.accounts : [];
+		const favorites = Array.isArray(now.favorites) ? now.favorites : [];
+		const inMail = now.module === "mail";
+		const shown = (account, folder) =>
+			inMail && folder != null && account === now.account && folder === now.folder;
+		const unread = (count) => (typeof count === "number" && count > 0 ? count : undefined);
+		const tone = (role) => (role === "inbox" ? "accent" : undefined);
+		const icon = (role) => ROLE_ICONS[role] || "lucide-folder";
+		const select = (account, folder) => () => send("folder.select", { account, folder });
+		const key = (account, folder) => JSON.stringify([account, folder]);
+		const roles = new Map();
+		for (const box of accounts) {
+			for (const folder of box.folders || []) roles.set(key(box.email, folder.id), folder.role);
+		}
+		const nav = [];
+		if (favorites.length) {
+			nav.push({
+				label: texts.favorites,
+				items: favorites.map((favorite) => {
+					const role = roles.get(key(favorite.account, favorite.folder)) || null;
+					return {
+						label: favorite.name,
+						icon: icon(role),
+						badge: unread(favorite.unread),
+						badgeTone: tone(role),
+						active: shown(favorite.account, favorite.folder),
+						onClick: select(favorite.account, favorite.folder),
+					};
+				}),
+			});
+		}
+		for (const box of accounts) {
+			const folders = Array.isArray(box.folders) ? box.folders : [];
+			const parentOf = new Map(folders.map((folder) => [folder.id, folder.parent]));
+			// The parents NeoMail listed above a folder, however its list is ordered (none twice, a loop ends there)
+			const depth = (folder) => {
+				const seen = new Set([folder.id]);
+				let level = 0;
+				for (let up = folder.parent; up != null && parentOf.has(up) && !seen.has(up); up = parentOf.get(up)) {
+					seen.add(up);
+					if (++level === MAX_DEPTH) break;
+				}
+				return level;
+			};
+			nav.push({
+				label: box.email,
+				items: folders.map((folder) => ({
+					label: folder.name,
+					icon: icon(folder.role),
+					depth: depth(folder) || undefined,
+					badge: unread(folder.unread),
+					badgeTone: tone(folder.role),
+					active: shown(box.email, folder.id),
+					onClick: folder.selectable === false ? undefined : select(box.email, folder.id),
+				})),
+			});
+		}
+		nav.push({
+			items: VIEWS.map(([view, viewIcon]) => ({
+				label: texts[view],
+				icon: viewIcon,
+				active: now.module === view,
+				onClick: () => send("view." + view, {}),
+			})),
+		});
+		return nav;
+	}
+
+	/*
+	 * What asks NeoMail in `frame` to do something (`mailcraft:command`): `send(name, params)` posts it to the frame's
+	 * window on the page's own origin, each with the next id, and gives that id (null while the frame has no window).
+	 */
+	function commander(win, frame) {
+		let last = 0;
+		return function send(name, params) {
+			if (!frame.contentWindow) return null;
+			last += 1;
+			frame.contentWindow.postMessage(
+				{ type: "mailcraft:command", id: last, name, params: params || {} },
+				win.location.origin
+			);
+			return last;
+		};
+	}
+
+	return { install, listen, frameHeight, navSections, commander, refusedAsStale };
 })();

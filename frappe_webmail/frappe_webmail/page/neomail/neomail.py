@@ -4,8 +4,8 @@
 """
 The desk's page /app/neomail: NeoMail inside Neoffice's shell, under the desk's header and beside its menu, framing the
 build /neomail frames, with the same handover (www/neomail.py, `handover`) and the same functions on the page
-(public/js/neomail_host.js). The contract it follows: neoffice-apps, docs/neomail-desk-menu-contract.md, sections 5
-and 1 (NeoMail as it is for now: the page lends nothing to the desk's menu yet).
+(public/js/neomail_host.js), plus `chrome: "menu"`: NeoMail leaves its navigation to the desk's menu, which the page
+lends it (neomail.js). The contract it follows: neoffice-apps, docs/neomail-desk-menu-contract.md.
 
 Off unless the site's configuration says `neomail_in_desk: 1`, and only where /neomail can be opened (NeoMail on, its
 build installed); /neomail and /app/webmail stay as they are. The desk's people only, as /neomail: the page's role is
@@ -21,6 +21,8 @@ from frappe.utils import cint
 # The site's configuration key that puts NeoMail in the desk.
 FLAG = "neomail_in_desk"
 PAGE = "neomail"
+# What the handover tells NeoMail: the desk's menu draws its navigation.
+CHROME = "menu"
 
 
 def in_desk():
@@ -33,7 +35,8 @@ def in_desk():
 @frappe.whitelist(methods=["POST"])
 def hand_over(sample=None, build=None):
 	"""What the page gives the build it frames, for the session's person: {build_url, host, no_mailbox}, made as
-	/neomail makes it (www/neomail.py, `handover`; `sample` and `build` are its address's `?sample` and `?build=`).
+	/neomail makes it (www/neomail.py, `handover`; `sample` and `build` are its address's `?sample` and `?build=`),
+	plus `chrome: "menu"` in `host`.
 	Refused where the page is not offered (as a page that does not exist), to a portal account and a visitor, to a
 	request that carries any Authorization rather than the desk's cookie alone (the facade tokens given are bound to
 	the desk session), and to one without the session's CSRF token, whatever the site's settings
@@ -46,7 +49,11 @@ def hand_over(sample=None, build=None):
 	page_request_only()
 	neomail.desk_people_only()
 	csrf_token_required()
-	return neomail.handover(sample=bool(cint(sample)), build=build)
+	framed = neomail.handover(sample=bool(cint(sample)), build=build)
+	# NeoMail leaves its navigation to the desk's menu (docs/neomail-desk-menu-contract.md, section 1): this page only,
+	# never /neomail, whose page has no menu. The page takes it back where the desk's menu cannot draw it (neomail.js).
+	framed["host"]["chrome"] = CHROME
+	return framed
 
 
 def extend_bootinfo(bootinfo):

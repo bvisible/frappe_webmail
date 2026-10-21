@@ -1,15 +1,32 @@
-/* The desk's page /app/neomail (neomail.js): NeoMail's frame fills the page under the desk's header. */
-.neomail-desk-body.container.page-body {
-	padding: 15px;
-	overflow: hidden;
+/* The desk's page /app/neomail (neomail.js): NeoMail fills the desk's panel to its edges, its list starting at the
+   panel's left edge (docs/neomail-desk-menu-contract.md, « All the space »). While the page is in front the body has
+   `neomail-desk-full`: the panel (.main-section, white, bordered and rounded by the desk's cockpit.css) draws no
+   border, rounding or scrollbar gutter, and none of the page's own containers add padding, margins or a maximum
+   width. Every other page keeps the panel as it is. */
+body.neomail-desk-full .main-section {
+	border: 0 !important;
+	border-radius: 0 !important;
+	scrollbar-gutter: auto !important;
+	overflow: hidden !important;
+}
+body.neomail-desk-full .page-container[data-page-route="neomail"] .container.page-body,
+body.neomail-desk-full .page-container[data-page-route="neomail"] .page-wrapper,
+body.neomail-desk-full .page-container[data-page-route="neomail"] .page-content,
+body.neomail-desk-full .page-container[data-page-route="neomail"] .layout-main,
+body.neomail-desk-full .page-container[data-page-route="neomail"] .layout-main-section-wrapper,
+body.neomail-desk-full .page-container[data-page-route="neomail"] .layout-main-section {
+	max-width: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
 }
 .neomail-desk {
 	position: relative;
 	box-sizing: border-box;
 	overflow: hidden;
-	height: calc(100vh - 120px);
-	border: 1px solid var(--border-color);
-	border-radius: var(--border-radius-lg);
+	height: calc(100vh - 16px);
 	background: var(--bg-color);
 }
 .neomail-desk-frame {
