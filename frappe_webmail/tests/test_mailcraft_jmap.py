@@ -1298,6 +1298,10 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(
 			given["nora"], "nora" in frappe.get_installed_apps(), "Nora only where the instance has her"
 		)
+		# Synk, Neodesk's own chat, only where Raven is and for whom holds its role
+		self.assertEqual(
+			given["synk"], "raven" in frappe.get_installed_apps() and "Raven User" in frappe.get_roles(SHARED)
+		)
 		self.assertEqual(
 			self._authenticated(SESSION, box["secret"], alive=False)[0],
 			SHARED,

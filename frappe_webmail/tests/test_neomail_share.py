@@ -204,6 +204,20 @@ class TestNeoMailShare(FrappeTestCase):
 				self.assertFalse(share.offered())
 				self.assertRaises(frappe.PermissionError, share.destinations)
 
+	def test_synk_is_had_where_raven_is_by_whom_holds_its_role(self):
+		with (
+			patch.object(share, "installed", return_value=True),
+			patch.object(share.frappe, "get_roles", return_value=["Raven User", "All"]),
+		):
+			self.assertTrue(share.has_synk(STAFF))
+		with (
+			patch.object(share, "installed", return_value=True),
+			patch.object(share.frappe, "get_roles", return_value=["Blogger", "All"]),
+		):
+			self.assertFalse(share.has_synk(STAFF))
+		with patch.object(share, "installed", return_value=False):
+			self.assertFalse(share.has_synk(STAFF))
+
 	def test_a_site_without_synk_says_it_is_not_installed_here(self):
 		apps = [app for app in frappe.get_installed_apps() if app != "raven"]
 		with (

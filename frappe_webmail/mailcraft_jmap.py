@@ -304,7 +304,7 @@ def _gate():
 @frappe.whitelist(methods=["POST"])
 def hand_over(**kwargs):
 	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`, `signatures`,
-	and `nora`: whether the instance has Nora), to a request
+	`nora`: whether the instance has Nora, and `synk`: whether the person has Synk, the instance's chat), to a request
 	that carries an OAuth bearer token of that person, never to a desk cookie alone, which a page of another site could
 	make a browser send. Wherever NeoMail is on, the build installed here or not: Neodesk brings its own (pinned in its
 	desktop/src/editors/manifest.json and the Suite's craft_editors.json). The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
@@ -317,6 +317,7 @@ def hand_over(**kwargs):
 	# when a desk cookie signed it in, one Frappe would have taken all the same.
 	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
 		raise frappe.PermissionError
+	from frappe_webmail.neomail_share import has_synk
 	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes, nora_installed, signatures_url
 
 	language = frappe.db.get_value("User", user, "language") or frappe.local.lang or "en"
@@ -328,6 +329,8 @@ def hand_over(**kwargs):
 		"signatures": signatures_url(),
 		# Whether NeoMail's band may call Nora: the instance has her.
 		"nora": nora_installed(),
+		# Whether Neodesk's NeoMail window offers Synk, its own chat, after Calendar: Raven here, and its role held.
+		"synk": has_synk(user),
 	}
 
 

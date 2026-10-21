@@ -61,6 +61,13 @@ def installed():
 	return "raven" in frappe.get_installed_apps()
 
 
+def has_synk(user=None):
+	"""Whether `user` (the session's) has Synk: Raven installed here, and its role held. What Neodesk's NeoMail window
+	asks before it offers Synk, Neodesk's own chat, as a module of NeoMail's (mailcraft_jmap.hand_over)."""
+	user = user or frappe.session.user
+	return installed() and RAVEN_ROLE in frappe.get_roles(user)
+
+
 def offered(user=None):
 	"""Whether a message can be shared in Synk by `user` (the session's): one of the desk's people for whom the page
 	/app/neomail is offered, on a site with Raven, holding its role."""
