@@ -194,80 +194,42 @@ describe("listen", () => {
 	});
 });
 
-describe("guardLeaving", () => {
-	// A desk's router as Frappe's: push_state changes the address, then routes; the back button routes alone.
-	function desk(holding) {
-		const { win, host } = page();
-		const history = [];
-		win.location.href = "https://erp.example.org/app/neomail";
-		win.history = {
-			pushState: (state, title, url) => {
-				history.push(url);
-				const at = new URL(url, win.location.href);
-				win.location.pathname = at.pathname;
-				win.location.search = at.search;
-			},
-		};
-		const routed = [];
-		const router = {
-			route() {
-				routed.push(win.location.pathname + win.location.search);
-				return "routed";
-			},
-			push_state(url) {
-				win.history.pushState(null, null, url);
-				return this.route();
-			},
-		};
-		const asks = [];
-		const unguard = host.guardLeaving(win, router, holding, (leave) => asks.push(leave));
-		return { win, router, history, routed, asks, unguard };
-	}
+describe("frameHeight", () => {
+	// NeoCockpit: a 100vh frame with 8px of padding around a panel with a 1px border, which scrolls; the desk's page
+	// body has 15px of padding under the box.
+	const cockpit = {
+		boxTop: 70,
+		panel: { bottom: 892, borderBottom: 1, paddingBottom: 0 },
+		bodyPaddingBottom: 15,
+		windowHeight: 900,
+	};
 
-	it("lets the router go where the page does not hold work", () => {
-		const { router, routed, asks, history } = desk(() => null);
-		expect(router.push_state("/app/todo")).toBe("routed");
-		expect(routed).toEqual(["/app/todo"]);
-		expect(asks).toEqual([]);
-		expect(history).toEqual(["/app/todo"]);
+	it("ends the box inside NeoCockpit's panel, above the page body's padding", () => {
+		expect(window_host().frameHeight(cockpit)).toBe(892 - 1 - 15 - 70);
+		const padded = { ...cockpit, panel: { ...cockpit.panel, paddingBottom: 6 } };
+		expect(window_host().frameHeight(padded)).toBe(892 - 1 - 6 - 15 - 70);
 	});
 
-	it("asks before a link leaves, and goes on only when the person says so", () => {
-		const paths = [];
-		const { router, routed, asks, history } = desk((path) => {
-			paths.push(path);
-			return path === "/app/neomail" ? null : "/app/neomail?build=ucs";
-		});
-		router.push_state("/app/todo?status=Open");
-		expect(paths).toEqual(["/app/todo"]);
-		expect(history).toEqual([], "the address did not change while the person decides");
-		expect(routed).toEqual([]);
-		expect(asks.length).toBe(1);
-		asks[0]();
-		expect(history).toEqual(["/app/todo?status=Open"]);
-		expect(routed).toEqual(["/app/todo?status=Open"], "asked once, not again by the route that follows");
+	it("reads nothing the box's own height changes: fitting again gives the same height", () => {
+		const host = window_host();
+		const first = host.frameHeight(cockpit);
+		expect(host.frameHeight(cockpit)).toBe(first);
+		expect(host.frameHeight({ ...cockpit })).toBe(first);
 	});
 
-	it("puts the page's address back after the back button, and leaves for the one asked when told to", async () => {
-		const { win, router, routed, asks, history } = desk((path) =>
-			path === "/app/neomail" ? null : "/app/neomail?build=ucs"
+	it("ends at the window's bottom without NeoCockpit, and never below it", () => {
+		const host = window_host();
+		expect(host.frameHeight({ ...cockpit, panel: null })).toBe(900 - 15 - 70);
+		expect(host.frameHeight({ ...cockpit, panel: { bottom: 2000, borderBottom: 1, paddingBottom: 0 } })).toBe(
+			900 - 15 - 70
 		);
-		// The browser went back already: the address is the previous page's
-		win.location.pathname = "/app/todo";
-		win.location.search = "?status=Open";
-		await router.route();
-		expect(history).toEqual(["/app/neomail?build=ucs"], "pushed, so the previous page stays behind it");
-		expect(routed).toEqual([]);
-		asks[0]();
-		expect(history[1]).toEqual("/app/todo?status=Open");
-		expect(routed).toEqual(["/app/todo?status=Open"]);
 	});
 
-	it("takes the guard off", () => {
-		const { router, unguard, asks, routed } = desk(() => "/app/neomail");
-		unguard();
-		expect(router.push_state("/app/todo")).toBe("routed");
-		expect(routed).toEqual(["/app/todo"]);
-		expect(asks).toEqual([]);
+	it("keeps the frame usable in a window too small for it", () => {
+		expect(window_host().frameHeight({ ...cockpit, windowHeight: 200, panel: null })).toBe(300);
 	});
 });
+
+function window_host() {
+	return page().host;
+}

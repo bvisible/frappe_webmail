@@ -328,6 +328,20 @@ def _user(email, desk=True):
 	user.insert(ignore_permissions=True)
 
 
+def _page_headers(csrf="session", authorization=None):
+	"""What get_request_header answers for a request of a page of the instance: the session's CSRF token in
+	X-Frappe-CSRF-Token (or the one given, None for none), and Authorization only when given."""
+
+	def header(key, default=None):
+		if key == "X-Frappe-CSRF-Token":
+			return frappe.sessions.get_csrf_token() if csrf == "session" else csrf
+		if key == "Authorization":
+			return authorization
+		return default
+
+	return header
+
+
 def _client(app_name):
 	"""An OAuth client that grants what the mobile sign-in asks for."""
 	return (
@@ -1365,7 +1379,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.addCleanup(built.stop)
 		frappe.set_user(SHARED)
 		page = frappe.session.sid
-		with patch("frappe.get_request_header", return_value=None):
+		with patch("frappe.get_request_header", side_effect=_page_headers()):
 			fresh = jmap.renew()
 		box = next(a for a in fresh["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual(
@@ -1392,6 +1406,37 @@ class TestMailCraftJmap(FrappeTestCase):
 		with patch("frappe.get_request_header", return_value=None), self.assertRaises(frappe.PermissionError):
 			jmap.renew()
 
+	def test_the_page_s_renewal_wants_its_session_s_csrf_token_and_its_cookie_only(self):
+		"""This fork's CSRF check refuses nothing unless the site sets `neoffice_csrf_enforce` (maintenance#310):
+		renew asks for the session's token itself. A request that carries any Authorization (a bearer token, an API
+		key, a password) is not the page's."""
+		from frappe_webmail.www import neomail
+
+		built = patch.object(neomail, "build_installed", return_value=True)
+		built.start()
+		self.addCleanup(built.stop)
+		frappe.set_user(SHARED)
+		for sent, why in ((None, "no token"), ("", "an empty one"), ("not-the-session-s", "another one")):
+			with (
+				patch("frappe.get_request_header", side_effect=_page_headers(csrf=sent)),
+				self.assertRaises(frappe.CSRFTokenError, msg=why),
+			):
+				jmap.renew()
+		with (
+			patch.dict(frappe.local.conf, {"ignore_csrf": 1, "neoffice_csrf_enforce": 0}),
+			patch("frappe.get_request_header", side_effect=_page_headers(csrf=None)),
+			self.assertRaises(frappe.CSRFTokenError, msg="whatever the site's settings"),
+		):
+			jmap.renew()
+		for authorization in ("Bearer something", "token api-key:api-secret", "Basic dXNlcjpwYXNz"):
+			with (
+				patch("frappe.get_request_header", side_effect=_page_headers(authorization=authorization)),
+				self.assertRaises(frappe.PermissionError, msg=authorization),
+			):
+				jmap.renew()
+		with patch("frappe.get_request_header", side_effect=_page_headers()):
+			self.assertIn(MAILBOX, [a["email"] for a in jmap.renew()["accounts"]])
+
 	def test_the_page_and_the_mail_are_not_kept_by_a_cache(self):
 		for path in (
 			"/neomail",
@@ -1407,3 +1452,13 @@ class TestMailCraftJmap(FrappeTestCase):
 		other = SimpleNamespace(headers={})
 		jmap.no_store(response=other, request=SimpleNamespace(path="/app/webmail"))
 		self.assertEqual(other.headers, {})
+		# The former way of calling a method: its name in the form's `cmd`, whatever the address
+		for cmd in ("frappe_webmail.mailcraft_jmap.hand_over", "frappe_webmail.mailcraft_jmap.renew"):
+			response = SimpleNamespace(headers={})
+			with patch.object(frappe.local, "form_dict", frappe._dict(cmd=cmd)):
+				jmap.no_store(response=response, request=SimpleNamespace(path="/"))
+			self.assertEqual(response.headers.get("Cache-Control"), "no-store", cmd)
+		unrelated = SimpleNamespace(headers={})
+		with patch.object(frappe.local, "form_dict", frappe._dict(cmd="frappe.auth.get_logged_user")):
+			jmap.no_store(response=unrelated, request=SimpleNamespace(path="/"))
+		self.assertEqual(unrelated.headers, {})

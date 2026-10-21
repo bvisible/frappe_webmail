@@ -73,6 +73,13 @@ _HANDING_OUT = re.compile(
 	r"^/+api/+(?:v[12]/+)?method/+frappe_webmail\."
 	r"(?:mailcraft_jmap\.(?:hand_over|renew)|frappe_webmail\.page\.neomail\.neomail\.hand_over)/*$"
 )
+_HANDING_OUT_METHODS = frozenset(
+	(
+		METHOD_PREFIX + "hand_over",
+		METHOD_PREFIX + "renew",
+		"frappe_webmail.frappe_webmail.page.neomail.neomail.hand_over",
+	)
+)
 
 TOKEN_SECONDS = 12 * 3600
 UPLOAD_SECONDS = 15 * 60
@@ -334,19 +341,45 @@ def renew(**kwargs):
 
 	if not available():
 		raise frappe.PageDoesNotExistError
-	if _request_bearer() or not _is_desk_user(frappe.session.user):
+	page_request_only()
+	if not _is_desk_user(frappe.session.user):
 		raise frappe.PermissionError
+	csrf_token_required()
 	from frappe_webmail.www.neomail import host_mailboxes
 
 	return {"accounts": host_mailboxes()}
 
 
+def page_request_only():
+	"""A request of a page of the instance, signed in by the desk session's cookie and nothing else: one that carries
+	any Authorization (a bearer token, an API key, a password) is someone's without that session, to which the facade
+	tokens /neomail and the desk's page are given are bound (Neodesk, which signs in with its OAuth token, asks
+	hand_over)."""
+	if frappe.get_request_header("Authorization"):
+		raise frappe.PermissionError
+
+
+def csrf_token_required():
+	"""The request carries its desk session's CSRF token (X-Frappe-CSRF-Token), whatever the site's settings: this
+	fork's own check refuses nothing unless the site sets `neoffice_csrf_enforce` (maintenance#310). Refused as Frappe
+	refuses it (CSRFTokenError, a 400), which the pages read as a session to sign in to again."""
+	sent = frappe.get_request_header("X-Frappe-CSRF-Token") or ""
+	saved = (getattr(frappe.session, "data", None) or {}).get("csrf_token") or ""
+	if not sent or not saved or not secrets.compare_digest(str(sent), str(saved)):
+		frappe.throw(_("Invalid Request"), frappe.CSRFTokenError)
+
+
 def no_store(response=None, request=None):
 	"""after_request: /neomail and the answers of hand_over, renew and the desk page's handover hold tokens, the facade's
-	answers hold mail; no cache keeps any of them."""
+	answers hold mail; no cache keeps any of them. The three that hand tokens out are known by their address, or by
+	the form's `cmd` that names them, Frappe's former way of calling a method at any address."""
 	path = (getattr(request, "path", "") or "") if request is not None else ""
+	cmd = str((getattr(frappe.local, "form_dict", None) or {}).get("cmd") or "").strip("/ ")
 	if response is not None and (
-		path.rstrip("/") in ("/neomail", "/mailcraft") or _OWN_PATH.match(path) or _HANDING_OUT.match(path)
+		path.rstrip("/") in ("/neomail", "/mailcraft")
+		or _OWN_PATH.match(path)
+		or _HANDING_OUT.match(path)
+		or cmd in _HANDING_OUT_METHODS
 	):
 		response.headers["Cache-Control"] = "no-store"
 

@@ -79,14 +79,23 @@ class TestNeoMailDeskPage(FrappeTestCase):
 			import_file_by_path(os.path.join(_page_folder(), "neomail.json"), force=True)
 
 	def setUp(self):
-		# NeoMail on, its build installed, the page offered, and a request without a bearer token (the desk's cookie).
+		# NeoMail on, its build installed, the page offered, and the page's own request: the session's CSRF token in
+		# its header and no Authorization (a test changes what `self.sent` names).
+		self.sent = {}
 		for started in (
 			patch.dict(frappe.local.conf, {"neomail_disabled": 0, desk.FLAG: 1}),
 			patch.object(neomail, "build_installed", return_value=True),
-			patch("frappe.get_request_header", return_value=None),
+			patch("frappe.get_request_header", side_effect=self._header),
 		):
 			started.start()
 			self.addCleanup(started.stop)
+
+	def _header(self, key, default=None):
+		if key in self.sent:
+			return self.sent[key]
+		if key == "X-Frappe-CSRF-Token":
+			return frappe.sessions.get_csrf_token()
+		return default
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
@@ -176,15 +185,30 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertNotIn(desk.hand_over, frappe.guest_methods)
 		self.assertEqual(list(frappe.allowed_http_methods_for_whitelisted_func[desk.hand_over]), ["POST"])
 
-	def test_a_request_signed_in_by_a_bearer_token_gets_nothing(self):
-		"""Its tokens are bound to the desk session: Neodesk, which signs in with its OAuth token, asks
-		mailcraft_jmap.hand_over."""
+	def test_a_request_with_any_authorization_gets_nothing(self):
+		"""Its tokens are bound to the desk session: a request signed in otherwise (a bearer token, an API key, a
+		password) is not the page's. Neodesk, which signs in with its OAuth token, asks mailcraft_jmap.hand_over."""
 		frappe.set_user(STAFF)
-		with (
-			patch("frappe.get_request_header", return_value="Bearer something"),
-			self.assertRaises(frappe.PermissionError),
-		):
-			desk.hand_over()
+		for authorization in ("Bearer something", "token api-key:api-secret", "Basic dXNlcjpwYXNz"):
+			self.sent = {"Authorization": authorization}
+			with self.assertRaises(frappe.PermissionError, msg=authorization):
+				desk.hand_over()
+
+	def test_the_session_s_csrf_token_is_required(self):
+		"""Whatever the site's CSRF settings: this fork's own check refuses nothing unless the site sets
+		`neoffice_csrf_enforce` (maintenance#310). A refusal is Frappe's CSRFTokenError, which the page reads as a
+		session to sign in again."""
+		frappe.set_user(STAFF)
+		for sent, why in ((None, "no token"), ("", "an empty one"), ("not-the-session-s", "another one")):
+			self.sent = {"X-Frappe-CSRF-Token": sent}
+			with self.assertRaises(frappe.CSRFTokenError, msg=why):
+				desk.hand_over()
+		with patch.dict(frappe.local.conf, {"ignore_csrf": 1, "neoffice_csrf_enforce": 0}):
+			self.sent = {"X-Frappe-CSRF-Token": None}
+			with self.assertRaises(frappe.CSRFTokenError, msg="whatever the site's settings"):
+				desk.hand_over()
+		self.sent = {}
+		self.assertFalse(desk.hand_over()["no_mailbox"], "the session's own token: answered")
 
 	def test_the_page_is_for_the_desk_s_people(self):
 		from frappe.desk.desk_page import get
@@ -226,6 +250,11 @@ class TestNeoMailDeskPage(FrappeTestCase):
 			response = SimpleNamespace(headers={})
 			jmap.no_store(response=response, request=SimpleNamespace(path=path))
 			self.assertEqual(response.headers["Cache-Control"], "no-store", path)
+		# The former way of calling a method: its name in the form's `cmd`, whatever the address
+		response = SimpleNamespace(headers={})
+		with patch.object(frappe.local, "form_dict", frappe._dict(cmd=HANDOVER.rsplit("/", 1)[1])):
+			jmap.no_store(response=response, request=SimpleNamespace(path="/"))
+		self.assertEqual(response.headers.get("Cache-Control"), "no-store")
 
 	def test_both_pages_give_the_build_the_same_functions(self):
 		"""/neomail and the desk's page include one script where they are rendered: Jinja's include for the first,

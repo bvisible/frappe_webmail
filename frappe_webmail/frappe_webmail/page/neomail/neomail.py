@@ -34,17 +34,18 @@ def in_desk():
 def hand_over(sample=None, build=None):
 	"""What the page gives the build it frames, for the session's person: {build_url, host, no_mailbox}, made as
 	/neomail makes it (www/neomail.py, `handover`; `sample` and `build` are its address's `?sample` and `?build=`).
-	Refused where the page is not offered (as a page that does not exist), to a portal account and a visitor, and to a
-	request signed in by a bearer token rather than the desk's cookie: the facade tokens given are bound to the desk
-	session (Neodesk, which signs in with its OAuth token, asks mailcraft_jmap.hand_over)."""
-	from frappe_webmail.mailcraft_jmap import _request_bearer
+	Refused where the page is not offered (as a page that does not exist), to a portal account and a visitor, to a
+	request that carries any Authorization rather than the desk's cookie alone (the facade tokens given are bound to
+	the desk session), and to one without the session's CSRF token, whatever the site's settings
+	(mailcraft_jmap.page_request_only, csrf_token_required)."""
+	from frappe_webmail.mailcraft_jmap import csrf_token_required, page_request_only
 	from frappe_webmail.www import neomail
 
 	if not in_desk():
 		raise frappe.PageDoesNotExistError
-	if _request_bearer():
-		raise frappe.PermissionError
+	page_request_only()
 	neomail.desk_people_only()
+	csrf_token_required()
 	return neomail.handover(sample=bool(cint(sample)), build=build)
 
 

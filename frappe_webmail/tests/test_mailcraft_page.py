@@ -165,3 +165,31 @@ class TestMailCraftPage(FrappeTestCase):
 		self.assertTrue(tried.startswith("/assets/suite/craft/mailcraft-ucs/index.html?sample&"), tried)
 		for url in (missing, other, unasked):
 			self.assertTrue(url.startswith("/assets/suite/craft/mailcraft/index.html?sample&"), url)
+
+	def test_the_page_s_renewal_is_answered_with_the_token_the_page_is_given(self):
+		"""renew wants the session's CSRF token whatever the site's settings: the one Frappe writes into the page
+		(`<!-- csrf_token -->`), which the page sends in X-Frappe-CSRF-Token (public/js/neomail_host.js)."""
+		import re
+
+		from frappe.website.page_renderers.base_template_page import BaseTemplatePage
+
+		from frappe_webmail import mailcraft_jmap as jmap
+		from frappe_webmail.www import neomail
+
+		frappe.set_user(STAFF)
+		context = self._context(sample=True)
+		html = BaseTemplatePage.add_csrf_token(
+			None, frappe.render_template("frappe_webmail/www/neomail.html", context)
+		)
+		given = re.search(r'frappe\.csrf_token = "([^"]+)";', html).group(1)
+		self.assertIn('"X-Frappe-CSRF-Token": (win.frappe && win.frappe.csrf_token)', html)
+
+		def header(key, default=None):
+			return given if key == "X-Frappe-CSRF-Token" else default
+
+		with (
+			patch.dict(frappe.local.conf, {"neomail_disabled": 0}),
+			patch.object(neomail, "build_installed", return_value=True),
+			patch("frappe.get_request_header", side_effect=header),
+		):
+			self.assertEqual(jmap.renew(), {"accounts": []}, "answered: the person has no mailbox")

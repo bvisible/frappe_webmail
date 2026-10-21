@@ -153,50 +153,17 @@ window.neomailHost = (function () {
 	}
 
 	/*
-	 * Ask before the desk's router leaves a page that holds work. The router has no guard of its own, so its two ways
-	 * in are wrapped: `push_state(url)` (a link, frappe.set_route), asked about before the address changes; and
-	 * `route()` alone (the browser's back and forward buttons), when the address changed already: the page's address
-	 * is pushed back while the person decides, so the one they came from stays in the history. `holding(path)` gives
-	 * the page's own address while leaving it for `path` should be asked about, else null; `ask(leave)` asks the person
-	 * and calls `leave()` to go on. Returns what takes the guard off.
+	 * The height that makes a page's frame end at the bottom of what shows, from the box's top (`boxTop`): the inside
+	 * of NeoCockpit's panel (`panel`: its bottom, less its bottom border and padding; null without NeoCockpit) or the
+	 * window's bottom (`windowHeight`), whichever is higher, less the page body's bottom padding (`bodyPaddingBottom`).
+	 * None of it changes with the box's own height, so fitting again gives the same height. 300 pixels at least.
 	 */
-	function guardLeaving(win, router, holding, ask) {
-		const route = router.route;
-		const push_state = router.push_state;
-		// Set while the person's yes goes on, which nothing asks about again.
-		let leaving = false;
-		const going = (go) => {
-			leaving = true;
-			try {
-				return go();
-			} finally {
-				leaving = false;
-			}
-		};
-		router.push_state = function (url) {
-			const own = !leaving && holding(new URL(String(url), win.location.href).pathname);
-			if (!own) return push_state.apply(this, arguments);
-			const args = arguments;
-			ask(() => going(() => push_state.apply(router, args)));
-		};
-		router.route = function () {
-			const own = !leaving && holding(win.location.pathname);
-			if (!own) return route.apply(this, arguments);
-			const target = win.location.pathname + win.location.search + win.location.hash;
-			win.history.pushState(null, "", own);
-			ask(() =>
-				going(() => {
-					win.history.pushState(null, "", target);
-					return route.apply(router);
-				})
-			);
-			return Promise.resolve();
-		};
-		return () => {
-			router.route = route;
-			router.push_state = push_state;
-		};
+	function frameHeight(measured) {
+		const panel = measured.panel;
+		const inside = panel ? panel.bottom - panel.borderBottom - panel.paddingBottom : Infinity;
+		const bottom = Math.min(inside, measured.windowHeight);
+		return Math.max(300, Math.round(bottom - measured.bodyPaddingBottom - measured.boxTop));
 	}
 
-	return { install, listen, guardLeaving, refusedAsStale };
+	return { install, listen, frameHeight, refusedAsStale };
 })();
