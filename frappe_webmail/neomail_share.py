@@ -188,19 +188,16 @@ def _date(message):
 def _text(message):
 	"""The start of the message's text: its plain text, or its HTML read as text, never as HTML; MAX_TEXT
 	characters at most, cut at a word, its blank lines kept to one."""
-	from frappe.core.utils import html2text
-
 	try:
 		body = message.get_body(preferencelist=("plain", "html"))
 		words = body.get_content() if body is not None else ""
 		if body is not None and body.get_content_subtype() == "html":
-			# The words of its links, not their addresses: the post links to the message itself.
-			words = html2text(words, strip_links=True, wrap=False)
+			words = _html_words(words)
 	except Exception:
 		return ""
 	lines, blank = [], False
 	for line in str(words or "").replace("\r\n", "\n").split("\n"):
-		line = line.rstrip()
+		line = " ".join(line.split())
 		if not line.strip():
 			if lines and not blank:
 				lines.append("")
@@ -213,6 +210,41 @@ def _text(message):
 		cut = text[:MAX_TEXT].rsplit(" ", 1)[0] or text[:MAX_TEXT]
 		text = cut.rstrip() + " …"
 	return text
+
+
+# The elements that end a line of text, when an HTML message is read as text.
+_BLOCKS = (
+	"p",
+	"div",
+	"li",
+	"tr",
+	"table",
+	"ul",
+	"ol",
+	"blockquote",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"section",
+)
+
+
+def _html_words(html):
+	"""An HTML message's words, a line for each block: never its pictures (a tracking pixel's address), its scripts,
+	its styles, nor the addresses of its links, only their words (the post links to the message itself)."""
+	from bs4 import BeautifulSoup
+
+	soup = BeautifulSoup(html, "html.parser")
+	for tag in soup(["script", "style", "head", "title", "img"]):
+		tag.decompose()
+	for br in soup.find_all("br"):
+		br.replace_with("\n")
+	for tag in soup.find_all(_BLOCKS):
+		tag.insert_after("\n")
+	return soup.get_text()
 
 
 def _content(message, note, address, email_id):
