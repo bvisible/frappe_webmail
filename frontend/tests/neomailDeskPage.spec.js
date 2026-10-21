@@ -756,7 +756,8 @@ describe("Share in Synk, from NeoMail's button", () => {
 		await dialog.options.primary_action({ to: "user:bruno@example.org" });
 		expect(dialog.shown).toBe(true);
 		expect(dialog.disabled).toBe(false);
-		expect(synk.said).toEqual([["msgprint", "Refused <b>here</b>"]]);
+		// The server's words, never its markup (msgprint shows HTML)
+		expect(synk.said).toEqual([["msgprint", "Refused &lt;b&gt;here&lt;/b&gt;"]]);
 		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});
 
@@ -842,7 +843,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		const { tell } = await open({ features: ["dock"], synk });
 		tell(STATE);
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "all" });
-		await vi.waitFor(() => expect(synk.said).toContainEqual(["msgprint", "Refused <b>here</b>"]));
+		await vi.waitFor(() => expect(synk.said).toContainEqual(["msgprint", "Refused &lt;b&gt;here&lt;/b&gt;"]));
 		expect(synk.tabs.length).toBe(1);
 		expect(synk.tabs[0].closed).toBe(true);
 	});
@@ -866,7 +867,7 @@ describe("Chat in Synk, from NeoMail's button", () => {
 		tell(STATE);
 		tell({ type: "mailcraft:chat", ...MESSAGE, who: "sender" });
 		await vi.waitFor(() => expect(synk.said.length).toBe(1));
-		expect(synk.said[0]).toEqual(["msgprint", "Refused <b>here</b>"]);
+		expect(synk.said[0]).toEqual(["msgprint", "Refused &lt;b&gt;here&lt;/b&gt;"]);
 		expect(synk.tabs).toEqual([]);
 		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
 	});

@@ -10,6 +10,8 @@
  * And what the page and the build tell each other by `postMessage` on their common origin: the build says whether it
  * holds unsent work (`mailcraft:dirty`) and, with `chrome: "menu"`, where it is (`mailcraft:state`), which the desk's
  * page turns into the desk's menu (`navSections`); the page asks it to do things (`mailcraft:command`, `commander`).
+ * Where the desk's page offers them, the build hands it a message to share (`shareOf`, `chatOf`) or an attachment to
+ * file in the Drive, in the scanned documents or in an editor (`attachmentOf`).
  * The contract: neoffice-apps, docs/neomail-desk-menu-contract.md.
  *
  * /neomail (www/neomail.html) and the desk's page /app/neomail (page/neomail/neomail.js) both include this file where
@@ -442,6 +444,87 @@ window.neomailHost = (function () {
 		return typeof route === "string" && /^\/raven(\/[A-Za-z0-9%._~-]+){2}$/.test(route) ? route : null;
 	}
 
+	// What NeoMail may ask of an attachment, where the handover's `attachments` offers it (neomail_attachments.py).
+	const ATTACHMENT_ACTIONS = ["drive", "scan", "edit"];
+	// The Drive's editors, by the extension they open (suite/drive/wopi/craft.py): product names, never translated.
+	const EDITORS = { docx: "NeoDoc", xlsx: "NeoGrille", pptx: "NeoPrés", pdf: "NeoPDF" };
+
+	/*
+	 * What NeoMail asks of an attachment (`mailcraft:attachment`): {action ("drive", "scan" or "edit"), account, email
+	 * (a message as `shareOf` takes one), attachment: {index, count, name, size, mime, cid}}, NeoMail's description of
+	 * the file (`count`: how many attachments it sees in the message), which the server takes as hints only and checks
+	 * against the message it reads itself; null for anything else. The name stays as NeoMail gave it, for the server:
+	 * the page shows it through `fileLabel`.
+	 */
+	function attachmentOf(data) {
+		const message = shareOf(data);
+		const action = data && data.action;
+		const given = data && data.attachment;
+		if (!message || !ATTACHMENT_ACTIONS.includes(action) || !given || typeof given !== "object") return null;
+		const count = (value, most) => (Number.isInteger(value) && value >= 0 && value <= most ? value : null);
+		const text = (value, most) => (typeof value === "string" ? value.slice(0, most) : "");
+		const index = count(given.index, 100000);
+		const name = text(given.name, 1024);
+		if (index === null || !name.trim()) return null;
+		return {
+			...message,
+			action,
+			attachment: {
+				index,
+				count: count(given.count, 100000),
+				name,
+				size: count(given.size, Number.MAX_SAFE_INTEGER),
+				mime: text(given.mime, 255),
+				cid: text(given.cid, 998),
+			},
+		};
+	}
+
+	/*
+	 * An attachment's name as the page shows it: its last part, without what changes how a name reads unseen
+	 * (controls, right-to-left overrides and their kin), 140 characters at most; « attachment » when nothing is left.
+	 */
+	function fileLabel(name) {
+		const last = String(name || "")
+			.replace(/\\/g, "/")
+			.split("/")
+			.pop();
+		const shown = last.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "").trim();
+		return (shown.length > 140 ? shown.slice(0, 139) + "…" : shown) || "attachment";
+	}
+
+	/* The editor of the Drive that opens a file named `name`, by its extension: {extension, product}, or null. */
+	function editorOf(name) {
+		const parts = fileLabel(name).split(".");
+		const extension = parts.length > 1 ? parts.pop().toLowerCase() : "";
+		return Object.prototype.hasOwnProperty.call(EDITORS, extension)
+			? { extension, product: EDITORS[extension] }
+			: null;
+	}
+
+	/* A size in bytes as people read it (« 12.4 KB »); empty for none. */
+	function sizeLabel(bytes) {
+		if (!Number.isFinite(bytes) || bytes <= 0) return "";
+		const units = ["B", "KB", "MB", "GB"];
+		const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+		return `${(bytes / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
+	}
+
+	/*
+	 * A file or a folder of the Drive as the server answers one (`/drive/f/<name>`, `/drive/d/<name>`): that path and
+	 * nothing else, which the page may open; null otherwise.
+	 */
+	function driveUrl(url) {
+		return typeof url === "string" && /^\/drive\/[fd]\/[A-Za-z0-9_-]+$/.test(url) ? url : null;
+	}
+
+	/* A scanned document's page in the desk, from its name as the server answers it; null without one. */
+	function scanUrl(name) {
+		return typeof name === "string" && name && name.length <= 140
+			? "/app/document-scan/" + encodeURIComponent(name)
+			: null;
+	}
+
 	/*
 	 * Where the person may share a message, as the share dialog lists them (neomail_share.destinations: {channels:
 	 * [{id, label, private}], people: [{id, label}]}): the channels first, « # name », then the people by name, each
@@ -521,6 +604,12 @@ window.neomailHost = (function () {
 		shareChoices,
 		chatOf,
 		synkRoute,
+		attachmentOf,
+		fileLabel,
+		editorOf,
+		sizeLabel,
+		driveUrl,
+		scanUrl,
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,

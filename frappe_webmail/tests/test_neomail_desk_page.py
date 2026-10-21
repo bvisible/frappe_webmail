@@ -159,8 +159,16 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertEqual(given["build_url"], context.build_url, "the build /neomail frames")
 		www = json.loads(context.host_json)
 		self.assertEqual(
-			set(given["host"]) - {"share"}, {*www, "chrome"}, "the fields /neomail hands over, and one more"
+			set(given["host"]) - {"share", "attachments"},
+			{*www, "chrome"},
+			"the fields /neomail hands over, and one more",
 		)
+		# What NeoMail offers on an attachment, as the old webmail's menu offers it, and only on this page
+		# (neomail_attachments.py)
+		from frappe_webmail import neomail_attachments
+
+		self.assertEqual(given["host"].get("attachments", []), neomail_attachments.offered())
+		self.assertNotIn("attachments", www, "/neomail does not file an attachment")
 		self.assertEqual(given["host"]["chrome"], "menu", "the desk's menu draws NeoMail's navigation")
 		self.assertNotIn("chrome", www, "/neomail has no menu: NeoMail keeps its own navigation there")
 		# Share in Synk, for someone who may share there, and only on this page (neomail_share.py)
@@ -190,6 +198,25 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertEqual(kept.get("user"), STAFF)
 		self.assertNotIn("oauth", kept, "bound to the desk session that asked, as /neomail's tokens are")
 		self.assertIn("sid", kept)
+
+	def test_what_fails_in_offering_the_attachment_actions_never_keeps_neomail_from_opening(self):
+		from frappe_webmail import neomail_attachments
+
+		frappe.set_user(STAFF)
+		with (
+			patch.object(neomail_attachments, "offered", side_effect=RuntimeError("the Drive moved")),
+			patch.object(frappe, "log_error") as logged,
+		):
+			given = desk.hand_over()
+		self.assertFalse(given["no_mailbox"])
+		self.assertTrue(given["host"]["accounts"])
+		self.assertNotIn("attachments", given["host"])
+		self.assertNotIn("editors", given)
+		# The title first, the traceback after it
+		self.assertEqual(
+			logged.call_args.args[0], "NeoMail: the actions on an attachment could not be offered"
+		)
+		self.assertIn("the Drive moved", logged.call_args.args[1])
 
 	def test_a_portal_account_and_a_visitor_are_refused(self):
 		for user in (PORTAL, "Guest"):

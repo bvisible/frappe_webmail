@@ -36,6 +36,13 @@
  *   button names a message by its mailbox and its id (`mailcraft:share`); the page asks where (a channel of the
  *   person's or a person, a word of their own, the attachments or not), the server posts it as the person
  *   (neomail_share.py), and the Synk view shows the post.
+ * - An attachment, as the old webmail's menu has it: where the handover's `attachments` offers them (neomail.py, from
+ *   what the person may do here), NeoMail's menu of an attachment names it to the page (`mailcraft:attachment`, its
+ *   message and what NeoMail knows of the file). « Save to Drive… » asks for a folder of the Drive (its roots, a
+ *   folder's subfolders, a search, the folder used last, a new folder) and the server saves the file there, read from
+ *   the message on its server (neomail_attachments.py); « Open in NeoDoc » and its kin do the same, then open the copy
+ *   in its editor in a new tab; « Send to Scanned Documents » sends a PDF or a picture to the scanned documents at
+ *   once. A toast says where it went, with a link.
  */
 
 // The functions /neomail gives the build, shared with it (window.neomailHost): Frappe puts the file in place of the
@@ -56,6 +63,12 @@
 	const DESTINATIONS = "/api/method/frappe_webmail.neomail_share.destinations";
 	const SHARE = "/api/method/frappe_webmail.neomail_share.share";
 	const CHAT = "/api/method/frappe_webmail.neomail_share.chat";
+	// An attachment (neomail_attachments.py), and the Drive's folders as the old webmail's picker reads them
+	// (attachments.py).
+	const TO_DRIVE = "/api/method/frappe_webmail.neomail_attachments.save_to_drive";
+	const TO_SCANS = "/api/method/frappe_webmail.neomail_attachments.to_scans";
+	const FOLDERS = "/api/method/frappe_webmail.attachments.get_drive_folders";
+	const NEW_FOLDER = "/api/method/frappe_webmail.attachments.create_drive_folder";
 
 	// One page for the desk's tab: its box, the banner, whether NeoMail said it holds work, whether the page is in
 	// front, what NeoMail last said of where it is, and what asks it.
@@ -82,6 +95,12 @@
 		opening: null,
 		// NeoMail's frame, once it is made
 		frame: null,
+		// The extensions the Drive's editors open here (the handover's `editors`), and the attachments being sent to
+		// the scanned documents (one call each, however many clicks)
+		editors: [],
+		filing: new Set(),
+		// The Drive's folder picker while it is open
+		picking: null,
 		// Synk's icon (Synk on the web is Raven's own app, opened in a tab of its own): whether Raven answered the person
 		// (the icon shows only then), the badge, the person's channels (a Set, null while unknown), the count being
 		// asked and whether to ask it once more when it is back, whether Raven's events are listened to
@@ -211,15 +230,17 @@
 		return tab;
 	}
 
-	// What the server said went wrong, in the person's language: its message, else `fallback`.
+	// What the server said went wrong, in the person's language: its message, else `fallback`. As words, never markup:
+	// msgprint shows HTML, and a server's message may carry what an e-mail wrote (a sender, a file's name).
 	async function refusal(answer, fallback) {
 		try {
 			const body = await answer.json();
 			const said = JSON.parse(body._server_messages || "[]")
 				.map((m) => JSON.parse(m).message)
 				.filter(Boolean);
-			// The desk's own strip_html (frappe/public/js/frappe/utils/common.js): the words without their markup
-			if (said.length) return (window.strip_html || ((text) => text))(said.join(" "));
+			// The desk's own strip_html (frappe/public/js/frappe/utils/common.js): the words without their markup, then
+			// escaped, so that whatever is left of one is shown and not run
+			if (said.length) return frappe.utils.escape_html((window.strip_html || ((text) => text))(said.join(" ")));
 		} catch (e) {
 			// The fallback says it
 		}
@@ -382,6 +403,369 @@
 		// Raven answered the person: Synk is theirs, and shows the conversation in its own tab
 		state.synk.offered = true;
 		open_synk(route, tab);
+	}
+
+	// One of the server's methods, as the person (the desk's cookie, its CSRF token): GET without `body`, else a POST
+	// of it. The answer, or null when the server could not be reached.
+	async function to_server(address, body) {
+		const headers = { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" };
+		const init =
+			body === undefined
+				? { method: "GET", credentials: "same-origin", cache: "no-store", headers }
+				: {
+						method: "POST",
+						credentials: "same-origin",
+						cache: "no-store",
+						headers: { ...headers, "Content-Type": "application/json" },
+						body: JSON.stringify(body),
+				  };
+		try {
+			return await fetch(address, init);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// What the server answered (its `message`), or null once the person was told why not (its refusal, else
+	// `fallback`).
+	async function taken(answer, fallback) {
+		if (!answer || !answer.ok) {
+			frappe.msgprint(answer ? await refusal(answer, fallback) : fallback);
+			return null;
+		}
+		try {
+			return (await answer.json()).message || {};
+		} catch (e) {
+			frappe.msgprint(fallback);
+			return null;
+		}
+	}
+
+	// A toast that says where a file went, with a link to it: every word escaped, the link one the page checked.
+	// `away`: the link opens a new tab (the Drive is not a page of the desk).
+	function filed(message, link, away) {
+		const escape = frappe.utils.escape_html;
+		const open = link
+			? ` <a href="${escape(link)}"${away ? ' target="_blank" rel="noopener"' : ""}>${escape(__("Open"))}</a>`
+			: "";
+		frappe.show_alert({ message: escape(String(message || "")) + open, indicator: "green" }, 8);
+	}
+
+	// What NeoMail asks of an attachment (`mailcraft:attachment`): the Drive, the scanned documents, an editor. An
+	// editor this site has no build of is said at once, before a copy is made that nothing opens.
+	function attachment_action(data) {
+		const asked = window.neomailHost.attachmentOf(data);
+		if (!asked) return;
+		// Only what the handover offered: a NeoMail asking for more is not heard
+		const offered = state.host && Array.isArray(state.host.attachments) ? state.host.attachments : [];
+		if (!offered.includes(asked.action)) return;
+		if (asked.action === "scan") {
+			send_to_scans(asked);
+			return;
+		}
+		let editor = null;
+		if (asked.action === "edit") {
+			editor = window.neomailHost.editorOf(asked.attachment.name);
+			if (!editor) return;
+			if (!state.editors.includes(editor.extension)) {
+				frappe.msgprint(__("{0} is not installed on this site.", [editor.product]));
+				return;
+			}
+		}
+		// One folder picker at a time: a second click while one is open brings nothing more
+		if (state.picking) return;
+		pick_drive_folder(asked, editor);
+	}
+
+	// « Send to Scanned Documents »: at once, as the old webmail did (neomail_attachments.to_scans), then a toast with
+	// the scanned document's link. One call for an attachment while it runs, however many clicks.
+	async function send_to_scans(asked) {
+		const key = [asked.account, asked.email, asked.attachment.index].join("\n");
+		if (state.filing.has(key)) return;
+		state.filing.add(key);
+		try {
+			const answer = await to_server(TO_SCANS, {
+				account: asked.account,
+				email: asked.email,
+				attachment: asked.attachment,
+			});
+			const done = await taken(answer, __("The attachment could not be sent to the scanned documents."));
+			if (done) filed(done.message, window.neomailHost.scanUrl(done.name), false);
+		} finally {
+			state.filing.delete(key);
+		}
+	}
+
+	// An element of the picker, with its class and its words (never markup).
+	function element(tag, className, text) {
+		const made = document.createElement(tag);
+		if (className) made.className = className;
+		if (text !== undefined) made.textContent = text;
+		return made;
+	}
+
+	// « Save to Drive… » and « Open in NeoDoc » (`editor`): the person picks a folder of the Drive, as in the old
+	// webmail's picker (attachments.get_drive_folders: the roots, a folder's subfolders, a search, the folder used last;
+	// create_drive_folder), then the server saves the file there (neomail_attachments.save_to_drive). With an editor,
+	// the copy then opens in it, in a new tab opened on the click itself (a browser blocks one opened after a wait).
+	function pick_drive_folder(asked, editor) {
+		const host = window.neomailHost;
+		const view = {
+			roots: [],
+			children: {},
+			open: {},
+			selected: null,
+			last: null,
+			query: "",
+			results: [],
+			loading: true,
+			failed: false,
+			timer: null,
+			busy: false,
+		};
+		const dialog = new frappe.ui.Dialog({
+			title: editor ? __("Open in {0}", [editor.product]) : __("Save to the Drive"),
+			fields: [{ fieldtype: "HTML", fieldname: "picker" }],
+			primary_action_label: editor ? __("Save and open") : __("Save here"),
+			primary_action: () => save(),
+		});
+		const field = dialog.fields_dict.picker;
+		const box = field.wrapper || (field.$wrapper && field.$wrapper.get(0));
+		const picker = element("div", "neomail-picker");
+		const file = element("div", "neomail-picker-file");
+		file.append(
+			element("span", "neomail-picker-file-name", host.fileLabel(asked.attachment.name)),
+			element("span", "neomail-picker-file-size", host.sizeLabel(asked.attachment.size))
+		);
+		const search = element("input", "form-control neomail-picker-search");
+		search.type = "search";
+		search.placeholder = __("Search for a folder");
+		search.setAttribute("aria-label", __("Search for a folder"));
+		const last = element("button", "btn neomail-picker-last");
+		last.type = "button";
+		const tree = element("div", "neomail-picker-tree");
+		tree.setAttribute("role", "tree");
+		const making = element("div", "neomail-picker-new");
+		const start_new = element("button", "btn btn-default btn-sm", __("New folder"));
+		start_new.type = "button";
+		const new_name = element("input", "form-control input-sm");
+		new_name.placeholder = __("Name of the folder");
+		new_name.hidden = true;
+		const create = element("button", "btn btn-default btn-sm", __("Create"));
+		create.type = "button";
+		create.hidden = true;
+		making.append(start_new, new_name, create);
+		picker.append(
+			file,
+			search,
+			last,
+			tree,
+			making,
+			element(
+				"p",
+				"neomail-picker-hint",
+				__("The file is copied by the server, straight from the e-mail: nothing is downloaded.")
+			)
+		);
+		box.append(picker);
+
+		const writable = () => Boolean(view.selected && view.selected.can_write);
+		function enable() {
+			if (writable() && !view.busy) dialog.enable_primary_action();
+			else dialog.disable_primary_action();
+			start_new.disabled = !writable() || view.busy;
+		}
+
+		function choose(folder) {
+			view.selected = folder;
+			draw();
+		}
+
+		// One row of the tree: its chevron opens it, a click chooses it (when the person may file into it) and opens it.
+		function row(folder, depth) {
+			const line = element("button", "neomail-picker-row");
+			line.type = "button";
+			line.setAttribute("role", "treeitem");
+			line.style.paddingLeft = 8 + depth * 18 + "px";
+			const chosen = Boolean(view.selected && view.selected.name === folder.name);
+			line.classList.toggle("is-chosen", chosen);
+			line.setAttribute("aria-selected", String(chosen));
+			line.classList.toggle("is-muted", !folder.can_write);
+			if (folder.has_children) line.setAttribute("aria-expanded", String(Boolean(view.open[folder.name])));
+			const chevron = element("span", "neomail-picker-chevron", folder.has_children ? (view.open[folder.name] ? "▾" : "▸") : "");
+			chevron.addEventListener("click", (event) => {
+				event.stopPropagation();
+				toggle(folder);
+			});
+			const words = element("span", "neomail-picker-row-text");
+			words.append(element("span", "", String(folder.title || folder.name || "")));
+			if (folder.path && view.query) words.append(element("small", "", String(folder.path)));
+			line.append(chevron, words);
+			line.addEventListener("click", () => {
+				if (folder.can_write) choose(folder);
+				if (folder.has_children && !view.open[folder.name]) toggle(folder);
+			});
+			return line;
+		}
+
+		function draw() {
+			tree.replaceChildren();
+			const say = (text) => tree.append(element("div", "neomail-picker-empty", text));
+			if (view.loading) say(__("Loading…"));
+			else if (view.failed) say(__("The Drive could not be reached. Try again in a moment."));
+			else if (view.query) {
+				if (!view.results.length) say(__("No folder found"));
+				view.results.forEach((folder) => tree.append(row(folder, 0)));
+			} else {
+				// A folder is never drawn inside itself, whatever the server answered
+				const walk = (folders, depth, above) =>
+					(folders || []).forEach((folder) => {
+						if (above.includes(folder.name)) return;
+						tree.append(row(folder, depth));
+						if (view.open[folder.name]) walk(view.children[folder.name], depth + 1, [...above, folder.name]);
+					});
+				walk(view.roots, 0, []);
+			}
+			last.hidden = !view.last || Boolean(view.query);
+			if (view.last) {
+				last.replaceChildren(
+					element("span", "neomail-picker-last-label", __("Last used")),
+					element("span", "neomail-picker-last-path", String(view.last.path || view.last.title || ""))
+				);
+				last.classList.toggle("is-chosen", Boolean(view.selected && view.selected.name === view.last.name));
+			}
+			enable();
+		}
+
+		async function folders(query) {
+			const answer = await to_server(FOLDERS + "?" + new URLSearchParams(query).toString());
+			if (!answer || !answer.ok) return null;
+			try {
+				return (await answer.json()).message || null;
+			} catch (e) {
+				return null;
+			}
+		}
+
+		async function toggle(folder) {
+			if (!folder.has_children) return;
+			if (view.open[folder.name]) {
+				view.open[folder.name] = false;
+				draw();
+				return;
+			}
+			if (!view.children[folder.name]) {
+				const found = await folders({ parent: folder.name });
+				view.children[folder.name] = (found && found.folders) || [];
+			}
+			view.open[folder.name] = true;
+			draw();
+		}
+
+		search.addEventListener("input", () => {
+			clearTimeout(view.timer);
+			const text = search.value.trim();
+			view.query = text;
+			if (!text) {
+				view.results = [];
+				draw();
+				return;
+			}
+			view.timer = setTimeout(async () => {
+				const found = await folders({ search: text });
+				if (view.query !== text) return;
+				view.results = (found && found.folders) || [];
+				draw();
+			}, 250);
+		});
+		last.addEventListener("click", () => view.last && choose(view.last));
+		start_new.addEventListener("click", () => {
+			start_new.hidden = true;
+			new_name.hidden = false;
+			create.hidden = false;
+			new_name.value = "";
+			new_name.focus();
+		});
+		async function make_folder() {
+			const parent = view.selected;
+			const title = new_name.value.trim();
+			if (!title || !parent || !parent.can_write || view.busy) return;
+			create.disabled = true;
+			const made = await taken(
+				await to_server(NEW_FOLDER, { parent: parent.name, title }),
+				__("The folder could not be made.")
+			);
+			create.disabled = false;
+			if (!made || !made.name) return;
+			view.children[parent.name] = [...(view.children[parent.name] || []), made];
+			view.open[parent.name] = true;
+			parent.has_children = true;
+			start_new.hidden = false;
+			new_name.hidden = true;
+			create.hidden = true;
+			choose(made);
+		}
+		create.addEventListener("click", make_folder);
+		new_name.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				make_folder();
+			}
+		});
+
+		async function save() {
+			const folder = view.selected;
+			if (!folder || !folder.can_write || view.busy) return;
+			view.busy = true;
+			enable();
+			// The editor's tab, opened on the click itself, and cut from this page
+			const tab = editor ? window.open("", "_blank") : null;
+			if (tab) tab.opener = null;
+			const done = await taken(
+				await to_server(TO_DRIVE, {
+					account: asked.account,
+					email: asked.email,
+					attachment: asked.attachment,
+					drive_folder: folder.name,
+					edit: editor ? 1 : 0,
+				}),
+				editor ? __("The file could not be opened.") : __("The file could not be saved in the Drive.")
+			);
+			if (!done) {
+				if (tab) tab.close();
+				view.busy = false;
+				enable();
+				return;
+			}
+			dialog.hide();
+			const url = host.driveUrl(done.url);
+			if (editor && url) {
+				if (tab) tab.location.replace(window.location.origin + url);
+				else window.open(url, "_blank", "noopener");
+			} else if (tab) {
+				tab.close();
+			}
+			filed(done.message, url, true);
+		}
+
+		// Closed, it is gone: from the page and from the desk's markup
+		dialog.onhide = () => {
+			clearTimeout(view.timer);
+			state.picking = null;
+			if (dialog.$wrapper && typeof dialog.$wrapper.remove === "function") dialog.$wrapper.remove();
+		};
+		state.picking = dialog;
+		dialog.show();
+		draw();
+		folders({}).then((found) => {
+			view.loading = false;
+			view.failed = !found;
+			view.roots = (found && found.folders) || [];
+			view.last = (found && found.last) || null;
+			if (view.last && view.last.can_write) view.selected = view.last;
+			draw();
+		});
+		setTimeout(() => search.focus(), 0);
 	}
 
 	// Whether Raven is here for the person at all, before asking it anything: installed, and the person holding its role.
@@ -724,6 +1108,8 @@
 		if (!cockpit()) delete given.host.chrome;
 		// What the build reads from the page that frames it, there before the frame starts.
 		state.host = given.host;
+		// The extensions the Drive's editors open here, for the page itself (NeoMail is not told)
+		state.editors = Array.isArray(given.editors) ? given.editors.filter((e) => typeof e === "string") : [];
 		window.neomailHost.install(window, given.host, {
 			sessionEnded: __("Your Neoffice session has ended."),
 			onSession: (alive) => (state.banner.hidden = alive),
@@ -740,6 +1126,8 @@
 			// Share in Synk, on the person's click: the dialog that asks where
 			"mailcraft:share": (data) => share_message(data),
 			"mailcraft:chat": (data) => chat_in_synk(data),
+			// An attachment to file, on the person's click: the Drive, the scanned documents, an editor
+			"mailcraft:attachment": (data) => attachment_action(data),
 			// Where it is, once it started and at each change: the desk's menu follows
 			"mailcraft:state": (data) => {
 				state.where = data;

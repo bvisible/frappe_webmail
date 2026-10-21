@@ -108,7 +108,8 @@ def lead_to_neomail(context):
 def hand_over(sample=None, build=None):
 	"""What the page gives the build it frames, for the session's person: {build_url, host, no_mailbox}, made as
 	/neomail makes it (www/neomail.py, `handover`; `sample` and `build` are its address's `?sample` and `?build=`),
-	plus `chrome: "menu"` in `host`.
+	plus `chrome: "menu"`, `share` and `attachments` in `host`, and `editors` beside it (the extensions the Drive's
+	editors open here, for the page itself).
 	Refused where the page is not offered (as a page that does not exist), to a portal account and a visitor, to a
 	request that carries any Authorization rather than the desk's cookie alone (the facade tokens given are bound to
 	the desk session), and to one without the session's CSRF token, whatever the site's settings
@@ -133,6 +134,22 @@ def hand_over(sample=None, build=None):
 
 	if neomail_share.offered():
 		framed["host"]["share"] = True
+	# NeoMail offers, on an attachment, what the old webmail's menu offers the person (neomail_attachments.py): the
+	# Drive, the scanned documents, the Drive's editors; and the page knows which editors this site has (`editors`,
+	# the extensions they open), to say so rather than open a copy no editor reads.
+	# Never at the cost of NeoMail itself: what fails here offers nothing, and is logged.
+	from frappe_webmail import neomail_attachments
+
+	try:
+		actions = neomail_attachments.offered()
+		editors = sorted(neomail_attachments.installed_editors()) if "edit" in actions else []
+	except Exception:
+		frappe.log_error("NeoMail: the actions on an attachment could not be offered", frappe.get_traceback())
+		actions, editors = [], []
+	if actions:
+		framed["host"]["attachments"] = actions
+	if editors:
+		framed["editors"] = editors
 	return framed
 
 
