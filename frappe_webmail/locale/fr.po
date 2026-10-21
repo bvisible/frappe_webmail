@@ -4841,19 +4841,19 @@ msgstr "{0} (vous)"
 
 #: frappe_webmail/neomail_attachments.py:231 frappe_webmail/neomail_attachments.py:420
 msgid "This attachment cannot be found: open the message again and try again."
-msgstr "Cette pièce jointe est introuvable : rouvrez le message et réessayez."
+msgstr "Cette pièce jointe est introuvable : rouvrez le message et réessayez."
 
 #: frappe_webmail/neomail_attachments.py:416
 msgid "Several attachments of this message look alike, and it cannot be told which one you chose: save it with Save As instead."
-msgstr "Plusieurs pièces jointes de ce message se ressemblent et il est impossible de savoir laquelle vous avez choisie : enregistrez-la plutôt avec « Enregistrer sous »."
+msgstr "Plusieurs pièces jointes de ce message se ressemblent, et il est impossible de savoir laquelle vous avez choisie : enregistrez-la plutôt avec « Enregistrer sous »."
 
 #: frappe_webmail/neomail_attachments.py:441
 msgid "This message is larger than {0} MB: save the attachment with Save As instead."
-msgstr "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec « Enregistrer sous »."
+msgstr "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec « Enregistrer sous »."
 
 #: frappe_webmail/neomail_attachments.py:529
 msgid "Only a .docx, .xlsx, .pptx or .pdf file opens in an editor of the Drive."
-msgstr "Seul un fichier .docx, .xlsx, .pptx ou .pdf s’ouvre dans un éditeur du Drive."
+msgstr "Seuls les fichiers .docx, .xlsx, .pptx ou .pdf s’ouvrent dans un éditeur du Drive."
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:536 frappe_webmail/neomail_attachments.py:531
 msgid "{0} is not installed on this site."
@@ -4893,8 +4893,8 @@ msgstr "Le fichier n’a pas pu être enregistré dans le Drive."
 
 #: frappe_webmail/neomail_attachments.py:481
 msgid "This attachment cannot be read from its message here: save it with Save As instead."
-msgstr "Cette pièce jointe ne peut pas être lue ici depuis son message : enregistrez-la plutôt avec « Enregistrer sous »."
+msgstr "Cette pièce jointe ne peut pas être lue depuis son message ici : enregistrez-la plutôt avec « Enregistrer sous »."
 
 #: frappe_webmail/drive.py:225
 msgid "No free name is left for this file in this folder of the Drive"
-msgstr "Il ne reste aucun nom libre pour ce fichier dans ce dossier du Drive"
+msgstr "Aucun nom libre ne reste pour ce fichier dans ce dossier du Drive"
