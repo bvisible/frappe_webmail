@@ -275,12 +275,22 @@ window.neomailHost = (function () {
 	}
 
 	// Raven's own pages the menu opens while Synk is in front, before the conversations: their path in Raven's app and
-	// their icon (lucide names, with the prefix the menu's items take).
+	// their icon (lucide names, with the prefix the menu's items take; only those the cockpit draws, its lucideIconMap:
+	// it has no « # », lock, person, bot nor bookmark, a name it lacks draws an empty circle).
 	const SYNK_PAGES = [
 		{ key: "activity", path: "/raven/notifications", icon: "lucide-bell" },
-		{ key: "threads", path: "/raven/threads", icon: "lucide-messages-square" },
-		{ key: "later", path: "/raven/later", icon: "lucide-bookmark" },
+		{ key: "threads", path: "/raven/threads", icon: "lucide-message-square" },
+		{ key: "later", path: "/raven/later", icon: "lucide-clock" },
 	];
+	// The icons of Synk's conversations in the menu, among those the cockpit draws (see above).
+	const SYNK_ICONS = {
+		channel: "lucide-message-circle",
+		privateChannel: "lucide-key-round",
+		person: "lucide-contact",
+		bot: "lucide-sparkles",
+		whole: "lucide-layout-grid",
+		settings: "lucide-settings",
+	};
 	// The direct messages the menu lists, the latest first; those with unread messages come too, however old.
 	const SYNK_DIRECT = 15;
 
@@ -309,7 +319,7 @@ window.neomailHost = (function () {
 	 * Synk's lists as the desk menu's sections, while Synk is in front (Raven, asked to, draws no list of its own then:
 	 * `chrome=menu`, Raven's apps/web/src/utils/embeddedInDesk.ts). Raven's own pages first (Activity, Threads, Later);
 	 * then, for each workspace, the channels the person is a member of (`lists`, get_all_channels: those with a
-	 * `member_id`), by name, a private one with a lock, and last the workspace's whole list in Raven (`?all`, where Raven
+	 * `member_id`), by name, a private one with a key, and last the workspace's whole list in Raven (`?all`, where Raven
 	 * browses, joins and makes channels); then their direct messages, the latest first (SYNK_DIRECT of them, and any
 	 * other with unread messages), each by the other person's name (`users`, Raven's raven_users.get_list; one whose
 	 * account is disabled is left out, as Raven does), and last all of them in Raven; then Synk's settings, which
@@ -338,19 +348,18 @@ window.neomailHost = (function () {
 		};
 		const item = (label, icon, path, extra) => ({ label, icon, active: lit(path), onClick: () => open(path), ...extra });
 		// A whole list in Raven: lit only on it, not on a conversation it holds
-		const whole = (label, path) => item(label, "lucide-list", path + "?all", { active: at === synkPath(path) });
+		const whole = (label, path) => item(label, SYNK_ICONS.whole, path + "?all", { active: at === synkPath(path) });
 		const nav = [{ items: SYNK_PAGES.map((page) => item(texts[page.key], page.icon, page.path)) }];
 		const known = lists && typeof lists === "object" ? lists : {};
 		const named = (channel) => channel && typeof channel.name === "string" && channel.name;
-		const channels = (Array.isArray(known.channels) ? known.channels : []).filter(
-			(channel) => named(channel) && channel.member_id && !channel.is_archived
-		);
+		// Every workspace Raven lists a channel of (the person's, joined or not: its open and public ones come too), so
+		// that its whole list stays within reach; under it, the channels the person is a member of
 		const workspaces = new Map();
-		for (const channel of channels) {
-			const workspace = typeof channel.workspace === "string" ? channel.workspace : "";
+		for (const channel of Array.isArray(known.channels) ? known.channels : []) {
+			const workspace = named(channel) && typeof channel.workspace === "string" ? channel.workspace : "";
 			if (!workspace) continue;
 			if (!workspaces.has(workspace)) workspaces.set(workspace, []);
-			workspaces.get(workspace).push(channel);
+			if (channel.member_id && !channel.is_archived) workspaces.get(workspace).push(channel);
 		}
 		const byName = (a, b) => String(a.channel_name || a.name).localeCompare(String(b.channel_name || b.name));
 		for (const [workspace, list] of [...workspaces].sort(([a], [b]) => a.localeCompare(b))) {
@@ -358,7 +367,7 @@ window.neomailHost = (function () {
 			const items = list.sort(byName).map((channel) =>
 				item(
 					channel.channel_name || channel.name,
-					channel.type === "Private" ? "lucide-lock" : "lucide-hash",
+					channel.type === "Private" ? SYNK_ICONS.privateChannel : SYNK_ICONS.channel,
 					home + "/" + encodeURIComponent(channel.name),
 					{ badge: channel.muted ? undefined : badge(channel.name) }
 				)
@@ -386,14 +395,14 @@ window.neomailHost = (function () {
 			const peer = people.get(channel.peer_user_id);
 			const name = (peer && (peer.full_name || peer.first_name)) || channel.peer_user_id || channel.channel_name;
 			const label = channel.is_self_message ? texts.self.replace("{0}", name) : name;
-			return item(label, peer && peer.type === "Bot" ? "lucide-bot" : "lucide-user", "/raven/dm-channel/" + encodeURIComponent(channel.name), {
+			return item(label, peer && peer.type === "Bot" ? SYNK_ICONS.bot : SYNK_ICONS.person, "/raven/dm-channel/" + encodeURIComponent(channel.name), {
 				badge: badge(channel.name),
 				badgeTone: "accent",
 			});
 		});
 		directItems.push(whole(texts.allDirect, "/raven/dm-channel"));
 		nav.push({ label: texts.direct, items: directItems });
-		nav.push({ items: [{ label: texts.settings, icon: "lucide-settings", onClick: () => act.settings() }] });
+		nav.push({ items: [{ label: texts.settings, icon: SYNK_ICONS.settings, onClick: () => act.settings() }] });
 		return nav;
 	}
 

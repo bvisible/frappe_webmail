@@ -670,35 +670,35 @@ describe("Synk's lists in the desk's menu", () => {
 				undefined,
 				[
 					["Activity", "lucide-bell", undefined, undefined],
-					["Threads", "lucide-messages-square", undefined, undefined],
-					["Later", "lucide-bookmark", undefined, undefined],
+					["Threads", "lucide-message-square", undefined, undefined],
+					["Later", "lucide-clock", undefined, undefined],
 				],
 			],
 			[
 				"Chantier",
 				[
-					["plans", "lucide-lock", undefined, undefined],
-					["All Channels", "lucide-list", undefined, undefined],
+					["plans", "lucide-key-round", undefined, undefined],
+					["All Channels", "lucide-layout-grid", undefined, undefined],
 				],
 			],
 			[
 				"Synk",
 				[
 					// A muted channel shows no count
-					["atelier", "lucide-lock", undefined, undefined],
-					["bureau", "lucide-hash", undefined, undefined],
-					["general", "lucide-hash", 2, undefined],
-					["All Channels", "lucide-list", undefined, undefined],
+					["atelier", "lucide-key-round", undefined, undefined],
+					["bureau", "lucide-message-circle", undefined, undefined],
+					["general", "lucide-message-circle", 2, undefined],
+					["All Channels", "lucide-layout-grid", undefined, undefined],
 				],
 			],
 			[
 				"Direct Messages",
 				[
-					["Bruno Keller", "lucide-user", undefined, "accent"],
-					["Ada Lovelace (you)", "lucide-user", undefined, "accent"],
-					["Nora", "lucide-bot", undefined, "accent"],
-					["Carla Rossi", "lucide-user", 1, "accent"],
-					["All Direct Messages", "lucide-list", undefined, undefined],
+					["Bruno Keller", "lucide-contact", undefined, "accent"],
+					["Ada Lovelace (you)", "lucide-contact", undefined, "accent"],
+					["Nora", "lucide-sparkles", undefined, "accent"],
+					["Carla Rossi", "lucide-contact", 1, "accent"],
+					["All Direct Messages", "lucide-layout-grid", undefined, undefined],
 				],
 			],
 			[undefined, [["Synk Settings", "lucide-settings", undefined, undefined]]],
@@ -759,6 +759,16 @@ describe("Synk's lists in the desk's menu", () => {
 		// Nothing known yet: Raven's pages, the way to every direct message, the settings
 		const empty = synkSections(null, null, null, null, quiet, TEXTS);
 		expect(empty.map((section) => section.items.length)).toEqual([3, 1, 1]);
+		// A workspace where the person is a member of no channel keeps its whole list within reach
+		const none = synkSections(
+			{ channels: [{ name: "synk-general", channel_name: "general", workspace: "Synk", member_id: null }] },
+			[],
+			[],
+			null,
+			quiet,
+			TEXTS
+		);
+		expect(none[1]).toMatchObject({ label: "Synk", items: [{ label: "All Channels" }] });
 	});
 });
 
