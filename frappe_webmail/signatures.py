@@ -631,13 +631,14 @@ def render_person(template, person: frappe._dict) -> dict:
 		return {"html": "", "text": ""}
 	html = _draw(layout, card, look_of(template))
 	# The templates are written as lines: no newline, no indentation in what leaves (a space that matters is on its line).
-	# The logo, the photo and the layout go with them for NeoMail, which keeps a signature's pictures by their bytes
-	# (www/neomail.py).
+	# The logo, the photo, the banner and the layout go with them for NeoMail, which keeps a signature's pictures by
+	# their bytes (www/neomail.py).
 	return {
 		"html": re.sub(r"\s*\n\s*", "", html).strip(),
 		"text": text_of(card),
 		"logo": card["logo"],
 		"photo": card["photo"],
+		"banner": card["banner"],
 		"layout": layout,
 	}
 

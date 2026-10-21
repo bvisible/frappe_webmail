@@ -141,10 +141,18 @@ def host_mailboxes(bearer=None):
 			if picture:
 				signature.update(picture)
 			# Every picture in the order it is read, for a page that places more than one (the logo under the words of
-			# "Photo left"); `logo` and `layout` stay for the builds that place one.
-			pictures = handed_pictures(chosen, memo)
+			# "Photo left", the banner under the signature); `logo` and `layout` stay for the builds that place one.
+			handed = []
+			pictures = handed_pictures(chosen, memo, handed)
 			if pictures:
 				signature["pictures"] = pictures
+				# What a build that places every picture it is handed reads: the HTML without any of them, which it would
+				# otherwise show a second time by its description (the banner's as a link). `html` stays as it was for
+				# the builds that place one picture, where the banner's words are what shows of it.
+				placed = signature["html"]
+				for src in handed:
+					placed = without_picture(placed, src)
+				signature["placed_html"] = placed
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
@@ -201,22 +209,27 @@ def handed_picture(chosen, memo):
 MAX_PICTURES_BYTES = 512 * 1024
 
 
-def handed_pictures(chosen, memo):
+def handed_pictures(chosen, memo, handed=None):
 	"""The pictures of a company signature in the order they are read, by their bytes as MailCraft keeps a signature's
-	pictures, for a page that places more than one: [{data, name, alt, width, lead?}]. "Photo left": the person's
-	photo beside the words (`lead`), then the company's logo under them; without a photo (the person did not agree), the
-	logo alone, under the words. "Logo left" and "Logo above": the logo, beside or above them (`lead`). None for any
-	other layout, a person's own signature, and pictures MailCraft would not keep (handed_picture says which); one
-	that would make them weigh more than MAX_PICTURES_BYTES together is left out."""
+	pictures, for a page that places more than one: [{data, name, alt, width, lead?, href?}]. "Photo left": the
+	person's photo beside the words (`lead`), then the company's logo under them; without a photo (the person did not
+	agree), the logo alone, under the words. "Logo left" and "Logo above": the logo, beside or above them (`lead`).
+	Whatever the layout, the template's banner last, under the signature, with the https address it leads to (`href`).
+	None for a signature with none of these (another layout without a banner, a person's own signature), and for
+	pictures MailCraft would not keep (handed_picture says which); one that would make them weigh more than
+	MAX_PICTURES_BYTES together is left out. The address of each picture handed is added to `handed`, when given."""
 	import base64
 	import os
 	from urllib.parse import unquote
 
 	layout = chosen.get("layout")
+	banner = [(chosen.get("banner"), False)]
 	if layout in PHOTO_LAYOUTS:
-		wanted = [(chosen.get("photo"), True), (chosen.get("logo"), False)]
+		wanted = [(chosen.get("photo"), True), (chosen.get("logo"), False), *banner]
 	elif layout in PICTURE_LAYOUTS:
-		wanted = [(chosen.get("logo"), True)]
+		wanted = [(chosen.get("logo"), True), *banner]
+	elif isinstance(chosen.get("banner"), dict):
+		wanted = banner
 	else:
 		return None
 	pictures, total = [], 0
@@ -231,7 +244,7 @@ def handed_pictures(chosen, memo):
 			continue
 		total += len(data)
 		name = os.path.basename(unquote(picture["src"].split("?", 1)[0])) or "picture"
-		handed = {
+		handed_item = {
 			"data": base64.b64encode(data).decode("ascii"),
 			"name": name[:100],
 			"alt": picture.get("alt") or "",
@@ -239,8 +252,13 @@ def handed_pictures(chosen, memo):
 		}
 		# Only the first picture read can be beside or above the words
 		if lead and not pictures:
-			handed["lead"] = True
-		pictures.append(handed)
+			handed_item["lead"] = True
+		# The banner's link, an https address (signatures._banner_of)
+		if picture.get("href"):
+			handed_item["href"] = picture["href"]
+		pictures.append(handed_item)
+		if handed is not None:
+			handed.append(picture["src"])
 	return pictures or None
 
 
@@ -268,7 +286,11 @@ def without_picture(html, src):
 	tree = BeautifulSoup(html, "html.parser")
 	for image in tree.find_all("img"):
 		if (image.get("src") or "").strip() == src:
+			link = image.find_parent("a")
 			image.decompose()
+			# A link that held nothing but the picture (the banner's) goes with it: empty, it would be a link to nowhere
+			if link is not None and not link.get_text(strip=True) and not link.find("img"):
+				link.decompose()
 	return str(tree)
 
 

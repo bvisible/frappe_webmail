@@ -2303,6 +2303,36 @@ class TestNeoMailIsHandedThePhoto(PhotoTestCase):
 		with patch.object(neomail, "MAX_PICTURES_BYTES", len(base64.b64decode(both[0]["data"])) + 1):
 			self.assertEqual(named(neomail.handed_pictures(with_photo, {})), named(both)[:1])
 
+	def test_the_banner_goes_last_with_its_link_whatever_the_layout(self):
+		"""handed_pictures: the template's banner under the signature, after the photo and the logo, with the https
+		address it leads to; and the address of every picture handed, for the HTML a placing build reads."""
+		from frappe_webmail.www import neomail
+
+		logo = picture_file(self, width=40, height=10)
+		image = picture_file(self, width=400, height=80, colour=(200, 120, 60))
+		for layout, count in (("Logo left", 2), ("Text only", 1)):
+			handed = []
+			chosen = render_person(template(layout, **banner(banner_image=image)), person(logo=logo))
+			pictures = neomail.handed_pictures(chosen, {}, handed)
+			self.assertEqual(len(pictures), count, layout)
+			self.assertEqual(pictures[-1]["href"], "https://example.com/fair", layout)
+			self.assertNotIn("lead", pictures[-1], layout)
+			self.assertTrue(all("href" not in p for p in pictures[:-1]), layout)
+			self.assertEqual(handed[-1], image, layout)
+		# A banner whose link is no https address goes as a picture alone
+		plain = render_person(
+			template("Text only", **banner(banner_image=image, banner_url="http://example.com")), person()
+		)
+		self.assertNotIn("href", neomail.handed_pictures(plain, {})[0])
+
+	def test_a_picture_left_out_takes_its_empty_link_with_it(self):
+		from frappe_webmail.www.neomail import without_picture
+
+		html = '<p>Ada</p><a href="https://example.com/fair"><img src="/files/b.png" alt="Fair"></a><a href="https://x.org">x</a>'
+		left = without_picture(html, "/files/b.png")
+		self.assertNotIn("example.com/fair", left)
+		self.assertIn('<a href="https://x.org">x</a>', left, "a link with words stays")
+
 	def test_the_page_hands_neomail_the_photo_and_keeps_the_banner(self):
 		from frappe_webmail.www import neomail
 
@@ -2310,11 +2340,8 @@ class TestNeoMailIsHandedThePhoto(PhotoTestCase):
 		self.choose(photo_allowed=1)
 		photo = frappe.db.get_value(PREFERENCE, {"user": USER}, "photo")
 		self.assertTrue(photo)
-		self.make_template(
-			"photo",
-			layout="Photo left",
-			**banner(banner_image=picture_file(self, width=400, height=80, colour=(200, 120, 60))),
-		)
+		banner_image = picture_file(self, width=400, height=80, colour=(200, 120, 60))
+		self.make_template("photo", layout="Photo left", **banner(banner_image=banner_image))
 		account = {
 			"name": "signatures_box@webmail.test",
 			"email": "signatures_box@webmail.test",
@@ -2334,6 +2361,11 @@ class TestNeoMailIsHandedThePhoto(PhotoTestCase):
 		self.assertTrue(signature["logo"]["data"])
 		self.assertNotIn(photo, signature["html"], "the photo goes by its bytes, not in the HTML")
 		self.assertIn('href="https://example.com/fair"', signature["html"], "the banner stays, as a link")
+		# A build that places every picture: the banner by its bytes with its link, and an HTML without it
+		self.assertEqual(signature["pictures"][-1]["href"], "https://example.com/fair")
+		self.assertNotIn(banner_image, signature["placed_html"])
+		self.assertNotIn("https://example.com/fair", signature["placed_html"], "no link left to nowhere")
+		self.assertIn("Sigtest Person", signature["placed_html"])
 		self.assertIn("Sigtest Person", signature["text"])
 		self.assertIn("Meet us at the fair: https://example.com/fair", signature["text"])
 
