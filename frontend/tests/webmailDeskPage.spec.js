@@ -80,9 +80,20 @@ describe("the webmail's page, where NeoMail is in the desk", () => {
 		expect(open("/app/webmail").pushed.map((push) => push.url)).toEqual(["/app/neomail"]);
 	});
 
-	it("stays for its signatures, written there, and builds itself", () => {
+	it("stays for what NeoMail has no equivalent of yet, its signatures, filters and automations, and builds itself", () => {
 		vi.useFakeTimers();
-		const { frappe, pushed } = open("/app/webmail?signatures=1");
+		for (const address of ["/app/webmail?signatures=1", "/app/webmail?filters=1", "/app/webmail?automations=1"]) {
+			document.body.innerHTML = "";
+			const { frappe, pushed } = open(address);
+			expect(pushed, address).toEqual([]);
+			expect(frappe.ui.make_app_page, address).toHaveBeenCalledTimes(1);
+		}
+	});
+
+	it("is the webmail again in a tab whose NeoMail found itself switched off", () => {
+		vi.useFakeTimers();
+		// neomail.js set frappe.boot.neomail_in_desk to 0 when NeoMail answered it is not offered any more
+		const { frappe, pushed } = open("/app/webmail", { neomail: false });
 		expect(pushed).toEqual([]);
 		expect(frappe.ui.make_app_page).toHaveBeenCalledTimes(1);
 	});

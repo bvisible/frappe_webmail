@@ -544,6 +544,9 @@ describe("what an address asks NeoMail's page", () => {
 			"/app/neomail?account=a%40example.org&email=E7V9ZSU5CT1g"
 		);
 		expect(host.deskAddress("?signatures=1&uid=4")).toBeNull();
+		// What NeoMail has no equivalent of yet stays the webmail's too
+		expect(host.deskAddress("?filters=1")).toBeNull();
+		expect(host.deskAddress("?automations=1&account=a%40example.org")).toBeNull();
 	});
 });
 

@@ -431,4 +431,40 @@ describe("the desk's page", () => {
 		expect(posted).toEqual([]);
 		expect(left(replaced)).toBe("/app/neomail");
 	});
+
+	it("opens what a link followed later asks, from the address or from the desk's route options, and clears both", async () => {
+		const key = { account: "ada@example.org", mailbox: "MQXJjaGl2ZQ", email: "E7V31ZQXJjaGl2ZQ" };
+		const { tell, posted, frappe, wrapper, fetch } = await open({ key });
+		tell(STATE);
+		expect(posted).toEqual([]);
+		// A link of the desk (<a>) followed while the page is open: its query is in frappe.route_options
+		frappe.route_options = { account: "ada@example.org", folder: "Archive", uid: "31", other: "kept" };
+		frappe.pages.neomail.on_page_show(wrapper);
+		await vi.waitFor(() => expect(posted.length).toBe(1));
+		expect(posted[0][0]).toMatchObject({ name: "message.open", params: { id: "E7V31ZQXJjaGl2ZQ" } });
+		expect(frappe.route_options).toEqual({ other: "kept" });
+		const asked = fetch.mock.calls.filter(([url]) => String(url).includes("message_key"));
+		expect(asked.length).toBe(1);
+		expect(asked[0][0]).toContain("folder=Archive&uid=31");
+		// The address of a later show, its query taken off
+		at("/app/neomail?account=ada%40example.org&email=E7V9ZQXJjaGl2ZQ");
+		const replaced = vi.spyOn(window.history, "replaceState");
+		frappe.pages.neomail.on_page_show(wrapper);
+		await vi.waitFor(() => expect(posted.length).toBe(2));
+		expect(posted[1][0].params).toEqual({ account: "ada@example.org", id: "E7V9ZQXJjaGl2ZQ" });
+		expect(left(replaced)).toBe("/app/neomail");
+		// Shown again with nothing asked (the address as the browser left it): nothing sent again
+		at(left(replaced));
+		frappe.pages.neomail.on_page_show(wrapper);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(posted.length).toBe(2);
+	});
+
+	it("gives the webmail back in this tab when NeoMail was switched off since the desk started", async () => {
+		const answer = Promise.resolve(new Response("{}", { status: 404 }));
+		const { wrapper, frappe } = await open({ answer, boot: { neomail_in_desk: 1 } });
+		await vi.waitFor(() => expect(wrapper.querySelector(".neomail-desk-note")).toBeTruthy());
+		expect(frappe.boot.neomail_in_desk).toBe(0);
+		expect(wrapper.querySelector(".neomail-desk-note a").getAttribute("href")).toBe("/app/webmail");
+	});
 });

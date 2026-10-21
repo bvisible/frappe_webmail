@@ -27,6 +27,7 @@ STAFF = "webmail_neomail_desk_staff@example.com"
 NOBOX = "webmail_neomail_desk_nobox@example.com"
 MAILBOX = "webmail_neomail_desk_box@webmail.test"
 HANDOVER = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.hand_over"
+MESSAGE_KEY = "frappe_webmail.frappe_webmail.page.neomail.neomail.message_key"
 SHARED_SCRIPT = ("frappe_webmail", "public", "js", "neomail_host.js")
 # What the shared script defines, found in each page that includes it
 DEFINED = "window.neomailHost = (function () {"
@@ -443,3 +444,121 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		frappe.set_user(PORTAL)
 		with self.assertRaises(frappe.PermissionError):
 			desk.message_key(account=MAILBOX, folder="INBOX", uid="1")
+
+	def test_a_load_of_the_webmail_is_answered_by_the_server_with_a_302_to_neomail(self):
+		"""Through Frappe's own answer to an address (frappe.website.serve.get_response): the desk's address is a
+		website page, and the redirect raised while it is rendered is the answer."""
+		from frappe.website.serve import get_response
+		from werkzeug.test import EnvironBuilder
+		from werkzeug.wrappers import Request
+
+		frappe.set_user(STAFF)
+		query = urlencode({"account": MAILBOX, "folder": "INBOX", "uid": "31"})
+		request = Request(EnvironBuilder(path="/app/webmail", query_string=query).get_environ())
+		# www/app.py commits as it builds the desk's boot: not the test's records
+		with patch.object(frappe.local, "request", request, create=True), patch.object(frappe.db, "commit"):
+			response = get_response("app/webmail")
+		self.assertEqual(response.status_code, 302)
+		self.assertEqual(response.headers["Location"], "/app/neomail?" + query)
+
+	def test_what_only_the_webmail_has_stays_its_own(self):
+		"""Its signatures, filters and automations: NeoMail has no equivalent of them yet."""
+		for key in ("signatures", "filters", "automations"):
+			self.assertIsNone(desk.neomail_address({key: "1", "uid": "4"}), key)
+		frappe.set_user(STAFF)
+		for key in ("filters", "automations"):
+			self.assertIsNone(self._loaded("/app/webmail", **{key: "1"}), key)
+
+	def test_a_message_of_a_mailbox_shared_with_the_person_is_named_too(self):
+		from frappe_webmail import mailcraft_jmap as jmap
+
+		shared = "webmail_neomail_desk_shared@webmail.test"
+		if not frappe.db.exists("Webmail Account", shared):
+			account = frappe.get_doc(
+				{
+					"doctype": "Webmail Account",
+					"email": shared,
+					"user": "Administrator",
+					"sender_name": "Shared",
+					"auth_type": "Password",
+					"imap_host": "imap.test.local",
+					"imap_password": "x",
+					"smtp_host": "smtp.test.local",
+					"smtp_password": "x",
+					"enabled": 1,
+				}
+			)
+			account.append("allowed_users", {"user": STAFF})
+			account.insert(ignore_permissions=True)
+		frappe.set_user(STAFF)
+		with patch.object(jmap, "_validities", return_value={"INBOX": 3}):
+			self.assertEqual(
+				desk.message_key(account=shared, folder="INBOX", uid="8")["email"],
+				jmap.email_id("INBOX", 3, 8),
+			)
+
+	def test_another_s_mailbox_and_a_missing_one_are_answered_alike_and_no_authorization_gets_in(self):
+		other = "webmail_neomail_desk_other@webmail.test"
+		if not frappe.db.exists("Webmail Account", other):
+			frappe.get_doc(
+				{
+					"doctype": "Webmail Account",
+					"email": other,
+					"user": "Administrator",
+					"sender_name": "Other",
+					"auth_type": "Password",
+					"imap_host": "imap.test.local",
+					"imap_password": "x",
+					"smtp_host": "smtp.test.local",
+					"smtp_password": "x",
+					"enabled": 1,
+				}
+			).insert(ignore_permissions=True)
+		frappe.set_user(STAFF)
+		said = []
+		for account in (other, "webmail_neomail_nobody@webmail.test"):
+			with self.assertRaises(frappe.ValidationError) as caught:
+				desk.message_key(account=account, folder="INBOX", uid="1")
+			said.append(str(caught.exception))
+		self.assertEqual(said[0], said[1], "« not yours » would say which addresses have a mailbox here")
+		for authorization in ("Bearer something", "token api-key:api-secret"):
+			self.sent = {"Authorization": authorization}
+			with self.assertRaises(frappe.PermissionError, msg=authorization):
+				desk.message_key(account=MAILBOX, folder="INBOX", uid="1")
+
+	def test_a_mailbox_may_be_named_by_its_address(self):
+		"""Webmail.vue took the mailbox's name or its address: a mailbox whose name is not its address is found by the
+		latter, then get_account says who may."""
+		with (
+			patch.object(frappe.db, "exists", return_value=False),
+			patch.object(frappe.db, "get_value", return_value="Desk Box (renamed)") as by_address,
+		):
+			self.assertEqual(desk._mailbox_name(" box@example.org "), "Desk Box (renamed)")
+		self.assertEqual(by_address.call_args.args[1], {"email": "box@example.org"})
+		with (
+			patch.object(frappe.db, "exists", return_value=False),
+			patch.object(frappe.db, "get_value", return_value=None),
+		):
+			self.assertEqual(desk._mailbox_name("nobody@example.org"), "nobody@example.org")
+		self.assertEqual(desk._mailbox_name(MAILBOX), MAILBOX)
+
+	def test_the_message_key_is_asked_so_many_times_a_minute_at_most(self):
+		"""One IMAP STATUS a call: a page that would ask in a loop is stopped (rate_limit, by the caller's address)."""
+		import secrets
+
+		from frappe_webmail import mailcraft_jmap as jmap
+
+		frappe.set_user(STAFF)
+		request = SimpleNamespace(method="GET", path="/api/method/" + MESSAGE_KEY)
+		with (
+			patch.object(frappe.local, "request", request, create=True),
+			patch.object(
+				frappe.local, "request_ip", "198.51.100." + str(secrets.randbelow(250) + 1), create=True
+			),
+			patch.object(frappe.local, "form_dict", frappe._dict(cmd=MESSAGE_KEY + secrets.token_hex(4))),
+			patch.object(jmap, "_validities", return_value={"INBOX": 3}),
+		):
+			for _call in range(60):
+				desk.message_key(account=MAILBOX, folder="INBOX", uid="1")
+			with self.assertRaises(frappe.RateLimitExceededError):
+				desk.message_key(account=MAILBOX, folder="INBOX", uid="1")

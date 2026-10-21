@@ -170,12 +170,14 @@ function webmail_build(wrapper) {
 		frappe.webmail.init(container);
 	} else {
 		// Show placeholder
-		container.innerHTML = `
-			<div style="padding: 40px; text-align: center; color: #8d99a6;">
-				<h3>📧 Webmail</h3>
-				<p>Chargement de l'application...</p>
-			</div>
-		`;
+		const waiting = document.createElement("div");
+		waiting.style.cssText = "padding: 40px; text-align: center; color: #8d99a6;";
+		const title = document.createElement("h3");
+		title.textContent = __("Webmail");
+		const words = document.createElement("p");
+		words.textContent = __("Loading the webmail…");
+		waiting.append(title, words);
+		container.replaceChildren(waiting);
 
 		// Retry initialization
 		setTimeout(function () {

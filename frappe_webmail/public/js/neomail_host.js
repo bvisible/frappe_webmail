@@ -369,14 +369,18 @@ window.neomailHost = (function () {
 		return found ? "M" + found[1] : null;
 	}
 
+	// What the webmail's address opens that NeoMail has no equivalent of yet: its signatures, filters and automations
+	// (page/neomail/neomail.py, WEBMAIL_ONLY).
+	const WEBMAIL_ONLY = ["signatures", "filters", "automations"];
+
 	/*
 	 * Where an address of the webmail's desk page leads where NeoMail is in the desk: /app/neomail with what the address
-	 * asked (a message, a folder, a new message); null for what only the webmail does, its signatures. Kept the same
-	 * as the server's own (page/neomail/neomail.py, neomail_address).
+	 * asked (a message, a folder, a new message); null for what only the webmail does (WEBMAIL_ONLY). Kept the same as
+	 * the server's own (page/neomail/neomail.py, neomail_address).
 	 */
 	function deskAddress(search) {
 		const query = new URLSearchParams(search || "");
-		if (query.has("signatures")) return null;
+		if (WEBMAIL_ONLY.some((key) => query.has(key))) return null;
 		const kept = new URLSearchParams();
 		if (query.has("compose")) {
 			kept.set("compose", "1");
@@ -415,6 +419,7 @@ window.neomailHost = (function () {
 		viewDock,
 		badgeOf,
 		followChoice,
+		intentKeys: INTENT_KEYS,
 		intentOf,
 		withoutIntent,
 		mailboxOfEmail,

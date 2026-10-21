@@ -2128,6 +2128,10 @@ msgstr "Erreur de chargement"
 msgid "Loading files..."
 msgstr "Chargement des fichiers…"
 
+#: frappe_webmail/frappe_webmail/page/webmail/webmail.js:178
+msgid "Loading the webmail…"
+msgstr "Chargement du webmail…"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:148
 #: frontend/src/components/AutomationsPanel.vue:31

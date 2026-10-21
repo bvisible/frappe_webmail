@@ -242,16 +242,36 @@
 		}
 	}
 
-	// What the address asks NeoMail to open, read once and taken off the address (its `build` and `sample` stay)
+	// What the address asks NeoMail to open, each time the page comes to the front (a link of the desk followed while
+	// it is open included): from the address, and from frappe.route_options, where the desk puts the query of a link
+	// it follows itself (router.js); taken off both once read (the address keeps its `build` and `sample`). True when
+	// there is something to open.
 	function take_intent() {
-		state.intent = window.neomailHost.intentOf(window.location.search);
-		if (!state.intent) return;
+		const keys = window.neomailHost.intentKeys;
+		const asked = new URLSearchParams(window.location.search);
+		const options = frappe.route_options || {};
+		for (const key of keys) {
+			if (options[key] != null && !asked.has(key)) asked.set(key, String(options[key]));
+		}
+		const intent = window.neomailHost.intentOf("?" + asked.toString());
+		if (frappe.route_options) {
+			keys.forEach((key) => delete frappe.route_options[key]);
+			if (!Object.keys(frappe.route_options).length) frappe.route_options = null;
+		}
 		const rest = window.neomailHost.withoutIntent(window.location.search);
-		window.history.replaceState(
-			window.history.state,
-			"",
-			window.location.pathname + rest + window.location.hash
-		);
+		if (rest !== window.location.search) {
+			window.history.replaceState(
+				window.history.state,
+				"",
+				window.location.pathname + rest + window.location.hash
+			);
+		}
+		if (!intent) return false;
+		state.intent = intent;
+		state.key = null;
+		state.delivered = false;
+		state.opening = null;
+		return true;
 	}
 
 	// The intent as NeoMail takes it: a message by its JMAP id (the server makes it from the webmail's account, folder
@@ -307,6 +327,9 @@
 		take_intent();
 		const [answer] = await Promise.all([ask_handover(), resolve_intent()]);
 		if (answer && answer.status === 404) {
+			// NeoMail was switched off since the desk started: its boot still says the webmail leads here, which would
+			// send the link below straight back. In this tab, the webmail is the webmail again.
+			if (frappe.boot) frappe.boot.neomail_in_desk = 0;
 			say(__("NeoMail is not offered on this site."), "/app/webmail", __("Open the webmail"));
 			return;
 		}
@@ -434,6 +457,8 @@
 	frappe.pages[PAGE].on_page_show = function () {
 		front(true);
 		if (state.pending) start();
+		// A link followed while the page was open (or hidden) asks NeoMail something too
+		if (take_intent()) resolve_intent();
 		point_sign_in();
 		lend();
 		requestAnimationFrame(fit);

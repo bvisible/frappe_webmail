@@ -14,16 +14,18 @@ Desk User, and its handover refuses a portal account and a visitor.
 The handover holds tokens: the page asks for it each time it opens (`hand_over`, never in the page's script, which the
 desk keeps in the browser's storage, nor in the boot), and no cache keeps the answer (mailcraft_jmap.no_store).
 
-Where the page is offered to the person (in_desk_for), the webmail of the desk gives way to it (Jérémy, 21.10: « la
-partie webmail disparaît au profit de NeoMail »): /app/webmail and the addresses below it lead to /app/neomail, with
+Where the page is offered to the person (in_desk_for), the webmail of the desk gives way to it (Jérémy's decision of
+21.10: the webmail goes, NeoMail takes its place): /app/webmail and the addresses below it lead to /app/neomail, with
 what a link asked (a message, a folder, a new message), by the server for an address loaded (lead_to_neomail) and by
-the webmail's page in the desk (webmail.js); only its signatures stay the webmail's, where they are written. Elsewhere
-nothing changes, and the webmail's API stays as it is (the phone uses it). A message the webmail's links name by
-(account, folder, uid) is opened in NeoMail by its JMAP id (message_key).
+the webmail's page in the desk (webmail.js). What only the webmail has stays its own (WEBMAIL_ONLY: its signatures,
+filters and automations, which NeoMail has no equivalent of yet). Elsewhere nothing changes, and the webmail's API
+stays as it is (the phone uses it). A message the webmail's links name by (account, folder, uid) is opened in NeoMail
+by its JMAP id (message_key).
 """
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import cint
 
 # The site's configuration key that puts NeoMail in the desk.
@@ -48,20 +50,24 @@ def in_desk_for(user=None):
 	return frappe.get_cached_value("User", user, "user_type") == "System User" and in_desk()
 
 
-# The webmail's desk page and the addresses below it (not /app/webmail-account, its mailboxes' settings)
+# The webmail's desk page and the addresses below it (not /app/webmail-account, its mailboxes' settings and sharing)
 WEBMAIL_ROUTE = "/app/webmail"
 NEOMAIL_ROUTE = "/app/" + PAGE
+# What the webmail's address opens that NeoMail has no equivalent of yet: those addresses stay the webmail's
+# (Webmail.vue, applyUrlIntent). Its signatures, where NeoMail's File > Signatures leads; its filters (the server's
+# Email Filter rules, which NeoMail's own rules are not); its automations (Nora's, on the mailboxes).
+WEBMAIL_ONLY = ("signatures", "filters", "automations")
 
 
 def neomail_address(query):
 	"""Where an address of the webmail leads where NeoMail is in the desk: /app/neomail with what the address asked
 	(`compose`; a message: `account`, `folder`, `uid`, or `account`, `email`; a folder), as the webmail's links ask it
-	(Webmail.vue, applyUrlIntent); None for what only the webmail does, its signatures (`signatures`, where NeoMail's
-	own File > Signatures leads). Kept the same as the page's own (public/js/neomail_host.js, deskAddress)."""
+	(Webmail.vue, applyUrlIntent); None for what only the webmail does (WEBMAIL_ONLY). Kept the same as the page's own
+	(public/js/neomail_host.js, deskAddress)."""
 	from urllib.parse import urlencode
 
 	query = query or {}
-	if "signatures" in query:
+	if any(key in query for key in WEBMAIL_ONLY):
 		return None
 	if "compose" in query:
 		kept = {"compose": "1"}
@@ -95,9 +101,7 @@ def lead_to_neomail(context):
 	if target is None:
 		return None
 	frappe.local.flags.redirect_location = target
-	redirect = frappe.Redirect()
-	redirect.http_status_code = 302
-	raise redirect
+	raise frappe.Redirect(302)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -127,12 +131,14 @@ def hand_over(sample=None, build=None):
 
 
 @frappe.whitelist(methods=["GET"])
+@rate_limit(limit=60, seconds=60)
 def message_key(account=None, folder=None, uid=None):
 	"""For the page: a message as the webmail's links name it (`account`, its `folder`, the inbox when left out, and its
 	`uid`), as NeoMail opens it: {account (its address), mailbox (the folder's JMAP id), email (the message's JMAP id,
 	made as the facade makes it, with the folder's UIDVALIDITY), or only the mailbox without a `uid`}. Only for a
 	mailbox of the person's own or shared with them (the webmail's rule: another's is answered as one that does not
-	exist), and with the session's CSRF token, as the page's other calls."""
+	exist), and with the session's CSRF token, as the page's other calls. `account` is the mailbox's name or its
+	address, as the webmail took it. One IMAP STATUS a call: so many a minute at most (rate_limit)."""
 	from frappe_webmail import mailcraft_jmap as jmap
 	from frappe_webmail import webmail_api as webmail
 	from frappe_webmail.www import neomail
@@ -142,7 +148,7 @@ def message_key(account=None, folder=None, uid=None):
 	jmap.page_request_only()
 	neomail.desk_people_only()
 	jmap.csrf_token_required()
-	mailbox = webmail.get_account(account)
+	mailbox = webmail.get_account(_mailbox_name(account))
 	folder = str(folder or "").strip() or "INBOX"
 	answer = {"account": mailbox.email, "mailbox": jmap.mailbox_id(folder)}
 	if uid is None or str(uid).strip() == "":
@@ -155,6 +161,15 @@ def message_key(account=None, folder=None, uid=None):
 		frappe.throw(_("This message cannot be found."))
 	answer["email"] = jmap.email_id(folder, validity, number)
 	return answer
+
+
+def _mailbox_name(account):
+	"""The name of the mailbox a link names by its name or its address (Webmail.vue took either), for get_account,
+	which then says who may: a name or an address of no mailbox is left as it is, and answered as one."""
+	account = str(account or "").strip()
+	if account and not frappe.db.exists("Webmail Account", account):
+		return frappe.db.get_value("Webmail Account", {"email": account}, "name") or account
+	return account
 
 
 def extend_bootinfo(bootinfo):

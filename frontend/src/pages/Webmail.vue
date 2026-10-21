@@ -1116,6 +1116,8 @@ export default {
 		//   /app/webmail?account=<name|email>&folder=<F>&uid=<n> → open an email
 		//   /app/webmail?signatures=1                       → open the signatures (NeoMail's
 		//     File › Signatures leads here: the signatures of the mailboxes it is handed are these)
+		//   /app/webmail?filters=1, ?automations=1          → open the filters, the automations: what NeoMail
+		//     has no equivalent of yet, which stays reachable where the webmail leads to it (page/neomail/neomail.py)
 		// The params are consumed once and stripped from the URL so reloads
 		// and the browser back button behave normally afterwards.
 		applyUrlIntent() {
@@ -1132,6 +1134,16 @@ export default {
 			}
 			if (params.get("signatures")) {
 				this.showSignatures = true;
+				this.cleanIntentUrl();
+				return;
+			}
+			if (params.get("filters")) {
+				this.showFilters = true;
+				this.cleanIntentUrl();
+				return;
+			}
+			if (params.get("automations")) {
+				this.showAutomations = true;
 				this.cleanIntentUrl();
 				return;
 			}
