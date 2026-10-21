@@ -18,8 +18,10 @@ Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_calendars
 """
 
+import importlib.util
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -39,6 +41,7 @@ NOBODY_BOX = "mailcraft_calendars_nobody@webmail.test"
 READER = "mailcraft_calendars_reader@example.com"
 READER_BOX = "mailcraft_calendars_reader@webmail.test"
 PORTAL = "mailcraft_calendars_portal@example.com"  # a Website User
+PORTAL_BOX = "mailcraft_calendars_portal@webmail.test"
 JANUARY = {"after": "2030-01-01T00:00:00Z", "before": "2030-02-01T00:00:00Z"}
 FEBRUARY = {"after": "2030-02-01T00:00:00Z", "before": "2030-03-01T00:00:00Z"}
 JULY = {"after": "2030-07-01T00:00:00Z", "before": "2030-08-01T00:00:00Z"}
@@ -57,10 +60,10 @@ def _read_only(jmap_id):
 def _erp_dates_offered():
 	"""Whether the Suite shows the ERP's dates here: its sources, and an app that provides them (neoffice_theme)."""
 	try:
-		from suite.calendar import sources
-	except ImportError:
-		return False
-	return bool(frappe.get_hooks("suite_calendar_sources"))
+		found = importlib.util.find_spec("suite.calendar.sources")
+	except ModuleNotFoundError:
+		found = None
+	return bool(found and frappe.get_hooks("suite_calendar_sources"))
 
 
 @unittest.skipUnless("suite" in frappe.get_installed_apps(), "the calendars are the Suite's")
@@ -125,7 +128,16 @@ class TestMailCraftCalendars(FrappeTestCase):
 		_user(READER, ["Blogger"])
 		_mailbox(READER_BOX, READER)
 		_user(PORTAL, [])
+		_mailbox(PORTAL_BOX, PORTAL)
 		cls.reader_account = get_local_account(READER, create=True)
+		# A calendar account of the portal user's own, which the Suite never makes for one: what it is asked as them
+		# is then theirs to ask.
+		cls.portal_account = (
+			frappe.db.get_value("Local Calendar Account", {"user": PORTAL})
+			or frappe.get_doc({"doctype": "Local Calendar Account", "user": PORTAL})
+			.insert(ignore_permissions=True)
+			.name
+		)
 		# The person's dates in the ERP, made as fixtures are (the facade reads them as the person): a to-do allocated
 		# to them, and an Event of theirs (no mailbox: the calendar bridge copies it nowhere).
 		cls.todo = cls.fair = None
@@ -162,7 +174,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 	@classmethod
 	def tearDownClass(cls):
 		frappe.set_user("Administrator")
-		for account in (cls.account, cls.reader_account):
+		for account in (cls.account, cls.reader_account, cls.portal_account):
 			for doctype in ("Local Calendar Event", "Local Calendar"):
 				for name in frappe.get_all(doctype, filters={"account": account}, pluck="name"):
 					frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
@@ -177,6 +189,8 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self.trial = patch.dict(frappe.local.conf, {"neomail_disabled": 0})
 		self.trial.start()
 		self.lang = frappe.local.lang
+		# What an earlier test kept of the read-only windows, and the silences of their failures.
+		frappe.cache().delete_keys("mailcraft_calendar_")
 
 	def tearDown(self):
 		self.trial.stop()
@@ -1373,17 +1387,24 @@ class TestMailCraftCalendars(FrappeTestCase):
 		return answer[1]
 
 	def test_the_erp_dates_are_listed_read_only_with_the_desks_names_and_colours(self):
-		from frappe.translate import get_user_lang
 		from suite.calendar.jmap_events import get_calendars
 		from suite.mail.jmap import get_account_client
 
 		self._erp_only()
+		# The person reads French, which has the words of the sources; the request's language is the client's,
+		# settled before its token named the person: English here.
+		spoken = frappe.db.get_value("User", PERSON, "language")
+		frappe.db.set_value("User", PERSON, "language", "fr")
+		frappe.cache.hdel("lang", PERSON)
+		self.addCleanup(frappe.cache.hdel, "lang", PERSON)
+		self.addCleanup(frappe.db.set_value, "User", PERSON, "language", spoken)
+		french = frappe._("To-dos and tasks", lang="fr")
+		self.assertNotEqual(french, "To-dos and tasks", "a real translation")
 		self._as(PERSON)
 		desk = {row["id"]: row for row in self._desk_calendars(self.account) if row["id"].startswith("erp:")}
-		spoken = get_user_lang(PERSON)
-		# The request's language is the client's, settled before its token named the person: another one here.
-		frappe.local.lang = "en" if spoken != "en" else "fr"
+		frappe.local.lang = "en"
 		listed = self._calls(("Calendar/get", {"accountId": jmap.account_id(BOX), "ids": None}))[0][1]["list"]
+		self.assertEqual(frappe.local.lang, "en", "the request's language again, once answered")
 		erp = {calendars._raw(c["id"], "C"): c for c in listed if _read_only(c["id"]) == "erp"}
 		self.assertEqual(list(erp), list(desk), "the desk's, in its order")
 		self.assertIn("erp:tasks", erp)
@@ -1399,9 +1420,7 @@ class TestMailCraftCalendars(FrappeTestCase):
 				{"mayReadItems", "mayReadFreeBusy"},
 				"no right to write",
 			)
-		self.assertEqual(
-			erp["erp:tasks"]["name"], frappe._("To-dos and tasks", lang=spoken), "their language"
-		)
+		self.assertEqual(erp["erp:tasks"]["name"], french, "their language, not the request's")
 		# What a Sales User may not open is not offered: the leaves, the employees, the holiday lists, the invoices.
 		for source in ("leaves", "birthdays", "holidays", "invoices"):
 			self.assertNotIn(f"erp:{source}", erp)
@@ -1489,9 +1508,13 @@ class TestMailCraftCalendars(FrappeTestCase):
 		first = self._query(**february)
 		frappe.db.set_value("ToDo", self.todo, "description", TODO_TITLE + " (sooner)")
 		try:
+			kept = self._query(**february)
+			calendars._forget_read_only_events()
 			renamed = self._query(**february)
 		finally:
 			frappe.db.set_value("ToDo", self.todo, "description", TODO_TITLE)
+			calendars._forget_read_only_events()
+		self.assertEqual(kept["queryState"], first["queryState"], "the window as it was read, a little while")
 		self.assertEqual(renamed["ids"], first["ids"])
 		self.assertNotEqual(renamed["queryState"], first["queryState"])
 		self.assertEqual(self._query(**february)["queryState"], first["queryState"])
@@ -1576,48 +1599,80 @@ class TestMailCraftCalendars(FrappeTestCase):
 		finally:
 			sources.set_calendar_scope(self.reader_account, "mine")
 
-	def test_a_website_user_gets_no_calendar(self):
+	def test_a_website_user_gets_none_of_the_erp_data(self):
+		"""NeoMail is the desk's: a Website User is refused before anything is read, and the Suite gives them no
+		calendar account. Had they one of their own and were they let through, the Suite would still give them none
+		of the ERP's dates: its own checks apply, as the facade asks it as them."""
 		self._as(PORTAL)
 		self.assertEqual(frappe.db.get_value("User", PORTAL, "user_type"), "Website User")
-		refused = self._request(("Calendar/get", {"accountId": jmap.account_id(BOX), "ids": None}))
+		aid = jmap.account_id(PORTAL_BOX)
+		refused = self._request(("Calendar/get", {"accountId": aid, "ids": None}))
 		self.assertEqual(refused.status_code, 403, "NeoMail is the desk's")
 		self.assertIsNone(calendars._person_account())
-		if _erp_dates_offered():
-			from suite.calendar import sources
-
-			# Asked of the Suite as them, the person's account named: nothing.
-			self.assertEqual(sources.virtual_calendars(self.account), [])
-			self.assertEqual(sources.virtual_events(self.account, FEBRUARY["after"], FEBRUARY["before"]), [])
+		self._erp_only()
+		with (
+			patch.object(jmap, "_is_desk_user", return_value=True),
+			patch.object(calendars, "_person_account", return_value=self.portal_account),
+		):
+			listed, query = self._calls(
+				("Calendar/get", {"accountId": aid, "ids": None}),
+				("CalendarEvent/query", {"accountId": aid, "filter": FEBRUARY, "calculateTotal": True}),
+			)
+		self.assertEqual(listed[0], "Calendar/get", listed)
+		self.assertEqual([c["name"] for c in listed[1]["list"] if _read_only(c["id"])], [])
+		self.assertEqual((query[1]["ids"], query[1]["total"]), ([], 0))
+		self.assertEqual(calendars._read_only_calendars(self.portal_account), {})
+		self.assertEqual(
+			calendars._erp_read(
+				self.portal_account,
+				calendars._utc_date(FEBRUARY["after"], "after"),
+				calendars._utc_date(FEBRUARY["before"], "before"),
+			),
+			[],
+		)
 
 	def test_a_calendar_shared_with_the_person_is_shown_read_only(self):
 		"""A colleague's calendar the mail server lets the person read: listed and read as the desk does, written never.
 		The colleague's account is a calendar kept in the instance here, its share faked: the Suite lists it among the
-		calendars shared with the person, and opens it for them."""
+		calendars shared with the person, and opens it for them. Another calendar of that account is not shared, and
+		nothing of it is read; a share of the free and busy time alone gives no events."""
 		from suite.calendar import api as calendar_api
-		from suite.calendar import local
+		from suite.calendar import jmap_events, local
+		from suite.calendar.doctype.calendar.calendar import add_calendar
 		from suite.calendar.jmap_events import create_events, get_calendars
 		from suite.mail.jmap import get_account_client
 
 		self._as(READER)
 		colleague = get_account_client(self.reader_account)
 		calendar = get_calendars(colleague)[0]
-		uid = f"mc-cal-shared-{frappe.generate_hash(length=8)}"
+		hidden = str(add_calendar(self.reader_account, "Colleague's own"))
+		uid, private_uid = (f"mc-cal-shared-{frappe.generate_hash(length=8)}" for _n in range(2))
+		row = {"duration": "PT2H", "time_zone": "Europe/Zurich", "show_without_time": False}
 		create_events(
 			colleague,
 			self.reader_account,
 			[
 				{
+					**row,
 					"creation_id": "s",
 					"uid": uid,
 					"calendar_ids": [calendar["id"]],
 					"title": "Colleague's workshop",
 					"start": "2030-02-13T14:00:00",
-					"duration": "PT2H",
-					"time_zone": "Europe/Zurich",
-					"show_without_time": False,
-				}
+				},
+				{
+					**row,
+					"creation_id": "p",
+					"uid": private_uid,
+					"calendar_ids": [hidden],
+					"title": "Colleague's own meeting",
+					"start": "2030-02-14T14:00:00",
+				},
 			],
 		)
+		private = next(e for e in self._window(FEBRUARY, box=READER_BOX) if e.get("uid") == private_uid)
+		# How the person would name it, were its calendar shared with them.
+		private_id = calendars._event_id(f"{self.reader_account}|{calendars._raw(private['id'], 'V')}")
 		shared = f"{self.reader_account}|{calendar['id']}"
 		real = local.get_local_client
 
@@ -1664,6 +1719,37 @@ class TestMailCraftCalendars(FrappeTestCase):
 				destroy=[workshop["id"]],
 			)
 			refusal = calendars._read_only_refusal("shared")
+			# The calendar of that account that is not shared: nothing of it, even by id.
+			self.assertNotIn(private_uid, {e.get("uid") for e in self._window(FEBRUARY)})
+			hidden_got = self._calls(("CalendarEvent/get", {"accountId": aid, "ids": [private_id]}))[0][1]
+			self.assertEqual((hidden_got["list"], hidden_got["notFound"]), ([], [private_id]))
+			# Past the cap, the shared events keep their share beside the ERP's dates.
+			with patch.object(calendars, "MAX_EVENTS", 2):
+				capped = calendars._read_only_events(
+					self.account,
+					calendars._utc_date(FEBRUARY["after"], "after"),
+					calendars._utc_date(FEBRUARY["before"], "before"),
+				)
+			self.assertIn(workshop["id"], [facade for facade, _event in capped])
+			self.assertLessEqual(len(capped), 2)
+			# Shared for the free and busy time alone: listed so, and none of its events.
+			real_calendars = jmap_events.get_calendars
+
+			def free_busy(client, ids=None):
+				return [
+					{**c, "myRights": {"mayReadFreeBusy": True}} if c.get("id") == calendar["id"] else c
+					for c in real_calendars(client, ids)
+				]
+
+			with patch.object(jmap_events, "get_calendars", side_effect=free_busy):
+				listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0][1]["list"]
+				only_time = next(c for c in listed if c["id"] == theirs["id"])
+				self.assertEqual(
+					{right for right, on in only_time["myRights"].items() if on}, {"mayReadFreeBusy"}
+				)
+				self.assertNotIn(uid, {e.get("uid") for e in self._window(FEBRUARY)})
+				none = self._calls(("CalendarEvent/get", {"accountId": aid, "ids": [workshop["id"]]}))[0][1]
+				self.assertEqual(none["notFound"], [workshop["id"]])
 		self.assertEqual(refusal["type"], "forbidden")
 		self.assertEqual(
 			(answer["notCreated"], answer["notUpdated"], answer["notDestroyed"]),
@@ -1673,9 +1759,241 @@ class TestMailCraftCalendars(FrappeTestCase):
 		listed = self._calls(("Calendar/get", {"accountId": jmap.account_id(BOX), "ids": None}))[0][1]["list"]
 		self.assertNotIn(calendars._calendar_id(shared), {c["id"] for c in listed})
 		self.assertNotIn(uid, {e.get("uid") for e in self._window(FEBRUARY)})
+		gone = self._calls(
+			("CalendarEvent/get", {"accountId": jmap.account_id(BOX), "ids": [workshop["id"]]})
+		)
+		self.assertEqual(gone[0][1]["notFound"], [workshop["id"]], "nor by id")
 		self._as(READER)
 		self.assertEqual(
 			[e["title"] for e in self._window(FEBRUARY, box=READER_BOX) if e.get("uid") == uid],
 			["Colleague's workshop"],
 			"still the colleague's, unchanged",
 		)
+
+	def test_the_pages_of_a_window_read_the_erp_dates_once(self):
+		"""NeoMail pages a window and asks its total, a request a page: the ERP's dates are read once for all of them,
+		which then agree."""
+		from suite.calendar import sources
+
+		self._erp_only()
+		self._as(PERSON)
+		query = {"filter": FEBRUARY, "expandRecurrences": True}
+		with patch.object(sources, "virtual_events", wraps=sources.virtual_events) as read:
+			first = self._query(**query, position=0, limit=1, calculateTotal=True)
+			reads = read.call_count
+			pages = [first]
+			while sum(len(page["ids"]) for page in pages) < first["total"]:
+				pages.append(self._query(**query, position=sum(len(page["ids"]) for page in pages), limit=1))
+			self.assertGreaterEqual(first["total"], 2, "the to-do and the Event")
+			self.assertEqual(read.call_count, reads, "every page from what the first one read")
+			whole = self._query(**query)["ids"]
+		self.assertEqual([i for page in pages for i in page["ids"]], whole)
+
+	def test_a_date_asked_for_by_id_is_looked_for_within_bounds(self):
+		from suite.calendar import sources
+
+		self._erp_only()
+		self._as(PERSON)
+		aid = jmap.account_id(BOX)
+		events = self._window(FEBRUARY)
+		todo = next(e for e in events if e.get("title") == TODO_TITLE)
+		fair = next(e for e in events if e.get("title") == FAIR_TITLE)
+		missing = calendars._event_id("erp:tasks:todo:no-such-todo")
+
+		def get(*ids, calls=1):
+			return self._calls(*[("CalendarEvent/get", {"accountId": aid, "ids": list(ids)})] * calls)
+
+		with patch.object(sources, "virtual_events", wraps=sources.virtual_events) as read:
+			# A source not offered to them (the holiday lists), or switched off (the deliveries): not looked for.
+			unread = [
+				calendars._event_id("erp:holidays:holiday:Somewhere:2030-02-01"),
+				calendars._event_id("erp:deliveries:sales_order:SO-0001"),
+			]
+			self.assertEqual(sorted(get(*unread)[0][1]["notFound"]), sorted(unread))
+			self.assertEqual(read.call_count, 0)
+			# One that is on: each window read once in a request, however many of its calls ask.
+			calendars._forget_read_only_events()
+			self.assertEqual(get(missing)[0][1]["notFound"], [missing])
+			once = read.call_count
+			self.assertGreater(once, 0)
+			calendars._forget_read_only_events()
+			read.reset_mock()
+			self.assertTrue(all(answer[1]["notFound"] == [missing] for answer in get(missing, calls=3)))
+			self.assertEqual(read.call_count, once)
+		# So many ids a call at most are looked for again.
+		with patch.object(calendars, "MAX_LOOKUPS", 1):
+			capped = get(todo["id"], fair["id"])[0][1]
+		self.assertEqual(
+			([e["id"] for e in capped["list"]], capped["notFound"]), ([todo["id"]], [fair["id"]])
+		)
+		# Today's window is not read again when one the person queried covers it.
+		today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+		around = {
+			"after": calendars._utc_text(today - timedelta(days=100)),
+			"before": calendars._utc_text(today + timedelta(days=380)),
+		}
+		self._query(filter=around, expandRecurrences=True)
+		with patch.object(calendars, "_erp_events", wraps=calendars._erp_events) as windows:
+			get(missing)
+		read_windows = [(call.args[1], call.args[2]) for call in windows.call_args_list]
+		self.assertIn(
+			(calendars._utc_date(around["after"], "a"), calendars._utc_date(around["before"], "b")),
+			read_windows,
+		)
+		self.assertNotIn((today - calendars.TODAY_BEFORE, today + calendars.TODAY_AFTER), read_windows)
+
+	def test_a_busy_source_is_read_in_halves_down_to_a_day(self):
+		"""A source gives its oldest dates first, and the Suite keeps a page of them a read: a chunk where one gives a
+		whole page is read again in halves for it, down to a day; a day that still fills a page is said, once."""
+		from suite.calendar import sources
+
+		if not _erp_dates_offered():
+			self.skipTest("no ERP's dates here")
+		self._as(PERSON)
+		page = sources.MAX_PER_SOURCE
+
+		def entry(source, key, day):
+			return {
+				"id": f"{source}:{key}",
+				"calendars": [{"calendar_id": source}],
+				"title": key,
+				"start": f"{day}T00:00:00",
+				"duration": "P1D",
+				"show_without_time": 1,
+			}
+
+		def busy(account, from_date, to_date):
+			first, last = (calendars._utc_date(moment, "x") for moment in (from_date, to_date))
+			invoices, tasks = [], []
+			day = first
+			while day < last:
+				text = day.strftime("%Y-%m-%d")
+				invoices += [
+					entry("erp:invoices", f"{text}:{n:03d}", text)
+					for n in range(400 if text == "2030-02-20" else 15)
+				]
+				tasks.append(entry("erp:tasks", text, text))
+				day += timedelta(days=1)
+			return invoices[:page] + tasks[:page]
+
+		after, before = (calendars._utc_date(FEBRUARY[key], key) for key in ("after", "before"))
+		with (
+			patch.object(sources, "virtual_events", side_effect=busy) as read,
+			patch.object(frappe, "log_error") as logged,
+		):
+			dates = calendars._erp_read(self.account, after, before)
+			again = calendars._erp_read(self.account, after, before)
+		kinds = [next(iter(event["calendarIds"])) for _facade, event in dates]
+		self.assertEqual(kinds.count("erp:invoices"), 27 * 15 + page, "every day, the full one cut at a page")
+		self.assertEqual(kinds.count("erp:tasks"), 28)
+		self.assertEqual(len(again), len(dates))
+		self.assertLessEqual(read.call_count, 2 * calendars.ERP_SPLIT_READS)
+		self.assertEqual(
+			[call.args[0] for call in logged.call_args_list],
+			["MailCraft calendars: dates of the ERP were cut"],
+			"once",
+		)
+
+	def test_a_failure_of_the_read_only_calendars_leaves_the_persons_own(self):
+		from suite.calendar import api as calendar_api
+
+		self._as(PERSON)
+		aid = jmap.account_id(BOX)
+		with (
+			patch.object(calendar_api, "get_calendars_with_shared", side_effect=RuntimeError("down")),
+			patch.object(frappe, "log_error") as logged,
+		):
+			listed = self._calls(("Calendar/get", {"accountId": aid, "ids": None}))[0]
+			weekly = [e for e in self._window(JANUARY) if e.get("uid") == "mc-cal-weekly"]
+			counted = self._query(filter=JANUARY, expandRecurrences=True, calculateTotal=True)
+		self.assertEqual(listed[0], "Calendar/get", listed)
+		self.assertTrue(listed[1]["list"])
+		self.assertFalse([c for c in listed[1]["list"] if _read_only(c["id"])])
+		self.assertEqual(len(weekly), 3, "the person's own events, as ever")
+		self.assertEqual(counted["total"], len(counted["ids"]))
+		self.assertEqual(
+			[call.args[0] for call in logged.call_args_list],
+			["MailCraft calendars: the read-only calendars could not be read"],
+			"said once in a while",
+		)
+
+	def test_the_persons_own_calendars_alone_read_nothing_else(self):
+		from suite.calendar import api as calendar_api
+
+		self._as(PERSON)
+		aid = jmap.account_id(BOX)
+		own = self._calendar()
+		with patch.object(
+			calendar_api, "get_calendars_with_shared", wraps=calendar_api.get_calendars_with_shared
+		) as listing:
+			found = self._query(
+				filter={**JANUARY, "inCalendars": [own]}, expandRecurrences=True, calculateTotal=True
+			)
+			listed = self._calls(("Calendar/get", {"accountId": aid, "ids": [own]}))[0][1]["list"]
+			got = self._calls(("CalendarEvent/get", {"accountId": aid, "ids": found["ids"]}))[0][1]
+		self.assertEqual([c["id"] for c in listed], [own])
+		self.assertTrue(found["ids"] and len(got["list"]) == len(found["ids"]))
+		self.assertEqual(listing.call_count, 0)
+
+	def test_a_window_past_2100_is_empty_not_a_failure(self):
+		self._as(PERSON)
+		far = self._query(
+			# Its last chunk of 90 days would reach past the year 9999.
+			filter={"after": "9999-10-01T00:00:00Z", "before": "9999-12-31T00:00:00Z"},
+			expandRecurrences=True,
+			calculateTotal=True,
+		)
+		self.assertEqual((far["ids"], far["total"]), ([], 0))
+
+	def test_a_short_page_of_the_persons_own_is_not_followed_by_the_others(self):
+		"""A server that gives fewer of the person's events than asked, before the end it said: the page is theirs
+		alone, the read-only ones come after the last of them."""
+		from suite.calendar import jmap_events
+
+		self._as(PERSON)
+		real = jmap_events.query_events
+
+		def short(client, **arguments):
+			answer = real(client, **arguments)
+			return {**answer, "ids": (answer.get("ids") or [])[:1]}
+
+		window = {"after": "2030-01-01T00:00:00Z", "before": "2030-03-01T00:00:00Z"}
+		with patch.object(jmap_events, "query_events", side_effect=short):
+			page = self._query(filter=window, expandRecurrences=True, limit=10)
+		self.assertEqual(len(page["ids"]), 1)
+		self.assertIsNone(_read_only(page["ids"][0]))
+
+	def test_a_documents_address_writes_its_name(self):
+		event = calendars._erp_event(
+			{
+				"id": "erp:holidays:holiday:Public holidays 2030:2030-02-01",
+				"calendars": [{"calendar_id": "erp:holidays"}],
+				"start": "2030-02-01T00:00:00",
+				"duration": "P1D",
+				"show_without_time": 1,
+				"route": "/app/holiday-list/Public holidays 2030",
+			}
+		)
+		self.assertTrue(
+			event["links"]["document"]["href"].endswith("/app/holiday-list/Public%20holidays%202030"),
+			event["links"],
+		)
+		for elsewhere in ("https://example.org/app/x/y", "/login", "/app/holiday-list"):
+			self.assertNotIn("links", calendars._erp_event({**event, "route": elsewhere}), elsewhere)
+
+	def test_the_persons_language_is_left_as_it_was(self):
+		from frappe.translate import get_user_lang
+
+		self._as(PERSON)
+		saved = frappe.local.lang
+		del frappe.local.lang
+		try:
+			with calendars._persons_language():
+				self.assertEqual(frappe.local.lang, get_user_lang(PERSON))
+			self.assertFalse(hasattr(frappe.local, "lang"), "never set, left unset")
+		finally:
+			frappe.local.lang = saved
+		frappe.local.lang = "xx"
+		with calendars._persons_language():
+			pass
+		self.assertEqual(frappe.local.lang, "xx")

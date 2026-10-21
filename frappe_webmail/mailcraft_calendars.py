@@ -27,13 +27,17 @@ Beside the person's own calendars, the ones the desk's calendar shows them too, 
   `<account>|<id>`, as the Suite names them).
 They are listed by the desk's own call (suite.calendar.api.get_calendars_with_shared, with the ERP's dates), and their
 events read as the desk reads them, as the person and with their rights: the ERP's dates by the Suite's batch for a
-window (sources.virtual_events, a chunk of 90 days at a time, as the Suite's own feed reads them), a shared calendar's
-events from its account. Nothing is written there: a create, a change or a deletion is refused, each with its reason.
-Their titles carry customers, amounts and leaves, which MailCraft keeps on the computer as it keeps the person's mail.
+window (sources.virtual_events, a chunk of 90 days at a time, as the Suite's own feed reads them, a busy chunk again in
+halves), a shared calendar's events from its account (not one shared for the free and busy time alone). What a window
+holds is kept 90 seconds for the person, so that the pages of one synchronisation read it once and agree. Nothing is
+written there: a create, a change or a deletion is refused, each with its reason. When they cannot be read, the
+person's own calendar still answers, and the Error Log says why. Their titles carry customers, amounts and leaves,
+which MailCraft keeps on the computer as it keeps the person's mail.
 
 No change is recorded, for any calendar: `/changes` answers `cannotCalculateChanges` and the client reads its window
-again (RFC 8620 §5.2), as MailCraft does at each synchronisation; the read-only events are read where they live at each
-query, and a query's `queryState` changes when one of them changes, its title or its time as much as its id.
+again (RFC 8620 §5.2), as MailCraft does at each synchronisation; the read-only events are read where they live (a
+change in the ERP shows within 90 seconds), and a query's `queryState` changes when one of them changes, its title or
+its time as much as its id.
 """
 
 import hashlib
@@ -42,7 +46,7 @@ import json
 import re
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import frappe
@@ -83,13 +87,30 @@ ERP_COLORS = {
 	"orange": "#e86c13",
 }
 # The ERP's dates are read a chunk at a time, as the Suite's feed reads them (suite.calendar.feed.CHUNK_DAYS): a source
-# gives at most 300 entries a read (sources.MAX_PER_SOURCE), which a whole window of MailCraft's could pass.
+# gives at most 300 entries a read (sources.MAX_PER_SOURCE, oldest first), which a whole window of MailCraft's could
+# pass. A chunk where a source gives that many is read again in two halves, down to a day (_erp_read), within so many
+# reads of a window.
 ERP_CHUNK = timedelta(days=90)
+ERP_PAGE = 300
+ERP_SPLIT_READS = 64
+# What a window of the calendars the person only reads holds, kept this long (seconds): NeoMail pages a window by 200
+# and asks its total, each page a request of its own, which then read the same dates once and agree with each other.
+# A date changed in the ERP shows at the next read after it.
+READ_ONLY_SECONDS = 90
 # A CalendarEvent/get of a date of the ERP that no query of the same request read: read again in the windows the person
-# queried last (kept an hour), then in MailCraft's own window around today (90 days back, a year and a day ahead).
+# queried last (kept an hour), then in MailCraft's own window around today (90 days back, a year and a day ahead) unless
+# one of them covers it; only for a source that is listed and on, and for so many ids a call at most (the others are
+# not found).
 WINDOWS_KEPT = 4
 WINDOWS_SECONDS = 3600
 TODAY_BEFORE, TODAY_AFTER = timedelta(days=90), timedelta(days=366)
+MAX_LOOKUPS = 200
+# The dates a window may reach, as the session says (minDateTime, maxDateTime): beyond them, nothing is read.
+EARLIEST = datetime(1970, 1, 1, tzinfo=timezone.utc)
+LATEST = datetime(2100, 1, 1, tzinfo=timezone.utc)
+# A failure of what the person only reads is said in the Error Log once in this many seconds (their own calendar still
+# answers).
+FAILURE_SILENCE = 600
 # The longest id RFC 8620 allows (§1.2).
 MAX_ID = 255
 
@@ -309,9 +330,14 @@ def calendar_get(args):
 				"myRights": _rights(calendar.get("myRights")),
 			}
 		)
-	# Then those the desk shows besides, read-only, in the desk's order: after the person's own.
+	# Then those the desk shows besides, read-only, in the desk's order: after the person's own. Not read when only the
+	# person's own are asked for, and left out, said in the Error Log, when they cannot be read.
 	after = 1 + max((cint(calendar.get("sortOrder")) for calendar in every), default=0)
-	for index, (raw, (kind, row)) in enumerate(_read_only_calendars(suite_account).items()):
+	asked = ids is None or any(_read_only_kind(_raw(i, "C")) for i in ids)
+	others = (
+		_without_read_only(lambda: list(_read_only_calendars(suite_account).items()), []) if asked else []
+	)
+	for index, (raw, (kind, row)) in enumerate(others):
 		cid = _calendar_id(raw)
 		if ids is None or cid in ids:
 			listed.append(_read_only_calendar(cid, kind, row, after + index))
@@ -331,12 +357,37 @@ def _persons_language():
 	person (frappe.auth.HTTPRequest.set_lang, then the auth hooks), from the client's headers or the instance's."""
 	from frappe.translate import get_user_lang
 
+	had = hasattr(frappe.local, "lang")
 	previous = getattr(frappe.local, "lang", None)
 	frappe.local.lang = get_user_lang(frappe.session.user) or previous
 	try:
 		yield
 	finally:
-		frappe.local.lang = previous
+		if had:
+			frappe.local.lang = previous
+		else:
+			# Never set before: left unset, as it was.
+			try:
+				del frappe.local.lang
+			except AttributeError:
+				pass
+
+
+def _without_read_only(read, default):
+	"""`read()` of what the calendars the person only reads add, or `default` when they cannot be read (a colleague's
+	account refused, the mail server not answering, a source failing): the person's own calendar still answers, and the
+	failure is said in the Error Log, once in a while."""
+	try:
+		return read()
+	except Exception:
+		key = f"mailcraft_calendar_read_only_failed:{frappe.session.user}"
+		if not frappe.cache().get_value(key):
+			frappe.cache().set_value(key, 1, expires_in_sec=FAILURE_SILENCE)
+			frappe.log_error(
+				"MailCraft calendars: the read-only calendars could not be read",
+				f"user={frappe.session.user}\n{frappe.get_traceback()}",
+			)
+		return default
 
 
 def _read_only_kind(raw):
@@ -375,15 +426,42 @@ def _read_only_calendars(suite_account):
 	with _persons_language():
 		rows = _reading(lambda: listing(suite_account, erp_dates=1) if with_erp else listing(suite_account))
 	found = {}
+	shared = {}
 	for row in rows or []:
 		raw = str(row.get("id") or "") if isinstance(row, dict) else ""
 		if raw.startswith(ERP_PREFIX):
 			found[raw] = ("erp", row)
 		elif raw and "|" not in raw and row.get("account") and row["account"] != suite_account:
 			found[f"{row['account']}|{raw}"] = ("shared", row)
+			shared.setdefault(row["account"], []).append(raw)
+	# What the person may do in a shared calendar, as its mail server says it (the desk's rows do not): one shared for
+	# their free and busy time alone has no events to read.
+	from suite.calendar.jmap_events import get_calendars
+
+	for account, calendar_ids in shared.items():
+		given = {
+			c.get("id"): c.get("myRights")
+			for c in _reading(lambda account=account, ids=calendar_ids: get_calendars(_client(account), ids))
+		}
+		for calendar_id in calendar_ids:
+			raw = f"{account}|{calendar_id}"
+			found[raw] = ("shared", {**found[raw][1], "myRights": given.get(calendar_id) or {}})
 	if request is not None:
 		frappe.local.mailcraft_read_only_calendars = (request, suite_account, found)
 	return found
+
+
+def _read_only_rights(kind, row):
+	"""The rights of a calendar the person only reads: none to write; to read its events, every source of the ERP's,
+	and a shared calendar as its mail server says (a share of the free and busy time alone gives none)."""
+	rights = {key: False for key in _READ_ONLY}
+	if kind == "erp":
+		rights.update(mayReadItems=True, mayReadFreeBusy=True)
+	else:
+		given = row.get("myRights") if isinstance(row.get("myRights"), dict) else {}
+		rights["mayReadItems"] = bool(given.get("mayReadItems"))
+		rights["mayReadFreeBusy"] = bool(given.get("mayReadFreeBusy") or rights["mayReadItems"])
+	return rights
 
 
 def _read_only_calendar(cid, kind, row, sort_order):
@@ -407,7 +485,7 @@ def _read_only_calendar(cid, kind, row, sort_order):
 		"isVisible": visible,
 		"isDefault": False,
 		"includeInAvailability": "none",
-		"myRights": dict(_READ_ONLY),
+		"myRights": _read_only_rights(kind, row),
 	}
 
 
@@ -464,6 +542,8 @@ def event_query(args):
 	after, before = _utc_date(criteria["after"], "after"), _utc_date(criteria["before"], "before")
 	if before <= after or before - after > MAX_SPAN:
 		raise jmap.JmapError("unsupportedFilter", "The window must be of 500 days at most.")
+	# Only between the dates the session says (minDateTime, maxDateTime): nothing is read beyond them.
+	after, before = max(after, EARLIEST), min(before, LATEST)
 	query = {"after": after.strftime("%Y-%m-%dT%H:%M:%SZ"), "before": before.strftime("%Y-%m-%dT%H:%M:%SZ")}
 	position = jmap._whole_number(args.get("position"), "position", 0)
 	limit = jmap._whole_number(args.get("limit"), "limit")
@@ -482,6 +562,8 @@ def event_query(args):
 	}
 	if limit is None or limit > MAX_EVENTS:
 		answer["limit"] = used
+	if before <= after:
+		return {**answer, "position": 0, **({"total": 0} if asked_total else {})}
 	expand = bool(args.get("expandRecurrences"))
 	# Which of the calendars the person only reads are asked for: all of them, or those named.
 	read_only_named = None
@@ -521,9 +603,13 @@ def event_query(args):
 	read_only = []
 
 	def others():
-		"""The read-only events of the window, read once, when first needed."""
+		"""The read-only events of the window, read once, when first needed; none when they cannot be read."""
 		if not read_only:
-			read_only.append(_read_only_events(suite_account, after, before, read_only_named, expand))
+			read_only.append(
+				_without_read_only(
+					lambda: _read_only_events(suite_account, after, before, read_only_named, expand), []
+				)
+			)
 		return read_only[0]
 
 	# The Suite reads from a position on, and returns nothing for a limit of 0: the total of the person's own events,
@@ -544,12 +630,12 @@ def event_query(args):
 		if found.get("total") is not None:
 			own_total = cint(found["total"])
 		elif own_total is None:
-			own_total = position + len(raws)
-	own_total = own_total or 0
+			# No total said: a short page is the last of them; after a full one, more may follow (not known).
+			own_total = position + len(raws) if len(raws) < used else None
 	page = []
-	if used and len(ids) < used:
+	if used and len(ids) < used and own_total is not None and position + len(ids) >= own_total:
 		# The person's own events are over: the read-only ones follow, from where this page is past them.
-		start = max(0, position + len(ids) - own_total)
+		start = position + len(ids) - own_total
 		page = others()[start : start + used - len(ids)]
 		kept = _request_events()
 		for facade, event in page:
@@ -561,19 +647,28 @@ def event_query(args):
 		state += "#" + json.dumps([event for _facade, event in page], sort_keys=True, default=str)
 	answer.update(position=position, ids=ids, queryState=hashlib.sha256(state.encode()).hexdigest()[:16])
 	if asked_total:
-		answer["total"] = total if total is not None else own_total + len(others())
+		if total is None:
+			total = own_total + len(others()) if own_total is not None else position + len(ids)
+		answer["total"] = total
 	return answer
 
 
 def _read_only_events(suite_account, after, before, named=None, expand=False):
 	"""[(facade id, event)] of the window in the calendars the person only reads (all of them, or those `named` by
-	their raw ids), as the desk reads them: the ERP's dates, then the events of each calendar shared with them."""
+	their raw ids; none when only their own are named), as the desk reads them: the ERP's dates, then the events of
+	each calendar shared with them that they may read. Each kind keeps its share of MAX_EVENTS."""
+	if named is not None and not named:
+		return []
 	calendars = _read_only_calendars(suite_account)
-	chosen = {raw: kind for raw, (kind, _row) in calendars.items() if named is None or raw in named}
-	events = []
+	chosen = {
+		raw: kind
+		for raw, (kind, row) in calendars.items()
+		if (named is None or raw in named) and _read_only_rights(kind, row)["mayReadItems"]
+	}
+	erp = []
 	if any(kind == "erp" for kind in chosen.values()):
 		_remember_window(after, before)
-		events += [
+		erp = [
 			(facade, event)
 			for facade, event in _erp_events(suite_account, after, before)
 			if any(raw in chosen for raw in event["calendarIds"])
@@ -583,40 +678,131 @@ def _read_only_events(suite_account, after, before, named=None, expand=False):
 		if kind == "shared":
 			account, calendar = _shared_parts(raw)
 			shared.setdefault(account, []).append(calendar)
-	if shared:
-		events += _shared_events(shared, after, before, expand)
-	return events[:MAX_EVENTS]
+	others = _shared_events(shared, after, before, expand) if shared else []
+	if len(erp) + len(others) <= MAX_EVENTS:
+		return erp + others
+	# Past the cap, neither crowds the other out: each keeps at least half, and what the other leaves.
+	kept = min(len(others), max(MAX_EVENTS // 2, MAX_EVENTS - len(erp)))
+	return erp[: MAX_EVENTS - kept] + others[:kept]
 
 
 def _utc_text(moment):
 	return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _cache_prefix():
+	return f"mailcraft_calendar_read_only:{frappe.session.user}:"
+
+
+def _kept(parts, read):
+	"""`read()`, kept READ_ONLY_SECONDS under what `parts` says it depends on (the person's, whatever else)."""
+	key = (
+		_cache_prefix() + hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
+	)
+	found = frappe.cache().get_value(key)
+	if found is not None:
+		return found
+	found = read()
+	frappe.cache().set_value(key, found, expires_in_sec=READ_ONLY_SECONDS)
+	return found
+
+
+def _forget_read_only_events():
+	"""What was kept of the person's read-only windows: read again at the next query."""
+	frappe.cache().delete_keys(_cache_prefix())
+
+
 def _erp_events(suite_account, after, before):
 	"""[(facade id, event)] of the ERP's dates between two moments (aware datetimes), as JSCalendar events, in the
-	order of their start: the Suite's batch (sources.virtual_events, the sources the person switched on, read as them)
-	a chunk at a time, each date once."""
+	order of their start (_erp_read), kept a little while for the person (_kept): under the window, their language,
+	and the sources as they are listed, switched on or off and whose dates they show. None when every source is off."""
+	from frappe.translate import get_user_lang
+
+	listed = sorted(
+		[raw, cint(row.get("visible")), str(row.get("scope") or "")]
+		for raw, (kind, row) in _read_only_calendars(suite_account).items()
+		if kind == "erp"
+	)
+	if not any(on for _raw, on, _scope in listed):
+		return []
+	parts = ["erp", suite_account, _utc_text(after), _utc_text(before), get_user_lang(), listed]
+	return _kept(parts, lambda: _erp_read(suite_account, after, before))
+
+
+def _erp_read(suite_account, after, before):
+	"""The ERP's dates between two moments, read: the Suite's batch (sources.virtual_events, the sources the person
+	switched on, read as them) a chunk at a time, each date once. A source gives its oldest dates first and at most a
+	page of them a read: where one gives a whole page, the chunk is read again in halves for it, down to a day; a day
+	that still fills a page is said in the Error Log (its last dates are not shown), as is a window that would take
+	more than ERP_SPLIT_READS reads."""
 	try:
 		from suite.calendar import sources
 	except ImportError:
 		return []
+	page = cint(getattr(sources, "MAX_PER_SOURCE", ERP_PAGE)) or ERP_PAGE
+	reads = [0]
+
+	def read(start, end):
+		reads[0] += 1
+		chunk = [
+			row
+			for row in _reading(
+				lambda: sources.virtual_events(suite_account, _utc_text(start), _utc_text(end))
+			)
+			or []
+			if isinstance(row, dict) and row.get("id")
+		]
+		counted = {}
+		for row in chunk:
+			counted[_source_of(row)] = counted.get(_source_of(row), 0) + 1
+		full = {source for source, count in counted.items() if count >= page}
+		if not full:
+			return chunk
+		middle = start + timedelta(days=max(1, (end - start).days // 2))
+		if end - start <= timedelta(days=1) or middle >= end or reads[0] + 2 > ERP_SPLIT_READS:
+			_cut(full, start, end)
+			return chunk
+		rows = [row for row in chunk if _source_of(row) not in full]
+		for part in ((start, middle), (middle, end)):
+			rows += [row for row in read(*part) if _source_of(row) in full]
+		return rows
+
 	rows = {}
 	start = after
 	with _persons_language():
 		while start < before:
 			end = min(start + ERP_CHUNK, before)
-			chunk = _reading(
-				lambda start=start, end=end: sources.virtual_events(
-					suite_account, _utc_text(start), _utc_text(end)
-				)
-			)
-			for row in chunk or []:
-				if isinstance(row, dict) and row.get("id"):
-					rows.setdefault(str(row["id"]), row)
+			for row in read(start, end):
+				rows.setdefault(str(row["id"]), row)
 			start = end
 		events = [_erp_event(row) for row in rows.values()]
 	events.sort(key=lambda event: (event["start"], event["id"]))
 	return [(_erp_event_id(event), event) for event in events[:MAX_EVENTS]]
+
+
+def _source_of(row):
+	"""The calendar (`erp:<source>`) a date of the ERP is in."""
+	return next(
+		(
+			str(calendar["calendar_id"])
+			for calendar in row.get("calendars") or []
+			if isinstance(calendar, dict) and calendar.get("calendar_id")
+		),
+		str(row.get("source") or ""),
+	)
+
+
+def _cut(sources, start, end):
+	"""A source that fills a page of dates however short the read: said in the Error Log, once an hour for it."""
+	key = f"mailcraft_calendar_erp_cut:{frappe.session.user}:{','.join(sorted(sources))}"
+	if frappe.cache().get_value(key):
+		return
+	frappe.cache().set_value(key, 1, expires_in_sec=3600)
+	frappe.log_error(
+		"MailCraft calendars: dates of the ERP were cut",
+		f"user={frappe.session.user} sources={sorted(sources)} between {_utc_text(start)} and {_utc_text(end)}: "
+		"a page of dates or more however short the read; the later ones of that stretch are not shown.",
+	)
 
 
 def _erp_event(row):
@@ -646,12 +832,12 @@ def _erp_event(row):
 		"freeBusyStatus": "free",
 		"sequence": 0,
 	}
-	# Only a page of the desk, as the desk's own card follows it (erpEventRoute): never another site.
-	route = str(row.get("route") or "")
-	if re.fullmatch(r"/app/\S*", route):
-		event["links"] = {
-			"document": {"@type": "Link", "href": frappe.utils.get_url(route), "contentType": "text/html"}
-		}
+	# Only a document of the desk, `/app/<type>/<name>`, as the desk's own card follows it (erpEventRoute): never
+	# another site. Its name as an address writes it (a holiday list's has spaces, an invoice's may have a slash).
+	found = re.fullmatch(r"/app/([a-z0-9-]+)/(.+)", str(row.get("route") or ""))
+	if found:
+		href = frappe.utils.get_url(f"/app/{found.group(1)}/{quote(found.group(2), safe='')}")
+		event["links"] = {"document": {"@type": "Link", "href": href, "contentType": "text/html"}}
 	return event
 
 
@@ -678,8 +864,22 @@ def _remember_window(after, before):
 
 
 def _shared_events(shared, after, before, expand):
-	"""[(facade id, event)] of the window in calendars shared with the person, {account: [calendar ids there]}: read
-	from each account as the person (its mail server's rights), named under it."""
+	"""[(facade id, event)] of the window in calendars shared with the person, {account: [calendar ids there]}, kept a
+	little while for them (_kept) under the window and the calendars."""
+	parts = [
+		"shared",
+		{account: sorted(ids) for account, ids in shared.items()},
+		_utc_text(after),
+		_utc_text(before),
+		bool(expand),
+		_person_zone().key,
+	]
+	return _kept(parts, lambda: _shared_read(shared, after, before, expand))
+
+
+def _shared_read(shared, after, before, expand):
+	"""The events of the window in calendars shared with the person, read from each account as the person (its mail
+	server's rights), named under it."""
 	from suite.calendar.jmap_events import get_events, query_events
 
 	found = []
@@ -792,7 +992,7 @@ def event_get(args):
 	found.update({i: kept[i] for i in read_only if i in kept})
 	again = [i for i in dict.fromkeys(read_only) if i not in kept]
 	if again:
-		found.update(_read_only_again(suite_account, again))
+		found.update(_without_read_only(lambda: _read_only_again(suite_account, again), {}))
 	listed = [_facade_event(found[i], properties, as_id=i) for i in ids if i in found]
 	return {"accountId": aid, "state": "0", "list": listed, "notFound": [i for i in ids if i not in found]}
 
@@ -804,31 +1004,53 @@ def _event_raw(jmap_id):
 
 
 def _read_only_again(suite_account, ids):
-	"""{facade id: event} of the read-only events asked for by id that no query of this request read: the ERP's dates
-	in the windows the person queried last, then around today; a shared calendar's from its account, by id."""
+	"""{facade id: event} of the read-only events asked for by id that no query of this request read, MAX_LOOKUPS of
+	them at most: the ERP's dates of a source that is listed and on, in the windows the person queried last, then
+	around today (_search_windows), each window read once a little while (_erp_events); a shared calendar's from its
+	account, by id."""
+	ids = ids[:MAX_LOOKUPS]
 	found = {}
-	erp = {i for i in ids if _read_only_kind(_event_raw(i)) == "erp"}
-	if erp:
-		kept = frappe.cache().get_value(_windows_key())
-		windows = [w for w in kept if isinstance(w, list) and len(w) == 2] if isinstance(kept, list) else []
-		today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-		windows.append([_utc_text(today - TODAY_BEFORE), _utc_text(today + TODAY_AFTER)])
-		for after, before in windows:
-			try:
-				after, before = _utc_date(after, "after"), _utc_date(before, "before")
-			except jmap.JmapError:
-				continue
-			found.update(
-				(facade, event)
-				for facade, event in _erp_events(suite_account, after, min(before, after + MAX_SPAN))
-				if facade in erp
-			)
-			if erp <= set(found):
-				break
+	listed = _read_only_calendars(suite_account)
+	on = {raw for raw, (kind, row) in listed.items() if kind == "erp" and cint(row.get("visible"))}
+	erp = {
+		i for i in ids if _read_only_kind(_event_raw(i)) == "erp" and _erp_calendar_of(_event_raw(i)) in on
+	}
+	for after, before in _search_windows() if erp else []:
+		found.update(
+			(facade, event) for facade, event in _erp_events(suite_account, after, before) if facade in erp
+		)
+		if erp <= set(found):
+			break
 	shared = [i for i in ids if _read_only_kind(_event_raw(i)) == "shared"]
 	if shared:
 		found.update(_shared_again(suite_account, shared))
 	return found
+
+
+def _erp_calendar_of(raw):
+	"""The calendar (`erp:<source>`) a date of the ERP's raw id names."""
+	return ERP_PREFIX + str(raw)[len(ERP_PREFIX) :].partition(":")[0]
+
+
+def _search_windows():
+	"""Where a date of the ERP asked for by id is looked for: the windows the person queried last, between the dates
+	the session allows, then MailCraft's window around today unless one of them covers it (to a day)."""
+	kept = frappe.cache().get_value(_windows_key())
+	windows = []
+	for window in kept if isinstance(kept, list) else []:
+		try:
+			after, before = (_utc_date(moment, "window") for moment in window)
+		except (jmap.JmapError, TypeError, ValueError):
+			continue
+		after, before = max(after, EARLIEST), min(before, LATEST, after + MAX_SPAN)
+		if after < before:
+			windows.append((after, before))
+	today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+	around = (today - TODAY_BEFORE, today + TODAY_AFTER)
+	day = timedelta(days=1)
+	if not any(after <= around[0] + day and before >= around[1] - day for after, before in windows):
+		windows.append(around)
+	return windows
 
 
 def _shared_again(suite_account, ids):
@@ -837,8 +1059,8 @@ def _shared_again(suite_account, ids):
 	from suite.calendar.jmap_events import get_events
 
 	shown = {}
-	for raw, (kind, _row) in _read_only_calendars(suite_account).items():
-		if kind == "shared":
+	for raw, (kind, row) in _read_only_calendars(suite_account).items():
+		if kind == "shared" and _read_only_rights(kind, row)["mayReadItems"]:
 			account, calendar = _shared_parts(raw)
 			shown.setdefault(account, set()).add(calendar)
 	asked = {}
