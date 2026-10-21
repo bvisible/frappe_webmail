@@ -32,6 +32,10 @@
  *   NeoMail's, which stays alive under it; anything asked of NeoMail from the menu (a view, a folder, a search, an
  *   address) puts NeoMail back in front. Only for someone Raven answers: the icon waits for Raven's own count, and a
  *   refusal (no Raven role) leaves the page as it was, without a word.
+ * - Share in Synk: where the handover says `share: true` (neomail.py, for someone who may share in Synk), NeoMail's
+ *   button names a message by its mailbox and its id (`mailcraft:share`); the page asks where (a channel of the
+ *   person's or a person, a word of their own, the attachments or not), the server posts it as the person
+ *   (neomail_share.py), and the Synk view shows the post.
  */
 
 // The functions /neomail gives the build, shared with it (window.neomailHost): Frappe puts the file in place of the
@@ -51,6 +55,9 @@
 	// Raven's methods Synk's view reads (raven/api of bvisible/Raven): the unread messages, the person's channels.
 	const UNREAD = "/api/method/raven.api.raven_message.get_unread_count_for_channels";
 	const CHANNELS = "/api/method/raven.api.raven_channel.get_all_channels?hide_archived=1";
+	// Share in Synk (neomail_share.py): where the person may share a message, and the share itself.
+	const DESTINATIONS = "/api/method/frappe_webmail.neomail_share.destinations";
+	const SHARE = "/api/method/frappe_webmail.neomail_share.share";
 
 	// One page for the desk's tab: its box, the banner, whether NeoMail said it holds work, whether the page is in
 	// front, what NeoMail last said of where it is, and what asks it.
@@ -193,16 +200,19 @@
 	}
 
 	// Synk in front (`on`), in its own frame, made the first time; or NeoMail back in front. The frame left behind stays
-	// alive under the other, as both stay under the page when the person leaves it.
-	function show_synk(on) {
+	// alive under the other, as both stay under the page when the person leaves it. `route` (a path of Raven's app,
+	// `/raven/message/<id>`): Synk shows it, in the frame there is or in a new one.
+	function show_synk(on, route) {
 		const synk = state.synk;
-		if (on === synk.front || (on && (!synk.offered || !state.box))) return;
+		if ((on === synk.front && !route) || (on && (!synk.offered || !state.box))) return;
 		if (on && !synk.frame) {
 			synk.frame = document.createElement("iframe");
 			synk.frame.className = "neomail-desk-frame neomail-desk-synk";
 			synk.frame.title = texts().synk;
-			synk.frame.src = window.neomailHost.synk.address;
+			synk.frame.src = route ? route + "?embed=desk" : window.neomailHost.synk.address;
 			state.box.append(synk.frame);
+		} else if (on && route) {
+			go_in_synk(synk.frame, route);
 		}
 		synk.front = on;
 		put_away(synk.frame, !on);
@@ -212,6 +222,123 @@
 		// What the person read there: the badge follows at once, without waiting for Raven's event
 		if (!on) count_synk();
 		lend();
+	}
+
+	// Raven's app in `frame` to `route`, without loading it again: its router follows the address of its window when
+	// the history moves (a frame of the same origin is the page's own to drive). A frame that is not Raven's app yet, or
+	// whose window cannot be reached, is loaded at that address instead.
+	function go_in_synk(frame, route) {
+		try {
+			const inside = frame.contentWindow;
+			if (inside && inside.location.pathname.startsWith("/raven")) {
+				inside.history.pushState(inside.history.state, "", route);
+				inside.dispatchEvent(new inside.PopStateEvent("popstate", { state: inside.history.state }));
+				return;
+			}
+		} catch (e) {
+			// Below: the address itself
+		}
+		frame.src = route + "?embed=desk";
+	}
+
+	// What the server said went wrong, in the person's language: its message, else `fallback`.
+	async function refusal(answer, fallback) {
+		try {
+			const body = await answer.json();
+			const said = JSON.parse(body._server_messages || "[]")
+				.map((m) => JSON.parse(m).message)
+				.filter(Boolean);
+			// The desk's own strip_html (frappe/public/js/frappe/utils/common.js): the words without their markup
+			if (said.length) return (window.strip_html || ((text) => text))(said.join(" "));
+		} catch (e) {
+			// The fallback says it
+		}
+		return fallback;
+	}
+
+	// Share in Synk (`mailcraft:share`): the person chooses a channel or a person, adds a word, takes the attachments
+	// or not; the server posts it as the person (neomail_share.share), and Synk shows the post. NeoMail named the
+	// message by its mailbox and its id alone.
+	async function share_message(data) {
+		const asked = window.neomailHost.shareOf(data);
+		if (!asked) return;
+		const headers = { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" };
+		let found = null;
+		try {
+			const answer = await fetch(DESTINATIONS, { method: "GET", credentials: "same-origin", cache: "no-store", headers });
+			found = answer.ok ? (await answer.json()).message : null;
+		} catch (e) {
+			found = null;
+		}
+		const choices = window.neomailHost.shareChoices(found);
+		if (!found) {
+			frappe.msgprint(__("Synk could not be reached. Try again in a moment."));
+			return;
+		}
+		if (!choices.length) {
+			frappe.msgprint(__("You have no channel in Synk and nobody to write to yet."));
+			return;
+		}
+		// One send, however many times the button is pressed (Raven's idempotency key)
+		const client_id = frappe.utils.get_random(20);
+		const dialog = new frappe.ui.Dialog({
+			title: __("Share in Synk"),
+			fields: [
+				{
+					fieldtype: "Autocomplete",
+					fieldname: "to",
+					label: __("Share with"),
+					description: __("A channel, or a person"),
+					options: choices,
+					reqd: 1,
+				},
+				{ fieldtype: "Small Text", fieldname: "note", label: __("Your message") },
+				{ fieldtype: "Check", fieldname: "attachments", label: __("Share the attachments too") },
+			],
+			primary_action_label: __("Share"),
+			primary_action: async (values) => {
+				dialog.disable_primary_action();
+				let answer = null;
+				try {
+					answer = await fetch(SHARE, {
+						method: "POST",
+						credentials: "same-origin",
+						cache: "no-store",
+						headers: { ...headers, "Content-Type": "application/json" },
+						body: JSON.stringify({
+							account: asked.account,
+							email: asked.email,
+							to: values.to,
+							note: values.note || "",
+							attachments: values.attachments ? 1 : 0,
+							client_id,
+						}),
+					});
+				} catch (e) {
+					answer = null;
+				}
+				if (!answer || !answer.ok) {
+					dialog.enable_primary_action();
+					const fallback = __("The message could not be shared.");
+					frappe.msgprint(answer ? await refusal(answer, fallback) : fallback);
+					return;
+				}
+				const done = (await answer.json()).message || {};
+				dialog.hide();
+				frappe.show_alert({ message: __("Shared in Synk"), indicator: "green" });
+				if (done.left_out > 0) {
+					frappe.show_alert({
+						message: __("{0} attachment(s) could not be shared.", [done.left_out]),
+						indicator: "orange",
+					});
+				}
+				// Raven answered the person: Synk is theirs, and shows the post
+				state.synk.offered = true;
+				if (done.message) show_synk(true, "/raven/message/" + encodeURIComponent(done.message));
+				count_synk();
+			},
+		});
+		dialog.show();
 	}
 
 	// Whether Raven is here for the person at all, before asking it anything: installed, and the person holding its role.
@@ -571,6 +698,8 @@
 		window.neomailHost.listen(window, frame, {
 			// Whether closing it would lose work: said as it starts, then at each change
 			"mailcraft:dirty": (data) => (state.dirty = data.dirty === true),
+			// Share in Synk, on the person's click: the dialog that asks where
+			"mailcraft:share": (data) => share_message(data),
 			// Where it is, once it started and at each change: the desk's menu follows
 			"mailcraft:state": (data) => {
 				state.where = data;

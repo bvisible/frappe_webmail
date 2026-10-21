@@ -100,6 +100,32 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		utils: { debounce: (fn) => fn },
 	};
 	if (synk) {
+		// The desk's dialogs and alerts, as the share uses them: each dialog made is kept, with what it was shown
+		synk.dialogs = [];
+		synk.said = [];
+		frappe.ui.Dialog = class {
+			constructor(options) {
+				this.options = options;
+				this.shown = false;
+				this.disabled = false;
+				synk.dialogs.push(this);
+			}
+			show() {
+				this.shown = true;
+			}
+			hide() {
+				this.shown = false;
+			}
+			disable_primary_action() {
+				this.disabled = true;
+			}
+			enable_primary_action() {
+				this.disabled = false;
+			}
+		};
+		frappe.msgprint = (text) => synk.said.push(["msgprint", text]);
+		frappe.show_alert = (alert) => synk.said.push(["alert", alert.message]);
+		frappe.utils.get_random = () => "client-1";
 		frappe.boot = { ...boot, versions: { raven: "3.0.0" } };
 		frappe.user = { has_role: (role) => role === "Raven User" && synk.role !== false };
 		frappe.session = { user: "ada@example.org" };
@@ -114,6 +140,17 @@ async function open({ cockpit = true, features = null, boot = {}, messages = {},
 		}
 		if (String(url).includes("raven.api.raven_channel.get_all_channels")) {
 			return new Response(JSON.stringify({ message: (synk && synk.channels) || { channels: [], dm_channels: [] } }));
+		}
+		if (String(url).includes("neomail_share.destinations")) {
+			return new Response(JSON.stringify({ message: (synk && synk.destinations) || { channels: [], people: [] } }));
+		}
+		if (String(url).includes("neomail_share.share")) {
+			const shared = synk && synk.shared;
+			return typeof shared === "number"
+				? new Response(JSON.stringify({ _server_messages: JSON.stringify([JSON.stringify({ message: "Refused <b>here</b>" })]) }), {
+						status: shared,
+				  })
+				: new Response(JSON.stringify({ message: shared || {} }));
 		}
 		if (String(url).includes("message_key")) {
 			return key ? new Response(JSON.stringify({ message: key })) : new Response("{}", { status: 417 });
@@ -663,5 +700,97 @@ describe("Synk, a view of the desk's page after NeoMail's", () => {
 		realtime.emit("raven:unread_channel_count_updated", { channel_id: "x", sent_by: "bruno@example.org", is_dm_channel: true });
 		await vi.waitFor(() => expect(away(frame)).toBe(false));
 		expect(setPageNav.mock.lastCall[0].dock.map((view) => view.id)).not.toContain("synk");
+	});
+});
+
+describe("Share in Synk, from NeoMail's button", () => {
+	beforeEach(() => {
+		window.happyDOM.settings.disableIframePageLoading = true;
+	});
+	afterEach(() => {
+		window.happyDOM.settings.disableIframePageLoading = false;
+	});
+
+	const DESTINATIONS = {
+		channels: [{ id: "synk-atelier", label: "atelier", private: true }],
+		people: [{ id: "bruno@example.org", label: "Bruno Keller" }],
+	};
+	const ASKED = { type: "mailcraft:share", account: "ada@example.org", email: "E7V31ZSU5CT1g" };
+
+	// The share's request to the server, as the page made it: its address, its method and what it sent.
+	const shareSent = (fetch) =>
+		fetch.mock.calls
+			.filter(([url]) => String(url).includes("neomail_share.share"))
+			.map(([, init]) => ({ method: init.method, csrf: init.headers["X-Frappe-CSRF-Token"], body: JSON.parse(init.body) }));
+
+	it("asks where, shares as asked, and shows the post in Synk", async () => {
+		const synk = { unread: [], destinations: DESTINATIONS, shared: { channel: "synk-atelier", message: "m-42", files: 1, left_out: 0 } };
+		const { wrapper, frame, tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell(ASKED);
+		await vi.waitFor(() => expect(synk.dialogs.length).toBe(1));
+		const dialog = synk.dialogs[0];
+		expect(dialog.shown).toBe(true);
+		expect(dialog.options.fields.find((f) => f.fieldname === "to").options).toEqual([
+			{ value: "channel:synk-atelier", label: "# atelier" },
+			{ value: "user:bruno@example.org", label: "Bruno Keller" },
+		]);
+		await dialog.options.primary_action({ to: "channel:synk-atelier", note: "Pour info", attachments: 1 });
+		expect(shareSent(fetch)).toEqual([
+			{
+				method: "POST",
+				csrf: "csrf-1",
+				body: {
+					account: "ada@example.org",
+					email: "E7V31ZSU5CT1g",
+					to: "channel:synk-atelier",
+					note: "Pour info",
+					attachments: 1,
+					client_id: "client-1",
+				},
+			},
+		]);
+		expect(dialog.shown).toBe(false);
+		expect(synk.said).toContainEqual(["alert", "Shared in Synk"]);
+		// Synk in front, on the post
+		const raven = wrapper.querySelectorAll("iframe")[1];
+		expect(raven.getAttribute("src")).toBe("/raven/message/m-42?embed=desk");
+		expect(away(raven)).toBe(false);
+		expect(away(frame)).toBe(true);
+	});
+
+	it("says what the server refused, and lets the person try again", async () => {
+		const synk = { unread: [], destinations: DESTINATIONS, shared: 417 };
+		const { tell, wrapper } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell(ASKED);
+		await vi.waitFor(() => expect(synk.dialogs.length).toBe(1));
+		const dialog = synk.dialogs[0];
+		await dialog.options.primary_action({ to: "user:bruno@example.org" });
+		expect(dialog.shown).toBe(true);
+		expect(dialog.disabled).toBe(false);
+		expect(synk.said).toEqual([["msgprint", "Refused <b>here</b>"]]);
+		expect(wrapper.querySelectorAll("iframe").length).toBe(1);
+	});
+
+	it("takes nothing but a mailbox and an email id from NeoMail", async () => {
+		const synk = { unread: [], destinations: DESTINATIONS };
+		const { tell, fetch } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell({ type: "mailcraft:share", account: "ada@example.org", email: "../../etc" });
+		tell({ type: "mailcraft:share", account: "nobody", email: "E7V31ZSU5CT1g" });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(synk.dialogs.length).toBe(0);
+		expect(fetch.mock.calls.some(([url]) => String(url).includes("neomail_share"))).toBe(false);
+	});
+
+	it("says so when there is nowhere to share", async () => {
+		const synk = { unread: [], destinations: { channels: [], people: [] } };
+		const { tell } = await open({ features: ["dock"], synk });
+		tell(STATE);
+		tell(ASKED);
+		await vi.waitFor(() => expect(synk.said.length).toBe(1));
+		expect(synk.said[0]).toEqual(["msgprint", "You have no channel in Synk and nobody to write to yet."]);
+		expect(synk.dialogs.length).toBe(0);
 	});
 });

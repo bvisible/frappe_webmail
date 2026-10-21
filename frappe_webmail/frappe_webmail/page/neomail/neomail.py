@@ -127,6 +127,12 @@ def hand_over(sample=None, build=None):
 	# takes it back too where the menu cannot draw it in the browser (neomail.js).
 	if not frappe.conf.get("neoffice_cockpit_disable"):
 		framed["host"]["chrome"] = CHROME
+	# NeoMail offers Share in Synk, for a person who may share a message there (neomail_share.py): this page only,
+	# whose Synk view shows where it went.
+	from frappe_webmail import neomail_share
+
+	if neomail_share.offered():
+		framed["host"]["share"] = True
 	return framed
 
 

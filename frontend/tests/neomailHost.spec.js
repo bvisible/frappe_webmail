@@ -540,6 +540,38 @@ describe("Synk, the page's own view after NeoMail's", () => {
 	});
 });
 
+describe("Share in Synk, what NeoMail asks and where it may go", () => {
+	it("takes a mailbox's address and an email id of the facade, and nothing else", () => {
+		const { shareOf } = page().host;
+		const asked = { type: "mailcraft:share", account: " ada@example.org ", email: "E7V31ZSU5CT1g" };
+		expect(shareOf(asked)).toEqual({ account: "ada@example.org", email: "E7V31ZSU5CT1g" });
+		for (const wrong of [
+			null,
+			{},
+			{ account: "ada", email: "E7V31ZSU5CT1g" },
+			{ account: "ada@example.org", email: "M7" },
+			{ account: "ada@example.org", email: "E7V31Z<script>" },
+			{ account: ["ada@example.org"], email: "E7V31ZSU5CT1g" },
+			{ account: "a@" + "x".repeat(400), email: "E7V31ZSU5CT1g" },
+		]) {
+			expect(shareOf(wrong)).toBeNull();
+		}
+	});
+
+	it("lists the person's channels first, then the people, each with what the server takes", () => {
+		const { shareChoices } = page().host;
+		const found = {
+			channels: [{ id: "synk-atelier", label: "atelier", private: true }, { id: "", label: "nameless" }],
+			people: [{ id: "bruno@example.org", label: "Bruno Keller" }, { id: "carla@example.org" }],
+		};
+		expect(shareChoices(found)).toEqual([
+			{ value: "channel:synk-atelier", label: "# atelier" },
+			{ value: "user:bruno@example.org", label: "Bruno Keller" },
+		]);
+		expect(shareChoices(null)).toEqual([]);
+	});
+});
+
 describe("followChoice", () => {
 	const { followChoice } = page().host;
 	const inbox = { type: "mailcraft:state", module: "mail", account: "ada@example.org", folder: "F-inbox" };

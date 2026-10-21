@@ -411,6 +411,36 @@ window.neomailHost = (function () {
 		return rest ? "?" + rest : "";
 	}
 
+	/*
+	 * What NeoMail's Share in Synk asks the page to share (`mailcraft:share`, where the handover says `share: true`):
+	 * {account, email}, a mailbox's address and an email id of the facade (`E<validity>V<uid>Z<folder>`); null for
+	 * anything else. The server still says whether the mailbox is the person's (neomail_share.py).
+	 */
+	function shareOf(data) {
+		const given = data || {};
+		const account = typeof given.account === "string" ? given.account.trim() : "";
+		const email = typeof given.email === "string" ? given.email.trim() : "";
+		if (!account || account.length > 320 || !account.includes("@")) return null;
+		if (email.length > 320 || !/^E[0-9]+V[0-9]+Z[A-Za-z0-9_-]+$/.test(email)) return null;
+		return { account, email };
+	}
+
+	/*
+	 * Where the person may share a message, as the share dialog lists them (neomail_share.destinations: {channels:
+	 * [{id, label, private}], people: [{id, label}]}): the channels first, « # name », then the people by name, each
+	 * with what `share` takes (`channel:<id>`, `user:<id>`).
+	 */
+	function shareChoices(found) {
+		const lists = found || {};
+		const channels = Array.isArray(lists.channels) ? lists.channels : [];
+		const people = Array.isArray(lists.people) ? lists.people : [];
+		const named = (entry) => entry && typeof entry.id === "string" && entry.id && typeof entry.label === "string";
+		return [
+			...channels.filter(named).map((c) => ({ value: "channel:" + c.id, label: "# " + c.label })),
+			...people.filter(named).map((p) => ({ value: "user:" + p.id, label: p.label })),
+		];
+	}
+
 	/* The JMAP id of the mailbox an email id of the facade names (`E<validity>V<uid>Z<folder>`, `M<folder>`). */
 	function mailboxOfEmail(id) {
 		const found = /^E[0-9]+V[0-9]+Z([A-Za-z0-9_-]+)$/.exec(String(id || ""));
@@ -470,6 +500,8 @@ window.neomailHost = (function () {
 		synkBadge,
 		synkCountMoved,
 		synkChannels,
+		shareOf,
+		shareChoices,
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,
