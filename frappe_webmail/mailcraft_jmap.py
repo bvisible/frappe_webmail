@@ -372,16 +372,52 @@ def renew(**kwargs):
 def neodesk_request_only():
 	"""A request of Neodesk's, where NeoMail is on: it carries an OAuth bearer token of this very person, one of the
 	desk's people, that Frappe itself would take (the one Frappe signed the request in with, or, when a desk cookie
-	signed it in, one Frappe would have taken all the same), never a desk cookie alone, which a page of another site
-	could make a browser send. Answers the token. hand_over, and the calls of Synk in Neodesk's NeoMail window
-	(neomail_share)."""
+	signed it in, one Frappe would have taken all the same), given to Neodesk's own OAuth client (neodesk_client: not to
+	another client of the person's, an integration or another app), never a desk cookie alone, which a page of another
+	site could make a browser send. Answers the token. hand_over, and the calls of Neodesk's NeoMail window: Synk
+	(neomail_share) and the attachments (neomail_attachments)."""
 	if not neomail_enabled():
 		raise frappe.PageDoesNotExistError
 	user = frappe.session.user
 	bearer = _request_bearer()
-	if not (bearer and _is_desk_user(user) and _bearer_alive(user, _digest(bearer))):
+	if not (
+		bearer
+		and _is_desk_user(user)
+		and _bearer_alive(user, _digest(bearer))
+		and _given_to_neodesk(user, _digest(bearer))
+	):
 		raise frappe.PermissionError
 	return bearer
+
+
+def neodesk_client():
+	"""The OAuth client Neodesk signs in with: the one this instance hands its own apps before they sign in
+	(raven.api.raven_mobile.get_client_id reads `Raven Settings.oauth_client`; Neodesk's page asks it as the phone does).
+	None where there is none: without it, Neodesk cannot sign in here."""
+	if "raven" not in frappe.get_installed_apps():
+		return None
+	return frappe.db.get_single_value("Raven Settings", "oauth_client") or None
+
+
+def _given_to_neodesk(user, digest):
+	"""The person's live bearer token of this hash was given to Neodesk's OAuth client (neodesk_client). Compared by its
+	hash, as _bearer_alive compares it: the name of an OAuth Bearer Token is the token itself, never kept or shown."""
+	client = neodesk_client()
+	if not client:
+		return False
+	for name in frappe.get_all(
+		"OAuth Bearer Token",
+		filters={
+			"user": user,
+			"client": client,
+			"status": "Active",
+			"expiration_time": (">", frappe.utils.now_datetime()),
+		},
+		pluck="name",
+	):
+		if _digest(name) == digest:
+			return True
+	return False
 
 
 def page_request_only():

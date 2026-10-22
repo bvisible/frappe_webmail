@@ -751,9 +751,11 @@ class TestWhoAndWhat(TestWebmailAPIBase):
 		attachment = {"index": 0, "name": "a.pdf"}
 
 		@contextmanager
-		def neodesk(header, user, alive=True):
+		def neodesk(header, user, alive=True, neodesk_s=True):
 			frappe.set_user(user)
 			with (
+				# Given to Neodesk's own OAuth client, or to another of the person's (mailcraft_jmap._given_to_neodesk)
+				patch("frappe_webmail.mailcraft_jmap._given_to_neodesk", return_value=neodesk_s),
 				# The desk's page is not offered here: Neodesk does not need it
 				patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk", return_value=False),
 				patch(
@@ -776,15 +778,22 @@ class TestWhoAndWhat(TestWebmailAPIBase):
 			with self.assertRaisesRegex(frappe.PermissionError, "not allowed to create a scanned document"):
 				files.to_scans(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)
 		# Refused at the gate
-		for header, user, alive, why in (
-			("Bearer lent-token", self.test_user, False, "a token Frappe would not take"),
-			("token key:secret", self.test_user, True, "an API key"),
-			("Basic c3RhZmY6cGFzcw==", self.test_user, True, "a password"),
-			("Bearer lent-token", PORTAL, True, "a portal account"),
+		for header, user, alive, neodesk_s, why in (
+			("Bearer lent-token", self.test_user, False, True, "a token Frappe would not take"),
+			(
+				"Bearer lent-token",
+				self.test_user,
+				True,
+				False,
+				"a token of another OAuth client of the person's",
+			),
+			("token key:secret", self.test_user, True, True, "an API key"),
+			("Basic c3RhZmY6cGFzcw==", self.test_user, True, True, "a password"),
+			("Bearer lent-token", PORTAL, True, True, "a portal account"),
 		):
 			for call in (files.save_to_drive, files.to_scans):
 				with (
-					neodesk(header, user, alive),
+					neodesk(header, user, alive, neodesk_s),
 					self.assertRaises(frappe.PermissionError, msg=why) as refused,
 				):
 					call(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)

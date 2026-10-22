@@ -1294,11 +1294,15 @@ class TestMailCraftJmap(FrappeTestCase):
 		).insert(ignore_permissions=True, ignore_links=True)
 		return name
 
-	def _hand_over(self, bearer, user=SHARED):
-		"""hand_over, for a request Frappe signed in as `user` with that bearer token in Authorization."""
+	def _hand_over(self, bearer, user=SHARED, client=None):
+		"""hand_over, for a request Frappe signed in as `user` with that bearer token in Authorization, on an instance
+		whose apps (Neodesk) sign in with `client` (the test's own OAuth client unless told)."""
 		frappe.set_user(user)
 		frappe.local.flags.mailcraft_jmap_user = None
-		with patch("frappe.get_request_header", return_value=f"Bearer {bearer}" if bearer else None):
+		with (
+			patch("frappe.get_request_header", return_value=f"Bearer {bearer}" if bearer else None),
+			patch.object(jmap, "neodesk_client", return_value=client or self.client),
+		):
 			return jmap.hand_over()
 
 	def test_neodesk_gets_the_mailboxes_for_its_bearer_and_they_live_with_it(self):
@@ -1362,19 +1366,62 @@ class TestMailCraftJmap(FrappeTestCase):
 		"""Its OAuth client still there and granting its scopes, and an expiry: Frappe refuses a bearer token otherwise."""
 		gone = _client("mailcraft-jmap-gone")
 		orphan = self._bearer(client=gone)
-		secret = self._hand_over(orphan)["accounts"][0]["secret"]
+		secret = self._hand_over(orphan, client=gone)["accounts"][0]["secret"]
 		self.assertEqual(self._authenticated(SESSION, secret)[0], SHARED)
 		# Removed from the table, as Frappe's own check would then find it (the desk refuses it while tokens link to it).
 		frappe.db.delete("OAuth Client", gone)
 		self.assertEqual(self._authenticated(SESSION, secret)[0], "Guest", "its client was deleted")
 		with self.assertRaises(frappe.PermissionError):
-			self._hand_over(orphan)
+			self._hand_over(orphan, client=gone)
 		with self.assertRaises(frappe.PermissionError, msg="a scope its client does not grant"):
 			self._hand_over(self._bearer(scopes="all openid fileshare"))
 		endless = self._bearer()
 		frappe.db.set_value("OAuth Bearer Token", endless, "expiration_time", None)
 		with self.assertRaises(frappe.PermissionError, msg="no expiry"):
 			self._hand_over(endless)
+
+	def test_only_a_token_given_to_neodesk_s_client_opens_the_hand_over(self):
+		"""Neodesk signs in with the OAuth client this instance hands its apps (Raven Settings, raven_mobile.get_client_id):
+		a live token of the person given to any other client of theirs (an integration, another app) is refused, as is
+		every token where the instance names no such client. Real tokens, compared by their hash."""
+		other = frappe.db.get_value("OAuth Client", {"app_name": "mailcraft-jmap-other"}) or _client(
+			"mailcraft-jmap-other"
+		)
+		self.assertIn(MAILBOX, [a["email"] for a in self._hand_over(self._bearer())["accounts"]])
+		with self.assertRaises(frappe.PermissionError, msg="another client of the person's"):
+			self._hand_over(self._bearer(client=other))
+		frappe.set_user(SHARED)
+		with (
+			patch("frappe.get_request_header", return_value=f"Bearer {self._bearer()}"),
+			patch.object(jmap, "neodesk_client", return_value=None),
+			self.assertRaises(frappe.PermissionError, msg="no client named for the apps"),
+		):
+			jmap.hand_over()
+
+	def test_neodesk_s_client_is_the_one_the_instance_hands_its_apps(self):
+		"""Raven's setting, which raven.api.raven_mobile.get_client_id hands Neodesk's page before it signs in; none
+		without Raven. On a bench that has Raven (the clone), a token minted for that very client opens the hand-over."""
+		with patch.object(frappe, "get_installed_apps", return_value=["frappe", "frappe_webmail"]):
+			self.assertIsNone(jmap.neodesk_client())
+		with (
+			patch.object(frappe, "get_installed_apps", return_value=["frappe", "raven", "frappe_webmail"]),
+			patch.object(frappe.db, "get_single_value", return_value="apps-client"),
+		):
+			self.assertEqual(jmap.neodesk_client(), "apps-client")
+		if "raven" not in frappe.get_installed_apps():
+			return
+		apps = frappe.db.get_single_value("Raven Settings", "oauth_client")
+		if not apps or not frappe.db.exists("OAuth Client", apps):
+			return
+		frappe.set_user(SHARED)
+		frappe.local.flags.mailcraft_jmap_user = None
+		with patch("frappe.get_request_header", return_value=f"Bearer {self._bearer(client=apps)}"):
+			self.assertIn(MAILBOX, [a["email"] for a in jmap.hand_over()["accounts"]])
+		with (
+			patch("frappe.get_request_header", return_value=f"Bearer {self._bearer()}"),
+			self.assertRaises(frappe.PermissionError, msg="the test's own client is not the apps' one"),
+		):
+			jmap.hand_over()
 
 	def test_neodesk_s_hand_over_offers_the_attachment_actions_and_never_fails_for_them(self):
 		"""Neodesk's NeoMail window offers on an attachment what the desk's page offers (neomail_attachments.offered):
