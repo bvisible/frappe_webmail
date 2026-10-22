@@ -1315,6 +1315,14 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(
 			given["synk"], "raven" in frappe.get_installed_apps() and "Raven User" in frappe.get_roles(SHARED)
 		)
+		# What NeoMail offers on an attachment in Neodesk's window, as on the desk's page (neomail_attachments.offered)
+		from frappe_webmail import neomail_attachments
+
+		self.assertEqual(given["attachments"], neomail_attachments.offered())
+		self.assertEqual(
+			given["editors"],
+			sorted(neomail_attachments.installed_editors()) if "edit" in given["attachments"] else [],
+		)
 		self.assertEqual(
 			self._authenticated(SESSION, box["secret"], alive=False)[0],
 			SHARED,
@@ -1367,6 +1375,38 @@ class TestMailCraftJmap(FrappeTestCase):
 		frappe.db.set_value("OAuth Bearer Token", endless, "expiration_time", None)
 		with self.assertRaises(frappe.PermissionError, msg="no expiry"):
 			self._hand_over(endless)
+
+	def test_neodesk_s_hand_over_offers_the_attachment_actions_and_never_fails_for_them(self):
+		"""Neodesk's NeoMail window offers on an attachment what the desk's page offers (neomail_attachments.offered):
+		the Drive, the scanned documents, the Drive's editors. What fails there offers nothing, logged, and the
+		mailboxes are still handed over."""
+		from frappe_webmail import neomail_attachments
+
+		with (
+			patch.object(neomail_attachments, "offered", return_value=["drive", "scan", "edit"]),
+			patch.object(neomail_attachments, "installed_editors", return_value={"xlsx", "docx"}),
+		):
+			given = self._hand_over(self._bearer())
+		self.assertEqual(
+			(given["attachments"], given["editors"]), (["drive", "scan", "edit"], ["docx", "xlsx"])
+		)
+		with (
+			patch.object(neomail_attachments, "offered", return_value=["drive"]),
+			patch.object(neomail_attachments, "installed_editors", return_value={"docx"}),
+		):
+			self.assertEqual(
+				self._hand_over(self._bearer())["editors"], [], "no editor where none is offered"
+			)
+		with (
+			patch.object(neomail_attachments, "offered", side_effect=RuntimeError("no Drive")),
+			patch.object(frappe, "log_error") as log_error,
+		):
+			given = self._hand_over(self._bearer())
+		self.assertEqual((given["attachments"], given["editors"]), ([], []))
+		self.assertIn(MAILBOX, [a["email"] for a in given["accounts"]])
+		self.assertEqual(
+			log_error.call_args.args[0], "NeoMail: the actions on an attachment could not be offered"
+		)
 
 	def test_neodesk_s_hand_over_needs_no_build_here_and_the_page_s_renewal_does(self):
 		"""Neodesk brings its own build of NeoMail: hand_over answers wherever NeoMail is on. renew serves the page

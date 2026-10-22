@@ -20,8 +20,11 @@ many as the server counts. One it cannot tell apart is refused, never guessed.
 The message's size is asked of its server before a byte of it is read (MAX_SOURCE, as for a share), and the file's
 name is cleaned as a share cleans it (neomail_share._file_name) for the Drive and for the scanned documents alike. The
 file is saved by the old webmail's doors (drive.deposit, scans.create), with the person's own rights. Desk people
-only, on the page's session with its CSRF token, as the page's other calls: no facade token reaches here; so many
-calls a minute for each person (`per_person`).
+only, on the page's session with its CSRF token, as the page's other calls, or from Neodesk's NeoMail window with the
+person's own OAuth bearer token (`_gate`): no facade token reaches here; so many calls a minute for each person
+(`per_person`). Neodesk's window draws its own folder picker (the webmail's `attachments.get_drive_folders` and
+`create_drive_folder`, which its bearer token calls as the phone does) and opens an edited file in its own editor
+window, in place, from the Drive file `save_to_drive` answers.
 """
 
 import functools
@@ -139,12 +142,25 @@ def _count_key(method):
 
 
 def _gate():
-	"""The page's calls only, as a share's (neomail_share._gate, without Synk): where the page is offered, on the
-	desk's cookie with the session's CSRF token, for one of the desk's people."""
+	"""The calls of the desk's page, as a share's (neomail_share._gate, without Synk): where the page is offered, on
+	the desk's cookie with the session's CSRF token, for one of the desk's people. Or those of Neodesk's NeoMail window,
+	whose shell calls with the person's own OAuth bearer token, as hand_over takes it (mailcraft_jmap.neodesk_request_only:
+	alive, of one of the desk's people, where NeoMail is on), and never with anything else that signs a request in (an
+	API key, a password). The rights are the same either way, the person's: the mailbox (get_account), the Drive folder
+	(drive.folder_entry), the scanned documents (scans.can_create)."""
 	from frappe_webmail import mailcraft_jmap as jmap
 	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
 	from frappe_webmail.www import neomail
 
+	try:
+		signed = frappe.get_request_header("Authorization")
+	except RuntimeError:
+		# No request: a console, a test
+		signed = None
+	if signed:
+		# Neodesk: its token, never anything else that signs a request in
+		jmap.neodesk_request_only()
+		return
 	if not desk.in_desk():
 		raise frappe.PageDoesNotExistError
 	jmap.page_request_only()

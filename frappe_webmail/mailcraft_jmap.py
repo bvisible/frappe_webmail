@@ -304,7 +304,9 @@ def _gate():
 @frappe.whitelist(methods=["POST"])
 def hand_over(**kwargs):
 	"""For Neodesk: the person's mailboxes as /neomail hands them over (`accounts`, `language`, `product`, `signatures`,
-	`nora`: whether the instance has Nora, and `synk`: whether the person has Synk, the instance's chat), to a request
+	`nora`: whether the instance has Nora, `synk`: whether the person has Synk, the instance's chat, and
+	`attachments` and `editors`: what NeoMail offers on an attachment there and the Drive's editors, as the desk's page
+	has them, neomail_attachments), to a request
 	that carries an OAuth bearer token of that person, never to a desk cookie alone, which a page of another site could
 	make a browser send. Wherever NeoMail is on, the build installed here or not: Neodesk brings its own (pinned in its
 	desktop/src/editors/manifest.json and the Suite's craft_editors.json). The facade tokens given live as long as that bearer token does: an hour for Neodesk's, whose
@@ -315,6 +317,7 @@ def hand_over(**kwargs):
 	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes, nora_installed, signatures_url
 
 	language = frappe.db.get_value("User", user, "language") or frappe.local.lang or "en"
+	actions, editors = _attachment_actions()
 	return {
 		"accounts": host_mailboxes(bearer=bearer),
 		"language": language,
@@ -325,7 +328,26 @@ def hand_over(**kwargs):
 		"nora": nora_installed(),
 		# Whether Neodesk's NeoMail window offers Synk, its own chat, after Calendar: Raven here, and its role held.
 		"synk": has_synk(user),
+		# What NeoMail offers on an attachment in Neodesk's window ("drive", "scan", "edit"), as on the desk's page, and
+		# the extensions the Drive's editors open here, for the window to say so before a copy is made that none opens.
+		"attachments": actions,
+		"editors": editors,
 	}
+
+
+def _attachment_actions():
+	"""What NeoMail offers the session's person on an attachment (neomail_attachments.offered) and the extensions the
+	Drive's editors open here, as the desk's page hands them (page/neomail, hand_over); none when that cannot be said,
+	never at the cost of the handover itself (logged)."""
+	from frappe_webmail import neomail_attachments
+
+	try:
+		actions = neomail_attachments.offered()
+		editors = sorted(neomail_attachments.installed_editors()) if "edit" in actions else []
+	except Exception:
+		frappe.log_error("NeoMail: the actions on an attachment could not be offered", frappe.get_traceback())
+		return [], []
+	return actions, editors
 
 
 @frappe.whitelist(methods=["POST"])

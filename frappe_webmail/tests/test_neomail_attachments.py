@@ -711,7 +711,9 @@ class TestWhoAndWhat(TestWebmailAPIBase):
 							attachment={"index": 0, "name": "a.pdf"},
 						)
 		frappe.set_user("Administrator")
-		# A request with a token rather than the desk's cookie (a facade token, Neodesk's OAuth token) is refused
+		# A request with a token rather than the desk's cookie is refused, unless it is the person's own live OAuth
+		# token (Neodesk's window: test_neodesk_s_window_comes_in_with_the_person_s_own_bearer_only); a facade token is
+		# not one
 		with (
 			patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk", return_value=True),
 			patch.object(frappe, "get_request_header", side_effect=lambda name, *a: "Bearer x"),
@@ -729,6 +731,72 @@ class TestWhoAndWhat(TestWebmailAPIBase):
 			self.assertIn(call, frappe.whitelisted)
 			self.assertNotIn(call, frappe.guest_methods)
 			self.assertEqual(list(frappe.allowed_http_methods_for_whitelisted_func[call]), ["POST"])
+
+	def test_neodesk_s_window_comes_in_with_the_person_s_own_bearer_only(self):
+		"""Neodesk's NeoMail window: its shell calls with the person's OAuth bearer token, as hand_over takes it (alive,
+		the person's, one of the desk's people, where NeoMail is on), wherever the desk's page is offered or not, and
+		with no CSRF token (no cookie signs it in). Anything else that signs a request in (an API key, a password), a
+		token Frappe would not take or a portal account's is refused at the gate, before the mail is read. Past it, the
+		person's own rights decide, as on the page."""
+		if not frappe.db.exists("User", PORTAL):
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": PORTAL,
+					"first_name": "Portal",
+					"user_type": "Website User",
+					"send_welcome_email": 0,
+				}
+			).insert(ignore_permissions=True)
+		attachment = {"index": 0, "name": "a.pdf"}
+
+		@contextmanager
+		def neodesk(header, user, alive=True):
+			frappe.set_user(user)
+			with (
+				# The desk's page is not offered here: Neodesk does not need it
+				patch("frappe_webmail.frappe_webmail.page.neomail.neomail.in_desk", return_value=False),
+				patch(
+					"frappe.get_request_header",
+					side_effect=lambda key, default=None: header if key == "Authorization" else default,
+				),
+				patch("frappe_webmail.mailcraft_jmap._bearer_alive", return_value=alive) as checked,
+				patch("frappe_webmail.drive.available", return_value=False),
+				patch("frappe_webmail.scans.can_create", return_value=False),
+				patch.object(files, "read", side_effect=AssertionError("the mail was read")),
+			):
+				yield checked
+
+		# Past the gate: the Drive's own refusal, the scanned documents' own refusal
+		with neodesk("Bearer lent-token", self.test_user) as checked:
+			with self.assertRaisesRegex(frappe.ValidationError, "Drive is not installed"):
+				files.save_to_drive(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)
+		checked.assert_called_once_with(self.test_user, jmap._digest("lent-token"))
+		with neodesk("Bearer lent-token", self.test_user):
+			with self.assertRaisesRegex(frappe.PermissionError, "not allowed to create a scanned document"):
+				files.to_scans(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)
+		# Refused at the gate
+		for header, user, alive, why in (
+			("Bearer lent-token", self.test_user, False, "a token Frappe would not take"),
+			("token key:secret", self.test_user, True, "an API key"),
+			("Basic c3RhZmY6cGFzcw==", self.test_user, True, "a password"),
+			("Bearer lent-token", PORTAL, True, "a portal account"),
+		):
+			for call in (files.save_to_drive, files.to_scans):
+				with (
+					neodesk(header, user, alive),
+					self.assertRaises(frappe.PermissionError, msg=why) as refused,
+				):
+					call(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)
+				self.assertNotIn("scanned document", str(refused.exception), why)
+		# Where NeoMail is off, there is nothing to file from
+		with (
+			neodesk("Bearer lent-token", self.test_user),
+			patch.dict(frappe.local.conf, {"neomail_disabled": 1}),
+			self.assertRaises(frappe.PageDoesNotExistError),
+		):
+			files.save_to_drive(account=self.test_account_email, email=EMAIL_ID, attachment=attachment)
+		frappe.set_user(self.test_user)
 
 	def test_the_session_s_csrf_token_is_asked_for(self):
 		sent = {}
