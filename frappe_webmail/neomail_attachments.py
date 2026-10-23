@@ -273,6 +273,10 @@ def _name_of(part):
 	return strict
 
 
+# A line break before a space or a tab: a header a mailer folded over several lines (RFC 5322 §2.2.3).
+_FOLDED = re.compile(r"\r?\n(?=[ \t])")
+
+
 def _lenient_name(part):
 	"""The part's file name read as compat32 reads it (a parameter's value up to the next `;`), from its headers' bytes
 	decoded as NeoMail decodes them (UTF-8, else Latin-1), then its encoded words (RFC 2047); empty without one."""
@@ -281,7 +285,8 @@ def _lenient_name(part):
 	headers = Message()
 	for key, value in part.raw_items():
 		if key.lower() in ("content-disposition", "content-type"):
-			headers[key] = _text_of(str(value))
+			# One line, as before the mailer folded it (RFC 5322): compat32 keeps the break inside a long quoted name.
+			headers[key] = _FOLDED.sub("", _text_of(str(value)))
 	return _decoded_words(str(headers.get_filename() or "")).strip()
 
 

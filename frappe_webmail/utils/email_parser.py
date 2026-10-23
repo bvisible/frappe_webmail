@@ -285,6 +285,8 @@ class EmailParser:
 			return ""
 		if isinstance(header, bytes):
 			header = header.decode("utf-8", errors="replace")
+		# One line, as before the mailer folded it (RFC 5322 §2.2.3): the break goes, the space stays.
+		header = re.sub(r"\r?\n(?=[ \t])", "", str(header))
 
 		try:
 			decoded_parts = decode_header(header)

@@ -13,6 +13,7 @@ Run with:
 """
 
 import email
+import email.policy
 import unittest
 from contextlib import contextmanager
 from datetime import datetime
@@ -174,6 +175,43 @@ class TestTheOneRule(TestWebmailAPIBase):
 
 		with mocked_imap(imap_client()), self.assertRaises(frappe.ValidationError):
 			get_attachment(self.test_account_email, UID, "INBOX", "9")
+
+
+class TestAFoldedName(unittest.TestCase):
+	"""A long attachment name, written over two lines by the mailer (RFC 5322 folding), reads as one name."""
+
+	def test_a_name_written_over_two_lines_reads_as_one(self):
+		from frappe_webmail.webmail_api import _attach, attachment_filename, decode_mime_header
+
+		name = "2026-10-23 Exemple Fictif - Confirmation de notre rendez-vous du mardi 28 octobre.pdf"
+		msg = MIMEMultipart("mixed")
+		msg.attach(MIMEText("x", "plain", "utf-8"))
+		_attach(msg, name, "application/pdf", b"%PDF-1.7")
+		parsed = email.message_from_bytes(msg.as_bytes())
+		part = next(p for p in parsed.walk() if p.get_filename())
+		read = attachment_filename(SimpleNamespace(part=part, rank=1))
+		self.assertNotIn("\n", read)
+		self.assertEqual(read, name)
+		self.assertEqual(decode_mime_header("Rapport\r\n du mois"), "Rapport du mois")
+		self.assertEqual(decode_mime_header("Rapport\n\tdu mois"), "Rapport\tdu mois")
+		self.assertEqual(
+			decode_mime_header("=?utf-8?q?R=C3=A9sum=C3=A9?=\r\n =?utf-8?q?_du_mois?="), "Résumé du mois"
+		)
+
+	def test_neomail_and_the_parser_read_it_as_one_name_too(self):
+		from frappe_webmail.neomail_attachments import _name_of
+		from frappe_webmail.utils.email_parser import EmailParser
+		from frappe_webmail.webmail_api import _attach
+
+		name = "2026-10-23 Exemple Fictif - Confirmation de notre rendez-vous du mardi 28 octobre.pdf"
+		msg = MIMEMultipart("mixed")
+		msg.attach(MIMEText("x", "plain", "utf-8"))
+		_attach(msg, name, "application/pdf", b"%PDF-1.7")
+		# NeoMail reads with the default policy (neomail_attachments: message_from_bytes(…, policy=policy.default)).
+		parsed = email.message_from_bytes(msg.as_bytes(), policy=email.policy.default)
+		part = next(p for p in parsed.walk() if p.get_filename())
+		self.assertEqual(_name_of(part), name)
+		self.assertEqual(EmailParser.decode_header("Rapport\r\n du mois"), "Rapport du mois")
 
 
 class TestDownload(TestWebmailAPIBase):

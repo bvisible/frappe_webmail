@@ -11,6 +11,7 @@ including IMAP/SMTP operations, email management, and signatures.
 import base64
 import email
 import email.policy
+import re
 import smtplib
 from email import encoders
 from email.header import decode_header
@@ -3479,12 +3480,19 @@ def _owned_account(account_name):
 	return account
 
 
+# A header a mailer wrote over several lines (RFC 5322 §2.2.3, « folding »: a line break before a space or a tab) is one
+# line: the break goes, the space stays. A long attachment name read back from the server said « …de notre\r\n
+# rendez-vous… » in the webmail's list (Python writes a long quoted name over two lines, and so do other mailers).
+_FOLDED = re.compile(r"\r?\n(?=[ \t])")
+
+
 def decode_mime_header(header):
-	"""Decode MIME encoded header"""
+	"""Decode MIME encoded header, unfolded first (one line, as it was before a mailer folded it)."""
 	if not header:
 		return ""
 	if isinstance(header, bytes):
 		header = header.decode("utf-8", errors="replace")
+	header = _FOLDED.sub("", str(header))
 
 	try:
 		decoded_parts = decode_header(header)
