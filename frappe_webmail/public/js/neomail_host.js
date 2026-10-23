@@ -6,7 +6,8 @@
  * origin, apps/mailcraft-web/src/host.rs of bvisible/mailcraft):
  * - `window.mailcraftJmap`: the person's mailboxes, their language, the product's name, where signatures are written;
  * - `window.mailcraftJmapRenew()`: new facade tokens for the page's desk session, when the build's were refused;
- * - `window.mailcraftFetchUrl(url)`: a picture on the web that a message links to, fetched by the server.
+ * - `window.mailcraftFetchUrl(url)`: a picture on the web that a message links to, fetched by the server;
+ * - `window.mailcraftNoraOpen(path)`: a page of the instance that a card or a link of Nora's pane leads to, in a new tab.
  * And what the page and the build tell each other by `postMessage` on their common origin: the build says whether it
  * holds unsent work (`mailcraft:dirty`) and, with `chrome: "menu"`, where it is (`mailcraft:state`), which the desk's
  * page turns into the desk's menu (`navSections`); the page asks it to do things (`mailcraft:command`, `commander`).
@@ -45,6 +46,14 @@ window.neomailHost = (function () {
 		const opts = options || {};
 		const told = (alive) => opts.onSession && opts.onSession(alive);
 		win.mailcraftJmap = handover;
+
+		// A page of the instance that a card or a link of Nora's pane leads to (a path such as `/app/…` or `/drive/f/…`,
+		// checked by the build and again here), opened in a new tab on the person's click (nora.rs of mailcraft-web).
+		win.mailcraftNoraOpen = function (path) {
+			const asked = String(path || "");
+			if (asked.length > 2048 || !/^\/(?![\/\\])[^\s\\]*$/.test(asked)) return;
+			win.open(asked, "_blank", "noopener");
+		};
 
 		// New facade tokens for this page's session, when the build's were refused (MailCraft calls it, then retries).
 		async function renew() {

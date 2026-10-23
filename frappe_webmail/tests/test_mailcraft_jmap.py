@@ -1189,6 +1189,19 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertNotIn(logo.file_url, signature["html"])
 		self.assertIn("Camille Favre", signature["html"])
 
+	def test_a_mailbox_says_whether_it_is_shared_with_the_person(self):
+		"""Nora's pane in NeoMail asks the person before she writes into a message of a mailbox shared with them: the page
+		says which of their mailboxes are shared with them rather than theirs."""
+		from frappe_webmail.www import neomail
+
+		no_template = patch("frappe_webmail.signatures.template_for", return_value=None)
+		no_template.start()
+		self.addCleanup(no_template.stop)
+		self._as(OWNER)
+		self.assertIs(next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)["shared"], False)
+		self._as(SHARED)
+		self.assertIs(next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)["shared"], True)
+
 	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
 		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
 		from frappe_webmail.www import neomail

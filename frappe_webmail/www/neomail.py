@@ -133,7 +133,8 @@ def nora_installed():
 def host_mailboxes(bearer=None):
 	"""The mailboxes of the person (owned or shared, enabled) as MailCraft opens them: the JMAP session of each, and
 	a token good for the facade only, twelve hours at most, that MailCraft keeps in the tab's memory. It is bound to
-	the desk session of the request, or to Neodesk's OAuth bearer token (`bearer`, mailcraft_jmap.hand_over).
+	the desk session of the request, or to Neodesk's OAuth bearer token (`bearer`, mailcraft_jmap.hand_over). Each says
+	whether it is shared with the person rather than theirs (`shared`).
 
 	Each carries the signature MailCraft puts under a message written from it (`signature`, {html, text}, left out
 	without any): the company's, written for the person, when an Email Signature Template applies to them and does not
@@ -161,6 +162,9 @@ def host_mailboxes(bearer=None):
 			"username": a["email"],
 			"secret": token,
 			"scheme": "bearer",
+			# Shared with the person rather than theirs: Nora's pane in NeoMail writes into a message of it only after
+			# their click on a card that names it (apps' nora/assist.rs of bvisible/mailcraft).
+			"shared": bool(a.get("is_shared")),
 		}
 		chosen = signature_for(frappe.session.user, a, memo) or {}
 		signature = handed_signature(chosen.get("html"), chosen.get("text"))
