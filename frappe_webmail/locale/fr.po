@@ -214,16 +214,22 @@ msgstr "Le compte n'utilise pas OAuth2"
 msgid "Account not found"
 msgstr "Compte introuvable"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Select field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
+#, fuzzy
 msgid "Action"
-msgstr ""
+msgstr "Action"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:162
+#, fuzzy
 msgid "Actions"
-msgstr ""
+msgstr "Actions"
 
 #: frontend/src/components/EmailViewer.vue:278
 msgid "Actions on {0}"
@@ -442,10 +448,13 @@ msgstr ""
 "Êtes-vous sûr(e) de vouloir supprimer définitivement cet e-mail ? Cette "
 "action est irréversible."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Arial"
-msgstr ""
+msgstr "Arial"
 
 #: frontend/src/components/SignatureEditor.vue:107
 #: frontend/src/components/SignatureEditor.vue:112
@@ -668,10 +677,13 @@ msgstr "Impossible de renommer ce dossier"
 msgid "Carbon copy..."
 msgstr "Copie carbone..."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Small Text field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
+#, fuzzy
 msgid "Cc"
-msgstr ""
+msgstr "Cc"
 
 #: frontend/src/components/EmailComposer.vue:52
 msgid "Cc:"
@@ -755,11 +767,14 @@ msgid ""
 msgstr ""
 "Colore le nom, les liens et la ligne qui sépare le logo des coordonnées."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature
 #. Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Compact"
-msgstr ""
+msgstr "Compact"
 
 #. Option for the 'Applies To' (Select) field in DocType 'Email Signature
 #. Template'
@@ -782,11 +797,14 @@ msgstr "Raison sociale"
 msgid "Company signature"
 msgstr "Signature de l'entreprise"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
 #: frontend/src/components/FilterManager.vue:115
+#, fuzzy
 msgid "Conditions"
-msgstr ""
+msgstr "Conditions"
 
 #: frontend/src/pages/Webmail.vue:375
 msgid "Configure an account"
@@ -1064,10 +1082,13 @@ msgstr "Le DocType et le nom du document sont requis"
 msgid "DocType is required"
 msgstr "Le DocType est requis"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:441
+#, fuzzy
 msgid "Document"
-msgstr ""
+msgstr "Document"
 
 #: frappe_webmail/webmail_api.py:3893
 msgid "Document not found"
@@ -1143,11 +1164,14 @@ msgstr "Dossier des brouillons"
 msgid "Drafts folder not found"
 msgstr "Dossier Brouillons non trouvé"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/AttachmentPicker.vue:301
 #: frontend/src/components/AttachmentPicker.vue:445
+#, fuzzy
 msgid "Drive"
-msgstr ""
+msgstr "Drive"
 
 #: frontend/src/components/AttachmentPicker.vue:45
 msgid "Drop files here or click to browse"
@@ -1507,11 +1531,14 @@ msgstr "Image externe bloquée"
 msgid "External images were blocked for your safety."
 msgstr "Les images externes ont été bloquées pour votre sécurité."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Network' (Select) field in DocType 'Email Signature Social
 #. Link'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+#, fuzzy
 msgid "Facebook"
-msgstr ""
+msgstr "Facebook"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:1163
@@ -1778,10 +1805,13 @@ msgstr "Nom complet"
 msgid "Fwd: {0}"
 msgstr "Tr : {0}"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Georgia"
-msgstr ""
+msgstr "Georgia"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:805
@@ -1790,14 +1820,20 @@ msgstr ""
 msgid "German"
 msgstr "Allemand"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#, fuzzy
 msgid "Gmail"
-msgstr ""
+msgstr "Gmail"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/SignatureEditor.vue:96
+#, fuzzy
 msgid "HTML"
-msgstr ""
+msgstr "HTML"
 
 #. Label of a Long Text field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json
@@ -1813,10 +1849,13 @@ msgstr "Contient une pièce jointe"
 msgid "Has attachments"
 msgstr "A des pièces jointes"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Helvetica"
-msgstr ""
+msgstr "Helvetica"
 
 #: frontend/src/components/EmailViewer.vue:153
 msgid "Hide"
@@ -1925,10 +1964,13 @@ msgstr "IMAP : Connexion réussie"
 msgid "Ignore"
 msgstr "Ignorer"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/EmailComposer.vue:132
 #: frontend/src/components/SignatureEditor.vue:149
+#, fuzzy
 msgid "Image"
-msgstr ""
+msgstr "Image"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:541
@@ -1936,10 +1978,13 @@ msgstr ""
 msgid "Image URL:"
 msgstr "URL de l'image :"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:724
+#, fuzzy
 msgid "Important"
-msgstr ""
+msgstr "Important"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/EmailComposer.vue:800
@@ -2010,17 +2055,23 @@ msgstr "Dossier de réception"
 msgid "Incorrect password"
 msgstr "Mot de passe incorrect"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Provider preset' (Select) field in DocType 'Webmail
 #. Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#, fuzzy
 msgid "Infomaniak"
-msgstr ""
+msgstr "Infomaniak"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Network' (Select) field in DocType 'Email Signature Social
 #. Link'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+#, fuzzy
 msgid "Instagram"
-msgstr ""
+msgstr "Instagram"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:95
 msgid "Invalid IMAP port number"
@@ -2146,11 +2197,14 @@ msgstr "URL du lien :"
 msgid "Link already exists"
 msgstr "Le lien existe déjà"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Network' (Select) field in DocType 'Email Signature Social
 #. Link'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+#, fuzzy
 msgid "LinkedIn"
-msgstr ""
+msgstr "LinkedIn"
 
 #: frontend/src/pages/Webmail.vue:157
 msgid "Live results search the {0} folder."
@@ -2208,11 +2262,14 @@ msgstr "Local"
 msgid "Location"
 msgstr "Emplacement"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 #: frappe_webmail/signatures.py:744
+#, fuzzy
 msgid "Logo"
-msgstr ""
+msgstr "Logo"
 
 #. Label of a Int field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
@@ -2322,9 +2379,12 @@ msgstr "Type de correspondance"
 msgid "Maximum 25 MB per file"
 msgstr "Maximum 25 Mo par fichier"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AgentPanel.vue:222
+#, fuzzy
 msgid "Message"
-msgstr ""
+msgstr "Message"
 
 #: frontend/src/components/EmailComposer.vue:73
 msgid "Message subject"
@@ -2334,6 +2394,8 @@ msgstr "Objet du message"
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 #: frappe_webmail/signatures.py:688
@@ -2343,8 +2405,9 @@ msgstr "Les messages sont importés, et non créés."
 #: frappe_webmail/tests/test_signatures.py:752
 #: frappe_webmail/tests/test_signatures.py:804
 #: frappe_webmail/tests/test_signatures.py:1921
+#, fuzzy
 msgid "Mobile"
-msgstr ""
+msgstr "Mobile"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:302
@@ -2392,9 +2455,12 @@ msgstr "Nom du dossier"
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1175
+#, fuzzy
 msgid "NeoMail"
-msgstr ""
+msgstr "NeoMail"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1087
 msgid "NeoMail could not be opened. Reload the page to try again."
@@ -2709,9 +2775,12 @@ msgstr "Aucune pour le moment"
 msgid "Numbered list"
 msgstr "Liste numérotée"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:127
+#, fuzzy
 msgid "OAuth"
-msgstr ""
+msgstr "OAuth"
 
 #. Label of a Select field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
@@ -2763,11 +2832,14 @@ msgstr "Jeton OAuth expiré. Veuillez reconnecter votre compte."
 msgid "OAuth token not available"
 msgstr "Jeton OAuth non disponible"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#, fuzzy
 msgid "OAuth2"
-msgstr ""
+msgstr "OAuth2"
 
 #: frappe_webmail/webmail_api.py:755
 msgid "OAuth2 not connected. Please authorize your account first."
@@ -2900,27 +2972,36 @@ msgstr "Ouvrir le webmail pour en ajouter une"
 msgid "Orders"
 msgstr "Commandes"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AgentPanel.vue:90
+#, fuzzy
 msgid "Original"
-msgstr ""
+msgstr "Original"
 
 #: frontend/src/pages/Webmail.vue:857
 msgid "Other mailboxes"
 msgstr "Autres boîtes mail"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
+#, fuzzy
 msgid "Outlook"
-msgstr ""
+msgstr "Outlook"
 
 #. Label of a Link field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json
 msgid "Owner"
 msgstr "Propriétaire"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AttachmentPicker.vue:304
+#, fuzzy
 msgid "PDF"
-msgstr ""
+msgstr "PDF"
 
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
@@ -2972,11 +3053,14 @@ msgstr "Supprimer définitivement {0} e-mails ? Cette action est irréversible."
 msgid "Phone"
 msgstr ""
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
 #: frappe_webmail/signatures.py:761
+#, fuzzy
 msgid "Photo"
-msgstr ""
+msgstr "Photo"
 
 #. Label of a Small Text field in DocType 'Email Signature Preference'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json
@@ -3606,9 +3690,12 @@ msgstr "Largeur de la barre latérale"
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/EmailComposer.vue:136
+#, fuzzy
 msgid "Signature"
-msgstr ""
+msgstr "Signature"
 
 #. Label of a Text Editor field in DocType 'Email Signature'
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json
@@ -3636,9 +3723,12 @@ msgstr "Aperçu de la signature"
 msgid "Signature saved"
 msgstr "Signature enregistrée"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/pages/Webmail.vue:640
+#, fuzzy
 msgid "Signatures"
-msgstr ""
+msgstr "Signatures"
 
 #. Label of a Table field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
@@ -3672,9 +3762,12 @@ msgstr "Indésirables"
 msgid "Spam Folder"
 msgstr "Dossier Indésirables"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/webmail_api.py:3867
+#, fuzzy
 msgid "Standard"
-msgstr ""
+msgstr "Standard"
 
 #: frontend/src/components/EmailViewer.vue:50
 #: frontend/src/components/EmailViewer.vue:51
@@ -3737,9 +3830,12 @@ msgstr "Résumer ce mail"
 msgid "Supplier"
 msgstr "Fournisseur"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frappe_webmail/neomail_share.py:108
+#, fuzzy
 msgid "Synk"
-msgstr ""
+msgstr "Synk"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:266
 msgid "Synk could not be reached. Try again in a moment."
@@ -3763,10 +3859,13 @@ msgstr "Synk n’est pas accessible pour vous."
 msgid "System Manager"
 msgstr "Gestionnaire système"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Tahoma"
-msgstr ""
+msgstr "Tahoma"
 
 #. Label of a Data field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json
@@ -4282,10 +4381,13 @@ msgstr "Corbeille"
 msgid "Trash Folder"
 msgstr "Dossier Corbeille"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Trebuchet MS"
-msgstr ""
+msgstr "Trebuchet MS"
 
 #. Name of a DocType
 #: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
@@ -4310,10 +4412,13 @@ msgstr ""
 msgid "Try fewer filters or a different folder."
 msgstr "Essayez avec moins de filtres ou dans un autre dossier."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Select field in DocType 'Trusted Email Source'
 #: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json
+#, fuzzy
 msgid "Type"
-msgstr ""
+msgstr "Type"
 
 #: frontend/src/pages/Webmail.vue:154
 msgid "Type words to search subject, body and sender."
@@ -4324,10 +4429,13 @@ msgstr "Tapez des mots pour chercher dans le sujet, le corps et l'expéditeur."
 msgid "UI Preferences"
 msgstr "Préférences de l'interface"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Label of a Data field in DocType 'Email Signature Social Link'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+#, fuzzy
 msgid "URL"
-msgstr ""
+msgstr "URL"
 
 #: frontend/src/utils/webmailErrors.js:130
 msgid "Unable to determine which account to update."
@@ -4375,10 +4483,13 @@ msgstr "Utilisateur"
 msgid "User {0} not found"
 msgstr "Utilisateur {0} introuvable"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json
+#, fuzzy
 msgid "Verdana"
-msgstr ""
+msgstr "Verdana"
 
 #: frappe_webmail/frappe_webmail/page/webmail/webmail.js:105
 #: frappe_webmail/frappe_webmail/page/webmail/webmail.js:176
@@ -4447,9 +4558,12 @@ msgstr ""
 msgid "What to show"
 msgstr "Éléments à afficher"
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #: frontend/src/components/AutomationsPanel.vue:143
+#, fuzzy
 msgid "WhatsApp"
-msgstr ""
+msgstr "WhatsApp"
 
 #. Description of the 'Banner Link' (Data) field in DocType 'Email Signature
 #. Template'
@@ -4485,11 +4599,14 @@ msgstr "Rédige une réponse"
 msgid "Write your message..."
 msgstr "Écrivez votre message..."
 
+# no opinion on purpose: repeating the source erases the translation another
+# app ships (neoffice-maintenance#335)
 #. Option for the 'Network' (Select) field in DocType 'Email Signature Social
 #. Link'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json
+#, fuzzy
 msgid "X"
-msgstr ""
+msgstr "X"
 
 #: frappe_webmail/attachments.py:258
 msgid "You are not allowed to attach a file to {0} {1}"
