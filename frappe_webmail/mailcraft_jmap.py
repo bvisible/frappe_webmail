@@ -372,8 +372,9 @@ def renew(**kwargs):
 def neodesk_request_only():
 	"""A request of Neodesk's, where NeoMail is on: it carries an OAuth bearer token of this very person, one of the
 	desk's people, that Frappe itself would take (the one Frappe signed the request in with, or, when a desk cookie
-	signed it in, one Frappe would have taken all the same), given to Neodesk's own OAuth client (neodesk_client: not to
-	another client of the person's, an integration or another app), never a desk cookie alone, which a page of another
+	signed it in, one Frappe would have taken all the same), given to the OAuth client this instance hands its own apps
+	(neodesk_client: Neodesk's, which is also the phone's; never another client of the person's, an integration),
+	never a desk cookie alone, which a page of another
 	site could make a browser send. Answers the token. hand_over, and the calls of Neodesk's NeoMail window: Synk
 	(neomail_share) and the attachments (neomail_attachments)."""
 	if not neomail_enabled():
@@ -392,8 +393,9 @@ def neodesk_request_only():
 
 def neodesk_client():
 	"""The OAuth client Neodesk signs in with: the one this instance hands its own apps before they sign in
-	(raven.api.raven_mobile.get_client_id reads `Raven Settings.oauth_client`; Neodesk's page asks it as the phone does).
-	None where there is none: without it, Neodesk cannot sign in here."""
+	(raven.api.raven_mobile.get_client_id reads `Raven Settings.oauth_client`; Neodesk's page asks it as the phone does,
+	so the phone's tokens are of this client too: the same person, through the same apps). None where there is none:
+	without it, Neodesk cannot sign in here."""
 	if "raven" not in frappe.get_installed_apps():
 		return None
 	return frappe.db.get_single_value("Raven Settings", "oauth_client") or None
