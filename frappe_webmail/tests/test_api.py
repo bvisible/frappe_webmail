@@ -246,7 +246,11 @@ class TestGetEmailsWithMock(TestWebmailAPIBase):
 		mock_envelope = MagicMock()
 		mock_envelope.subject = b"Test Subject"
 		mock_envelope.date = datetime(2024, 1, 15, 10, 30)
-		mock_envelope.from_ = [MagicMock(name=b"Sender", mailbox=b"sender", host=b"example.com")]
+		# `name=` on the constructor names the mock itself: with bytes, its repr fails (Python 3.12.15). The address's
+		# own `name` is an attribute.
+		sender = MagicMock(mailbox=b"sender", host=b"example.com")
+		sender.name = b"Sender"
+		mock_envelope.from_ = [sender]
 		mock_envelope.to = [MagicMock(mailbox=b"recipient", host=b"example.com")]
 
 		mock_client.fetch.return_value = {
