@@ -3309,13 +3309,102 @@ def save_ui_preferences(
 # ============================================
 
 
-@frappe.whitelist()
-def get_folder_mapping(account_name):
-	"""Get folder mapping for an account (configured or auto-detected)"""
-	account = get_account(account_name)
+# The special folders of a mailbox. An IMAP server marks them with a special-use attribute (RFC 6154; \Inbox and the
+# older \Spam as well), which wins; where none does, a folder is taken by a name mail programs give it, in the
+# languages of the people Neoffice serves, at the top of the mailbox or under its INBOX (a folder "Archive" inside a
+# project's is not the mailbox's archive). The first folder listed takes a role; a role goes to one folder only.
+FOLDER_ROLES = ("inbox", "sent", "drafts", "trash", "spam", "archive")
+SPECIAL_USE = {
+	"inbox": ("\\inbox",),
+	"sent": ("\\sent",),
+	"drafts": ("\\drafts",),
+	"trash": ("\\trash",),
+	"spam": ("\\junk", "\\spam"),
+	"archive": ("\\archive",),
+}
+USUAL_NAMES = {
+	"inbox": ("inbox",),
+	"sent": (
+		"sent",
+		"sent items",
+		"sent mail",
+		"sent messages",
+		"envoyés",
+		"éléments envoyés",
+		"messages envoyés",
+		"gesendet",
+		"gesendete objekte",
+		"gesendete elemente",
+		"posta inviata",
+		"inviati",
+		"elementi inviati",
+		"enviados",
+		"elementos enviados",
+	),
+	"drafts": ("drafts", "brouillons", "entwürfe", "bozze", "borradores"),
+	"trash": (
+		"trash",
+		"deleted items",
+		"deleted messages",
+		"corbeille",
+		"éléments supprimés",
+		"papierkorb",
+		"gelöschte elemente",
+		"gelöschte objekte",
+		"cestino",
+		"posta eliminata",
+		"elementi eliminati",
+		"papelera",
+		"elementos eliminados",
+	),
+	"spam": (
+		"spam",
+		"junk",
+		"junk e-mail",
+		"junk email",
+		"courrier indésirable",
+		"pourriel",
+		"junk-e-mail",
+		"posta indesiderata",
+		"correo no deseado",
+	),
+	"archive": ("archive", "archives", "archiv", "archivio", "archivo"),
+}
 
-	# Get configured folders (manual override)
-	configured = {
+
+def special_folders(listed):
+	"""The special folders among ``listed``: (flags, delimiter, name) of each folder, as an IMAP LIST gives them (bytes
+	or text). ``{role: folder name}`` for the roles of FOLDER_ROLES found, by special-use attribute first, then by name."""
+	folders = []
+	for flags, delimiter, name in listed:
+		name = name.decode("utf-8") if isinstance(name, bytes) else str(name or "")
+		delimiter = delimiter.decode("utf-8") if isinstance(delimiter, bytes) else (delimiter or "")
+		marks = {(f.decode("utf-8") if isinstance(f, bytes) else str(f)).lower() for f in (flags or ())}
+		parent, _sep, leaf = name.rpartition(delimiter) if delimiter else ("", "", name)
+		folders.append((name, marks, leaf.strip().lower(), parent))
+	found, taken = {}, set()
+	for role in FOLDER_ROLES:
+		for name, marks, _leaf, _parent in folders:
+			if name not in taken and marks & set(SPECIAL_USE[role]):
+				found[role] = name
+				taken.add(name)
+				break
+	for role in FOLDER_ROLES:
+		if role in found:
+			continue
+		for name, _marks, leaf, parent in folders:
+			if name in taken or (parent and parent.lower() != "inbox"):
+				continue
+			if (name.lower() if role == "inbox" else leaf) in USUAL_NAMES[role]:
+				found[role] = name
+				taken.add(name)
+				break
+	return found
+
+
+def configured_folders(account):
+	"""The special folders the account's own settings name (the webmail's folder mapping), each "" where none."""
+	return {
 		"inbox": account.inbox_folder or "",
 		"sent": account.sent_folder or "",
 		"drafts": account.drafts_folder or "",
@@ -3324,84 +3413,33 @@ def get_folder_mapping(account_name):
 		"archive": account.archive_folder or "",
 	}
 
+
+def effective_folders(configured, auto_detected):
+	"""The folder of each role: the account's setting, else the one found on the server (INBOX for the inbox)."""
+	return {role: configured.get(role) or auto_detected.get(role, "INBOX" if role == "inbox" else "") for role in FOLDER_ROLES}
+
+
+@frappe.whitelist()
+def get_folder_mapping(account_name):
+	"""Get folder mapping for an account (configured or auto-detected)"""
+	account = get_account(account_name)
+
+	# Get configured folders (manual override)
+	configured = configured_folders(account)
+
 	# Get auto-detected folders from IMAP
 	auto_detected = {}
 	try:
 		with imap_session(account) as client:
-			folders = client.list_folders()
-
-			for flags, delimiter, name in folders:
-				# Decode folder name
-				if isinstance(name, bytes):
-					name = name.decode("utf-8")
-				if isinstance(delimiter, bytes):
-					delimiter = delimiter.decode("utf-8")
-
-				# Convert flags to strings
-				flags_str = [f.decode("utf-8") if isinstance(f, bytes) else f for f in flags]
-				name_lower = name.lower()
-
-				# Auto-detect based on IMAP flags first
-				if "\\Inbox" in flags_str or name_lower == "inbox":
-					if not auto_detected.get("inbox"):
-						auto_detected["inbox"] = name
-				if "\\Sent" in flags_str:
-					if not auto_detected.get("sent"):
-						auto_detected["sent"] = name
-				if "\\Drafts" in flags_str:
-					if not auto_detected.get("drafts"):
-						auto_detected["drafts"] = name
-				if "\\Trash" in flags_str:
-					if not auto_detected.get("trash"):
-						auto_detected["trash"] = name
-				if "\\Junk" in flags_str or "\\Spam" in flags_str:
-					if not auto_detected.get("spam"):
-						auto_detected["spam"] = name
-				if "\\Archive" in flags_str:
-					if not auto_detected.get("archive"):
-						auto_detected["archive"] = name
-
-				# Fallback to name-based detection
-				if not auto_detected.get("inbox") and name_lower == "inbox":
-					auto_detected["inbox"] = name
-				if not auto_detected.get("sent") and name_lower in [
-					"sent",
-					"sent items",
-					"sent mail",
-					"envoyés",
-				]:
-					auto_detected["sent"] = name
-				if not auto_detected.get("drafts") and name_lower in ["drafts", "brouillons"]:
-					auto_detected["drafts"] = name
-				if not auto_detected.get("trash") and name_lower in ["trash", "deleted items", "corbeille"]:
-					auto_detected["trash"] = name
-				if not auto_detected.get("spam") and name_lower in [
-					"spam",
-					"junk",
-					"junk e-mail",
-					"courrier indésirable",
-				]:
-					auto_detected["spam"] = name
-				if not auto_detected.get("archive") and name_lower in ["archive", "archives"]:
-					auto_detected["archive"] = name
-
+			auto_detected = special_folders(client.list_folders())
 	except Exception as e:
 		frappe.log_error("Folder auto-detection failed", str(e))
 
 	# Merge: configured takes precedence over auto-detected
-	effective = {
-		"inbox": configured["inbox"] or auto_detected.get("inbox", "INBOX"),
-		"sent": configured["sent"] or auto_detected.get("sent", ""),
-		"drafts": configured["drafts"] or auto_detected.get("drafts", ""),
-		"trash": configured["trash"] or auto_detected.get("trash", ""),
-		"spam": configured["spam"] or auto_detected.get("spam", ""),
-		"archive": configured["archive"] or auto_detected.get("archive", ""),
-	}
-
 	return {
 		"configured": configured,
 		"auto_detected": auto_detected,
-		"effective": effective,
+		"effective": effective_folders(configured, auto_detected),
 	}
 
 

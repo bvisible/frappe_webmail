@@ -472,5 +472,51 @@ class TestHelperFunctions(unittest.TestCase):
 		self.assertNotIn("onerror", result)
 
 
+
+class TestSpecialFolders(unittest.TestCase):
+	"""The special folders of a mailbox as an IMAP LIST gives them (webmail_api.special_folders): the server's own
+	special-use attribute (RFC 6154) first, then a usual name, at the top or under INBOX, one folder to a role."""
+
+	def test_the_marks_first_then_the_names(self):
+		from frappe_webmail.webmail_api import special_folders
+
+		listed = [
+			((b"\\HasNoChildren",), b".", "INBOX"),
+			((b"\\HasNoChildren",), b".", "INBOX.Sent"),
+			((b"\\HasNoChildren", b"\\Sent"), b".", "INBOX.Sent Messages"),
+			((b"\\HasNoChildren",), b".", "INBOX.Brouillons"),
+			((b"\\HasNoChildren", b"\\Trash"), b".", "INBOX.Corbeille"),
+			((b"\\HasNoChildren",), b".", "INBOX.Archives"),
+			((b"\\HasNoChildren",), b".", "INBOX.Archive"),
+			((b"\\HasChildren",), b".", "Clients"),
+			((b"\\HasNoChildren",), b".", "Clients.Spam"),
+			((b"\\HasNoChildren",), b".", "INBOX.Posta indesiderata"),
+		]
+		self.assertEqual(
+			special_folders(listed),
+			{
+				"inbox": "INBOX",
+				"sent": "INBOX.Sent Messages",
+				"drafts": "INBOX.Brouillons",
+				"trash": "INBOX.Corbeille",
+				"spam": "INBOX.Posta indesiderata",
+				"archive": "INBOX.Archives",
+			},
+		)
+
+	def test_a_server_that_marks_nothing_and_names_nothing_usual(self):
+		from frappe_webmail.webmail_api import special_folders
+
+		listed = [((), "/", "INBOX"), ((), "/", "Projets"), ((), "/", "Projets/Archive")]
+		self.assertEqual(special_folders(listed), {"inbox": "INBOX"})
+
+	def test_one_folder_takes_one_role(self):
+		from frappe_webmail.webmail_api import special_folders
+
+		# A folder the server marks both junk and trash is the trash; the junk goes to the one named so.
+		listed = [((b"\\Trash", b"\\Junk"), "/", "Bin"), ((), "/", "Spam")]
+		self.assertEqual(special_folders(listed), {"trash": "Bin", "spam": "Spam"})
+
+
 if __name__ == "__main__":
 	unittest.main()

@@ -979,8 +979,12 @@ def mailbox_get(args):
 	wanted = _ids(args)
 	folders = webmail.get_folders(account.name)
 	names = {f["name"] for f in folders}
+	# The roles (RFC 8621 2): the account's own folder settings, else what the server marks (special-use attributes)
+	# or names as such, read from the listing above, with no second IMAP session.
+	found = webmail.special_folders((f.get("flags") or (), f.get("delimiter"), f["name"]) for f in folders)
+	effective = webmail.effective_folders(webmail.configured_folders(account), found)
 	roles = {}
-	for role, folder in (webmail.get_folder_mapping(account.name).get("effective") or {}).items():
+	for role, folder in effective.items():
 		if folder and role in _ROLES and folder in names:
 			roles.setdefault(folder, _ROLES[role])
 	chosen = [f for f in folders if wanted is None or mailbox_id(f["name"]) in wanted]

@@ -600,6 +600,60 @@ class TestMailCraftJmap(FrappeTestCase):
 			refused["notCreated"]["n"]["type"], "forbidden", "folders are managed in the webmail"
 		)
 
+	def test_the_roles_come_from_the_server_s_marks_then_from_usual_names(self):
+		"""RFC 8621 roles: a special-use attribute first (RFC 6154), then a name mail programs give a folder, in the
+		languages of the people served, at the top or under INBOX; one folder to a role, read from the listing Mailbox/get
+		makes (no second IMAP listing)."""
+		server = FakeServer()
+		bare = (b"\\HasNoChildren",)
+		server.folders = {
+			name: {"flags": flags, "messages": {}}
+			for name, flags in (
+				("INBOX", bare),
+				("Archive", bare),
+				("Archives", bare),
+				("Gesendete Objekte", bare),
+				("Sent Items", (*bare, b"\\Sent")),
+				("Entw\u00fcrfe", bare),
+				("INBOX/Papierkorb", bare),
+				("Projects", (b"\\HasChildren",)),
+				("Projects/Spam", bare),
+				("Junk-E-Mail", bare),
+			)
+		}
+		server.validity = {name: VALIDITY for name in server.folders}
+		server.next_uid = {name: 1 for name in server.folders}
+		with served(server), patch("frappe_webmail.webmail_api.get_folder_mapping", side_effect=AssertionError):
+			_n, out, _c = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
+		roles = {b["id"]: b["role"] for b in out["list"]}
+		expected = {
+			"INBOX": "inbox",
+			# Two folders a name gives the archive to: the first listed takes it, the other stays a folder.
+			"Archive": "archive",
+			"Archives": None,
+			# The server's own mark wins over a name, whichever comes first.
+			"Gesendete Objekte": None,
+			"Sent Items": "sent",
+			"Entw\u00fcrfe": "drafts",
+			"INBOX/Papierkorb": "trash",
+			# A project's own "Spam" is not the mailbox's.
+			"Projects/Spam": None,
+			"Junk-E-Mail": "junk",
+		}
+		self.assertEqual({name: roles[jmap.mailbox_id(name)] for name in expected}, expected)
+
+	def test_the_account_s_own_folder_settings_come_first(self):
+		frappe.db.set_value("Webmail Account", MAILBOX, "archive_folder", "Archives")
+		self.addCleanup(frappe.db.set_value, "Webmail Account", MAILBOX, "archive_folder", "")
+		server = FakeServer()
+		for name in ("Archive", "Archives"):
+			server.folders[name] = {"flags": (b"\\HasNoChildren",), "messages": {}}
+			server.validity[name], server.next_uid[name] = VALIDITY, 1
+		with served(server):
+			_n, out, _c = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
+		roles = {b["id"]: b["role"] for b in out["list"]}
+		self.assertEqual((roles[jmap.mailbox_id("Archives")], roles[jmap.mailbox_id("Archive")]), ("archive", None))
+
 	def test_the_newest_first_then_their_rows(self):
 		server = FakeServer()
 		older = server.put("INBOX", message("older"), {b"\\Seen"})
