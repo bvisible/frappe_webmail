@@ -25,6 +25,7 @@ from urllib.parse import quote
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import cint
+from werkzeug.wrappers import Response
 
 from frappe_webmail import mailcraft_jmap as jmap
 
@@ -1588,3 +1589,67 @@ class TestMailCraftJmap(FrappeTestCase):
 		with patch.object(frappe.local, "form_dict", frappe._dict(cmd="frappe.auth.get_logged_user")):
 			jmap.no_store(response=unrelated, request=SimpleNamespace(path="/"))
 		self.assertEqual(unrelated.headers, {})
+
+	def test_a_page_of_another_origin_gets_in_only_where_the_site_names_it(self):
+		origin = "https://mail.example.org"
+
+		def answered(path=SESSION, method="GET", sent=origin, named=(origin,), cmd=None, frappes=None):
+			response = SimpleNamespace(headers={})
+			request = SimpleNamespace(path=path, method=method, headers={"Origin": sent} if sent else {})
+			conf = {
+				"mailcraft_jmap_cors_origins": list(named) if named is not None else None,
+				"allow_cors": frappes,
+			}
+			with (
+				patch.dict(frappe.local.conf, conf),
+				patch.object(frappe.local, "form_dict", frappe._dict(cmd=cmd)),
+			):
+				jmap.cors(response=response, request=request)
+			return response.headers
+
+		self.assertIn("frappe_webmail.mailcraft_jmap.cors", frappe.get_hooks("after_request"))
+
+		self.assertEqual(answered(named=None), {}, "nobody by default")
+		got = answered()
+		self.assertEqual((got["Access-Control-Allow-Origin"], got["Vary"]), (origin, "Origin"))
+		self.assertEqual(got["Access-Control-Expose-Headers"], "Retry-After")
+		self.assertNotIn("Access-Control-Allow-Credentials", got, "never the browser's cookies")
+		self.assertNotIn("Access-Control-Allow-Methods", got, "only a preflight is told the methods")
+		preflight = answered(path=API, method="OPTIONS")
+		self.assertEqual(preflight["Access-Control-Allow-Methods"], "GET, POST")
+		self.assertEqual(preflight["Access-Control-Allow-Headers"], "Authorization, Content-Type, Accept")
+		# Another origin, an address that isn't the facade's (one that hands tokens out among them), `*` named,
+		# a sandboxed page's `null`, and no origin at all: nothing.
+		self.assertEqual(answered(sent="https://other.example.org"), {})
+		self.assertEqual(answered(path="/api/method/frappe.client.get_list"), {})
+		self.assertEqual(answered(path="/api/method/frappe_webmail.mailcraft_jmap.hand_over"), {})
+		self.assertEqual(answered(sent="https://other.example.org", named=("*",)), {})
+		self.assertEqual(answered(sent="*", named=("*",)), {})
+		self.assertEqual(answered(sent="null", named=("null",)), {})
+		# Frappe runs a `cmd` whatever the path: only the method the address names is answered.
+		self.assertEqual(answered(cmd="frappe_webmail.mailcraft_jmap.hand_over"), {})
+		self.assertEqual(
+			answered(cmd="frappe_webmail.mailcraft_jmap.session")["Access-Control-Allow-Origin"], origin
+		)
+		# An origin Frappe's own allow_cors names is left to it: one answer, never two.
+		self.assertEqual(answered(frappes="*"), {})
+		self.assertEqual(answered(frappes=[origin]), {})
+		self.assertEqual(answered(frappes=["http://127.0.0.1:8081"])["Access-Control-Allow-Origin"], origin)
+		self.assertEqual(answered(sent=None), {})
+		# A configuration that isn't a list of origins names none.
+		self.assertEqual(answered(named=None), {})
+		with patch.dict(frappe.local.conf, {"mailcraft_jmap_cors_origins": origin}):
+			response = SimpleNamespace(headers={})
+			jmap.cors(
+				response=response,
+				request=SimpleNamespace(path=SESSION, method="GET", headers={"Origin": origin}),
+			)
+		self.assertEqual(response.headers, {})
+		# On a real response: one origin, and `Vary` kept with what it had.
+		real = Response(status=401)
+		real.headers["Vary"] = "Accept-Encoding"
+		request = SimpleNamespace(path=SESSION, method="GET", headers={"Origin": origin})
+		with patch.dict(frappe.local.conf, {"mailcraft_jmap_cors_origins": [origin], "allow_cors": None}):
+			jmap.cors(response=real, request=request)
+		self.assertEqual(real.headers.getlist("Access-Control-Allow-Origin"), [origin])
+		self.assertEqual(real.headers["Vary"], "Accept-Encoding, Origin")

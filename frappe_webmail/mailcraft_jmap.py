@@ -456,6 +456,41 @@ def no_store(response=None, request=None):
 		response.headers["Cache-Control"] = "no-store"
 
 
+def cors(response=None, request=None):
+	"""after_request: a page of another origin may call this module's five addresses where the site's configuration
+	names that origin (`mailcraft_jmap_cors_origins`, a list such as ["https://mail.example.org"]; none by default), as
+	MailCraft's browser build served from elsewhere does. Only an origin named there is answered, echoed back, never
+	`*`; a preflight may send `Authorization`, `Content-Type` and `Accept` with GET and POST; `Retry-After` may be
+	read. No credentials of the browser's are let through (no `Access-Control-Allow-Credentials`): the token the page
+	sends itself is what opens a mailbox (`authenticate`). Frappe's own `allow_cors` is another thing (every address,
+	with the cookies): an origin it names is left to it, so that a response never says two origins."""
+	named = frappe.conf.get("mailcraft_jmap_cors_origins")
+	if response is None or request is None or not isinstance(named, list):
+		return
+	origin = (getattr(request, "headers", None) or {}).get("Origin") or ""
+	if origin in ("", "null", "*") or origin not in [o for o in named if isinstance(o, str)]:
+		return
+	frappes = frappe.conf.get("allow_cors")
+	if frappes == "*" or origin == frappes or (isinstance(frappes, list) and origin in frappes):
+		return
+	match = _OWN_PATH.match(getattr(request, "path", "") or "")
+	if not match:
+		return
+	# Frappe runs a `cmd` form field whatever the path: only the method the address names is answered.
+	cmd = str((getattr(frappe.local, "form_dict", None) or {}).get("cmd") or "")
+	if cmd and cmd != METHOD_PREFIX + match.group(1):
+		return
+	headers = response.headers
+	headers["Access-Control-Allow-Origin"] = origin
+	vary = headers.get("Vary") or ""
+	headers["Vary"] = f"{vary}, Origin" if vary and "origin" not in vary.lower() else (vary or "Origin")
+	headers["Access-Control-Expose-Headers"] = "Retry-After"
+	if getattr(request, "method", "") == "OPTIONS":
+		headers["Access-Control-Allow-Methods"] = "GET, POST"
+		headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+		headers["Access-Control-Max-Age"] = "600"
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # Ids
 # ---------------------------------------------------------------------------------------------------------------

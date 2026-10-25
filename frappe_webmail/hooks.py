@@ -246,8 +246,9 @@ user_data_fields = [
 # MailCraft's JMAP facade (mailcraft_jmap.py): a request to its five addresses carrying the Bearer token /neomail
 # gave is made as that token's person; nothing else is touched.
 auth_hooks = ["frappe_webmail.mailcraft_jmap.authenticate"]
-# /neomail holds that token and the facade's answers hold mail: no cache keeps them.
-after_request = ["frappe_webmail.mailcraft_jmap.no_store"]
+# /neomail holds that token and the facade's answers hold mail: no cache keeps them. And a page of another origin
+# that the site's configuration names (`mailcraft_jmap_cors_origins`, none by default) may call the facade.
+after_request = ["frappe_webmail.mailcraft_jmap.no_store", "frappe_webmail.mailcraft_jmap.cors"]
 # The desk's page /app/neomail is listed only where the site offers it (`neomail_in_desk`, page/neomail/neomail.py).
 extend_bootinfo = ["frappe_webmail.frappe_webmail.page.neomail.neomail.extend_bootinfo"]
 # There, a load of the webmail's desk page (/app/webmail…) goes to /app/neomail (the desk's address is a website page).
