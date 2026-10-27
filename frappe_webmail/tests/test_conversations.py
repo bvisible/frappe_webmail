@@ -266,6 +266,34 @@ class TestAnAnswerKeepsItsConversation(TestWebmailAPIBase):
 		self.assertEqual(kept[0], "<m0@example.com>")
 		self.assertEqual(kept[-2:], ["<m39@example.com>", "<answered@example.com>"])
 
+	def test_a_draft_of_an_answer_carries_the_whole_chain(self):
+		# A reply prepared as a draft (NeoMail, or another app of the desk) threads as the message sent does: a draft
+		# finished in another mail client must not leave its conversation
+		from frappe_webmail.api import save_draft_imap
+
+		client = FakeMailbox(
+			headers={5: HEADERS_OF_5},
+			found={},
+			envelopes={},
+			folders=[*FOLDERS, ((b"\\HasNoChildren", b"\\Drafts"), b"/", "Brouillons")],
+		)
+		with mocked_imap(client):
+			save_draft_imap(
+				self.test_account_email,
+				to="marc@example.com",
+				subject="Re: Devis chaudière",
+				html_content="",
+				reply_to_message_id="<five@example.com>",
+				reply_to_uid=5,
+				reply_to_folder="INBOX",
+			)
+		_folder, draft = client.appended[-1]
+		saved = email.message_from_bytes(draft)
+		self.assertEqual(saved["In-Reply-To"], "<five@example.com>")
+		self.assertEqual(
+			" ".join(saved["References"].split()), "<one@example.com> <two@example.com> <five@example.com>"
+		)
+
 	@patch("frappe_webmail.api.smtplib.SMTP")
 	def test_a_message_sent_carries_its_date_its_id_and_the_chain(self, smtp_class):
 		from frappe_webmail.api import send_email

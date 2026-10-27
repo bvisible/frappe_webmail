@@ -1576,11 +1576,15 @@ def save_draft_imap(
 	forward_uid=None,
 	forward_folder=None,
 	forward_attachments=None,
+	reply_to_uid=None,
+	reply_to_folder=None,
 ):
 	"""Save a draft to the IMAP Drafts folder, again and again while the person writes (both screens save on their own).
 
-	It keeps what the message will carry: Cc, Bcc, the message it answers, the files joined and the forwarded
-	message's attachments kept. The new copy is appended before the old one (`draft_uid` in `draft_folder`) is
+	It keeps what the message will carry: Cc, Bcc, the message it answers - with the whole chain of its conversation
+	(References) when its place is given (`reply_to_uid`, `reply_to_folder`), as a message sent carries it, so that a
+	draft finished in another mail client stays in its conversation -, the files joined and the forwarded message's
+	attachments kept. The new copy is appended before the old one (`draft_uid` in `draft_folder`) is
 	deleted, so a failure never loses the text. Returns the new copy's place, for the next save and for sending."""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
@@ -1602,7 +1606,7 @@ def save_draft_imap(
 	msg["Date"] = formatdate(localtime=True)
 	if reply_to_message_id:
 		msg["In-Reply-To"] = reply_to_message_id
-		msg["References"] = reply_to_message_id
+		msg["References"] = _references(account, reply_to_message_id, reply_to_uid, reply_to_folder)
 	# A Message-ID of its own: the draft is found again by it where the server gives no APPENDUID
 	message_id = make_msgid(domain=(account.email or "webmail.local").split("@")[-1])
 	msg["Message-ID"] = message_id
@@ -3416,7 +3420,10 @@ def configured_folders(account):
 
 def effective_folders(configured, auto_detected):
 	"""The folder of each role: the account's setting, else the one found on the server (INBOX for the inbox)."""
-	return {role: configured.get(role) or auto_detected.get(role, "INBOX" if role == "inbox" else "") for role in FOLDER_ROLES}
+	return {
+		role: configured.get(role) or auto_detected.get(role, "INBOX" if role == "inbox" else "")
+		for role in FOLDER_ROLES
+	}
 
 
 @frappe.whitelist()
