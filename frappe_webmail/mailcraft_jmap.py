@@ -593,7 +593,13 @@ def _max_upload():
 
 
 def _session(address):
-	from frappe_webmail import mailcraft_calendars, mailcraft_contacts, mailcraft_notes, mailcraft_settings
+	from frappe_webmail import (
+		mailcraft_calendars,
+		mailcraft_contacts,
+		mailcraft_notes,
+		mailcraft_settings,
+		mailcraft_stream,
+	)
 
 	account = webmail.get_account(address)
 	aid = account_id(account.name)
@@ -606,6 +612,8 @@ def _session(address):
 	notes, account_notes = _optional_parts(mailcraft_notes.session_parts, account)
 	# What NeoMail keeps of the person's window between two visits, in every mailbox (mailcraft_settings).
 	settings, account_settings = _optional_parts(mailcraft_settings.session_parts, account)
+	# The kind of sender of each message, for NeoMail's tabs, where the site offers them (mailcraft_stream).
+	streams, account_streams = _optional_parts(mailcraft_stream.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -625,6 +633,7 @@ def _session(address):
 			**calendars,
 			**notes,
 			**settings,
+			**streams,
 		},
 		"accounts": {
 			aid: {
@@ -646,6 +655,7 @@ def _session(address):
 					**account_calendars,
 					**account_notes,
 					**account_settings,
+					**account_streams,
 				},
 			}
 		},
@@ -653,7 +663,7 @@ def _session(address):
 			MAIL: aid,
 			SUBMISSION: aid,
 			QUOTA: aid,
-			**{capability: aid for capability in (*contacts, *calendars, *notes, *settings)},
+			**{capability: aid for capability in (*contacts, *calendars, *notes, *settings, *streams)},
 		},
 		"username": frappe.session.user,
 		"apiUrl": base + "api",
@@ -724,14 +734,16 @@ def _api():
 
 
 def _more_methods():
-	"""The address book's, the calendars', the notes' and the kept settings' methods (mailcraft_contacts,
-	mailcraft_calendars, mailcraft_notes, mailcraft_settings, which read this module: imported when first asked)."""
+	"""The address book's, the calendars', the notes', the kept settings' and the streams' methods (mailcraft_contacts,
+	mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, which read this module: imported when first
+	asked)."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
 	from frappe_webmail.mailcraft_notes import METHODS as NOTE_METHODS
 	from frappe_webmail.mailcraft_settings import METHODS as SETTINGS_METHODS
+	from frappe_webmail.mailcraft_stream import METHODS as STREAM_METHODS
 
-	return {**CONTACT_METHODS, **CALENDAR_METHODS, **NOTE_METHODS, **SETTINGS_METHODS}
+	return {**CONTACT_METHODS, **CALENDAR_METHODS, **NOTE_METHODS, **SETTINGS_METHODS, **STREAM_METHODS}
 
 
 @frappe.whitelist(methods=["GET"])
