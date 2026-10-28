@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-27 03:32+0000\n"
+"POT-Creation-Date: 2026-10-28 03:23+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -77,7 +77,7 @@ msgstr "Une entreprise"
 msgid "A contact needs a name, a company or an address."
 msgstr "Un contact doit avoir un nom, une entreprise ou une adresse."
 
-#: frappe_webmail/webmail_api.py:1796
+#: frappe_webmail/webmail_api.py:1800
 msgid "A folder with this name already exists"
 msgstr "Un dossier portant ce nom existe déjà"
 
@@ -183,10 +183,10 @@ msgstr "Couleur d'accent"
 msgid "Access Token"
 msgstr "Jeton d'accès"
 
-#: frappe_webmail/webmail_api.py:290 frappe_webmail/webmail_api.py:2228
-#: frappe_webmail/webmail_api.py:2291 frappe_webmail/webmail_api.py:2320
-#: frappe_webmail/webmail_api.py:2860 frappe_webmail/webmail_api.py:2902
-#: frappe_webmail/webmail_api.py:3639
+#: frappe_webmail/webmail_api.py:290 frappe_webmail/webmail_api.py:2232
+#: frappe_webmail/webmail_api.py:2295 frappe_webmail/webmail_api.py:2324
+#: frappe_webmail/webmail_api.py:2864 frappe_webmail/webmail_api.py:2906
+#: frappe_webmail/webmail_api.py:3646
 msgid "Access denied"
 msgstr "Accès refusé"
 
@@ -202,7 +202,7 @@ msgstr "Accès refusé à ce compte"
 msgid "Account"
 msgstr "Compte"
 
-#: frappe_webmail/webmail_api.py:3507
+#: frappe_webmail/webmail_api.py:3514
 msgid "Account is disabled"
 msgstr "Le compte est désactivé"
 
@@ -214,7 +214,7 @@ msgstr "Le compte n'est pas configuré pour OAuth2"
 msgid "Account is not using OAuth2"
 msgstr "Le compte n'utilise pas OAuth2"
 
-#: frappe_webmail/webmail_api.py:3488 frappe_webmail/webmail_api.py:3504
+#: frappe_webmail/webmail_api.py:3495 frappe_webmail/webmail_api.py:3511
 msgid "Account not found"
 msgstr "Compte introuvable"
 
@@ -324,7 +324,7 @@ msgstr "Toutes les boîtes"
 msgid "Already among the scanned documents"
 msgstr "Déjà parmi les scans de documents"
 
-#: frappe_webmail/webmail_api.py:3110
+#: frappe_webmail/webmail_api.py:3114
 msgid "Already in trusted list"
 msgstr "Déjà dans la liste de confiance"
 
@@ -545,7 +545,7 @@ msgstr "Joint à {0} {1}"
 msgid "Attaching…"
 msgstr "Ajout en cours…"
 
-#: frappe_webmail/webmail_api.py:2003
+#: frappe_webmail/webmail_api.py:2007
 msgid "Attachment not found"
 msgstr "Pièce jointe introuvable"
 
@@ -671,15 +671,15 @@ msgstr "Annuler"
 msgid "Cancelled"
 msgstr "Annulée"
 
-#: frappe_webmail/webmail_api.py:1878
+#: frappe_webmail/webmail_api.py:1882
 msgid "Cannot delete folder with subfolders"
 msgstr "Impossible de supprimer un dossier contenant des sous-dossiers"
 
-#: frappe_webmail/webmail_api.py:1865
+#: frappe_webmail/webmail_api.py:1869
 msgid "Cannot delete this folder"
 msgstr "Impossible de supprimer ce dossier"
 
-#: frappe_webmail/webmail_api.py:1784
+#: frappe_webmail/webmail_api.py:1788
 msgid "Cannot rename this folder"
 msgstr "Impossible de renommer ce dossier"
 
@@ -859,11 +859,11 @@ msgstr "Connexion réussie ! IMAP et SMTP fonctionnent."
 msgid "Contact created: {0}"
 msgstr "Contact créé : {0}"
 
-#: frappe_webmail/webmail_api.py:2741
+#: frappe_webmail/webmail_api.py:2745
 msgid "Contact not found"
 msgstr "Contact non trouvé"
 
-#: frappe_webmail/webmail_api.py:2582
+#: frappe_webmail/webmail_api.py:2586
 msgid "Contact with this email already exists"
 msgstr "Un contact avec cet email existe déjà"
 
@@ -908,7 +908,7 @@ msgstr "Impossible de supprimer l’automatisation"
 msgid "Could not load the automations"
 msgstr "Impossible de charger les automatisations"
 
-#: frappe_webmail/webmail_api.py:3719
+#: frappe_webmail/webmail_api.py:3726
 msgid "Could not read file content"
 msgstr "Impossible de lire le contenu du fichier"
 
@@ -1094,11 +1094,11 @@ msgstr "Mention légale"
 msgid "Disconnect OAuth"
 msgstr "Déconnecter OAuth"
 
-#: frappe_webmail/webmail_api.py:3934
+#: frappe_webmail/webmail_api.py:3941
 msgid "DocType and document name are required"
 msgstr "Le DocType et le nom du document sont requis"
 
-#: frappe_webmail/webmail_api.py:3825 frappe_webmail/webmail_api.py:3854
+#: frappe_webmail/webmail_api.py:3832 frappe_webmail/webmail_api.py:3861
 msgid "DocType is required"
 msgstr "Le DocType est requis"
 
@@ -1110,7 +1110,7 @@ msgstr "Le DocType est requis"
 msgid "Document"
 msgstr "Document"
 
-#: frappe_webmail/webmail_api.py:3939
+#: frappe_webmail/webmail_api.py:3946
 msgid "Document not found"
 msgstr "Document introuvable"
 
@@ -1163,11 +1163,11 @@ msgstr ""
 "J'ai inséré le brouillon dans un nouveau message — ajoutez le destinataire "
 "et l'objet, puis envoyez."
 
-#: frappe_webmail/webmail_api.py:2286 frappe_webmail/webmail_api.py:2315
+#: frappe_webmail/webmail_api.py:2290 frappe_webmail/webmail_api.py:2319
 msgid "Draft not found"
 msgstr "Brouillon non trouvé"
 
-#: frappe_webmail/webmail_api.py:1675
+#: frappe_webmail/webmail_api.py:1679
 #: frontend/src/components/EmailComposer.vue:747
 msgid "Draft saved"
 msgstr "Brouillon sauvegardé"
@@ -1182,7 +1182,7 @@ msgstr "Brouillons"
 msgid "Drafts Folder"
 msgstr "Dossier des brouillons"
 
-#: frappe_webmail/webmail_api.py:1649
+#: frappe_webmail/webmail_api.py:1653
 msgid "Drafts folder not found"
 msgstr "Dossier Brouillons non trouvé"
 
@@ -1274,7 +1274,7 @@ msgstr "Modèle de signature e-mail"
 msgid "Email address"
 msgstr "Adresse e-mail"
 
-#: frappe_webmail/webmail_api.py:2575
+#: frappe_webmail/webmail_api.py:2579
 msgid "Email address is required"
 msgstr "L'adresse email est requise"
 
@@ -1304,8 +1304,8 @@ msgid "Email moved to {0}"
 msgstr "E-mail déplacé vers {0}"
 
 #: frappe_webmail/webmail_api.py:1209 frappe_webmail/webmail_api.py:1507
-#: frappe_webmail/webmail_api.py:1992 frappe_webmail/webmail_api.py:2631
-#: frappe_webmail/webmail_api.py:2939
+#: frappe_webmail/webmail_api.py:1996 frappe_webmail/webmail_api.py:2635
+#: frappe_webmail/webmail_api.py:2943
 msgid "Email not found"
 msgstr "Email non trouvé"
 
@@ -1382,7 +1382,7 @@ msgstr "Saisissez le mot de passe actuel de ce compte pour vous reconnecter."
 msgid "Enter the email address to report to"
 msgstr "Saisissez l’adresse e-mail à laquelle envoyer le rapport"
 
-#: frappe_webmail/webmail_api.py:3759
+#: frappe_webmail/webmail_api.py:3766
 msgid "Entity name is required"
 msgstr "Le nom de l'entité est requis"
 
@@ -1581,7 +1581,7 @@ msgstr "Échec de l'ajout de la pièce jointe : {0}"
 msgid "Failed to connect to IMAP server: {0}"
 msgstr "Échec de connexion au serveur IMAP : {0}"
 
-#: frappe_webmail/webmail_api.py:3972
+#: frappe_webmail/webmail_api.py:3979
 #, python-brace-format
 msgid "Failed to generate PDF: {0}"
 msgstr "Échec de la génération du PDF : {0}"
@@ -1633,11 +1633,11 @@ msgctxt "NeoMail pane"
 msgid "Favourites"
 msgstr "Favoris"
 
-#: frappe_webmail/webmail_api.py:3697
+#: frappe_webmail/webmail_api.py:3704
 msgid "File URL is required"
 msgstr "L'URL du fichier est requise"
 
-#: frappe_webmail/webmail_api.py:3710
+#: frappe_webmail/webmail_api.py:3717
 msgid "File not found"
 msgstr "Fichier introuvable"
 
@@ -1684,7 +1684,7 @@ msgstr "Nom du filtre"
 msgid "Filter name is required"
 msgstr "Le nom du filtre est requis"
 
-#: frappe_webmail/webmail_api.py:2855 frappe_webmail/webmail_api.py:2897
+#: frappe_webmail/webmail_api.py:2859 frappe_webmail/webmail_api.py:2901
 msgid "Filter not found"
 msgstr "Filtre non trouvé"
 
@@ -1736,7 +1736,7 @@ msgstr "Nom du dossier"
 msgid "Folder name is required"
 msgstr "Le nom du dossier est requis"
 
-#: frappe_webmail/webmail_api.py:1792 frappe_webmail/webmail_api.py:1873
+#: frappe_webmail/webmail_api.py:1796 frappe_webmail/webmail_api.py:1877
 msgid "Folder not found"
 msgstr "Dossier introuvable"
 
@@ -2131,7 +2131,7 @@ msgstr "Adresse email invalide : {0}"
 msgid "Invalid or expired OAuth state"
 msgstr "État OAuth invalide ou expiré"
 
-#: frappe_webmail/webmail_api.py:3102
+#: frappe_webmail/webmail_api.py:3106
 msgid "Invalid source type. Must be 'Sender' or 'Domain'"
 msgstr "Type de source invalide. Doit être 'Sender' ou 'Domain'"
 
@@ -2230,7 +2230,7 @@ msgstr "Lien"
 msgid "Link URL:"
 msgstr "URL du lien :"
 
-#: frappe_webmail/webmail_api.py:2751
+#: frappe_webmail/webmail_api.py:2755
 msgid "Link already exists"
 msgstr "Le lien existe déjà"
 
@@ -2660,7 +2660,7 @@ msgstr ""
 msgid "No one else on this message uses Synk."
 msgstr "Aucune autre personne de ce message n’utilise Synk."
 
-#: frappe_webmail/webmail_api.py:3828 frappe_webmail/webmail_api.py:3858
+#: frappe_webmail/webmail_api.py:3835 frappe_webmail/webmail_api.py:3865
 #, python-brace-format
 msgid "No permission to read {0}"
 msgstr "Aucune autorisation pour lire {0}"
@@ -2786,7 +2786,7 @@ msgstr ""
 msgid "Not a template"
 msgstr "Ce n'est pas un modèle."
 
-#: frappe_webmail/webmail_api.py:3133 frappe_webmail/webmail_api.py:3151
+#: frappe_webmail/webmail_api.py:3137 frappe_webmail/webmail_api.py:3155
 msgid "Not found in trusted list"
 msgstr "Introuvable dans la liste de confiance"
 
@@ -2798,7 +2798,7 @@ msgstr "Non affiché dans la mise en page Compact."
 
 #: frappe_webmail/mailcraft_jmap.py:565 frappe_webmail/mailcraft_jmap.py:804
 #: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:888
-#: frappe_webmail/webmail_api.py:2353 frappe_webmail/webmail_api.py:2421
+#: frappe_webmail/webmail_api.py:2357 frappe_webmail/webmail_api.py:2425
 msgid "Not permitted"
 msgstr ""
 
@@ -2903,7 +2903,7 @@ msgstr "Plus anciens"
 msgid "On {0}, {1} wrote:"
 msgstr "Le {0}, {1} a écrit :"
 
-#: frappe_webmail/webmail_api.py:1838
+#: frappe_webmail/webmail_api.py:1842
 msgid "Only Trash and Spam folders can be emptied"
 msgstr "Seuls les dossiers Corbeille et Indésirables peuvent être vidés"
 
@@ -2952,7 +2952,7 @@ msgstr ""
 "Seuls les utilisateurs du bureau peuvent faire des choix pour la signature "
 "de la société."
 
-#: frappe_webmail/webmail_api.py:3517
+#: frappe_webmail/webmail_api.py:3524
 msgid "Only the owner of this mailbox can change its settings."
 msgstr ""
 "Seul le propriétaire de cette boîte mail peut en modifier les paramètres."
@@ -3824,7 +3824,7 @@ msgstr "Dossier Indésirables"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/webmail_api.py:3913
+#: frappe_webmail/webmail_api.py:3920
 #, fuzzy
 msgid "Standard"
 msgstr "Standard"
@@ -3978,7 +3978,7 @@ msgstr "Le Drive est injoignable. Réessayez dans un instant."
 #: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:120
 #: frappe_webmail/attachments.py:131 frappe_webmail/drive.py:39
 #: frappe_webmail/neomail_attachments.py:519
-#: frappe_webmail/webmail_api.py:3746 frappe_webmail/webmail_api.py:3757
+#: frappe_webmail/webmail_api.py:3753 frappe_webmail/webmail_api.py:3764
 msgid "The Drive is not installed on this instance"
 msgstr "Le Drive n'est pas installé sur cette instance"
 
@@ -4316,7 +4316,7 @@ msgid "This signature has nothing a recipient could be shown."
 msgstr "Cette signature ne contient rien qu'un destinataire puisse voir."
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:40
-#: frappe_webmail/webmail_api.py:2356
+#: frappe_webmail/webmail_api.py:2360
 msgid "This signature is too large."
 msgstr "Cette signature est trop volumineuse."
 
@@ -4468,7 +4468,7 @@ msgstr "Source d'e-mail fiable"
 msgid "Trusted Sources"
 msgstr "Sources fiables"
 
-#: frappe_webmail/webmail_api.py:3097
+#: frappe_webmail/webmail_api.py:3101
 msgid ""
 "Trusted sources feature is not available. Please update the Webmail Account "
 "DocType."
@@ -4840,14 +4840,14 @@ msgstr "e-mails sélectionnés"
 #: frappe_webmail/webmail_api.py:936 frappe_webmail/webmail_api.py:962
 #: frappe_webmail/webmail_api.py:995 frappe_webmail/webmail_api.py:1080
 #: frappe_webmail/webmail_api.py:1145 frappe_webmail/webmail_api.py:1190
-#: frappe_webmail/webmail_api.py:1300 frappe_webmail/webmail_api.py:1586
-#: frappe_webmail/webmail_api.py:1720 frappe_webmail/webmail_api.py:1743
-#: frappe_webmail/webmail_api.py:1759 frappe_webmail/webmail_api.py:1777
-#: frappe_webmail/webmail_api.py:1807 frappe_webmail/webmail_api.py:1828
-#: frappe_webmail/webmail_api.py:1858 frappe_webmail/webmail_api.py:1889
-#: frappe_webmail/webmail_api.py:1968 frappe_webmail/webmail_api.py:2069
-#: frappe_webmail/webmail_api.py:2620 frappe_webmail/webmail_api.py:2914
-#: frappe_webmail/webmail_api.py:3016
+#: frappe_webmail/webmail_api.py:1300 frappe_webmail/webmail_api.py:1590
+#: frappe_webmail/webmail_api.py:1724 frappe_webmail/webmail_api.py:1747
+#: frappe_webmail/webmail_api.py:1763 frappe_webmail/webmail_api.py:1781
+#: frappe_webmail/webmail_api.py:1811 frappe_webmail/webmail_api.py:1832
+#: frappe_webmail/webmail_api.py:1862 frappe_webmail/webmail_api.py:1893
+#: frappe_webmail/webmail_api.py:1972 frappe_webmail/webmail_api.py:2073
+#: frappe_webmail/webmail_api.py:2624 frappe_webmail/webmail_api.py:2918
+#: frappe_webmail/webmail_api.py:3020
 msgid "imapclient package is not installed"
 msgstr "Le paquet imapclient n'est pas installé"
 
@@ -5096,7 +5096,7 @@ msgstr "{0} résultat(s) sur {1}"
 msgid "{0} unread"
 msgstr "{0} non lus"
 
-#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2744
+#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2748
 #, python-brace-format
 msgid "{0} {1} not found"
 msgstr ""
