@@ -153,10 +153,16 @@ doc_events = {
 	"Email Signature": {
 		"before_save": "frappe_webmail.frappe_webmail.doctype.email_signature.email_signature.before_save"
 	},
-	# A person deleted takes their choices of the company signature and their photo's copy with them
+	# A person deleted takes their choices of the company signature and their photo's copy with them, and what NeoMail
+	# kept of their window (mailcraft_settings)
 	"User": {
-		"on_trash": "frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.on_user_trash"
+		"on_trash": [
+			"frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.on_user_trash",
+			"frappe_webmail.mailcraft_settings.on_user_trash",
+		]
 	},
+	# A mailbox deleted takes everybody's Safe Senders and Blocked Senders of it (mailcraft_settings)
+	"Webmail Account": {"on_trash": "frappe_webmail.mailcraft_settings.on_account_trash"},
 }
 
 # Scheduled Tasks
@@ -237,6 +243,11 @@ user_data_fields = [
 		"doctype": "Email Signature Preference",
 		"filter_by": "user",
 		"partial": 1,
+	},
+	# Rules and lists are JSON, which a partial redaction leaves: the records go whole
+	{
+		"doctype": "NeoMail Setting",
+		"filter_by": "user",
 	},
 ]
 

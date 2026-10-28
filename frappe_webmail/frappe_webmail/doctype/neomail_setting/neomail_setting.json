@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-28 18:00:00.000000",
+ "description": "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "account",
+  "sb_window",
+  "rules",
+  "categories",
+  "sb_mailbox",
+  "safe_senders",
+  "blocked_senders"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "description": "The Webmail Account the lists are of; * for the person's rules and categories.",
+   "fieldname": "account",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mailbox",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "sb_window",
+   "fieldtype": "Section Break",
+   "label": "Window"
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "JSON",
+   "label": "Rules",
+   "read_only": 1
+  },
+  {
+   "fieldname": "categories",
+   "fieldtype": "JSON",
+   "label": "Categories",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_mailbox",
+   "fieldtype": "Section Break",
+   "label": "Mailbox"
+  },
+  {
+   "fieldname": "safe_senders",
+   "fieldtype": "JSON",
+   "label": "Safe Senders",
+   "read_only": 1
+  },
+  {
+   "fieldname": "blocked_senders",
+   "fieldtype": "JSON",
+   "label": "Blocked Senders",
+   "read_only": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-28 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Webmail",
+ "name": "NeoMail Setting",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "user"
+}
