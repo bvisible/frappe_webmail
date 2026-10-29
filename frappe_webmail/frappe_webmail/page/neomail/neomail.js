@@ -95,6 +95,8 @@
 		opening: null,
 		// NeoMail's frame, once it is made
 		frame: null,
+		// A folder's right-click menu while it is open: {menu, away, escape}
+		folderMenu: null,
 		// The extensions the Drive's editors open here (the handover's `editors`), and the attachments being sent to
 		// the scanned documents (one call each, however many clicks)
 		editors: [],
@@ -145,6 +147,108 @@
 		synk: "Synk",
 	});
 
+	// The words of a folder's right-click, as NeoMail's own menu says them.
+	const folder_words = () => ({
+		newFolder: __("New Folder…"),
+		renameFolder: __("Rename Folder…"),
+		deleteFolder: __("Delete Folder"),
+		markAllRead: __("Mark All as Read"),
+		emptyFolder: __("Empty Folder"),
+	});
+
+	// A folder's right-click in the desk's menu (neomailHost.folderActions, 29.10): a small menu where the click was,
+	// each entry done on the mailbox's server (neomail_folders.act), NeoMail itself making no folder of a JMAP mailbox
+	// yet; then NeoMail reads its folders again.
+	function folder_menu(event, account, folder) {
+		const address = String(account || "").toLowerCase();
+		const shared = ((state.host && state.host.accounts) || []).some(
+			(box) => String(box.email || "").toLowerCase() === address && box.shared === true
+		);
+		const entries = window.neomailHost.folderActions(folder, shared, folder_words());
+		close_folder_menu();
+		if (!entries.length) return;
+		const menu = document.createElement("div");
+		menu.className = "neomail-folder-menu";
+		menu.setAttribute("role", "menu");
+		for (const entry of entries) {
+			const item = document.createElement("button");
+			item.type = "button";
+			item.className = "neomail-folder-menu-item";
+			item.setAttribute("role", "menuitem");
+			item.textContent = entry.label;
+			item.disabled = entry.disabled;
+			item.addEventListener("click", () => {
+				close_folder_menu();
+				folder_action(entry.action, account, folder);
+			});
+			menu.append(item);
+		}
+		document.body.append(menu);
+		// Where the click was, inside the window
+		const x = Math.min((event && event.clientX) || 0, window.innerWidth - menu.offsetWidth - 8);
+		const y = Math.min((event && event.clientY) || 0, window.innerHeight - menu.offsetHeight - 8);
+		menu.style.left = Math.max(8, x) + "px";
+		menu.style.top = Math.max(8, y) + "px";
+		const away = (e) => {
+			if (!menu.contains(e.target)) close_folder_menu();
+		};
+		const escape = (e) => {
+			if (e.key === "Escape") close_folder_menu();
+		};
+		document.addEventListener("pointerdown", away, true);
+		document.addEventListener("keydown", escape, true);
+		window.addEventListener("blur", close_folder_menu);
+		state.folderMenu = { menu, away, escape };
+	}
+
+	function close_folder_menu() {
+		const open = state.folderMenu;
+		if (!open) return;
+		state.folderMenu = null;
+		open.menu.remove();
+		document.removeEventListener("pointerdown", open.away, true);
+		document.removeEventListener("keydown", open.escape, true);
+		window.removeEventListener("blur", close_folder_menu);
+	}
+
+	// What an entry asks first (a name, or a yes), then the server does it and NeoMail reads its folders again. A
+	// refusal (a name already there, a folder that holds others) is said by the call itself.
+	function folder_action(action, account, folder) {
+		const done = (name) =>
+			frappe
+				.call({
+					method: "frappe_webmail.neomail_folders.act",
+					args: { account, mailbox: folder.id, action, name },
+					freeze: true,
+				})
+				.then(() => reread());
+		const named = (title, primary, value) =>
+			frappe.prompt(
+				[{ fieldname: "name", fieldtype: "Data", label: __("Folder name"), reqd: 1, default: value || "" }],
+				(values) => done(values.name),
+				title,
+				primary
+			);
+		if (action === "create") named(__("New folder in {0}", [folder.name]), __("Create"));
+		else if (action === "rename") named(__("Rename the folder {0}", [folder.name]), __("Rename"), folder.name);
+		else if (action === "delete") frappe.confirm(__("Delete the folder {0}?", [folder.name]), () => done());
+		else if (action === "empty")
+			frappe.confirm(__("Delete all the mail in {0} for good?", [folder.name]), () => done());
+		else done();
+	}
+
+	// NeoMail reads its folders again: its frame starts again, unless it holds work it has not sent (a message being
+	// written), when it shows the change at its next Send/Receive.
+	function reread() {
+		if (state.dirty || !state.frame || !state.frame.contentWindow) {
+			frappe.show_alert({ message: __("Done: NeoMail shows it at its next Send/Receive."), indicator: "green" });
+			return;
+		}
+		frappe.show_alert({ message: __("Done."), indicator: "green" }, 3);
+		if (state.host) window.mailcraftJmap = state.host;
+		state.frame.contentWindow.location.reload();
+	}
+
 	// Asks NeoMail; a folder chosen in the menu is remembered with the list it was chosen from, and the menu is drawn
 	// again at once: NeoMail never says the same state twice, so a favourite of the folder already shown (lit in its
 	// mailbox's section) would otherwise stay unlit.
@@ -174,7 +278,12 @@
 		const lent = {
 			app: { name: "mail", title: words.mail },
 			route: page_route(),
-			nav: window.neomailHost.navSections(state.where, ask, words, { dock, chosen: state.chosen, page }),
+			nav: window.neomailHost.navSections(state.where, ask, words, {
+				dock,
+				chosen: state.chosen,
+				page,
+				folderMenu: folder_menu,
+			}),
 		};
 		if (dock) lent.dock = window.neomailHost.viewDock(state.where, ask, words, page);
 		if (offers(menu, "search")) {
@@ -1160,6 +1269,7 @@
 
 	function front(on) {
 		state.shown = on;
+		if (!on) close_folder_menu();
 		document.body.classList.toggle(FULL, on);
 		// The handover (the mailboxes and their tokens) is on the window only while the page is in front: NeoMail reads
 		// it as it starts, and a frame that starts again (a reload) finds it there. The functions the frame calls stay

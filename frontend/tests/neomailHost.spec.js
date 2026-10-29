@@ -313,6 +313,20 @@ describe("navSections", () => {
 		]);
 	});
 
+	it("hands a right-click on a folder to the page, with its mailbox and the folder as NeoMail says it", () => {
+		const calls = [];
+		const folderMenu = (event, account, folder) => calls.push([event, account, folder.id]);
+		const nav = page().host.navSections(STATE, () => {}, TEXTS, { folderMenu });
+		nav[1].items[2].onContextMenu("e1");
+		nav[0].items[1].onContextMenu("e2");
+		expect(calls).toEqual([
+			["e1", "ada@example.org", "F-projects"],
+			["e2", "team@example.org", "T-sent"],
+		]);
+		// A page that takes no right-click: the menu's own
+		expect(lent().nav[1].items[2].onContextMenu).toBeUndefined();
+	});
+
 	it("keeps NeoMail's own name for a favourite with one mailbox, or of a folder it does not list", () => {
 		const one = { ...STATE, accounts: [STATE.accounts[0]], favorites: [STATE.favorites[0]] };
 		expect(lent(one).nav[0].items.map((item) => item.label)).toEqual(["Boîte de réception - ada@example.org"]);
@@ -774,5 +788,51 @@ describe("followDeskTheme", () => {
 			host.followDeskTheme(d.doc, d.frame, undefined)();
 			expect(d.frame.style.colorScheme).toBe("light");
 		}
+	});
+});
+
+describe("folderActions", () => {
+	// 29.10: the desk's menu had no right-click on NeoMail's folders, and NeoMail makes no folder of a JMAP mailbox
+	const WORDS = {
+		newFolder: "Nouveau dossier…",
+		renameFolder: "Renommer le dossier…",
+		deleteFolder: "Supprimer le dossier",
+		markAllRead: "Tout marquer comme lu",
+		emptyFolder: "Vider le dossier",
+	};
+	const offered = (folder, shared = false) =>
+		page()
+			.host.folderActions(folder, shared, WORDS)
+			.map((entry) => [entry.action, entry.disabled]);
+
+	it("offers a folder of the person's own all but emptying, each in the page's words", () => {
+		expect(offered({ id: "F-projects", role: null })).toEqual([
+			["create", false],
+			["rename", false],
+			["delete", false],
+			["read", false],
+		]);
+		const labels = page()
+			.host.folderActions({ id: "F-projects", role: null }, false, WORDS)
+			.map((entry) => entry.label);
+		expect(labels).toEqual([WORDS.newFolder, WORDS.renameFolder, WORDS.deleteFolder, WORDS.markAllRead]);
+	});
+
+	it("keeps a special folder's name and place, and empties Trash and Junk only", () => {
+		expect(offered({ id: "F-inbox", role: "inbox" })).toEqual([
+			["create", false],
+			["rename", true],
+			["delete", true],
+			["read", false],
+		]);
+		expect(offered({ id: "F-trash", role: "trash" }).at(-1)).toEqual(["empty", false]);
+		expect(offered({ id: "F-junk", role: "spam" }).at(-1)).toEqual(["empty", false]);
+		expect(offered({ id: "F-sent", role: "sent" }).map(([action]) => action)).not.toContain("empty");
+	});
+
+	it("offers nothing on a mailbox shared with the person, nor on a folder only NeoMail has", () => {
+		expect(offered({ id: "F-projects", role: null }, true)).toEqual([]);
+		expect(offered({ id: "local:7", role: "outbox" })).toEqual([]);
+		expect(offered(null)).toEqual([]);
 	});
 });

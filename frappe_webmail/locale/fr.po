@@ -5259,3 +5259,67 @@ msgstr "Votre manière d'écrire a été apprise le {0} à partir de {1}."
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
 msgid "She has not learnt your way of writing yet."
 msgstr "Elle n'a pas encore appris votre manière d'écrire."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "New Folder…"
+msgstr "Nouveau dossier…"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Rename Folder…"
+msgstr "Renommer le dossier…"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Mark All as Read"
+msgstr "Tout marquer comme lu"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Empty Folder"
+msgstr "Vider le dossier"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "New folder in {0}"
+msgstr "Nouveau dossier dans {0}"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Rename the folder {0}"
+msgstr "Renommer le dossier {0}"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Delete the folder {0}?"
+msgstr "Supprimer le dossier {0} ?"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Delete all the mail in {0} for good?"
+msgstr "Supprimer définitivement tout le courrier de {0} ?"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
+msgid "Done: NeoMail shows it at its next Send/Receive."
+msgstr "Terminé : NeoMail l’affichera à son prochain Envoyer/Recevoir."
+
+#: frappe_webmail/neomail_folders.py
+msgid "Unknown folder action."
+msgstr "Action de dossier inconnue."
+
+#: frappe_webmail/neomail_folders.py
+msgid "That mailbox has no such folder."
+msgstr "Cette boîte ne contient pas ce dossier."
+
+#: frappe_webmail/neomail_folders.py
+msgid "Give the folder a name, without « {0} »."
+msgstr "Donnez un nom au dossier, sans « {0} »."
+
+#: frappe_webmail/neomail_folders.py
+msgid "A special folder keeps its name and its place."
+msgstr "Un dossier spécial garde son nom et sa place."
+
+#: frappe_webmail/neomail_folders.py
+msgid "Only Trash and Junk Email are emptied."
+msgstr "Seuls les dossiers Éléments supprimés et Courrier indésirable peuvent être vidés."
+
+#: frappe_webmail/neomail_folders.py
+msgid "A mailbox shared with you is set up by its owner."
+msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
+
+#: frappe_webmail/neomail_folders.py
+msgid "That mailbox isn't one of yours."
+msgstr "Cette boîte n’est pas l’une des vôtres."

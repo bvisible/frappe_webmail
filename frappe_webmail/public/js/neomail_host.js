@@ -318,7 +318,8 @@ window.neomailHost = (function () {
 	 * The folder shown is marked once, while Mail is in front: in the list it was chosen from (`options.chosen`, the
 	 * page's last click: {account, folder, from}), else, when NeoMail changed folder by itself, in its mailbox's
 	 * section; never while one of the page's own views is in front (`options.page`, as viewsOf takes it). The cockpit's
-	 * sections cannot be folded.
+	 * sections cannot be folded. A right-click on a folder goes to `options.folderMenu(event, account, folder)`, the
+	 * folder as NeoMail says it (a page without one leaves it to the menu).
 	 */
 	function navSections(state, send, texts, options) {
 		const now = state || {};
@@ -342,6 +343,8 @@ window.neomailHost = (function () {
 		for (const box of accounts) {
 			for (const folder of box.folders || []) known.set(key(box.email, folder.id), folder);
 		}
+		// A right-click on a folder, for a page that has a menu for it (folderActions)
+		const menu = typeof opts.folderMenu === "function" ? opts.folderMenu : null;
 		const several = accounts.length > 1;
 		const favoriteLabel = (favorite, folder) => {
 			if (!several || !folder || !favorite.account) return favorite.name;
@@ -356,6 +359,7 @@ window.neomailHost = (function () {
 					const role = (folder && folder.role) || null;
 					return {
 						label: favoriteLabel(favorite, folder),
+						onContextMenu: menu && folder ? (event) => menu(event, favorite.account, folder) : undefined,
 						icon: icon(role),
 						badge: badgeOf(folder || favorite),
 						badgeTone: tone(role),
@@ -389,6 +393,7 @@ window.neomailHost = (function () {
 					active: !fromFavorites && shown(box.email, folder.id),
 					onClick:
 						folder.selectable === false ? undefined : select(box.email, folder.id, "mailbox"),
+					onContextMenu: menu ? (event) => menu(event, box.email, folder) : undefined,
 				})),
 			});
 		}
@@ -402,6 +407,29 @@ window.neomailHost = (function () {
 			});
 		}
 		return nav;
+	}
+
+	/*
+	 * The entries of a folder's right-click in the desk's menu ({action, label, disabled}), in NeoMail's own order: what
+	 * NeoMail itself does not do to a JMAP mailbox's folders yet, which the page has the server do
+	 * (frappe_webmail.neomail_folders.act). A special folder (a role: Inbox, Sent, Drafts, Trash, Junk, Archive) keeps
+	 * its name and its place; Trash and Junk alone are emptied. Nothing for a mailbox shared with the person (`shared`:
+	 * its owner sets it up) nor for a folder only NeoMail has (`local:…`, its Outbox). `texts`: the page's words.
+	 * (29.10: nothing on a right-click, and nowhere left to make a folder.)
+	 */
+	function folderActions(folder, shared, texts) {
+		if (!folder || shared || String(folder.id || "").startsWith("local:")) return [];
+		const special = folder.role != null;
+		const entries = [
+			{ action: "create", label: texts.newFolder, disabled: false },
+			{ action: "rename", label: texts.renameFolder, disabled: special },
+			{ action: "delete", label: texts.deleteFolder, disabled: special },
+			{ action: "read", label: texts.markAllRead, disabled: false },
+		];
+		if (folder.role === "trash" || folder.role === "spam") {
+			entries.push({ action: "empty", label: texts.emptyFolder, disabled: false });
+		}
+		return entries;
 	}
 
 	/*
@@ -630,6 +658,7 @@ window.neomailHost = (function () {
 		listen,
 		frameHeight,
 		followDeskTheme,
+		folderActions,
 		navSections,
 		viewDock,
 		badgeOf,

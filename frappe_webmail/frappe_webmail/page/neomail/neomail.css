@@ -184,3 +184,35 @@ body.neomail-desk-full .page-container[data-page-route="neomail"] .layout-main-s
 .neomail-picker-hint {
 	margin: 0;
 }
+
+/* A folder's right-click in the desk's menu (neomail.js, folder_menu) */
+.neomail-folder-menu {
+	position: fixed;
+	z-index: 1060;
+	min-width: 200px;
+	padding: 4px;
+	background: var(--fg-color);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md, 8px);
+	box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.12));
+}
+.neomail-folder-menu-item {
+	display: block;
+	width: 100%;
+	padding: 6px 10px;
+	border: 0;
+	border-radius: var(--border-radius-sm, 4px);
+	background: none;
+	color: var(--text-color);
+	font-size: var(--text-base, 13px);
+	text-align: left;
+}
+.neomail-folder-menu-item:hover:not(:disabled),
+.neomail-folder-menu-item:focus-visible {
+	background: var(--subtle-fg);
+	outline: none;
+}
+.neomail-folder-menu-item:disabled {
+	color: var(--text-light);
+	cursor: default;
+}
