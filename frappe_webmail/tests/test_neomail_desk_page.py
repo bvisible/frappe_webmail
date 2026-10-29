@@ -182,6 +182,7 @@ class TestNeoMailDeskPage(FrappeTestCase):
 			)
 		self.assertEqual(given["host"]["product"], "NeoMail")
 		self.assertEqual(given["host"]["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
+		self.assertEqual(given["host"]["accounts_home"], frappe.utils.get_url("/app/webmail-account"))
 		self.assertEqual(given["host"]["language"], www["language"])
 		box = next(a for a in given["host"]["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual(box["name"], "Desk Box")

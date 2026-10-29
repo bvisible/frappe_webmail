@@ -1137,6 +1137,7 @@ class TestMailCraftJmap(FrappeTestCase):
 				"language": context.lang,
 				"product": "NeoMail",
 				"signatures": frappe.utils.get_url("/app/webmail?signatures=1"),
+				"accounts_home": frappe.utils.get_url("/app/webmail-account"),
 			},
 		)
 		self.assertEqual(
@@ -1257,6 +1258,23 @@ class TestMailCraftJmap(FrappeTestCase):
 		self._as(SHARED)
 		self.assertIs(next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)["shared"], True)
 
+	def test_a_mailbox_of_the_person_s_own_names_where_its_settings_are_changed(self):
+		"""NeoMail's File › Info opens a mailbox's settings on the instance (its Webmail Account form), by their whole
+		address: Neodesk, handed the same, is no page of it. A mailbox shared with the person has none for them: only its
+		owner changes its servers and password (29.10: its Settings button there led nowhere that lasted)."""
+		from frappe_webmail.www import neomail
+
+		no_template = patch("frappe_webmail.signatures.template_for", return_value=None)
+		no_template.start()
+		self.addCleanup(no_template.stop)
+		self._as(OWNER)
+		box = next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)
+		self.assertEqual(
+			box["settings"], frappe.utils.get_url("/app/webmail-account/" + quote(MAILBOX, safe=""))
+		)
+		self._as(SHARED)
+		self.assertNotIn("settings", next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX))
+
 	def test_a_mailbox_hands_over_only_a_signature_of_its_owner(self):
 		"""The Link can name anyone's signature (Frappe checks only that it exists): another person's stays theirs."""
 		from frappe_webmail.www import neomail
@@ -1367,6 +1385,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual((given["product"], box["scheme"]), ("NeoMail", "bearer"))
 		self.assertTrue(given["language"])
 		self.assertEqual(given["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
+		self.assertEqual(given["accounts_home"], frappe.utils.get_url("/app/webmail-account"))
 		self.assertEqual(
 			given["nora"], "nora" in frappe.get_installed_apps(), "Nora only where the instance has her"
 		)

@@ -314,7 +314,13 @@ def hand_over(**kwargs):
 	bearer = neodesk_request_only()
 	user = frappe.session.user
 	from frappe_webmail.neomail_share import has_synk
-	from frappe_webmail.www.neomail import PRODUCT, host_mailboxes, nora_installed, signatures_url
+	from frappe_webmail.www.neomail import (
+		PRODUCT,
+		accounts_url,
+		host_mailboxes,
+		nora_installed,
+		signatures_url,
+	)
 
 	language = frappe.db.get_value("User", user, "language") or frappe.local.lang or "en"
 	actions, editors = _attachment_actions()
@@ -324,6 +330,8 @@ def hand_over(**kwargs):
 		"product": PRODUCT,
 		# Where the signatures of those mailboxes are written, which NeoMail's own signatures name for them.
 		"signatures": signatures_url(),
+		# Where those mailboxes are set up (each one's own: `settings`), which NeoMail's File › Info opens.
+		"accounts_home": accounts_url(),
 		# Whether NeoMail's band may call Nora: the instance has her.
 		"nora": nora_installed(),
 		# Whether Neodesk's NeoMail window offers Synk, its own chat, after Calendar: Raven here, and its role held.

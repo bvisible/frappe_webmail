@@ -42,6 +42,10 @@ PRODUCT = "NeoMail"
 # Where the person writes their signatures and sees the company's: the webmail's signatures, opened by its address
 # (Webmail.vue, applyUrlIntent).
 SIGNATURES = "/app/webmail?signatures=1"
+# Where the mailboxes are set up: the person's Webmail Accounts (their servers, password, name on their mail), one
+# mailbox's form under it. NeoMail cannot change them (its account settings are its own, lost with the tab): its File ›
+# Info opens these (29.10: its Settings button there did nothing that lasted, and nothing led here).
+ACCOUNTS = "/app/webmail-account"
 
 no_cache = 1
 
@@ -115,6 +119,7 @@ def handover(sample=False, build=None):
 			"language": language,
 			"product": PRODUCT,
 			"signatures": signatures_url(),
+			"accounts_home": accounts_url(),
 		},
 		"no_mailbox": not mailboxes and not sample,
 	}
@@ -123,6 +128,12 @@ def handover(sample=False, build=None):
 def signatures_url():
 	"""The whole address of the webmail's signatures on this instance: Neodesk, which opens it too, is no page of it."""
 	return frappe.utils.get_url(SIGNATURES)
+
+
+def accounts_url(name=None):
+	"""The whole address where the person's mailboxes are set up on this instance, or one of them (`name`, its Webmail
+	Account): Neodesk, which opens it too, is no page of it."""
+	return frappe.utils.get_url(ACCOUNTS + ("/" + quote(name, safe="") if name else ""))
 
 
 def nora_installed():
@@ -166,6 +177,9 @@ def host_mailboxes(bearer=None):
 			# their click on a card that names it (apps' nora/assist.rs of bvisible/mailcraft).
 			"shared": bool(a.get("is_shared")),
 		}
+		# Where its servers and password are changed: its owner's alone, so none for a mailbox shared with the person
+		if not mailbox["shared"]:
+			mailbox["settings"] = accounts_url(a["name"])
 		chosen = signature_for(frappe.session.user, a, memo) or {}
 		signature = handed_signature(chosen.get("html"), chosen.get("text"))
 		if signature:
