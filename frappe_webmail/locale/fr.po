@@ -5323,3 +5323,23 @@ msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
 #: frappe_webmail/neomail_folders.py
 msgid "That mailbox isn't one of yours."
 msgstr "Cette boîte n’est pas l’une des vôtres."
+
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:70
+msgid "Blocked Senders"
+msgstr "Expéditeurs bloqués"
+
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:64
+msgid "Safe Senders"
+msgstr "Expéditeurs de confiance"
+
+#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:31
+msgid "The Webmail Account the lists are of; * for the person's rules and categories."
+msgstr "Le compte webmail auquel appartiennent ces listes ; * pour les règles et catégories personnelles de l'utilisateur."
+
+#. Description of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:5
+msgid "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders."
+msgstr "Ce que NeoMail retient de l'espace de travail d'un utilisateur entre deux visites : ses règles et catégories, et, pour chaque boîte, ses expéditeurs de confiance et ses expéditeurs bloqués."
