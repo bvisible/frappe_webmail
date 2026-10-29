@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-10-28 03:23+0000\n"
+"POT-Creation-Date: 2026-10-29 22:07+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -65,7 +65,7 @@ msgstr "Le 1er du mois à {0}"
 msgid "A call to action needs both its label and its address."
 msgstr "Un appel à l'action doit avoir à la fois son libellé et son adresse."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:282
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:391
 msgid "A channel, or a person"
 msgstr "Un canal ou une personne"
 
@@ -105,11 +105,15 @@ msgstr ""
 msgid "A mailbox cannot be renamed."
 msgstr "Une boîte mail ne peut pas être renommée."
 
-#: frappe_webmail/mailcraft_jmap.py:1495
+#: frappe_webmail/neomail_folders.py:85
+msgid "A mailbox shared with you is set up by its owner."
+msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
+
+#: frappe_webmail/mailcraft_jmap.py:1520
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1370
+#: frappe_webmail/mailcraft_jmap.py:1395
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
 
@@ -152,6 +156,10 @@ msgstr ""
 #: frontend/src/components/AutomationsPanel.vue:254
 msgid "A short list of the new emails: sender, time, subject."
 msgstr "Une courte liste des nouveaux e-mails : expéditeur, heure, objet."
+
+#: frappe_webmail/neomail_folders.py:53
+msgid "A special folder keeps its name and its place."
+msgstr "Un dossier spécial garde son nom et sa place."
 
 #. Description of the 'Enabled' (Check) field in DocType 'Email Signature
 #. Template'
@@ -251,12 +259,12 @@ msgstr "Active"
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1096
-#: frappe_webmail/www/neomail.html:673
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1205
+#: frappe_webmail/www/neomail.html:730
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
-#: frappe_webmail/mailcraft_jmap.py:1626
+#: frappe_webmail/mailcraft_jmap.py:1651
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -274,7 +282,7 @@ msgstr "Ajouter une étoile"
 msgid "Add to contacts"
 msgstr "Ajouter aux contacts"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:377
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:486
 #, python-brace-format
 msgid "Add {0} to this message's channel in Synk?"
 msgstr "Ajouter {0} au canal de ce message dans Synk ?"
@@ -432,7 +440,7 @@ msgstr "Voulez-vous vraiment supprimer cet email ?"
 msgid "Are you sure you want to delete this signature?"
 msgstr "Voulez-vous vraiment supprimer cette signature ?"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:248
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:250
 msgid ""
 "Are you sure you want to disconnect OAuth? You will need to reconnect to use"
 " this account."
@@ -628,6 +636,11 @@ msgstr "Cci :"
 msgid "Blind copy..."
 msgstr "Copie cachée..."
 
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:70
+msgid "Blocked Senders"
+msgstr "Expéditeurs bloqués"
+
 #: frontend/src/components/EmailComposer.vue:95
 #: frontend/src/components/SignatureEditor.vue:128
 msgid "Bold"
@@ -641,7 +654,7 @@ msgstr "Liste à puces"
 msgid "Cadence"
 msgstr "Fréquence"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:141
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
 msgctxt "NeoMail view"
 msgid "Calendar"
 msgstr "Calendrier"
@@ -686,6 +699,11 @@ msgstr "Impossible de renommer ce dossier"
 #: frontend/src/components/EmailComposer.vue:56
 msgid "Carbon copy..."
 msgstr "Copie carbone..."
+
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:53
+msgid "Categories"
+msgstr "Catégories"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -837,11 +855,11 @@ msgstr ""
 msgid "Connect OAuth"
 msgstr "Connecter OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:169
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:171
 msgid "Connecting to servers..."
 msgstr "Connexion aux serveurs..."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:228
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:230
 msgid "Connection Test Results"
 msgstr "Résultats du test de connexion"
 
@@ -849,7 +867,7 @@ msgstr "Résultats du test de connexion"
 msgid "Connection successful"
 msgstr "Connexion réussie"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:197
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:199
 msgid "Connection successful! Both IMAP and SMTP are working."
 msgstr "Connexion réussie ! IMAP et SMTP fonctionnent."
 
@@ -940,7 +958,8 @@ msgstr "Impossible de démarrer l’analyse"
 msgid "Could not update the automation"
 msgstr "Impossible de mettre à jour l’automatisation"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:555
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:232
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:664
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AgentPanel.vue:130
 #: frontend/src/components/DriveFolderPicker.vue:129
@@ -1012,6 +1031,15 @@ msgstr "Signature par défaut"
 msgid "Delete"
 msgstr "Supprimer"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:154
+msgid "Delete Folder"
+msgstr "Supprimer le dossier"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:236
+#, python-brace-format
+msgid "Delete all the mail in {0} for good?"
+msgstr "Supprimer définitivement tout le courrier de {0} ?"
+
 #: frontend/src/components/EmailComposer.vue:31
 msgid "Delete draft"
 msgstr "Supprimer le brouillon"
@@ -1043,6 +1071,11 @@ msgstr "Supprimer définitivement"
 #, python-brace-format
 msgid "Delete the automation « {0} »?"
 msgstr "Supprimer l’automatisation « {0} » ?"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:234
+#, python-brace-format
+msgid "Delete the folder {0}?"
+msgstr "Supprimer le dossier {0} ?"
 
 #: frontend/src/components/AgentPanel.vue:119
 msgid "Delivery"
@@ -1090,7 +1123,7 @@ msgstr "Désactiver"
 msgid "Disclaimer"
 msgstr "Mention légale"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:123
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:125
 msgid "Disconnect OAuth"
 msgstr "Déconnecter OAuth"
 
@@ -1144,6 +1177,14 @@ msgid ""
 msgstr ""
 "Terminé — {0}, {1}. Vous la trouverez sous Automatisations, où vous pourrez "
 "la mettre en pause ou la supprimer."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:247
+msgid "Done."
+msgstr "Terminé."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:244
+msgid "Done: NeoMail shows it at its next Send/Receive."
+msgstr "Terminé : NeoMail l’affichera à son prochain Envoyer/Recevoir."
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
 #: frontend/src/components/EmailComposer.vue:316
@@ -1332,6 +1373,10 @@ msgstr ""
 "Les e-mails provenant d'expéditeurs ou de domaines de confiance afficheront "
 "automatiquement les images externes"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:156
+msgid "Empty Folder"
+msgstr "Vider le dossier"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:332
 msgctxt "Folder action"
@@ -1386,7 +1431,7 @@ msgstr "Saisissez l’adresse e-mail à laquelle envoyer le rapport"
 msgid "Entity name is required"
 msgstr "Le nom de l'entité est requis"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:238
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:240
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:313
 #: frontend/src/components/EmailList.vue:656
@@ -1478,7 +1523,7 @@ msgstr "Erreur lors de l'envoi"
 msgid "Error updating emails"
 msgstr "Erreur lors de la mise à jour des e-mails"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:219
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:221
 msgid "Errors:"
 msgstr "Erreurs :"
 
@@ -1614,7 +1659,7 @@ msgstr "Échec du rafraîchissement du jeton OAuth : {0}"
 msgid "Failed to send email: {0}"
 msgstr "Échec de l'envoi de l'email : {0}"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:240
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:242
 msgid "Failed to test connection. Please check your settings."
 msgstr "Échec du test de connexion. Veuillez vérifier vos paramètres."
 
@@ -1628,7 +1673,7 @@ msgstr "Échec : {0}"
 msgid "Failing"
 msgstr "En échec"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:139
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:141
 msgctxt "NeoMail pane"
 msgid "Favourites"
 msgstr "Favoris"
@@ -1727,6 +1772,7 @@ msgstr "Dossier créé"
 msgid "Folder deleted"
 msgstr "Dossier supprimé"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:227
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:145
 msgid "Folder name"
@@ -1750,7 +1796,7 @@ msgstr "Dossier renommé"
 msgid "Folders"
 msgstr "Dossiers"
 
-#: frappe_webmail/mailcraft_jmap.py:1802
+#: frappe_webmail/mailcraft_jmap.py:1827
 msgid "Folders are managed in the webmail for now."
 msgstr "Les dossiers se gèrent pour l'instant dans la messagerie."
 
@@ -1758,6 +1804,10 @@ msgstr "Les dossiers se gèrent pour l'instant dans la messagerie."
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:233
 msgid "Font"
 msgstr ""
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:303
+msgid "Forget my style"
+msgstr "Oublier votre style"
 
 #: frappe_webmail/attachments.py:89
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
@@ -1852,6 +1902,11 @@ msgstr "Georgia"
 #: frontend/src/components/NoraBar.vue:42
 msgid "German"
 msgstr "Allemand"
+
+#: frappe_webmail/neomail_folders.py:51
+#, python-brace-format
+msgid "Give the folder a name, without « {0} »."
+msgstr "Donnez un nom au dossier, sans « {0} »."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -1989,7 +2044,7 @@ msgstr ""
 msgid "IMAP folder name for trash (e.g., Trash, Deleted Items)"
 msgstr "Nom du dossier IMAP pour la corbeille (p. ex. Trash, Deleted Items)"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:207
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:209
 msgid "IMAP: Connected successfully"
 msgstr "IMAP : Connexion réussie"
 
@@ -2114,7 +2169,7 @@ msgstr "Numéro de port IMAP invalide"
 msgid "Invalid OAuth callback"
 msgstr "Callback OAuth invalide"
 
-#: frappe_webmail/mailcraft_jmap.py:441
+#: frappe_webmail/mailcraft_jmap.py:449
 msgid "Invalid Request"
 msgstr ""
 
@@ -2200,7 +2255,7 @@ msgstr "Dernière exécution {0}"
 msgid "Last run {0} — {1} failure(s)"
 msgstr "Dernière exécution {0} — {1} échec(s)"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:633
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:742
 #: frontend/src/components/DriveFolderPicker.vue:38
 msgid "Last used"
 msgstr "Dernière utilisation"
@@ -2214,6 +2269,10 @@ msgstr "En retard"
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:122
 msgid "Layout"
 msgstr "Mise en page"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:299
+msgid "Learn my style again"
+msgstr "Réapprendre votre style"
 
 #: frontend/src/components/NoraBar.vue:49
 msgid "Learn my writing style from my sent emails"
@@ -2280,7 +2339,7 @@ msgstr "Chargement du webmail…"
 msgid "Loading..."
 msgstr "Chargement..."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:615
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:724
 #: frontend/src/components/DocumentPicker.vue:53
 #: frontend/src/components/DriveFolderPicker.vue:44
 msgid "Loading…"
@@ -2335,7 +2394,7 @@ msgstr "Apparence"
 msgid "Mail"
 msgstr "Courriel"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:140
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
 msgctxt "NeoMail view"
 msgid "Mail"
 msgstr "Courrier"
@@ -2344,6 +2403,9 @@ msgstr "Courrier"
 msgid "Mail settings"
 msgstr "Paramètres de messagerie"
 
+#. Label of a Data field in DocType 'NeoMail Setting'
+#. Label of a Section Break field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:35
 #: frontend/src/components/AgentPanel.vue:115
 msgid "Mailbox"
 msgstr "Boîte"
@@ -2356,7 +2418,7 @@ msgstr "Stockage de la boîte mail"
 msgid "Main action"
 msgstr "Action principale"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:378
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:487
 #, python-brace-format
 msgid "Make a private channel in Synk with {0} about this message?"
 msgstr "Créer un canal privé dans Synk avec {0} à propos de ce message ?"
@@ -2364,6 +2426,10 @@ msgstr "Créer un canal privé dans Synk avec {0} à propos de ce message ?"
 #: frontend/src/components/SignatureEditor.vue:4
 msgid "Manage signatures"
 msgstr "Gérer les signatures"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:155
+msgid "Mark All as Read"
+msgstr "Tout marquer comme lu"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:321
@@ -2429,7 +2495,7 @@ msgstr "Message"
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1234
+#: frappe_webmail/mailcraft_jmap.py:1259
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
@@ -2487,27 +2553,32 @@ msgstr "Mes signatures"
 msgid "My style"
 msgstr "Mon style"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:553
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:662
 #: frontend/src/components/DriveFolderPicker.vue:121
 msgid "Name of the folder"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/mailcraft_jmap.py:1100
+#: frappe_webmail/mailcraft_jmap.py:1125
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1175
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1287
 #, fuzzy
 msgid "NeoMail"
 msgstr "NeoMail"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1087
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:80
+msgid "NeoMail Setting"
+msgstr ""
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1196
 msgid "NeoMail could not be opened. Reload the page to try again."
 msgstr "NeoMail n’a pas pu s’ouvrir. Rechargez la page pour réessayer."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1067
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1176
 msgid "NeoMail is not offered on this site."
 msgstr "NeoMail n’est pas proposé sur ce site."
 
@@ -2524,6 +2595,10 @@ msgstr "Jamais exécutée"
 #: frontend/src/components/SignatureEditor.vue:17
 msgid "New"
 msgstr "Nouvelle"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:152
+msgid "New Folder…"
+msgstr "Nouveau dossier…"
 
 #: frontend/src/pages/Webmail.vue:195
 msgid "New Message"
@@ -2543,10 +2618,15 @@ msgstr "Nouvelle conversation"
 msgid "New filter"
 msgstr "Nouveau filtre"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:550
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:659
 #: frontend/src/components/DriveFolderPicker.vue:114
 msgid "New folder"
 msgstr "Nouveau dossier"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:232
+#, python-brace-format
+msgid "New folder in {0}"
+msgstr "Nouveau dossier dans {0}"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:258
@@ -2624,7 +2704,7 @@ msgstr "Aucun fichier trouvé"
 msgid "No filters configured."
 msgstr "Aucun filtre configuré."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:618
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:727
 #: frontend/src/components/DriveFolderPicker.vue:47
 msgid "No folder found"
 msgstr "Aucun dossier trouvé"
@@ -2711,6 +2791,10 @@ msgstr "Impossible de joindre Nora. Veuillez réessayer."
 msgid "Nora did not answer in time. Try again in a moment."
 msgstr "Nora n'a pas répondu à temps. Réessayez dans un instant."
 
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:319
+msgid "Nora does not prepare replies to your e-mails."
+msgstr "Nora ne prépare pas de réponses à vos e-mails."
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
 #: frontend/src/components/EmailComposer.vue:855
 #: frontend/src/components/EmailComposer.vue:891
@@ -2762,6 +2846,10 @@ msgstr ""
 "expéditeur, heure et objet — et l’envoie au canal de votre choix. Rien n’est"
 " déplacé ni marqué comme lu dans votre boîte."
 
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:318
+msgid "Nora prepares replies to your e-mails in your way of writing."
+msgstr "Nora prépare des réponses à vos e-mails à votre manière d'écrire."
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:245
 msgid ""
@@ -2773,6 +2861,24 @@ msgstr ""
 " dans le pipeline OCR et la classe en tant que Document Scan, prête pour la "
 "comptabilité. Les e-mails déjà traités sont mémorisés (ils ne sont jamais "
 "réimportés)."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:306
+msgid ""
+"Nora will forget what she learnt of your way of writing, and learn no more "
+"until you ask her to."
+msgstr ""
+"Nora oubliera ce qu'elle a appris de votre manière d'écrire et n'apprendra "
+"plus rien tant que vous ne le lui demanderez pas."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:291
+msgid ""
+"Nora will prepare replies to your e-mails in your way of writing, learnt "
+"from your sent e-mails. She never sends anything: you choose, change and "
+"send."
+msgstr ""
+"Nora préparera des réponses à vos e-mails à votre manière d'écrire, apprise "
+"de vos e-mails envoyés. Elle n'envoie jamais rien : c'est vous qui "
+"choisissez, modifiez et envoyez."
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
 #: frontend/src/components/AgentPanel.vue:699
@@ -2796,7 +2902,7 @@ msgstr "Introuvable dans la liste de confiance"
 msgid "Not in the Compact layout."
 msgstr "Non affiché dans la mise en page Compact."
 
-#: frappe_webmail/mailcraft_jmap.py:565 frappe_webmail/mailcraft_jmap.py:804
+#: frappe_webmail/mailcraft_jmap.py:573 frappe_webmail/mailcraft_jmap.py:829
 #: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:888
 #: frappe_webmail/webmail_api.py:2357 frappe_webmail/webmail_api.py:2425
 msgid "Not permitted"
@@ -2806,7 +2912,7 @@ msgstr ""
 # (neomail.js then shows the word as
 # it is, never another app's) and the night's robot, which fills empty msgstr
 # only, leaves it.
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:145
 #, fuzzy
 msgctxt "NeoMail view"
 msgid "Notes"
@@ -2822,7 +2928,7 @@ msgstr "Liste numérotée"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:127
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:129
 #, fuzzy
 msgid "OAuth"
 msgstr "OAuth"
@@ -2863,7 +2969,7 @@ msgstr ""
 "Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à "
 "site_config.json"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:259
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:261
 msgid "OAuth disconnected successfully."
 msgstr "OAuth déconnecté avec succès."
 
@@ -2903,6 +3009,12 @@ msgstr "Plus anciens"
 msgid "On {0}, {1} wrote:"
 msgstr "Le {0}, {1} a écrit :"
 
+#: frappe_webmail/neomail_folders.py:66
+msgid "Only Trash and Junk Email are emptied."
+msgstr ""
+"Seuls les dossiers Éléments supprimés et Courrier indésirable peuvent être "
+"vidés."
+
 #: frappe_webmail/webmail_api.py:1842
 msgid "Only Trash and Spam folders can be emptied"
 msgstr "Seuls les dossiers Corbeille et Indésirables peuvent être vidés"
@@ -2919,11 +3031,11 @@ msgstr ""
 msgid "Only a PDF or a picture can be sent to the scanned documents."
 msgstr "Seul un PDF ou une image peut être envoyé aux scans de documents."
 
-#: frappe_webmail/mailcraft_jmap.py:1047
+#: frappe_webmail/mailcraft_jmap.py:1072
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1631
+#: frappe_webmail/mailcraft_jmap.py:1656
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
@@ -2974,17 +3086,17 @@ msgstr "Ouvrir l'éditeur complet (mise en forme, pièces jointes…)"
 msgid "Open in NeoMail"
 msgstr "Ouvrir dans NeoMail"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:221
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:322
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:330
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:431
 msgid "Open in Synk"
 msgstr "Ouvrir dans Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:528
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:637
 #, python-brace-format
 msgid "Open in {0}"
 msgstr "Ouvrir dans {0}"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:450
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:559
 msgid "Open it"
 msgstr "Ouvrir"
 
@@ -3009,11 +3121,11 @@ msgstr ""
 msgid "Open the record"
 msgstr "Ouvrir l'enregistrement"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1067
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1176
 msgid "Open the webmail"
 msgstr "Ouvrir le webmail"
 
-#: frappe_webmail/www/neomail.html:675
+#: frappe_webmail/www/neomail.html:732
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -3081,7 +3193,7 @@ msgstr "Suspendre"
 msgid "Paused"
 msgstr "En pause"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:144
 msgctxt "NeoMail view"
 msgid "People"
 msgstr "Contacts"
@@ -3143,7 +3255,7 @@ msgstr "Veuillez saisir un message avant d'envoyer."
 msgid "Please enter a name"
 msgstr "Veuillez saisir un nom"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:140
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:142
 msgid "Please enter an email address."
 msgstr "Veuillez entrer une adresse email."
 
@@ -3152,29 +3264,33 @@ msgstr "Veuillez entrer une adresse email."
 msgid "Please enter at least one recipient."
 msgstr "Veuillez saisir au moins un destinataire."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:159
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:161
 msgid "Please enter the IMAP password."
 msgstr "Veuillez entrer le mot de passe IMAP."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:144
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:146
 msgid "Please enter the IMAP server address."
 msgstr "Veuillez entrer l'adresse du serveur IMAP."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:163
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:165
 msgid "Please enter the SMTP password."
 msgstr "Veuillez entrer le mot de passe SMTP."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:148
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:150
 msgid "Please enter the SMTP server address."
 msgstr "Veuillez entrer l'adresse du serveur SMTP."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:55
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:57
 msgid "Please save the document first."
 msgstr "Veuillez d'abord enregistrer le document."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:60
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:62
 msgid "Please select an OAuth provider."
 msgstr "Veuillez sélectionner un fournisseur OAuth."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:288
+msgid "Prepare ready replies"
+msgstr "Préparer des réponses prêtes"
 
 #: frontend/src/pages/Webmail.vue:160
 #, python-brace-format
@@ -3286,16 +3402,26 @@ msgstr "Supprimer"
 msgid "Remove star"
 msgstr "Retirer l'étoile"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:233
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:115
 #: frontend/src/components/FolderTree.vue:313
 msgid "Rename"
 msgstr "Renommer"
 
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:153
+msgid "Rename Folder…"
+msgstr "Renommer le dossier…"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:87
 msgid "Rename folder"
 msgstr "Renommer le dossier"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:233
+#, python-brace-format
+msgid "Rename the folder {0}"
+msgstr "Renommer le dossier {0}"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/FolderTree.vue:114
@@ -3387,6 +3513,11 @@ msgstr "Racine"
 msgid "Row {0}: the address of a social link must start with https://"
 msgstr "Ligne {0} : l'adresse d'un lien social doit commencer par https://"
 
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:47
+msgid "Rules"
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AutomationsPanel.vue:391
 msgid "Run failed"
@@ -3421,9 +3552,14 @@ msgstr "Port SMTP"
 msgid "SMTP Settings"
 msgstr "Paramètres SMTP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:213
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:215
 msgid "SMTP: Connected successfully"
 msgstr "SMTP : Connexion réussie"
+
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:64
+msgid "Safe Senders"
+msgstr "Expéditeurs de confiance"
 
 #: frontend/src/components/EmailComposer.vue:23
 #: frontend/src/components/FilterManager.vue:208
@@ -3431,7 +3567,7 @@ msgstr "SMTP : Connexion réussie"
 msgid "Save"
 msgstr "Enregistrer"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:530
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:639
 msgid "Save and open"
 msgstr "Enregistrer et ouvrir"
 
@@ -3452,12 +3588,12 @@ msgstr "Enregistrer les modifications"
 msgid "Save error"
 msgstr "Erreur d'enregistrement"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:530
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:639
 #: frontend/src/components/DriveFolderPicker.vue:134
 msgid "Save here"
 msgstr "Enregistrer ici"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:528
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:637
 #: frontend/src/components/DriveFolderPicker.vue:4
 #: frontend/src/components/DriveFolderPicker.vue:6
 msgid "Save to the Drive"
@@ -3529,8 +3665,8 @@ msgstr "Erreur de recherche"
 msgid "Search files..."
 msgstr "Rechercher des fichiers…"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:543
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:544
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:652
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:653
 #: frontend/src/components/DriveFolderPicker.vue:25
 msgid "Search for a folder"
 msgstr "Rechercher un dossier"
@@ -3543,7 +3679,7 @@ msgstr "Rechercher dans la messagerie…"
 msgid "Search in all fields…"
 msgstr "Rechercher dans tous les champs…"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:182
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:291
 msgid "Search mail"
 msgstr "Rechercher dans le courrier"
 
@@ -3651,19 +3787,19 @@ msgstr ""
 "de savoir laquelle vous avez choisie : enregistrez-la plutôt avec "
 "« Enregistrer sous »."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:289
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:398
 msgid "Share"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:276
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:385
 msgid "Share in Synk"
 msgstr "Partager dans Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:287
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:396
 msgid "Share the attachments too"
 msgstr "Partager aussi les pièces jointes"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:281
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:390
 msgid "Share with"
 msgstr ""
 
@@ -3686,7 +3822,7 @@ msgstr "Partagé avec"
 msgid "Shared by {0}"
 msgstr "Partagé par {0}"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:324
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:433
 msgid "Shared in Synk"
 msgstr "Partagé dans Synk"
 
@@ -3702,6 +3838,14 @@ msgstr "Partagés avec moi"
 #, python-brace-format
 msgid "Shared with {0}"
 msgstr "Partagé avec {0}"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:329
+msgid "She has not learnt your way of writing yet."
+msgstr "Elle n'a pas encore appris votre manière d'écrire."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:322
+msgid "She is learning your way of writing."
+msgstr "Elle apprend votre manière d'écrire."
 
 #: frontend/src/components/EmailViewer.vue:153
 msgid "Show"
@@ -3744,8 +3888,8 @@ msgstr "Colonne des dossiers repliée"
 msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:950
-#: frappe_webmail/www/neomail.html:681
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1059
+#: frappe_webmail/www/neomail.html:738
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -3851,6 +3995,10 @@ msgstr "Démarrage de l’analyse du style…"
 msgid "Statistics"
 msgstr "Statistiques"
 
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:285
+msgid "Stop ready replies"
+msgstr "Arrêter les réponses prêtes"
+
 #. Label of a Data field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json:61
 #: frontend/src/components/AgentPanel.vue:218
@@ -3877,7 +4025,7 @@ msgstr "Sujet contient…"
 msgid "Subject:"
 msgstr "Objet :"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:195
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:197
 msgid "Success"
 msgstr "Succès"
 
@@ -3897,7 +4045,7 @@ msgstr "Fournisseur"
 msgid "Synk"
 msgstr "Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:266
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:375
 msgid "Synk could not be reached. Try again in a moment."
 msgstr "Synk est injoignable. Réessayez dans un instant."
 
@@ -3915,6 +4063,7 @@ msgstr "Synk n’est pas accessible pour vous."
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:59
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:83
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:368
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:87
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:355
 msgid "System Manager"
 msgstr "Gestionnaire système"
@@ -3949,7 +4098,7 @@ msgstr "Nom du modèle"
 msgid "Test Connection"
 msgstr "Tester la connexion"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:169
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:171
 msgid "Testing Connection"
 msgstr "Test de connexion"
 
@@ -3971,7 +4120,15 @@ msgstr "Texte seul"
 msgid "That did not work — please try again."
 msgstr "Cela n'a pas fonctionné — veuillez réessayer."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:616
+#: frappe_webmail/neomail_folders.py:45
+msgid "That mailbox has no such folder."
+msgstr "Cette boîte ne contient pas ce dossier."
+
+#: frappe_webmail/neomail_folders.py:87
+msgid "That mailbox isn't one of yours."
+msgstr "Cette boîte n’est pas l’une des vôtres."
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:725
 msgid "The Drive could not be reached. Try again in a moment."
 msgstr "Le Drive est injoignable. Réessayez dans un instant."
 
@@ -3999,6 +4156,15 @@ msgid "The User's phone, else the company's main number."
 msgstr ""
 "Le téléphone de l'utilisateur, sinon le numéro principal de la société."
 
+#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:31
+msgid ""
+"The Webmail Account the lists are of; * for the person's rules and "
+"categories."
+msgstr ""
+"Le compte webmail auquel appartiennent ces listes ; * pour les règles et "
+"catégories personnelles de l'utilisateur."
+
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:103
 #, python-brace-format
 msgid "The accent colour must be written as #rrggbb, for example {0}."
@@ -4013,7 +4179,7 @@ msgstr "L'adresse du lien de la bannière doit commencer par https://"
 msgid "The address of the call to action must start with https://"
 msgstr "L'adresse de l'appel à l'action doit commencer par https://"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:493
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:602
 msgid "The attachment could not be sent to the scanned documents."
 msgstr "La pièce jointe n’a pas pu être envoyée aux scans de documents."
 
@@ -4042,13 +4208,13 @@ msgid "The base font size must be between {0} and {1} pixels."
 msgstr ""
 "La taille de la police de base doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1733
+#: frappe_webmail/mailcraft_jmap.py:1758
 msgid "The connection to the mail server ended before the message was sent."
 msgstr ""
 "La connexion au serveur de messagerie s'est interrompue avant l'envoi du "
 "message."
 
-#: frappe_webmail/mailcraft_jmap.py:1675
+#: frappe_webmail/mailcraft_jmap.py:1700
 msgid ""
 "The connection to the mail server failed while the message was on its way."
 msgstr ""
@@ -4060,7 +4226,7 @@ msgstr ""
 msgid "The contact could not be created"
 msgstr "Le contact n'a pas pu être créé"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:364
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:473
 msgid "The conversation could not be opened in Synk."
 msgstr "La conversation n’a pas pu être ouverte dans Synk."
 
@@ -4101,15 +4267,15 @@ msgstr ""
 msgid "The email address or password is incorrect."
 msgstr "L'adresse e-mail ou le mot de passe est incorrect."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:733
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:842
 msgid "The file could not be opened."
 msgstr "Le fichier n’a pas pu être ouvert."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:733
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:842
 msgid "The file could not be saved in the Drive."
 msgstr "Le fichier n’a pas pu être enregistré dans le Drive."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:568
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:677
 #: frontend/src/components/DriveFolderPicker.vue:99
 msgid ""
 "The file is copied by the server, straight from the e-mail: nothing is "
@@ -4118,7 +4284,7 @@ msgstr ""
 "Le fichier est copié par le serveur, directement depuis l'e-mail : rien "
 "n'est téléchargé."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:697
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:806
 msgid "The folder could not be made."
 msgstr "Le dossier n’a pas pu être créé."
 
@@ -4127,18 +4293,18 @@ msgstr "Le dossier n’a pas pu être créé."
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1729
+#: frappe_webmail/mailcraft_jmap.py:1754
 msgid "The mail server can't take the recipients just now."
 msgstr ""
 "Le serveur de messagerie ne peut pas accepter les destinataires pour le "
 "moment."
 
-#: frappe_webmail/mailcraft_jmap.py:579 frappe_webmail/mailcraft_jmap.py:716
-#: frappe_webmail/mailcraft_jmap.py:808
+#: frappe_webmail/mailcraft_jmap.py:587 frappe_webmail/mailcraft_jmap.py:738
+#: frappe_webmail/mailcraft_jmap.py:833
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1704
+#: frappe_webmail/mailcraft_jmap.py:1729
 msgid "The mail server could not be reached or signed in to."
 msgstr ""
 "Le serveur de messagerie est injoignable ou l'authentification a échoué."
@@ -4148,7 +4314,7 @@ msgstr ""
 msgid "The mail server is not answering quickly enough."
 msgstr "Le serveur de messagerie ne répond pas assez vite."
 
-#: frappe_webmail/mailcraft_jmap.py:1726
+#: frappe_webmail/mailcraft_jmap.py:1751
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 
@@ -4156,7 +4322,7 @@ msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 msgid "The mailbox"
 msgstr "La boîte entière"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:313
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:422
 msgid "The message could not be shared."
 msgstr "Le message n’a pas pu être partagé."
 
@@ -4164,19 +4330,19 @@ msgstr "Le message n’a pas pu être partagé."
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1639
+#: frappe_webmail/mailcraft_jmap.py:1664
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1489
+#: frappe_webmail/mailcraft_jmap.py:1514
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1637
+#: frappe_webmail/mailcraft_jmap.py:1662
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1513
+#: frappe_webmail/mailcraft_jmap.py:1538
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
 
@@ -4258,7 +4424,7 @@ msgstr "Ce fichier n'existe plus dans le Drive"
 msgid "This folder no longer exists in the Drive"
 msgstr "Ce dossier n'existe plus dans le Drive"
 
-#: frappe_webmail/mailcraft_jmap.py:1614 frappe_webmail/mailcraft_jmap.py:1618
+#: frappe_webmail/mailcraft_jmap.py:1639 frappe_webmail/mailcraft_jmap.py:1643
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -4268,7 +4434,7 @@ msgstr "Ce message"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:181
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:184
-#: frappe_webmail/mailcraft_jmap.py:1218 frappe_webmail/neomail_share.py:191
+#: frappe_webmail/mailcraft_jmap.py:1243 frappe_webmail/neomail_share.py:191
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
 
@@ -4285,7 +4451,7 @@ msgstr ""
 "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec "
 "« Enregistrer sous »."
 
-#: frappe_webmail/mailcraft_jmap.py:1222
+#: frappe_webmail/mailcraft_jmap.py:1247
 #: frappe_webmail/neomail_attachments.py:461
 #: frappe_webmail/neomail_share.py:194
 msgid ""
@@ -4402,12 +4568,12 @@ msgstr "Étoile (activer/désactiver)"
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1634
+#: frappe_webmail/mailcraft_jmap.py:1659
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:770
+#: frappe_webmail/mailcraft_jmap.py:795
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
@@ -4519,6 +4685,10 @@ msgstr "Souligné"
 msgid "Unknown OAuth provider"
 msgstr "Fournisseur OAuth inconnu"
 
+#: frappe_webmail/neomail_folders.py:40
+msgid "Unknown folder action."
+msgstr "Action de dossier inconnue."
+
 #: frontend/src/components/AdvancedSearch.vue:77
 #: frontend/src/components/EmailList.vue:86
 msgid "Unread"
@@ -4538,11 +4708,13 @@ msgstr "Utiliser STARTTLS"
 #. Label of a Link field in DocType 'Email Filter'
 #. Label of a Link field in DocType 'Email Signature'
 #. Label of a Link field in DocType 'Email Signature Preference'
+#. Label of a Link field in DocType 'NeoMail Setting'
 #. Label of a Link field in DocType 'Webmail Account User'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json:29
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:41
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:20
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:22
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:24
 #: frappe_webmail/frappe_webmail/doctype/webmail_account_user/webmail_account_user.json:14
 msgid "User"
 msgstr "Utilisateur"
@@ -4575,7 +4747,7 @@ msgstr "Compte Webmail"
 msgid "Webmail Account User"
 msgstr "Utilisateur du compte Webmail"
 
-#: frappe_webmail/www/neomail.py:89 frappe_webmail/www/webmail.py:25
+#: frappe_webmail/www/neomail.py:93 frappe_webmail/www/webmail.py:25
 msgid "Webmail is part of the desk: your account has no access to it."
 msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 
@@ -4606,6 +4778,16 @@ msgstr "Jours ouvrés uniquement"
 #: frontend/src/pages/Webmail.vue:372
 msgid "Welcome to Webmail"
 msgstr "Bienvenue dans la messagerie"
+
+#. Description of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:5
+msgid ""
+"What NeoMail keeps of a person's window between two visits: their rules and "
+"categories, and each mailbox's Safe Senders and Blocked Senders."
+msgstr ""
+"Ce que NeoMail retient de l'espace de travail d'un utilisateur entre deux "
+"visites : ses règles et catégories, et, pour chaque boîte, ses expéditeurs "
+"de confiance et ses expéditeurs bloqués."
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
 #: frontend/src/components/AgentPanel.vue:444
@@ -4654,6 +4836,11 @@ msgstr "Quelles automatisations sont actives ?"
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:77
 msgid "Who it applies to"
 msgstr "À qui s'applique ce modèle"
+
+#. Label of a Section Break field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:42
+msgid "Window"
+msgstr "Fenêtre"
 
 #: frontend/src/components/FilterManager.vue:46
 msgid "With attachment"
@@ -4708,12 +4895,12 @@ msgstr ""
 msgid "You cannot read this file of the Drive"
 msgstr "Vous ne pouvez pas lire ce fichier du Drive"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:270
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:379
 msgid "You have no channel in Synk and nobody to write to yet."
 msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1094
-#: frappe_webmail/www/neomail.html:671
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1203
+#: frappe_webmail/www/neomail.html:728
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -4744,9 +4931,9 @@ msgstr ""
 msgid "YouTube"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:948
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1115
-#: frappe_webmail/www/neomail.html:660 frappe_webmail/www/neomail.html:680
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1057
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1224
+#: frappe_webmail/www/neomail.html:717 frappe_webmail/www/neomail.html:737
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
@@ -4759,7 +4946,7 @@ msgstr "Votre choix n'a pas pu être enregistré"
 msgid "Your draft"
 msgstr "Votre brouillon"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:286
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:395
 msgid "Your message"
 msgstr "Votre message"
 
@@ -4796,6 +4983,11 @@ msgstr ""
 #: frappe_webmail/mailcraft_contacts.py:331
 msgid "Your rights do not allow it."
 msgstr "Vos droits ne le permettent pas."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:326
+#, python-brace-format
+msgid "Your way of writing was learnt on {0} from {1}."
+msgstr "Votre manière d'écrire a été apprise le {0} à partir de {1}."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -4985,7 +5177,7 @@ msgstr "vous@entreprise.ch"
 msgid "your email account"
 msgstr "votre compte e-mail"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:327
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:436
 #, python-brace-format
 msgid "{0} attachment(s) could not be shared."
 msgstr "{0} pièce(s) jointe(s) n’ont pas pu être partagée(s)."
@@ -5055,7 +5247,7 @@ msgstr "{0} factures cette année"
 msgid "{0} is longer than {1} characters."
 msgstr "{0} comporte plus de {1} caractères."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:472
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:581
 #: frappe_webmail/neomail_attachments.py:552
 #, python-brace-format
 msgid "{0} is not installed on this site."
@@ -5077,7 +5269,7 @@ msgstr "{0} messages plus anciens dans cette conversation"
 msgid "{0} other messages in this conversation"
 msgstr "{0} autres messages dans cette conversation"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:399
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:508
 #, python-brace-format
 msgid ""
 "{0} person(s) on this message could not join: they are not in your Synk "
@@ -5215,131 +5407,3 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Stop ready replies"
-msgstr "Arrêter les réponses prêtes"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Prepare ready replies"
-msgstr "Préparer des réponses prêtes"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
-msgstr "Nora préparera des réponses à vos e-mails à votre manière d'écrire, apprise de vos e-mails envoyés. Elle n'envoie jamais rien : c'est vous qui choisissez, modifiez et envoyez."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Learn my style again"
-msgstr "Réapprendre votre style"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Forget my style"
-msgstr "Oublier votre style"
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."
-msgstr "Nora oubliera ce qu'elle a appris de votre manière d'écrire et n'apprendra plus rien tant que vous ne le lui demanderez pas."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Nora prepares replies to your e-mails in your way of writing."
-msgstr "Nora prépare des réponses à vos e-mails à votre manière d'écrire."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Nora does not prepare replies to your e-mails."
-msgstr "Nora ne prépare pas de réponses à vos e-mails."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "She is learning your way of writing."
-msgstr "Elle apprend votre manière d'écrire."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "Your way of writing was learnt on {0} from {1}."
-msgstr "Votre manière d'écrire a été apprise le {0} à partir de {1}."
-
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
-msgid "She has not learnt your way of writing yet."
-msgstr "Elle n'a pas encore appris votre manière d'écrire."
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "New Folder…"
-msgstr "Nouveau dossier…"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Rename Folder…"
-msgstr "Renommer le dossier…"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Mark All as Read"
-msgstr "Tout marquer comme lu"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Empty Folder"
-msgstr "Vider le dossier"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "New folder in {0}"
-msgstr "Nouveau dossier dans {0}"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Rename the folder {0}"
-msgstr "Renommer le dossier {0}"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Delete the folder {0}?"
-msgstr "Supprimer le dossier {0} ?"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Delete all the mail in {0} for good?"
-msgstr "Supprimer définitivement tout le courrier de {0} ?"
-
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js
-msgid "Done: NeoMail shows it at its next Send/Receive."
-msgstr "Terminé : NeoMail l’affichera à son prochain Envoyer/Recevoir."
-
-#: frappe_webmail/neomail_folders.py
-msgid "Unknown folder action."
-msgstr "Action de dossier inconnue."
-
-#: frappe_webmail/neomail_folders.py
-msgid "That mailbox has no such folder."
-msgstr "Cette boîte ne contient pas ce dossier."
-
-#: frappe_webmail/neomail_folders.py
-msgid "Give the folder a name, without « {0} »."
-msgstr "Donnez un nom au dossier, sans « {0} »."
-
-#: frappe_webmail/neomail_folders.py
-msgid "A special folder keeps its name and its place."
-msgstr "Un dossier spécial garde son nom et sa place."
-
-#: frappe_webmail/neomail_folders.py
-msgid "Only Trash and Junk Email are emptied."
-msgstr "Seuls les dossiers Éléments supprimés et Courrier indésirable peuvent être vidés."
-
-#: frappe_webmail/neomail_folders.py
-msgid "A mailbox shared with you is set up by its owner."
-msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
-
-#: frappe_webmail/neomail_folders.py
-msgid "That mailbox isn't one of yours."
-msgstr "Cette boîte n’est pas l’une des vôtres."
-
-#. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:70
-msgid "Blocked Senders"
-msgstr "Expéditeurs bloqués"
-
-#. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:64
-msgid "Safe Senders"
-msgstr "Expéditeurs de confiance"
-
-#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:31
-msgid "The Webmail Account the lists are of; * for the person's rules and categories."
-msgstr "Le compte webmail auquel appartiennent ces listes ; * pour les règles et catégories personnelles de l'utilisateur."
-
-#. Description of a DocType
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:5
-msgid "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders."
-msgstr "Ce que NeoMail retient de l'espace de travail d'un utilisateur entre deux visites : ses règles et catégories, et, pour chaque boîte, ses expéditeurs de confiance et ses expéditeurs bloqués."
