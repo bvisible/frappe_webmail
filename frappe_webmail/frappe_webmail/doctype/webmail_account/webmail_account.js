@@ -280,9 +280,9 @@ function show_nora(frm) {
 			const style = r && r.message;
 			if (!style || !style.success) return;
 			frm.dashboard.set_headline(nora_headline(style), style.ready_replies ? "green" : "blue");
-			const group = __("Nora");
+			// Beside « Test Connection », not in a group: the theme shows a form's own buttons under its title and no group.
 			if (style.ready_replies) {
-				frm.add_custom_button(__("Stop ready replies"), () => nora_style(frm, "disable"), group);
+				frm.add_custom_button(__("Stop ready replies"), () => nora_style(frm, "disable"));
 			} else {
 				frm.add_custom_button(
 					__("Prepare ready replies"),
@@ -292,12 +292,11 @@ function show_nora(frm) {
 								"Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
 							),
 							() => nora_style(frm, "enable")
-						),
-					group
+						)
 				);
 			}
 			if (style.own_mailbox) {
-				frm.add_custom_button(__("Learn my style again"), () => nora_style(frm, "relearn"), group);
+				frm.add_custom_button(__("Learn my style again"), () => nora_style(frm, "relearn"));
 			}
 			if (style.exists && (style.learnt_on || (style.points || []).length)) {
 				frm.add_custom_button(
@@ -306,8 +305,7 @@ function show_nora(frm) {
 						frappe.confirm(
 							__("Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."),
 							() => nora_style(frm, "forget")
-						),
-					group
+						)
 				);
 			}
 		})
