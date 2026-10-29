@@ -5215,3 +5215,47 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Stop ready replies"
+msgstr "Arrêter les réponses prêtes"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Prepare ready replies"
+msgstr "Préparer des réponses prêtes"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
+msgstr "Nora préparera des réponses à vos e-mails à votre manière d'écrire, apprise de vos e-mails envoyés. Elle n'envoie jamais rien : c'est vous qui choisissez, modifiez et envoyez."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Learn my style again"
+msgstr "Réapprendre votre style"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Forget my style"
+msgstr "Oublier votre style"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."
+msgstr "Nora oubliera ce qu'elle a appris de votre manière d'écrire et n'apprendra plus rien tant que vous ne le lui demanderez pas."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Nora prepares replies to your e-mails in your way of writing."
+msgstr "Nora prépare des réponses à vos e-mails à votre manière d'écrire."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Nora does not prepare replies to your e-mails."
+msgstr "Nora ne prépare pas de réponses à vos e-mails."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "She is learning your way of writing."
+msgstr "Elle apprend votre manière d'écrire."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "Your way of writing was learnt on {0} from {1}."
+msgstr "Votre manière d'écrire a été apprise le {0} à partir de {1}."
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js
+msgid "She has not learnt your way of writing yet."
+msgstr "Elle n'a pas encore appris votre manière d'écrire."

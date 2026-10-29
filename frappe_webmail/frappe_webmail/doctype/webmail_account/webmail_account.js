@@ -12,6 +12,8 @@ frappe.ui.form.on("Webmail Account", {
 		frm.add_custom_button(__("Test Connection"), function () {
 			test_connection(frm);
 		});
+
+		show_nora(frm);
 	},
 
 	auth_type: function (frm) {
@@ -263,4 +265,76 @@ function disconnect_oauth(frm) {
 			});
 		}
 	);
+}
+
+// Nora's side of the person's own mailbox: whether she prepares replies to their e-mails, and what she keeps of their
+// way of writing. The same switches as « My style » in NeoMail (nora.api.mail_ready.my_style), so that the page a
+// mailbox is set up on has them too. Only where Nora is installed, and only on one's own mailbox: the style is the
+// person's, learnt from a mailbox of theirs.
+function show_nora(frm) {
+	if (frm.is_new() || frm.doc.user !== frappe.session.user) return;
+	if (!(frappe.boot.versions && frappe.boot.versions.nora)) return;
+	frappe
+		.call({ method: "nora.api.mail_ready.my_style", args: { action: "get" } })
+		.then((r) => {
+			const style = r && r.message;
+			if (!style || !style.success) return;
+			frm.dashboard.set_headline(nora_headline(style), style.ready_replies ? "green" : "blue");
+			const group = __("Nora");
+			if (style.ready_replies) {
+				frm.add_custom_button(__("Stop ready replies"), () => nora_style(frm, "disable"), group);
+			} else {
+				frm.add_custom_button(
+					__("Prepare ready replies"),
+					() =>
+						frappe.confirm(
+							__(
+								"Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
+							),
+							() => nora_style(frm, "enable")
+						),
+					group
+				);
+			}
+			if (style.own_mailbox) {
+				frm.add_custom_button(__("Learn my style again"), () => nora_style(frm, "relearn"), group);
+			}
+			if (style.exists && (style.learnt_on || (style.points || []).length)) {
+				frm.add_custom_button(
+					__("Forget my style"),
+					() =>
+						frappe.confirm(
+							__("Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."),
+							() => nora_style(frm, "forget")
+						),
+					group
+				);
+			}
+		})
+		// No Nora here, or no right to her: the page stays as it was.
+		.catch(() => {});
+}
+
+function nora_headline(style) {
+	const replies = style.ready_replies
+		? __("Nora prepares replies to your e-mails in your way of writing.")
+		: __("Nora does not prepare replies to your e-mails.");
+	let learnt;
+	if (style.style && style.style.learning) {
+		learnt = __("She is learning your way of writing.");
+	} else if (style.learnt_on) {
+		learnt = __("Your way of writing was learnt on {0} from {1}.", [
+			frappe.utils.escape_html(style.learnt_on),
+			frappe.utils.escape_html(style.mailbox || ""),
+		]);
+	} else {
+		learnt = __("She has not learnt your way of writing yet.");
+	}
+	return `${replies} ${learnt}`;
+}
+
+function nora_style(frm, action) {
+	frappe
+		.call({ method: "nora.api.mail_ready.my_style", args: { action }, freeze: true })
+		.then(() => frm.refresh());
 }
