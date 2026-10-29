@@ -296,10 +296,9 @@ describe("navSections", () => {
 			"team@example.org",
 			undefined,
 		]);
-		expect(nav[0].items.map((item) => item.label)).toEqual([
-			"Boîte de réception - ada@example.org",
-			"Éléments envoyés - team@example.org",
-		]);
+		// A favourite says its mailbox first (an inbox's icon says the rest): 29.10, « Boîte de réception - da… » three
+		// times over in the menu's narrow column
+		expect(nav[0].items.map((item) => item.label)).toEqual(["ada@example.org", "team@example.org · Éléments envoyés"]);
 		expect(nav[1].items.map((item) => item.label)).toEqual([
 			"Boîte de réception",
 			"Clients",
@@ -312,6 +311,13 @@ describe("navSections", () => {
 			"Éléments envoyés",
 			"Éléments supprimés",
 		]);
+	});
+
+	it("keeps NeoMail's own name for a favourite with one mailbox, or of a folder it does not list", () => {
+		const one = { ...STATE, accounts: [STATE.accounts[0]], favorites: [STATE.favorites[0]] };
+		expect(lent(one).nav[0].items.map((item) => item.label)).toEqual(["Boîte de réception - ada@example.org"]);
+		const unknown = { ...STATE, favorites: [{ ...STATE.favorites[0], folder: "F-gone" }] };
+		expect(lent(unknown).nav[0].items.map((item) => item.label)).toEqual(["Boîte de réception - ada@example.org"]);
 	});
 
 	it("draws a folder under its parents, with its unread mail from a NeoMail that gives no count", () => {
@@ -371,7 +377,7 @@ describe("navSections", () => {
 		const inbox = { ...STATE, folder: "F-inbox" };
 		const fromFavorites = { account: "ada@example.org", folder: "F-inbox", from: "favorites" };
 		expect(active(lent(inbox, { chosen: fromFavorites }).nav)).toEqual([
-			"Favoris › Boîte de réception - ada@example.org",
+			"Favoris › ada@example.org",
 			" › Courrier",
 		]);
 		const fromMailbox = { ...fromFavorites, from: "mailbox" };
@@ -723,5 +729,50 @@ describe("commander", () => {
 	it("sends nothing while the frame has no window", () => {
 		const { win, host } = page();
 		expect(host.commander(win, { contentWindow: null })("view.mail")).toBeNull();
+	});
+});
+
+describe("followDeskTheme", () => {
+	// 29.10: on a computer in dark mode, NeoMail (« Use system setting ») drew itself dark beside a light desk.
+	function desk(theme) {
+		const attributes = { "data-theme": theme };
+		const doc = { documentElement: { getAttribute: (name) => attributes[name] ?? null } };
+		const seen = {};
+		class Observer {
+			constructor(fn) {
+				seen.notify = fn;
+			}
+			observe(node, options) {
+				seen.node = node;
+				seen.options = options;
+			}
+			disconnect() {
+				seen.stopped = true;
+			}
+		}
+		return { attributes, doc, seen, Observer, frame: { style: {} } };
+	}
+
+	it("gives the frame the desk's light or dark, and follows each change of it", () => {
+		const { host } = page();
+		const d = desk("light");
+		const stop = host.followDeskTheme(d.doc, d.frame, d.Observer);
+		expect(d.frame.style.colorScheme).toBe("light");
+		expect(d.seen.node).toBe(d.doc.documentElement);
+		expect(d.seen.options.attributeFilter).toEqual(["data-theme"]);
+		d.attributes["data-theme"] = "dark";
+		d.seen.notify();
+		expect(d.frame.style.colorScheme).toBe("dark");
+		stop();
+		expect(d.seen.stopped).toBe(true);
+	});
+
+	it("takes a desk that names no theme, or another one, as light, and works without an observer", () => {
+		const { host } = page();
+		for (const theme of [null, "", "automatic", "Dark"]) {
+			const d = desk(theme);
+			host.followDeskTheme(d.doc, d.frame, undefined)();
+			expect(d.frame.style.colorScheme).toBe("light");
+		}
 	});
 });

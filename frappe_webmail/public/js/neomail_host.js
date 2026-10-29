@@ -167,6 +167,25 @@ window.neomailHost = (function () {
 	}
 
 	/*
+	 * NeoMail in the desk's own light or dark, not the computer's: inside a frame, `prefers-color-scheme` answers the
+	 * frame's `color-scheme`, so the build's « Use system setting » (its default) follows the desk. The desk writes its
+	 * theme on <html data-theme> ("light" or "dark", its « Automatic » resolved to one of them); the frame follows each
+	 * change. A person who chose Light or Dark in NeoMail's own options keeps it. Returns what stops following.
+	 * (29.10: on a computer in dark mode, NeoMail drew itself dark beside a light desk.)
+	 */
+	function followDeskTheme(doc, frame, Observer) {
+		const root = doc.documentElement;
+		const apply = () => {
+			frame.style.colorScheme = root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+		};
+		apply();
+		if (typeof Observer !== "function") return () => {};
+		const watch = new Observer(apply);
+		watch.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+		return () => watch.disconnect();
+	}
+
+	/*
 	 * The height that makes a page's frame end at the bottom of what shows, from the box's top (`boxTop`): the inside
 	 * of NeoCockpit's panel (`panel`: its bottom, less its bottom border and padding; null without NeoCockpit) or the
 	 * window's bottom (`windowHeight`), whichever is higher, less the page body's bottom padding (`bodyPaddingBottom`).
@@ -286,7 +305,10 @@ window.neomailHost = (function () {
 
 	/*
 	 * The desk menu's sections for what NeoMail said of itself (`mailcraft:state`): its own pane, in its order.
-	 * Favourites first (`texts.favorites`), when it has any; then one section per mailbox, titled with its address, with
+	 * Favourites first (`texts.favorites`), when it has any (with several mailboxes, each named by its mailbox first:
+	 * an inbox by its address alone, its icon saying the rest, another folder by its address and its name; NeoMail's
+	 * own « Boîte de réception - ada@… » was cut to « Boîte de réception - a… » in the menu's narrow column, 29.10);
+	 * then one section per mailbox, titled with its address, with
 	 * every folder of it in NeoMail's order, under its parent (`depth`); then, unless the menu draws them in its dock
 	 * (`options.dock`), the views as small items at the end. A folder's badge is the number NeoMail's pane shows
 	 * (badgeOf), an inbox's in the accent. A click asks NeoMail through `send(name, params, from)`: `folder.select`
@@ -320,6 +342,11 @@ window.neomailHost = (function () {
 		for (const box of accounts) {
 			for (const folder of box.folders || []) known.set(key(box.email, folder.id), folder);
 		}
+		const several = accounts.length > 1;
+		const favoriteLabel = (favorite, folder) => {
+			if (!several || !folder || !favorite.account) return favorite.name;
+			return folder.role === "inbox" ? favorite.account : favorite.account + " · " + folder.name;
+		};
 		const nav = [];
 		if (favorites.length) {
 			nav.push({
@@ -328,7 +355,7 @@ window.neomailHost = (function () {
 					const folder = known.get(key(favorite.account, favorite.folder));
 					const role = (folder && folder.role) || null;
 					return {
-						label: favorite.name,
+						label: favoriteLabel(favorite, folder),
 						icon: icon(role),
 						badge: badgeOf(folder || favorite),
 						badgeTone: tone(role),
@@ -602,6 +629,7 @@ window.neomailHost = (function () {
 		install,
 		listen,
 		frameHeight,
+		followDeskTheme,
 		navSections,
 		viewDock,
 		badgeOf,

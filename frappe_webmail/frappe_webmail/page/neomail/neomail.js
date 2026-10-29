@@ -1119,6 +1119,8 @@
 		frame.className = "neomail-desk-frame";
 		frame.title = "NeoMail";
 		frame.src = given.build_url;
+		// NeoMail in the desk's light or dark, not the computer's (neomail_host.js, followDeskTheme)
+		window.neomailHost.followDeskTheme(document, frame, window.MutationObserver);
 		state.frame = frame;
 		state.send = window.neomailHost.commander(window, frame);
 		window.neomailHost.listen(window, frame, {
