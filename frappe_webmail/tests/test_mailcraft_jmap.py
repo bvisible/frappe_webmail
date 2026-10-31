@@ -585,9 +585,14 @@ class TestMailCraftJmap(FrappeTestCase):
 		server.put("INBOX", message("seen"), {b"\\Seen"})
 		with served(server):
 			name, out, _cid = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
-			_n, refused, _c = self._call(
+			# A mailbox shared with the person is set up by its owner
+			refused = self._call("Mailbox/set", {"accountId": self.aid, "create": {"n": {"name": "New"}}})
+			self._as(OWNER)
+			_n, mine, _c = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
+			_n, made, _c = self._call(
 				"Mailbox/set", {"accountId": self.aid, "create": {"n": {"name": "New"}}}
 			)
+		self.assertEqual((refused[0], refused[1]["type"]), ("error", "forbidden"))
 		self.assertEqual(name, "Mailbox/get")
 		boxes = {b["id"]: b for b in out["list"]}
 		inbox = boxes[jmap.mailbox_id("INBOX")]
@@ -597,8 +602,16 @@ class TestMailCraftJmap(FrappeTestCase):
 		film = boxes[jmap.mailbox_id("Projects/Film")]
 		self.assertEqual((film["name"], film["parentId"]), ("Film", jmap.mailbox_id("Projects")))
 		self.assertEqual(
-			refused["notCreated"]["n"]["type"], "forbidden", "folders are managed in the webmail"
+			[film["myRights"][r] for r in ("mayCreateChild", "mayRename", "mayDelete")], [False] * 3
 		)
+		# The person's own mailbox: its folders are made from NeoMail (neomail_folders.mailbox_set), but for the special ones
+		self.assertEqual(made["created"]["n"], {"id": jmap.mailbox_id("New")})
+		boxes = {b["id"]: b for b in mine["list"]}
+		film, inbox = boxes[jmap.mailbox_id("Projects/Film")], boxes[jmap.mailbox_id("INBOX")]
+		self.assertEqual(
+			[film["myRights"][r] for r in ("mayCreateChild", "mayRename", "mayDelete")], [True] * 3
+		)
+		self.assertEqual([inbox["myRights"][r] for r in ("mayRename", "mayDelete")], [False, False])
 
 	def test_the_roles_come_from_the_server_s_marks_then_from_usual_names(self):
 		"""RFC 8621 roles: a special-use attribute first (RFC 6154), then a name mail programs give a folder, in the
@@ -623,7 +636,10 @@ class TestMailCraftJmap(FrappeTestCase):
 		}
 		server.validity = {name: VALIDITY for name in server.folders}
 		server.next_uid = {name: 1 for name in server.folders}
-		with served(server), patch("frappe_webmail.webmail_api.get_folder_mapping", side_effect=AssertionError):
+		with (
+			served(server),
+			patch("frappe_webmail.webmail_api.get_folder_mapping", side_effect=AssertionError),
+		):
 			_n, out, _c = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
 		roles = {b["id"]: b["role"] for b in out["list"]}
 		expected = {
@@ -652,7 +668,9 @@ class TestMailCraftJmap(FrappeTestCase):
 		with served(server):
 			_n, out, _c = self._call("Mailbox/get", {"accountId": self.aid, "ids": None})
 		roles = {b["id"]: b["role"] for b in out["list"]}
-		self.assertEqual((roles[jmap.mailbox_id("Archives")], roles[jmap.mailbox_id("Archive")]), ("archive", None))
+		self.assertEqual(
+			(roles[jmap.mailbox_id("Archives")], roles[jmap.mailbox_id("Archive")]), ("archive", None)
+		)
 
 	def test_the_newest_first_then_their_rows(self):
 		server = FakeServer()

@@ -742,16 +742,24 @@ def _api():
 
 
 def _more_methods():
-	"""The address book's, the calendars', the notes', the kept settings' and the streams' methods (mailcraft_contacts,
-	mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, which read this module: imported when first
-	asked)."""
+	"""The address book's, the calendars', the notes', the kept settings', the streams' and the folders' methods
+	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders, which
+	read this module: imported when first asked)."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
 	from frappe_webmail.mailcraft_notes import METHODS as NOTE_METHODS
 	from frappe_webmail.mailcraft_settings import METHODS as SETTINGS_METHODS
 	from frappe_webmail.mailcraft_stream import METHODS as STREAM_METHODS
+	from frappe_webmail.neomail_folders import METHODS as FOLDER_METHODS
 
-	return {**CONTACT_METHODS, **CALENDAR_METHODS, **NOTE_METHODS, **SETTINGS_METHODS, **STREAM_METHODS}
+	return {
+		**CONTACT_METHODS,
+		**CALENDAR_METHODS,
+		**NOTE_METHODS,
+		**SETTINGS_METHODS,
+		**STREAM_METHODS,
+		**FOLDER_METHODS,
+	}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -1015,6 +1023,9 @@ def mailbox_get(args):
 	chosen = [f for f in folders if wanted is None or mailbox_id(f["name"]) in wanted]
 	selectable = [f["name"] for f in chosen if f.get("selectable", True)]
 	counts = get_folder_counts(account.name, json.dumps(selectable)) if selectable else {}
+	# The person's own mailbox has its folders made, renamed, moved and deleted from NeoMail (neomail_folders.mailbox_set),
+	# but for the special ones; one shared with them is set up by its owner.
+	own = account.get("user") == frappe.session.user
 	listed = []
 	for f in chosen:
 		name, delimiter = f["name"], f.get("delimiter") or "/"
@@ -1036,9 +1047,9 @@ def mailbox_get(args):
 				"mayRemoveItems": True,
 				"maySetSeen": True,
 				"maySetKeywords": True,
-				"mayCreateChild": False,
-				"mayRename": False,
-				"mayDelete": False,
+				"mayCreateChild": own,
+				"mayRename": own and name not in roles,
+				"mayDelete": own and name not in roles,
 				"maySubmit": True,
 			},
 			"isSubscribed": True,
@@ -1822,19 +1833,6 @@ def _as_sent(data):
 	return b"\r\n".join(lines) + sep + body
 
 
-def mailbox_set(args):
-	_account(args.get("accountId"))
-	refused = {"type": "forbidden", "description": _("Folders are managed in the webmail for now.")}
-	return {
-		"accountId": args.get("accountId"),
-		"oldState": "0",
-		"newState": "0",
-		"notCreated": {k: refused for k in (args.get("create") or {})},
-		"notUpdated": {k: refused for k in (args.get("update") or {})},
-		"notDestroyed": {k: refused for k in (args.get("destroy") or [])},
-	}
-
-
 # ---------------------------------------------------------------------------------------------------------------
 # Quota/get
 # ---------------------------------------------------------------------------------------------------------------
@@ -1880,7 +1878,6 @@ def quota_get(args):
 
 METHODS = {
 	"Mailbox/get": mailbox_get,
-	"Mailbox/set": mailbox_set,
 	"Email/query": email_query,
 	"Email/get": email_get,
 	"Email/set": email_set,

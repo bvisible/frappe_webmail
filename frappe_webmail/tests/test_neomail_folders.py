@@ -1,15 +1,16 @@
 # Copyright (c) 2026, Neoservice and contributors
 # For license information, please see license.txt
 
-"""The right-click menu of a folder in the desk's NeoMail menu (neomail_folders.act, 29.10): what NeoMail itself cannot
-do to a JMAP mailbox's folders yet, done on the mailbox's IMAP server. The person's own mailbox only; a special folder
-keeps its name and its place; only Trash and Junk Email are emptied. The IMAP server is a fake (no server is reached)."""
+"""What is done to a folder of NeoMail's, on the mailbox's IMAP server: from the right-click menu of a folder in the desk's
+NeoMail menu (neomail_folders.act, 29.10), and from NeoMail itself, by JMAP's Mailbox/set (neomail_folders.mailbox_set,
+31.10). The person's own mailbox only; a special folder keeps its name and its place; only Trash and Junk Email are
+emptied. The IMAP server is a fake (no server is reached)."""
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from frappe_webmail import neomail_folders
-from frappe_webmail.mailcraft_jmap import mailbox_id
+from frappe_webmail.mailcraft_jmap import JmapError, account_id, mailbox_id
 from frappe_webmail.tests.test_mailcraft_jmap import FakeServer, _user, served
 
 OWNER = "neomail_folders_owner@example.com"
@@ -26,8 +27,14 @@ class FoldersServer(FakeServer):
 		self.validity[name], self.next_uid[name] = 1, 1
 
 	def rename_folder(self, old, new):
-		self.folders[new] = self.folders.pop(old)
-		self.validity[new], self.next_uid[new] = self.validity.pop(old), self.next_uid.pop(old)
+		# The folders in it go with it (IMAP RENAME)
+		for name in [n for n in self.folders if n == old or n.startswith(old + "/")]:
+			moved = new + name[len(old) :]
+			self.folders[moved] = self.folders.pop(name)
+			self.validity[moved], self.next_uid[moved] = self.validity.pop(name), self.next_uid.pop(name)
+
+	def folder_status(self, name, what):
+		return {b"MESSAGES": len(self.folders[name]["messages"])}
 
 	def delete_folder(self, name):
 		del self.folders[name]
@@ -132,3 +139,103 @@ class TestNeomailFolders(FrappeTestCase):
 		frappe.set_user(OWNER)
 		with served(FoldersServer()), self.assertRaises(frappe.ValidationError):
 			neomail_folders.act(MAILBOX, "not-a-mailbox-id", "read")
+
+	# Mailbox/set: NeoMail's own folder pane and Folder tab (in the desk and in Neodesk), under the same rules
+
+	def _set(self, server, user=OWNER, account=MAILBOX, **args):
+		frappe.set_user(user)
+		with served(server):
+			return neomail_folders.mailbox_set({"accountId": account_id(account), **args})
+
+	def test_folders_are_made_under_a_folder_at_the_top_and_under_one_the_call_makes(self):
+		server = FoldersServer()
+		out = self._set(
+			server,
+			create={
+				"a": {"name": " Rushes ", "parentId": mailbox_id("Projects/Film")},
+				"b": {"name": "Clients", "parentId": None},
+				"c": {"name": "2026", "parentId": "#b"},
+			},
+		)
+		self.assertEqual(
+			out["created"],
+			{
+				"a": {"id": mailbox_id("Projects/Film/Rushes")},
+				"b": {"id": mailbox_id("Clients")},
+				"c": {"id": mailbox_id("Clients/2026")},
+			},
+		)
+		self.assertTrue({"Projects/Film/Rushes", "Clients", "Clients/2026"} <= set(server.folders))
+		self.assertEqual(out["accountId"], account_id(MAILBOX))
+
+	def test_a_folder_renamed_and_moved_has_the_id_of_its_new_place_and_the_folders_in_it_go_with_it(self):
+		server = FoldersServer()
+		server.create_folder("Projects/Film/Rushes")
+		out = self._set(
+			server, update={mailbox_id("Projects/Film"): {"name": "Cinema", "parentId": mailbox_id("INBOX")}}
+		)
+		self.assertEqual(out["updated"], {mailbox_id("Projects/Film"): {"id": mailbox_id("INBOX/Cinema")}})
+		self.assertIn("INBOX/Cinema/Rushes", server.folders)
+		self.assertNotIn("Projects/Film", server.folders)
+		# Into Trash, as NeoMail deletes a folder (Outlook's way), then at the top again; nothing changed is answered so
+		out = self._set(server, update={mailbox_id("INBOX/Cinema"): {"parentId": mailbox_id("Trash")}})
+		self.assertEqual(out["updated"], {mailbox_id("INBOX/Cinema"): {"id": mailbox_id("Trash/Cinema")}})
+		out = self._set(server, update={mailbox_id("Trash/Cinema"): {"parentId": None, "isSubscribed": True}})
+		self.assertIn("Cinema/Rushes", server.folders)
+		out = self._set(server, update={mailbox_id("Cinema"): {"name": "Cinema", "sortOrder": 2}})
+		self.assertEqual(out["updated"], {mailbox_id("Cinema"): None})
+
+	def test_a_folder_is_destroyed_with_the_folders_in_it_and_their_mail_when_asked(self):
+		server = FoldersServer()
+		server.create_folder("Projects/Film/Rushes")
+		server.put("Projects/Film/Rushes", b"Subject: a\r\n\r\nx")
+		gone = mailbox_id("Projects/Film")
+		out = self._set(server, destroy=[gone])
+		self.assertEqual(out["notDestroyed"][gone]["type"], "mailboxHasEmail")
+		self.assertIn("Projects/Film/Rushes", server.folders)
+		out = self._set(server, destroy=[gone, gone], onDestroyRemoveEmails=True)
+		self.assertEqual(out["destroyed"], [gone])
+		self.assertFalse({"Projects/Film", "Projects/Film/Rushes"} & set(server.folders))
+
+	def test_what_is_refused_is_said_for_each_folder_and_nothing_else_changes(self):
+		server = FoldersServer()
+		before = set(server.folders)
+		film = mailbox_id("Projects/Film")
+		out = self._set(
+			server,
+			create={
+				"bad": {"name": "a/b"},
+				"empty": {"name": "  "},
+				"there": {"name": "Film", "parentId": mailbox_id("Projects")},
+				"orphan": {"name": "X", "parentId": mailbox_id("Nowhere")},
+				"odd": {"name": "Y", "role": "inbox"},
+			},
+			update={
+				mailbox_id("INBOX"): {"name": "Other"},
+				film: {"parentId": film},
+				mailbox_id("Nowhere"): {"name": "Z"},
+			},
+			destroy=[mailbox_id("Trash"), mailbox_id("Nowhere")],
+		)
+		self.assertEqual(
+			{k: v["type"] for k, v in out["notCreated"].items()},
+			dict.fromkeys(["bad", "empty", "there", "orphan", "odd"], "invalidProperties"),
+		)
+		self.assertEqual(
+			{k: v["type"] for k, v in out["notUpdated"].items()},
+			{mailbox_id("INBOX"): "forbidden", film: "invalidProperties", mailbox_id("Nowhere"): "notFound"},
+		)
+		self.assertEqual(
+			{k: v["type"] for k, v in out["notDestroyed"].items()},
+			{mailbox_id("Trash"): "forbidden", mailbox_id("Nowhere"): "notFound"},
+		)
+		self.assertEqual(set(server.folders), before)
+
+	def test_a_shared_mailbox_is_set_up_by_its_owner_and_a_stranger_s_by_nobody(self):
+		for user, account in ((SHARED, MAILBOX), (PORTAL, MAILBOX), (OWNER, "nobody@webmail.test")):
+			with self.subTest(user=user, account=account), self.assertRaises(JmapError) as refused:
+				self._set(FoldersServer(), user=user, account=account, create={"n": {"name": "New"}})
+			self.assertEqual(refused.exception.type, "forbidden")
+		with self.assertRaises(JmapError) as refused:
+			self._set(FoldersServer(), create="New")
+		self.assertEqual(refused.exception.type, "invalidArguments")
