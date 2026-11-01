@@ -607,6 +607,7 @@ def _session(address):
 		mailcraft_notes,
 		mailcraft_settings,
 		mailcraft_stream,
+		neomail_history,
 	)
 
 	account = webmail.get_account(address)
@@ -622,6 +623,9 @@ def _session(address):
 	settings, account_settings = _optional_parts(mailcraft_settings.session_parts, account)
 	# The kind of sender of each message, for NeoMail's tabs, where the site offers them (mailcraft_stream).
 	streams, account_streams = _optional_parts(mailcraft_stream.session_parts, account)
+	# What was said with someone, for NeoMail's « Échanges » pane: who they are, their messages in every folder, what Neoffice
+	# links them to (neomail_history).
+	history, account_history = _optional_parts(neomail_history.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -642,6 +646,7 @@ def _session(address):
 			**notes,
 			**settings,
 			**streams,
+			**history,
 		},
 		"accounts": {
 			aid: {
@@ -664,6 +669,7 @@ def _session(address):
 					**account_notes,
 					**account_settings,
 					**account_streams,
+					**account_history,
 				},
 			}
 		},
@@ -671,7 +677,10 @@ def _session(address):
 			MAIL: aid,
 			SUBMISSION: aid,
 			QUOTA: aid,
-			**{capability: aid for capability in (*contacts, *calendars, *notes, *settings, *streams)},
+			**{
+				capability: aid
+				for capability in (*contacts, *calendars, *notes, *settings, *streams, *history)
+			},
 		},
 		"username": frappe.session.user,
 		"apiUrl": base + "api",
@@ -743,14 +752,15 @@ def _api():
 
 def _more_methods():
 	"""The address book's, the calendars', the notes', the kept settings', the streams' and the folders' methods
-	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders, which
-	read this module: imported when first asked)."""
+	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders,
+	neomail_history, which read this module: imported when first asked)."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
 	from frappe_webmail.mailcraft_notes import METHODS as NOTE_METHODS
 	from frappe_webmail.mailcraft_settings import METHODS as SETTINGS_METHODS
 	from frappe_webmail.mailcraft_stream import METHODS as STREAM_METHODS
 	from frappe_webmail.neomail_folders import METHODS as FOLDER_METHODS
+	from frappe_webmail.neomail_history import METHODS as HISTORY_METHODS
 
 	return {
 		**CONTACT_METHODS,
@@ -759,6 +769,7 @@ def _more_methods():
 		**SETTINGS_METHODS,
 		**STREAM_METHODS,
 		**FOLDER_METHODS,
+		**HISTORY_METHODS,
 	}
 
 
