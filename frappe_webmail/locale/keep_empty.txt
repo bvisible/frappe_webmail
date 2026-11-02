@@ -1,0 +1,2 @@
+# Mots identiques en français : msgstr vide volontairement (todo les laisse), voir neoffice-devops translate skill.
+NeoMail Setting
