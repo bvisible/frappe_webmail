@@ -1154,6 +1154,9 @@
 	function deliver() {
 		const key = state.key;
 		if (!key || state.delivered || !state.where || !state.send) return;
+		// A folder: NeoMail says where it is before it has listed its folders and refuses one it has not (« Cette boîte
+		// aux lettres n'a pas ce dossier »): its next state, which lists them, delivers it
+		if (key.mailbox && !key.email && !window.neomailHost.knowsFolder(state.where, key.account, key.mailbox)) return;
 		state.delivered = true;
 		if (key.compose) {
 			ask("mail.new", {});

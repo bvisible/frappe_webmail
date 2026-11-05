@@ -42,6 +42,18 @@ const handed = (secret = "token-1") => ({
 	product: "NeoMail",
 });
 
+describe("knowsFolder", () => {
+	it("answers only for a folder NeoMail has listed in that mailbox", () => {
+		const { host } = page();
+		const state = { accounts: [{ email: "a@x.example", folders: [{ id: "MRHJhZnRz" }] }, { email: "b@x.example" }] };
+		expect(host.knowsFolder(state, "a@x.example", "MRHJhZnRz")).toBe(true);
+		expect(host.knowsFolder(state, "a@x.example", "MTm90IGhlcmU")).toBe(false);
+		expect(host.knowsFolder(state, "b@x.example", "MRHJhZnRz")).toBe(false);
+		expect(host.knowsFolder({ accounts: [] }, "a@x.example", "MRHJhZnRz")).toBe(false);
+		expect(host.knowsFolder(null, "a@x.example", "MRHJhZnRz")).toBe(false);
+	});
+});
+
 describe("install", () => {
 	it("hands the build what the page gives it", () => {
 		const { win, host } = page();

@@ -468,6 +468,12 @@ window.neomailHost = (function () {
 		return null;
 	}
 
+	/* Whether NeoMail has listed this folder of this mailbox in what it last said: it refuses one it has not. */
+	function knowsFolder(state, account, folder) {
+		const box = ((state && state.accounts) || []).find((known) => known.email === account);
+		return Boolean(box) && (box.folders || []).some((known) => known.id === folder);
+	}
+
 	/* An address's query without the keys of its intent (what else it carries stays: `build`, `sample`). */
 	function withoutIntent(search) {
 		const query = new URLSearchParams(search || "");
@@ -679,6 +685,7 @@ window.neomailHost = (function () {
 		followChoice,
 		intentKeys: INTENT_KEYS,
 		intentOf,
+		knowsFolder,
 		withoutIntent,
 		mailboxOfEmail,
 		deskAddress,
