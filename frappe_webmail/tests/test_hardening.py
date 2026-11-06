@@ -134,10 +134,13 @@ class TestMailboxHardening(FrappeTestCase):
 		# The people of the test, with their real roles (frappe/tests/roles.py)
 		with as_role("sales_user", email=OWNER):
 			pass
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			pass
-		with as_role("portal_customer", email=PORTAL):
-			pass
+		# A portal account: no role of the desk (a Website User), whatever app gives the portal its roles
+		if not frappe.db.exists("User", PORTAL):
+			frappe.get_doc(
+				{"doctype": "User", "email": PORTAL, "first_name": "Portal", "send_welcome_email": 0}
+			).insert(ignore_permissions=True)
 		for name in (BOX, COLLEAGUE_BOX, PORTAL_BOX):
 			if frappe.db.exists("Webmail Account", name):
 				frappe.delete_doc("Webmail Account", name, force=True, ignore_permissions=True)
@@ -173,7 +176,10 @@ class TestMailboxHardening(FrappeTestCase):
 	def test_a_servers_greeting_reaches_whom_the_mailbox_is_shared_with_as_words(self):
 		with patch("frappe_webmail.webmail_api.IMAPClient") as imap:
 			_imap_greeting(imap, Exception(MARKUP))
-			with as_role("warehouse", email=COLLEAGUE), self.assertRaises(WebmailConnectionError) as caught:
+			with (
+				as_role("purchase_user", email=COLLEAGUE),
+				self.assertRaises(WebmailConnectionError) as caught,
+			):
 				webmail_api.get_folders(BOX)
 		shown = str(caught.exception) + json.dumps(frappe.local.message_log, default=str)
 		self.assertNotIn("<img", shown)
@@ -264,7 +270,7 @@ class TestMailboxHardening(FrappeTestCase):
 			self.assertEqual(webmail_api.get_draft(draft.name)["html_content"], "hardening-secret")
 		search = {"user": ["!=", COLLEAGUE], "html_content": ["like", "hardening-s%"]}
 		miss = {"user": ["!=", COLLEAGUE], "html_content": ["like", "hardening-x%"]}
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			for asked in (search, miss):
 				with self.assertRaises(FrappeTypeError):
 					webmail_api.get_draft(asked)
@@ -283,7 +289,7 @@ class TestMailboxHardening(FrappeTestCase):
 			name = made["filter_name"]
 			webmail_api.update_filter(name, enabled=0)
 		self.assertEqual(frappe.db.get_value("Email Filter", name, "enabled"), 0)
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			for asked in ({"user": ["!=", COLLEAGUE], "from_contains": ["like", "hardening%"]},):
 				with self.assertRaises(FrappeTypeError):
 					webmail_api.update_filter(asked, enabled=1)
@@ -299,7 +305,7 @@ class TestMailboxHardening(FrappeTestCase):
 			draft = frappe.get_doc(
 				{"doctype": "Email Draft", "account": BOX, "subject": "Hardening", "html_content": "mine"}
 			).insert()
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			# What /api/resource does: the document loaded, the request's fields put on it, saved
 			taken = frappe.get_doc("Email Draft", draft.name)
 			taken.update({"user": COLLEAGUE, "account": COLLEAGUE_BOX})
@@ -319,7 +325,7 @@ class TestMailboxHardening(FrappeTestCase):
 			patch("frappe_webmail.webmail_api.IMAPClient") as imap,
 			patch("frappe_webmail.webmail_api.smtplib"),
 		):
-			with as_role("portal_customer", email=PORTAL), self.assertRaises(frappe.PermissionError):
+			with as_role(PORTAL), self.assertRaises(frappe.PermissionError):
 				webmail_api.test_connection_live(
 					"x@hardening.test", "127.0.0.1", 3306, 0, "10.0.0.1", 22, 0, 0, "Password", "x", "x"
 				)
@@ -359,7 +365,7 @@ class TestMailboxHardening(FrappeTestCase):
 		self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
 
 	def test_a_portal_account_keeps_no_mailbox(self):
-		with as_role("portal_customer", email=PORTAL):
+		with as_role(PORTAL):
 			with self.assertRaises(frappe.PermissionError):
 				frappe.get_doc(
 					{
@@ -381,7 +387,7 @@ class TestMailboxHardening(FrappeTestCase):
 			self.assertEqual(answers[0], answers[1])
 		self.assertFalse(frappe.db.exists("Webmail Account", PORTAL_BOX))
 		# A desk person makes their own, and whom it is shared with reads it
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			self.assertEqual(webmail_api.get_account(BOX).name, BOX)
 
 	# -------------------------------------------------------------------- whose it is, as stored
@@ -392,8 +398,10 @@ class TestMailboxHardening(FrappeTestCase):
 				{"doctype": "Email Signature", "signature_name": "Hardening", "content": "<p>Owner</p>"}
 			).insert()
 			# The signature editor's own path: frappe.client.set_value
-			frappe.client.set_value("Email Signature", signature.name, {"content": "<p>Owner again</p>"})
-		with as_role("warehouse", email=COLLEAGUE):
+			from frappe.client import set_value
+
+			set_value("Email Signature", signature.name, {"content": "<p>Owner again</p>"})
+		with as_role("purchase_user", email=COLLEAGUE):
 			taken = frappe.get_doc("Email Signature", signature.name)
 			taken.update({"user": COLLEAGUE})
 			with self.assertRaises(frappe.PermissionError):
@@ -411,7 +419,7 @@ class TestMailboxHardening(FrappeTestCase):
 
 		with as_role("sales_user", email=OWNER):
 			save_my_choices(photo_allowed=0, hide_mobile=1)
-		with as_role("warehouse", email=COLLEAGUE):
+		with as_role("purchase_user", email=COLLEAGUE):
 			theirs = frappe.get_doc(PREFERENCE, OWNER)
 			theirs.update({"user": COLLEAGUE, "photo_allowed": 1, "hide_mobile": 0})
 			with self.assertRaises(frappe.PermissionError):
@@ -516,7 +524,9 @@ class TestMailboxHardening(FrappeTestCase):
 	def test_a_party_is_found_through_a_contact_the_person_may_read_only(self):
 		from frappe_webmail.documents import parties_of
 
-		customer = frappe.get_all("Customer", pluck="name", limit=1)
+		customer = frappe.db.exists("DocType", "Customer") and frappe.get_all(
+			"Customer", pluck="name", limit=1
+		)
 		if not customer:
 			self.skipTest("no customer on this site")
 		address = "webmail-hard-contact@hardening.test"

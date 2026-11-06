@@ -281,7 +281,7 @@ def get_oauth_authorization_url(account_name):
 
 
 @frappe.whitelist(allow_guest=True)
-def oauth_callback(code=None, state=None, error=None):
+def oauth_callback(code=None, state=None, error=None):  # permission-check: ok its one-time state
 	"""Handle OAuth callback from provider"""
 	import requests
 
@@ -2363,7 +2363,7 @@ def get_drafts(account_name=None):
 
 
 @frappe.whitelist()
-def get_draft(draft_id: str):
+def get_draft(draft_id: str):  # permission-check: ok its own person only (user below)
 	"""Get a specific draft. Its name only: a filter sent in its place found others' drafts by their words."""
 	if not isinstance(draft_id, str) or not frappe.db.exists("Email Draft", draft_id):
 		frappe.throw(_("Draft not found"))
@@ -2392,7 +2392,7 @@ def get_draft(draft_id: str):
 
 
 @frappe.whitelist(methods=["POST"])
-def delete_draft(draft_id: str):
+def delete_draft(draft_id: str):  # permission-check: ok its own person only (user below)
 	"""Delete a draft, named by its name only (get_draft)."""
 	if not isinstance(draft_id, str) or not frappe.db.exists("Email Draft", draft_id):
 		frappe.throw(_("Draft not found"))
@@ -2814,7 +2814,7 @@ def get_recent_contacts(limit=20):
 
 
 @frappe.whitelist(methods=["POST"])
-def link_contact_to_document(contact_name, link_doctype, link_name):
+def link_contact_to_document(contact_name: str, link_doctype: str, link_name: str):
 	"""Link a contact to a document (Customer, Supplier, etc.), with the person's own rights: writing the contact and
 	reading the document. It used to save with ignore_permissions, so anyone signed in could relink any contact."""
 	_require_desk_user()
@@ -2932,7 +2932,7 @@ def create_filter(
 
 
 @frappe.whitelist(methods=["POST"])
-def update_filter(filter_name: str, **kwargs):
+def update_filter(filter_name: str, **kwargs):  # permission-check: ok its own person only (user below)
 	"""Update an existing email filter, named by its name only (a filter sent in its place found others' filters by
 	their words)."""
 	if not isinstance(filter_name, str) or not frappe.db.exists("Email Filter", filter_name):
@@ -2975,7 +2975,7 @@ def update_filter(filter_name: str, **kwargs):
 
 
 @frappe.whitelist(methods=["POST"])
-def delete_filter(filter_name: str):
+def delete_filter(filter_name: str):  # permission-check: ok its own person only (user below)
 	"""Delete an email filter, named by its name only (update_filter)."""
 	if not isinstance(filter_name, str) or not frappe.db.exists("Email Filter", filter_name):
 		frappe.throw(_("Filter not found"))
@@ -2992,7 +2992,7 @@ def delete_filter(filter_name: str):
 
 
 @frappe.whitelist(methods=["POST"])
-def apply_filters_to_email(account_name, uid, folder="INBOX"):
+def apply_filters_to_email(account_name: str, uid, folder="INBOX"):
 	"""Apply all filters to a specific email"""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
@@ -3094,7 +3094,7 @@ def apply_filter_action(client, account, filter_doc, uid, current_folder):
 
 
 @frappe.whitelist(methods=["POST"])
-def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
+def apply_filters_to_folder(account_name: str, folder="INBOX", limit=50):
 	"""Apply all filters to emails in a folder"""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
