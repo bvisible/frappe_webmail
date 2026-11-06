@@ -109,6 +109,31 @@ describe("EmailViewer", () => {
 		expect(srcdoc).toContain("Safe content");
 	});
 
+	it("lets the frame fetch no image from elsewhere until the reader asks", async () => {
+		const wrapper = mount(EmailViewer, {
+			props: { email: mockEmail, account: "test@example.com" },
+		});
+		const policy = () =>
+			wrapper
+				.find("iframe")
+				.attributes("srcdoc")
+				.match(/Content-Security-Policy" content="([^"]*)"/);
+		expect(policy()[1]).toContain("img-src data:;");
+		wrapper.vm.showExternalImages = true;
+		await wrapper.vm.$nextTick();
+		expect(policy()[1]).toContain("img-src * data: blob:;");
+	});
+
+	it("offers to trust the domain after the last @ of the sender's address", () => {
+		const wrapper = mount(EmailViewer, {
+			props: {
+				email: { ...mockEmail, from_email: "x@trusted.example@elsewhere.example" },
+				account: "test@example.com",
+			},
+		});
+		expect(wrapper.vm.senderDomain).toBe("elsewhere.example");
+	});
+
 	it("shows attachments section when email has attachments", () => {
 		const emailWithAttachments = {
 			...mockEmail,

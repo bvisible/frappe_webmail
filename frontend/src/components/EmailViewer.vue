@@ -387,6 +387,7 @@ import NoraOrb from "./NoraOrb.vue";
 import ContextMenu from "./ContextMenu.vue";
 import DriveFolderPicker from "./DriveFolderPicker.vue";
 import { frameColours, frameStyle, hasOwnColours } from "../utils/messageFrame.js";
+import { blockRemote, framePolicy } from "../utils/remoteContent.js";
 import DocumentPicker from "./DocumentPicker.vue";
 import { folderName } from "../utils/folderNames.js";
 import {
@@ -532,8 +533,9 @@ export default {
 
 		senderDomain() {
 			if (!this.email?.from_email) return "";
-			const parts = this.email.from_email.split("@");
-			return parts.length > 1 ? parts[1] : "";
+			// After the LAST @: a quoted local part may hold one ("x@trusted.example"@elsewhere)
+			const at = this.email.from_email.lastIndexOf("@");
+			return at > 0 ? this.email.from_email.slice(at + 1) : "";
 		},
 
 		// « 3 invoices this year », or nothing for whom may not read them (invoices is null)
@@ -610,19 +612,10 @@ export default {
 			const self = this;
 
 			DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-				// Block external images unless allowed
-				if (node.tagName === "IMG" && !self.showExternalImages) {
-					const src = node.getAttribute("src");
-					if (src && !src.startsWith("data:") && !src.startsWith("cid:")) {
-						node.setAttribute("data-blocked-src", src);
-						node.setAttribute(
-							"src",
-							'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><text y="15" fill="gray" font-size="12">[×]</text></svg>'
-						);
-						node.style.cursor = "pointer";
-						node.title = __("External image blocked");
-						self.hasBlockedImages = true;
-					}
+				// Block what the message would fetch from elsewhere unless allowed: images, srcset, backgrounds
+				// (utils/remoteContent.js; the frame's policy blocks what a style asks for)
+				if (!self.showExternalImages && blockRemote(node, __("External image blocked"))) {
+					self.hasBlockedImages = true;
 				}
 
 				// Open links in new tab
@@ -643,6 +636,7 @@ export default {
         <html>
         <head>
           <meta charset="utf-8">
+          ${framePolicy(!this.showExternalImages)}
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
 ${frameStyle(this.frame)}

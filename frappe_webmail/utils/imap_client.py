@@ -10,6 +10,7 @@ and error handling.
 
 import socket
 import time
+from html import escape as escape_html
 
 import frappe
 from frappe import _
@@ -309,7 +310,8 @@ class WebmailIMAPClient:
 			self._connected = True
 		except Exception as e:
 			frappe.log_error("Webmail: IMAP connection failed", frappe.get_traceback())
-			frappe.throw(_("Failed to connect to IMAP server: {0}").format(e))
+			# Escaped: the error carries what the server wrote, and the desk draws a message as HTML
+			frappe.throw(_("Failed to connect to IMAP server: {0}").format(escape_html(str(e), quote=False)))
 
 	def disconnect(self):
 		"""Close IMAP connection"""

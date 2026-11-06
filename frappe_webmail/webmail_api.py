@@ -19,6 +19,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate, make_msgid
+from html import escape as _escape_html
 
 import frappe
 from frappe import _
@@ -136,6 +137,22 @@ def to_bool(value, default=False):
 	if isinstance(value, str):
 		return value.lower() in ("true", "1", "yes")
 	return bool(value)
+
+
+def _shown(text):
+	"""Words a mail server wrote (its greeting, its answers) or a mailbox's settings hold (a server's address), as a
+	message of the webmail carries them: escaped. The desk draws a message as HTML (frappe.msgprint, the Test Connection
+	dialog), and a mail server is anyone's to run, a mailbox anyone's to point at one: a greeting written as markup ran as
+	a script in the desk of whoever the mailbox was shared with."""
+	return _escape_html(str(text), quote=False)
+
+
+def _error_text(exc):
+	"""An error's words for a message: the webmail's own errors as they are (their words are escaped where they are
+	written, _format_connection_error and _raise_webmail_login_error), anything else escaped (_shown)."""
+	if isinstance(exc, WebmailAuthenticationError | WebmailConnectionError):
+		return str(exc)
+	return _shown(exc)
 
 
 # ============================================
@@ -269,7 +286,7 @@ def oauth_callback(code=None, state=None, error=None):
 	import requests
 
 	if error:
-		frappe.throw(_("OAuth error: {0}").format(error))
+		frappe.throw(_("OAuth error: {0}").format(_shown(error)))
 
 	if not code or not state:
 		frappe.throw(_("Invalid OAuth callback"))
@@ -335,7 +352,7 @@ def oauth_callback(code=None, state=None, error=None):
 		frappe.throw(_("OAuth authentication failed"))
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def disconnect_oauth(account_name):
 	"""Disconnect OAuth and clear tokens"""
 	account = _owned_account(account_name)
@@ -426,6 +443,10 @@ _IMAP_POOL = {}
 _IMAP_POOL_LOCK = threading.Lock()
 _IMAP_IDLE_RECHECK = 20  # seconds idle past which we NOOP before reusing
 _IMAP_MAX_IDLE = 240  # seconds idle past which we reconnect instead
+# Connections one worker keeps at most, every mailbox together. The pool used to keep each mailbox leased once for the
+# worker's whole life, whether it would ever be used again: so many mailboxes, so many sockets open, up to the worker's
+# limit of open files (then every request needing a new one failed). Past it, the least recently used ones go.
+_IMAP_POOL_MAX = 64
 
 
 class _PooledIMAP:
@@ -468,6 +489,34 @@ def _imap_discard(entry):
 			entry.client.shutdown()
 		except Exception:
 			pass
+
+
+def _imap_drop(entry):
+	"""Close a pooled connection that is let go unused: its socket shut, no LOGOUT, which a server that dropped the
+	connection without a word would make wait a whole read (IMAP_READ_TIMEOUT)."""
+	try:
+		entry.client.shutdown()
+	except Exception:
+		pass
+
+
+def _imap_pool_trim():
+	"""Take out of the pool, and give back, the connections that are to go: those idle past _IMAP_MAX_IDLE, which would
+	not be used again (_imap_is_alive), then the least recently used ones past _IMAP_POOL_MAX. One in use (its lock
+	taken) stays. Called with _IMAP_POOL_LOCK held; the caller closes them once it is released (_imap_drop)."""
+	now = _time.monotonic()
+	extra = len(_IMAP_POOL) - _IMAP_POOL_MAX
+	going = []
+	for key, entry in sorted(_IMAP_POOL.items(), key=lambda item: item[1].last_used):
+		if now - entry.last_used <= _IMAP_MAX_IDLE and extra <= 0:
+			break
+		if not entry.lock.acquire(blocking=False):
+			continue
+		del _IMAP_POOL[key]
+		entry.lock.release()
+		going.append(entry)
+		extra -= 1
+	return going
 
 
 def _socket_failed(client):
@@ -597,6 +646,20 @@ def imap_session(account):
 					# Another connection took the slot meanwhile: keep that one.
 					entry.lock.release()
 					_imap_discard(entry)
+				going = _imap_pool_trim()
+			for old in going:
+				_imap_drop(old)
+
+
+def smtp_tls_context(account):
+	"""The TLS context of a mailbox's SMTP connection: the server's certificate and its name checked, as a browser checks
+	them, when the mailbox says so (`smtp_verify_certificate`, on for every mailbox made since the setting exists). None
+	otherwise, which is smtplib's own context and checks nothing: a mailbox made before the setting goes on sending as
+	it did, until its owner ticks the box (patches/smtp_certificate_check_stays_off_for_existing_mailboxes.py). Without
+	the check, anyone on the way to the server could read the password and every message sent."""
+	if cint(getattr(account, "smtp_verify_certificate", 0)):
+		return _ssl.create_default_context()
+	return None
 
 
 def _smtp_login_raw(server, account):
@@ -633,9 +696,12 @@ def build_xoauth2_string(user, access_token):
 	return auth_string
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=20, seconds=60)
 def test_connection(account_name):
-	"""Test IMAP/SMTP connection for an existing account"""
+	"""Test IMAP/SMTP connection for an existing account: the desk's people only (the webmail is theirs), so many a
+	minute, since each test opens connections to the mailbox's servers."""
+	_require_desk_user()
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -644,7 +710,7 @@ def test_connection(account_name):
 	return _test_connection_internal(account)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def update_account_password(account_name, imap_password=None, smtp_password=None):
 	"""Update the stored IMAP/SMTP password of a webmail account.
 
@@ -681,7 +747,8 @@ def update_account_password(account_name, imap_password=None, smtp_password=None
 	return {"success": True}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=20, seconds=60)
 def test_connection_live(
 	email,
 	imap_host,
@@ -696,8 +763,12 @@ def test_connection_live(
 	smtp_password=None,
 	oauth_provider=None,
 	oauth_access_token=None,
+	smtp_verify_certificate=None,
 ):
-	"""Test IMAP/SMTP connection with provided values (before saving)"""
+	"""Test IMAP/SMTP connection with provided values (before saving). The desk's people only: the form that calls it is
+	the desk's, and a portal account made the server connect to any address and port it named (maintenance#2296); so many
+	a minute for the same reason."""
+	_require_desk_user()
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
@@ -714,6 +785,8 @@ def test_connection_live(
 	account.smtp_port = int(smtp_port)
 	account.smtp_ssl = 1 if to_bool(smtp_ssl) else 0
 	account.smtp_starttls = 1 if to_bool(smtp_starttls) else 0
+	# As the form says it; not said (a form script from before the setting), not checked, as before it
+	account.smtp_verify_certificate = 1 if to_bool(smtp_verify_certificate) else 0
 	account.auth_type = auth_type
 	account.oauth_provider = oauth_provider
 	account.oauth_access_token = oauth_access_token
@@ -775,10 +848,14 @@ def _test_connection_internal(account):
 
 	# Test SMTP
 	try:
-		smtp_class = smtplib.SMTP_SSL if account.smtp_ssl else smtplib.SMTP
-		with smtp_class(account.smtp_host, account.smtp_port, timeout=15) as server:
+		context = smtp_tls_context(account)
+		if account.smtp_ssl:
+			opened = smtplib.SMTP_SSL(account.smtp_host, account.smtp_port, timeout=15, context=context)
+		else:
+			opened = smtplib.SMTP(account.smtp_host, account.smtp_port, timeout=15)
+		with opened as server:
 			if account.smtp_starttls and not account.smtp_ssl:
-				server.starttls()
+				server.starttls(context=context)
 			_smtp_login_raw(server, account)
 			smtp_success = True
 	except Exception as e:
@@ -811,7 +888,7 @@ def _format_connection_error(protocol, exception, account):
 		port = account.imap_port if protocol == "IMAP" else account.smtp_port
 		return _(
 			"{0}: Connection refused to {1}:{2}. Check that the server address and port are correct."
-		).format(protocol, host, port)
+		).format(protocol, _shown(host), _shown(port))
 
 	if "timed out" in error_lower or "timeout" in error_lower:
 		return _(
@@ -825,7 +902,7 @@ def _format_connection_error(protocol, exception, account):
 	):
 		host = account.imap_host if protocol == "IMAP" else account.smtp_host
 		return _("{0}: Cannot resolve server address '{1}'. Check the server hostname.").format(
-			protocol, host
+			protocol, _shown(host)
 		)
 
 	if "authentication" in error_lower or "login" in error_lower or "authenticationfailed" in error_lower:
@@ -851,8 +928,8 @@ def _format_connection_error(protocol, exception, account):
 			"{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL enabled."
 		).format(protocol)
 
-	# Default: show the original error
-	return _("{0}: {1}").format(protocol, error_str)
+	# Default: show the original error, escaped: it holds what the server wrote (_shown)
+	return _("{0}: {1}").format(protocol, _shown(error_str))
 
 
 def _raise_webmail_login_error(protocol, exception, account):
@@ -895,14 +972,15 @@ def _raise_webmail_login_error(protocol, exception, account):
 	auth_type = getattr(account, "auth_type", "Password") or "Password"
 
 	if is_auth_error:
+		whose = _shown(account_email) if account_email else _("this account")
 		if auth_type == "OAuth2":
 			message = _(
 				"Could not sign in to {0} for {1}. The OAuth connection is no longer valid - please reconnect the account."
-			).format(protocol, account_email or _("this account"))
+			).format(protocol, whose)
 		else:
 			message = _(
 				"Could not sign in to {0} for {1}. The email address or password is incorrect."
-			).format(protocol, account_email or _("this account"))
+			).format(protocol, whose)
 		frappe.local.response["webmail_error"] = {
 			"type": "authentication",
 			"protocol": protocol,
@@ -979,7 +1057,7 @@ def get_quota(account_name):
 		return None
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_folder(account_name, folder_name, parent_folder=None):
 	"""Create a new IMAP folder.
 
@@ -1288,7 +1366,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 		}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def mark_email_nora_seen(account_name, uid, seen=True, folder="INBOX"):
 	"""Mark/unmark an email with the NORA-specific IMAP flag $NoraSeen.
 
@@ -1319,7 +1397,7 @@ def mark_email_nora_seen(account_name, uid, seen=True, folder="INBOX"):
 # ============================================
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def send_email(
 	account_name,
 	to,
@@ -1402,12 +1480,13 @@ def send_email(
 
 	# Send via SMTP
 	try:
+		context = smtp_tls_context(account)
 		if account.smtp_ssl:
-			server = smtplib.SMTP_SSL(account.smtp_host, account.smtp_port, timeout=30)
+			server = smtplib.SMTP_SSL(account.smtp_host, account.smtp_port, timeout=30, context=context)
 		else:
 			server = smtplib.SMTP(account.smtp_host, account.smtp_port, timeout=30)
 			if account.smtp_starttls:
-				server.starttls()
+				server.starttls(context=context)
 
 		smtp_login(server, account)
 
@@ -1467,7 +1546,7 @@ def send_email(
 
 	except Exception as e:
 		frappe.log_error("Email send error", f"{e!s}")
-		frappe.throw(_("Failed to send email: {0}").format(e))
+		frappe.throw(_("Failed to send email: {0}").format(_error_text(e)))
 
 
 def _references(account, message_id, uid, folder):
@@ -1561,7 +1640,7 @@ def _mark_original_email(account, reply_to_uid, reply_to_folder, forward_uid, fo
 			client.add_flags([int(forward_uid)], [b"$Forwarded"])
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def save_draft_imap(
 	account_name,
 	to=None,
@@ -1717,7 +1796,7 @@ def _move_messages(client, uids, to_folder):
 # ============================================
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def set_flags(account_name, uids, folder, add_flags=None, remove_flags=None):
 	"""Set or remove flags on emails"""
 	if not IMAPClient:
@@ -1740,7 +1819,7 @@ def set_flags(account_name, uids, folder, add_flags=None, remove_flags=None):
 		return {"success": True}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def move_emails(account_name, uids, from_folder, to_folder):
 	"""Move emails to another folder"""
 	if not IMAPClient:
@@ -1756,7 +1835,7 @@ def move_emails(account_name, uids, from_folder, to_folder):
 		return {"success": True}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def copy_emails(account_name, uids, from_folder, to_folder):
 	"""Copy emails to another folder (without deleting from source)"""
 	if not IMAPClient:
@@ -1774,7 +1853,7 @@ def copy_emails(account_name, uids, from_folder, to_folder):
 		return {"success": True, "copied": len(uids)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def rename_folder(account_name, old_name, new_name):
 	"""Rename an IMAP folder"""
 	if not IMAPClient:
@@ -1804,7 +1883,7 @@ def rename_folder(account_name, old_name, new_name):
 		return {"success": True, "old_name": old_name, "new_name": new_name}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def mark_folder_read(account_name, folder):
 	"""Mark all emails in a folder as read"""
 	if not IMAPClient:
@@ -1825,7 +1904,7 @@ def mark_folder_read(account_name, folder):
 		return {"success": True, "marked_count": len(uids)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def empty_folder(account_name, folder):
 	"""Empty a folder (delete all emails permanently). Only allowed for Trash/Spam folders."""
 	if not IMAPClient:
@@ -1855,7 +1934,7 @@ def empty_folder(account_name, folder):
 		return {"success": True, "deleted_count": len(uids)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def delete_folder(account_name, folder_name):
 	"""Delete an IMAP folder"""
 	if not IMAPClient:
@@ -1886,7 +1965,7 @@ def delete_folder(account_name, folder_name):
 		return {"success": True, "deleted": folder_name}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def delete_emails(account_name, uids, folder, permanent=False):
 	"""Delete emails (move to trash or permanent)"""
 	if not IMAPClient:
@@ -2205,7 +2284,7 @@ def search_emails(
 # ============================================
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def save_draft(
 	account_name,
 	to=None,
@@ -2219,13 +2298,13 @@ def save_draft(
 	forward_uid=None,
 	forward_folder=None,
 	attachments_json=None,
-	draft_id=None,
+	draft_id: str | None = None,
 ):
 	"""Save or update a draft"""
 	# Validate account access
 	get_account(account_name)
 
-	if draft_id and frappe.db.exists("Email Draft", draft_id):
+	if isinstance(draft_id, str) and draft_id and frappe.db.exists("Email Draft", draft_id):
 		# Update existing draft
 		draft = frappe.get_doc("Email Draft", draft_id)
 		if draft.user != frappe.session.user:
@@ -2284,9 +2363,9 @@ def get_drafts(account_name=None):
 
 
 @frappe.whitelist()
-def get_draft(draft_id):
-	"""Get a specific draft"""
-	if not frappe.db.exists("Email Draft", draft_id):
+def get_draft(draft_id: str):
+	"""Get a specific draft. Its name only: a filter sent in its place found others' drafts by their words."""
+	if not isinstance(draft_id, str) or not frappe.db.exists("Email Draft", draft_id):
 		frappe.throw(_("Draft not found"))
 
 	draft = frappe.get_doc("Email Draft", draft_id)
@@ -2312,10 +2391,10 @@ def get_draft(draft_id):
 	}
 
 
-@frappe.whitelist()
-def delete_draft(draft_id):
-	"""Delete a draft"""
-	if not frappe.db.exists("Email Draft", draft_id):
+@frappe.whitelist(methods=["POST"])
+def delete_draft(draft_id: str):
+	"""Delete a draft, named by its name only (get_draft)."""
+	if not isinstance(draft_id, str) or not frappe.db.exists("Email Draft", draft_id):
 		frappe.throw(_("Draft not found"))
 
 	draft = frappe.get_doc("Email Draft", draft_id)
@@ -2571,7 +2650,7 @@ def get_sender_card(email):
 	return None
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_contact_from_email(email, name=None):
 	"""Create a new contact from an email address, with the person's right to create contacts. It used to insert with
 	ignore_permissions for anyone signed in (maintenance#1541)."""
@@ -2669,7 +2748,7 @@ def extract_contacts_from_email(account_name, uid, folder="INBOX"):
 		return contacts
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def bulk_create_contacts(contacts_json):
 	"""Create multiple contacts from a list, with the person's right to create contacts (create_contact_from_email)."""
 	_require_desk_user()
@@ -2734,7 +2813,7 @@ def get_recent_contacts(limit=20):
 	]
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def link_contact_to_document(contact_name, link_doctype, link_name):
 	"""Link a contact to a document (Customer, Supplier, etc.), with the person's own rights: writing the contact and
 	reading the document. It used to save with ignore_permissions, so anyone signed in could relink any contact."""
@@ -2806,7 +2885,7 @@ def get_filters(account_name=None):
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_filter(
 	account_name,
 	filter_name,
@@ -2852,10 +2931,11 @@ def create_filter(
 	return {"success": True, "filter_name": filter_doc.name}
 
 
-@frappe.whitelist()
-def update_filter(filter_name, **kwargs):
-	"""Update an existing email filter"""
-	if not frappe.db.exists("Email Filter", filter_name):
+@frappe.whitelist(methods=["POST"])
+def update_filter(filter_name: str, **kwargs):
+	"""Update an existing email filter, named by its name only (a filter sent in its place found others' filters by
+	their words)."""
+	if not isinstance(filter_name, str) or not frappe.db.exists("Email Filter", filter_name):
 		frappe.throw(_("Filter not found"))
 
 	filter_doc = frappe.get_doc("Email Filter", filter_name)
@@ -2894,10 +2974,10 @@ def update_filter(filter_name, **kwargs):
 	return {"success": True}
 
 
-@frappe.whitelist()
-def delete_filter(filter_name):
-	"""Delete an email filter"""
-	if not frappe.db.exists("Email Filter", filter_name):
+@frappe.whitelist(methods=["POST"])
+def delete_filter(filter_name: str):
+	"""Delete an email filter, named by its name only (update_filter)."""
+	if not isinstance(filter_name, str) or not frappe.db.exists("Email Filter", filter_name):
 		frappe.throw(_("Filter not found"))
 
 	filter_doc = frappe.get_doc("Email Filter", filter_name)
@@ -2911,7 +2991,7 @@ def delete_filter(filter_name):
 	return {"success": True}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def apply_filters_to_email(account_name, uid, folder="INBOX"):
 	"""Apply all filters to a specific email"""
 	if not IMAPClient:
@@ -3013,7 +3093,7 @@ def apply_filter_action(client, account, filter_doc, uid, current_folder):
 	return bool(flags_to_add)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 	"""Apply all filters to emails in a folder"""
 	if not IMAPClient:
@@ -3083,7 +3163,7 @@ def apply_filters_to_folder(account_name, folder="INBOX", limit=50):
 # ============================================
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def add_trusted_source(account_name, value, source_type):
 	"""
 	Add a trusted sender or domain to the account.
@@ -3120,7 +3200,7 @@ def add_trusted_source(account_name, value, source_type):
 	return {"success": True}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def remove_trusted_source(account_name, value, source_type):
 	"""
 	Remove a trusted sender or domain from the account.
@@ -3177,7 +3257,9 @@ def is_sender_trusted(account_name, from_email):
 		return False
 
 	from_email = from_email.strip().lower()
-	domain = from_email.split("@")[1] if "@" in from_email else ""
+	# The domain is what follows the LAST @: an address whose quoted local part holds one ("x@trusted.example"@elsewhere)
+	# read as one of a trusted domain, and its images loaded.
+	domain = from_email.rsplit("@", 1)[1] if "@" in from_email else ""
 
 	for row in account.trusted_sources:
 		row_value = row.value.lower()
@@ -3254,7 +3336,7 @@ def get_ui_preferences(account_name):
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def save_ui_preferences(
 	account_name, sidebar_width=None, email_list_width=None, collapsed_folders=None, sidebar_collapsed=None
 ):
@@ -3450,7 +3532,7 @@ def get_folder_mapping(account_name):
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def save_folder_mapping(
 	account_name,
 	inbox_folder=None,
@@ -3490,7 +3572,10 @@ def save_folder_mapping(
 
 def get_account(account_name):
 	"""Get and validate email account (owner or shared user). A mailbox that is not the person's is answered as one that
-	does not exist: « access denied » told which addresses have a mailbox here (maintenance#1541)."""
+	does not exist: « access denied » told which addresses have a mailbox here (maintenance#1541). The desk's people only:
+	the webmail is theirs (www/webmail.py, NeoMail), and a portal account is answered as for a mailbox that is not there."""
+	if not _of_the_desk(frappe.session.user):
+		frappe.throw(_("Account not found"))
 	if not isinstance(account_name, str) or not frappe.db.exists("Webmail Account", account_name):
 		frappe.throw(_("Account not found"))
 
@@ -3514,6 +3599,11 @@ def get_account(account_name):
 		frappe.throw(_("Account is disabled"))
 
 	return account
+
+
+def _of_the_desk(user):
+	"""Whether `user` is one of the desk's people (a System User): the webmail is theirs."""
+	return frappe.get_cached_value("User", user, "user_type") == "System User"
 
 
 def _owned_account(account_name):
@@ -3976,7 +4066,7 @@ def generate_document_pdf(doctype, docname, print_format=None, language=None):
 
 	except Exception as e:
 		frappe.log_error("PDF generation error", f"Failed to generate PDF for {doctype}/{docname}: {e!s}")
-		frappe.throw(_("Failed to generate PDF: {0}").format(str(e)))
+		frappe.throw(_("Failed to generate PDF: {0}").format(_shown(e)))
 
 
 def create_communication_link(

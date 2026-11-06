@@ -252,6 +252,8 @@ class TestWebmailAccount(FrappeTestCase):
 				frappe.get_doc(
 					{"doctype": "User", "email": email, "first_name": "Guest", "send_welcome_email": 0}
 				).insert(ignore_permissions=True)
+			# Colleagues, as whom a mailbox is shared with are: a portal account reads none (maintenance#2296)
+			frappe.get_doc("User", email).add_roles("Sales User")
 		account = frappe.get_doc(
 			{
 				"doctype": "Webmail Account",
@@ -570,6 +572,8 @@ class TestDocTypeIntegration(FrappeTestCase):
 					"send_welcome_email": 0,
 				}
 			).insert(ignore_permissions=True)
+		# One of the desk's people, as whoever keeps a mailbox is: a portal account keeps none (maintenance#2296)
+		frappe.get_doc("User", cls.test_user).add_roles("Sales User")
 
 		frappe.db.commit()
 

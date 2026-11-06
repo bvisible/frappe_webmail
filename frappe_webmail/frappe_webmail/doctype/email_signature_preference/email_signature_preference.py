@@ -136,9 +136,19 @@ def has_permission(doc, ptype="read", user=None):
 	user = user or frappe.session.user
 	if user == "Administrator" or "System Manager" in frappe.get_roles(user):
 		return True
-	if not doc.user:
+	# Whose the record is as stored: the rights are checked on the record as it is being saved, and a `user` changed in
+	# the same request made the person who typed it its owner, for the time of the check (maintenance#2296)
+	stored = _stored_user(doc)
+	if not stored:
 		return ptype == "create"
-	return doc.user == user
+	return stored == user
+
+
+def _stored_user(doc):
+	"""The record's person as stored; for a new one, the one it is made for."""
+	if not doc.get("name") or (hasattr(doc, "is_new") and doc.is_new()):
+		return doc.get("user")
+	return frappe.db.get_value(PREFERENCE, doc.get("name"), "user")
 
 
 def get_permission_query_conditions(user=None):

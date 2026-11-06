@@ -52,6 +52,7 @@ def box(monkeypatch):
 		counts=[],
 		model={"label": "person", "probability": 0.99, "abstain": False, "source": "student:laya-fr"},
 		delay=0.0,
+		busy=set(),
 	)
 
 	def read(account, folder, validity, uids):
@@ -78,6 +79,8 @@ def box(monkeypatch):
 	monkeypatch.setattr(ms, "_count", lambda outcome, amount=1: state.counts.append((outcome, amount)))
 	monkeypatch.setattr(jmap, "_account", lambda jmap_id: ACCOUNT)
 	monkeypatch.setattr(frappe, "enqueue", lambda *a, **k: state.enqueued.append((a, k)), raising=False)
+	monkeypatch.setattr(ms, "_who", lambda: "marc@garage.example")
+	monkeypatch.setattr(ms, "_job_busy", lambda job_id: job_id in state.busy)
 	return state
 
 
@@ -175,6 +178,32 @@ def test_a_slow_model_comes_back_as_pending_and_is_finished_by_a_job(box, monkey
 	assert not any(
 		"model" in str(v) for v in box.cache.store.values()
 	)  # nothing kept for the one that is still pending
+
+
+def test_one_person_keeps_so_many_jobs_for_a_mailbox_whatever_the_sets_asked(box, monkeypatch):
+	"""Each different set of pending messages made a job of its own: one person asking with other sets kept the short
+	queue busy for everyone. A job takes one of JOBS_PER_MAILBOX places; while they are all taken, nothing more is queued
+	and the ids stay pending (the next ask tries again)."""
+	box.delay = 0.6
+	monkeypatch.setattr(ms, "BUDGET_S", 0.05)
+	# Messages from people, which the headers do not settle: each set asked leaves them pending
+	box.messages.update({4: _message("anne.rochat@exemple.ch"), 5: _message("luc.monnet@exemple.ch")})
+
+	def ask_and_hold(uids):
+		before = len(box.enqueued)
+		answer = _ask(_ids(*uids))
+		for _args, kwargs in box.enqueued[before:]:
+			box.busy.add(kwargs["job_id"])  # the job queued is now running
+		return answer
+
+	answers = [ask_and_hold(uids) for uids in ((3,), (4,), (5,), (3, 4, 5))]
+	assert len(box.enqueued) == ms.JOBS_PER_MAILBOX
+	assert len({kwargs["job_id"] for _a, kwargs in box.enqueued}) == ms.JOBS_PER_MAILBOX
+	assert answers[-1]["pending"], "what could not be queued stays pending, to be asked again"
+	# A place freed, the next ask queues again: the legitimate tab carries on
+	box.busy.clear()
+	ask_and_hold((3, 4, 5))
+	assert len(box.enqueued) == ms.JOBS_PER_MAILBOX + 1
 
 
 def test_the_job_puts_the_answers_in_the_cache(box, monkeypatch):

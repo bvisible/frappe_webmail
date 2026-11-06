@@ -153,6 +153,15 @@ def _token_key(token):
 	return "mailcraft_jmap_token:" + hashlib.sha256(token.encode()).hexdigest()
 
 
+def _active_key(token):
+	"""Where the last request a token made is noted (_note_active): its desk session counts it as activity."""
+	return "mailcraft_jmap_active:" + hashlib.sha256(token.encode()).hexdigest()
+
+
+# A token's requests are noted at most once a minute: what the session's expiry is judged on needs no finer
+ACTIVE_NOTE_SECONDS = 60
+
+
 def give_token(user=None, bearer=None):
 	"""A token for the session's person: MailCraft sends it as `Authorization: Bearer`. Twelve hours at most, and no
 	longer than what asked for it: the desk session of the page, or the OAuth bearer token Neodesk signs in with
@@ -204,11 +213,12 @@ def _client_grants(client, scopes):
 	return all(scope in granted.split(delimiter) for scope in scopes.split(delimiter))
 
 
-def _binding_alive(kept):
-	"""What a token was given for is still there: the OAuth bearer token (Neodesk), or the desk session (the page)."""
+def _binding_alive(kept, active=None):
+	"""What a token was given for is still there: the OAuth bearer token (Neodesk), or the desk session (the page), whose
+	expiry counts the token's own last request (`active`) as activity."""
 	if kept.get("oauth"):
 		return _bearer_alive(kept.get("user"), kept["oauth"])
-	return _session_alive(kept.get("sid"))
+	return _session_alive(kept.get("sid"), active)
 
 
 def _is_desk_user(user):
@@ -217,12 +227,59 @@ def _is_desk_user(user):
 	)
 
 
-def _session_alive(sid):
+def _session_alive(sid, active=None):
+	"""The desk session `sid` is there and not over, as Frappe judges it when its cookie comes (frappe.sessions): neither
+	past its end (`session_end`, set by whoever opened it) nor idle past its expiry (its own, or the site's). Its last
+	request is its own or its tokens' (`active`, _note_active): someone working in NeoMail alone is not idle. A token used
+	to outlive its session for as long as the row stayed (up to its twelve hours), the expiry being checked for a cookie
+	only (maintenance#2296)."""
 	if not sid:
 		return False
-	if frappe.cache().hget("session", sid):
-		return True
-	return bool(frappe.db.sql("select 1 from `tabSessions` where sid=%s", sid))
+	cached = frappe.cache().hget("session", sid)
+	if cached:
+		data = frappe._dict(frappe._dict(cached).get("data") or {})
+		return _session_current(
+			data.get("last_updated"), data.get("session_expiry"), data.get("session_end"), active
+		)
+	row = frappe.db.sql("select lastupdate, sessiondata from `tabSessions` where sid=%s", sid)
+	if not row:
+		return False
+	try:
+		data = frappe._dict(frappe.safe_eval(row[0][1] or "{}") or {})
+	except Exception:
+		data = frappe._dict()
+	return _session_current(row[0][0], data.get("session_expiry"), data.get("session_end"), active)
+
+
+def _session_current(last_updated, expiry, end, active):
+	"""Whether a session last used at `last_updated` (or at `active`, when later) is within its expiry (`expiry`,
+	hh:mm:ss, the site's when it has none) and its end (`end`, an ISO moment, none for most)."""
+	from frappe.sessions import get_expiry_in_seconds
+	from frappe.utils import get_datetime, now_datetime, time_diff_in_seconds
+
+	if end:
+		try:
+			ends = datetime.fromisoformat(str(end))
+		except ValueError:
+			return False
+		if ends.tzinfo is None:
+			ends = ends.replace(tzinfo=timezone.utc)
+		if datetime.now(tz=timezone.utc) > ends:
+			return False
+	moments = [get_datetime(moment) for moment in (last_updated, active) if moment]
+	if moments and time_diff_in_seconds(now_datetime(), max(moments)) > get_expiry_in_seconds(expiry or None):
+		return False
+	return True
+
+
+def _note_active(token, active):
+	"""Note that a token made a request now (once a minute at most): its session's expiry counts it (_session_alive)."""
+	from frappe.utils import now_datetime, time_diff_in_seconds
+
+	now = now_datetime()
+	if active and time_diff_in_seconds(now, active) < ACTIVE_NOTE_SECONDS:
+		return
+	frappe.cache().set_value(_active_key(token), str(now), expires_in_sec=TOKEN_SECONDS)
 
 
 def neomail_enabled():
@@ -275,7 +332,14 @@ def _person_of_token(token):
 	if not isinstance(kept, dict):
 		return None
 	user = kept.get("user")
-	if user and frappe.db.get_value("User", user, "enabled") and _is_desk_user(user) and _binding_alive(kept):
+	active = frappe.cache().get_value(_active_key(token))
+	if (
+		user
+		and frappe.db.get_value("User", user, "enabled")
+		and _is_desk_user(user)
+		and _binding_alive(kept, active)
+	):
+		_note_active(token, active)
 		return user
 	return None
 

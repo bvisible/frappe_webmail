@@ -45,13 +45,26 @@ def _addresses(emails) -> list[str]:
 	return sorted({str(e).strip().lower() for e in emails if str(e).strip()})
 
 
+def _readable(doctype: str, names: list[str]) -> list[str]:
+	"""Those of `names` the person may read (their rights and user permissions, frappe.get_list); none of them when they
+	may read no record of `doctype` at all."""
+	if not names or not frappe.has_permission(doctype, "read"):
+		return []
+	return frappe.get_list(doctype, filters={"name": ["in", names]}, pluck="name", limit_page_length=0)
+
+
 def parties_of(emails) -> set[tuple[str, str]]:
-	"""The customers and suppliers behind these addresses: through their contacts, or their own address."""
+	"""The customers and suppliers behind these addresses: through their contacts, or their own address. Through what
+	the person may read only: a contact, a customer or a supplier they may not read is as if it did not exist, since the
+	answer says which party an address belongs to (webmail_api._existing_contact, maintenance#1541)."""
 	addresses = _addresses(emails)
 	if not addresses:
 		return set()
 	found: set[tuple[str, str]] = set()
-	contacts = frappe.get_all("Contact Email", filters={"email_id": ["in", addresses]}, pluck="parent")
+	contacts = _readable(
+		"Contact",
+		list(set(frappe.get_all("Contact Email", filters={"email_id": ["in", addresses]}, pluck="parent"))),
+	)
 	if contacts:
 		for link in frappe.get_all(
 			"Dynamic Link",
@@ -65,7 +78,9 @@ def parties_of(emails) -> set[tuple[str, str]]:
 			found.add((link.link_doctype, link.link_name))
 	for doctype in ("Customer", "Supplier"):
 		if frappe.get_meta(doctype).has_field("email_id"):
-			for name in frappe.get_all(doctype, filters={"email_id": ["in", addresses]}, pluck="name"):
+			for name in _readable(
+				doctype, frappe.get_all(doctype, filters={"email_id": ["in", addresses]}, pluck="name")
+			):
 				found.add((doctype, name))
 	return found
 

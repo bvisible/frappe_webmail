@@ -1,6 +1,8 @@
 # Copyright (c) 2024, Neoservice and contributors
 # For license information, please see license.txt
 
+from html import escape as escape_html
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -153,6 +155,8 @@ class WebmailAccount(Document):
 
 		if user == "Administrator":
 			return True
+		if not _of_the_desk(user):
+			return False
 		if _stored_owner(self) == user:
 			return True
 		if permtype not in SHARED_MAY:
@@ -238,7 +242,8 @@ class WebmailAccount(Document):
 
 		except requests.RequestException as e:
 			frappe.log_error(f"OAuth refresh error: {e!s}", "Webmail OAuth Error")
-			frappe.throw(_("Failed to refresh OAuth token: {0}").format(e))
+			# Escaped: the error carries the provider's words, and the desk draws a message as HTML
+			frappe.throw(_("Failed to refresh OAuth token: {0}").format(escape_html(str(e), quote=False)))
 
 
 def get_oauth_config(provider):
@@ -274,6 +279,13 @@ def get_permission_query_conditions(user):
 	return f"(`tabWebmail Account`.user = {escaped_user})"
 
 
+def _of_the_desk(user):
+	"""Whether `user` is one of the desk's people. The webmail is theirs (www/webmail.py, NeoMail): a portal account
+	keeps no mailbox here, makes none, reads none (maintenance#1541), and its mailboxes made the server connect wherever
+	it named, for as long as the worker lived (maintenance#2296)."""
+	return frappe.get_cached_value("User", user, "user_type") == "System User"
+
+
 def _stored_owner(doc):
 	"""Whose the account is, as stored. The rights are checked on the account as it is being saved: an unsaved change of
 	its `user` must not make the person who typed it its owner (maintenance#1654)."""
@@ -290,6 +302,8 @@ def has_permission(doc, ptype="read", user=None):
 
 	if user == "Administrator":
 		return True
+	if not _of_the_desk(user):
+		return False
 
 	# Owner has permission
 	if _stored_owner(doc) == user:

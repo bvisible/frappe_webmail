@@ -1612,6 +1612,8 @@ class TestMailCraftCalendars(FrappeTestCase):
 		self._erp_only()
 		with (
 			patch.object(jmap, "_is_desk_user", return_value=True),
+			# The webmail's own door to a mailbox is the desk's too (webmail_api.get_account): let through as well
+			patch.object(jmap.webmail, "_of_the_desk", return_value=True),
 			patch.object(calendars, "_person_account", return_value=self.portal_account),
 		):
 			listed, query = self._calls(

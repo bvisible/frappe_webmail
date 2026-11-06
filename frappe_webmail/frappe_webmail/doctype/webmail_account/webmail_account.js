@@ -182,6 +182,7 @@ function test_connection(frm) {
 			smtp_port: frm.doc.smtp_port || 587,
 			smtp_ssl: frm.doc.smtp_ssl ? 1 : 0,
 			smtp_starttls: frm.doc.smtp_starttls ? 1 : 0,
+			smtp_verify_certificate: frm.doc.smtp_verify_certificate ? 1 : 0,
 			auth_type: frm.doc.auth_type || "Password",
 			imap_password: frm.doc.imap_password || "",
 			smtp_password: frm.doc.smtp_password || "",

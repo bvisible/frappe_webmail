@@ -38,6 +38,10 @@ WORKERS = 4
 CACHE_S = 30 * 24 * 3600  # settled by the headers or the model: a message does not change
 DEFAULT_CACHE_S = 3600  # settled by nothing: another look later, the model may have been away
 SOURCES = ("headers", "model", "default")
+# Background jobs one person may have queued or running at once for one mailbox (_finish_later). Each different set of
+# messages left pending made a job of its own, so that one person asking with other sets kept the short queue busy for
+# everyone; past these, what is pending waits for the next ask, which tries again (it is asked within seconds).
+JOBS_PER_MAILBOX = 2
 
 
 def enabled():
@@ -238,24 +242,41 @@ def stream_get(args):
 
 
 def _finish_later(account_name, folder, validity, uids):
-	"""The answers the model did not give in time, finished by a background job that puts them in the cache."""
-	digest = hashlib.sha256(
-		f"{account_name}\x00{folder}\x00{validity}\x00{sorted(uids)}".encode()
-	).hexdigest()[:24]
+	"""The answers the model did not give in time, finished by a background job that puts them in the cache: in one of
+	the person's JOBS_PER_MAILBOX places for this mailbox, the first one free; none when all are taken (the ids stay
+	pending, and the next ask tries again)."""
 	try:
-		frappe.enqueue(
-			"frappe_webmail.mailcraft_stream.finish",
-			queue="short",
-			timeout=120,
-			job_id=f"neomail_stream:{digest}",
-			deduplicate=True,
-			account_name=account_name,
-			folder=folder,
-			validity=validity,
-			uids=list(uids),
-		)
+		place = hashlib.sha256(f"{_who()}\x00{account_name}".encode()).hexdigest()[:24]
+		for slot in range(JOBS_PER_MAILBOX):
+			job_id = f"neomail_stream:{place}:{slot}"
+			if _job_busy(job_id):
+				continue
+			frappe.enqueue(
+				"frappe_webmail.mailcraft_stream.finish",
+				queue="short",
+				timeout=120,
+				job_id=job_id,
+				deduplicate=True,
+				account_name=account_name,
+				folder=folder,
+				validity=validity,
+				uids=list(uids),
+			)
+			return
 	except Exception:
 		frappe.log_error("NeoMail stream: the job could not be queued", frappe.get_traceback())
+
+
+def _who():
+	"""The person asking (replaced in the tests)."""
+	return frappe.session.user
+
+
+def _job_busy(job_id):
+	"""Whether a job of this id is queued or running (replaced in the tests)."""
+	from frappe.utils.background_jobs import is_job_enqueued
+
+	return is_job_enqueued(job_id)
 
 
 def finish(account_name, folder, validity, uids):

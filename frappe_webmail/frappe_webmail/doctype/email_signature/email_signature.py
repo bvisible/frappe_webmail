@@ -23,8 +23,17 @@ class EmailSignature(Document):
 
 	def validate(self):
 		"""Validate and handle default signature logic"""
+		self.validate_owner_change()
 		self.clean_content()
 		self.handle_default_signature()
+
+	def validate_owner_change(self):
+		"""A signature stays its person's: given to someone else, it would sign their mail with words they never wrote. An
+		administrator alone may move one."""
+		if self.is_new() or self.flags.ignore_permissions or frappe.session.user == "Administrator":
+			return
+		if self.has_value_changed("user"):
+			frappe.throw(_("A signature cannot be given to someone else."), frappe.PermissionError)
 
 	def clean_content(self):
 		"""The signature as a recipient may be shown it (email_html.clean_signature_html): written in the editor or
@@ -92,9 +101,15 @@ class EmailSignature(Document):
 		user = user or frappe.session.user
 		if user == "Administrator":
 			return True
-		if self.user == user:
-			return True
-		return False
+		# Whose it is as stored: the rights are checked on the signature as it is being saved, and a `user` changed in the
+		# same request made the person who typed it its owner (maintenance#2296)
+		return self._stored_user() == user
+
+	def _stored_user(self):
+		"""The signature's person as stored; for a new one, the one it is made for."""
+		if self.is_new() or not self.name:
+			return self.user
+		return frappe.db.get_value("Email Signature", self.name, "user")
 
 
 def before_save(doc, method):

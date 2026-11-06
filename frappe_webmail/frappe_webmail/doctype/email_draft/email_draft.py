@@ -23,12 +23,18 @@ class EmailDraft(Document):
 			if account_user != frappe.session.user:
 				frappe.throw(_("Access denied to this account"))
 
-	def has_permission(self, permtype="read"):
-		"""User can only access their own drafts"""
-		# For new documents, user field is not yet set
-		if not self.user:
+	def has_permission(self, permtype="read", doc=None, *, debug=False, user=None):
+		"""User can only access their own drafts: whose it is as stored, since the rights are checked on the draft as it is
+		being saved, and a `user` changed in the same request made the person who typed it its owner (maintenance#2296)."""
+		if self.flags.ignore_permissions:
 			return True
-		return self.user == frappe.session.user
+		user = user or frappe.session.user
+		if user == "Administrator":
+			return True
+		if self.is_new() or not self.name:
+			# For new documents, user field is not yet set (before_insert sets it to the session's person)
+			return not self.user or self.user == user
+		return frappe.db.get_value("Email Draft", self.name, "user") == user
 
 
 def get_permission_query_conditions(user):

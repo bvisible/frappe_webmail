@@ -426,7 +426,11 @@ class TestMailCraftJmap(FrappeTestCase):
 			patch.object(frappe.local, "request", SimpleNamespace(path=path), create=True),
 			patch.object(frappe.local, "form_dict", args),
 			patch("frappe.get_request_header", return_value=f"Bearer {token}"),
-			patch.object(jmap, "_session_alive", side_effect=alive if callable(alive) else lambda sid: alive),
+			patch.object(
+				jmap,
+				"_session_alive",
+				side_effect=(lambda sid, *_: alive(sid)) if callable(alive) else (lambda sid, *_: alive),
+			),
 		):
 			jmap.authenticate()
 			kept = dict(frappe.local.form_dict)
