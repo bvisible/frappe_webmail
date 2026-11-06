@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-03 03:20+0000\n"
+"POT-Creation-Date: 2026-11-06 03:20+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -259,8 +259,8 @@ msgstr "Active"
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1205
-#: frappe_webmail/www/neomail.html:730
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1208
+#: frappe_webmail/www/neomail.html:737
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
@@ -2560,7 +2560,7 @@ msgstr "Indiquez les messages à lire."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1287
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1290
 #, fuzzy
 msgid "NeoMail"
 msgstr "NeoMail"
@@ -2570,11 +2570,11 @@ msgstr "NeoMail"
 msgid "NeoMail Setting"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1196
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1199
 msgid "NeoMail could not be opened. Reload the page to try again."
 msgstr "NeoMail n’a pas pu s’ouvrir. Rechargez la page pour réessayer."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1176
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1179
 msgid "NeoMail is not offered on this site."
 msgstr "NeoMail n’est pas proposé sur ce site."
 
@@ -3117,11 +3117,11 @@ msgstr ""
 msgid "Open the record"
 msgstr "Ouvrir l'enregistrement"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1176
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1179
 msgid "Open the webmail"
 msgstr "Ouvrir le webmail"
 
-#: frappe_webmail/www/neomail.html:732
+#: frappe_webmail/www/neomail.html:739
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -3885,7 +3885,7 @@ msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1059
-#: frappe_webmail/www/neomail.html:738
+#: frappe_webmail/www/neomail.html:745
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -4895,8 +4895,8 @@ msgstr "Vous ne pouvez pas lire ce fichier du Drive"
 msgid "You have no channel in Synk and nobody to write to yet."
 msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1203
-#: frappe_webmail/www/neomail.html:728
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1206
+#: frappe_webmail/www/neomail.html:735
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -4928,8 +4928,8 @@ msgid "YouTube"
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1057
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1224
-#: frappe_webmail/www/neomail.html:717 frappe_webmail/www/neomail.html:737
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1227
+#: frappe_webmail/www/neomail.html:724 frappe_webmail/www/neomail.html:744
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
