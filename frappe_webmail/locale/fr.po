@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-06 03:20+0000\n"
+"POT-Creation-Date: 2026-11-07 03:19+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
@@ -42,19 +42,19 @@ msgstr "+{0} de plus"
 msgid "1 attachment"
 msgstr "1 pièce jointe"
 
-#: frontend/src/components/EmailViewer.vue:545
+#: frontend/src/components/EmailViewer.vue:547
 msgid "1 invoice this year"
 msgstr "1 facture cette année"
 
-#: frontend/src/components/EmailViewer.vue:525
+#: frontend/src/components/EmailViewer.vue:526
 msgid "1 older message in this conversation"
 msgstr "1 message plus ancien dans cette conversation"
 
-#: frontend/src/components/EmailViewer.vue:529
+#: frontend/src/components/EmailViewer.vue:530
 msgid "1 other message in this conversation"
 msgstr "1 autre message dans cette conversation"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1151
 #: frontend/src/components/AutomationsPanel.vue:303
 #, python-brace-format
@@ -77,7 +77,7 @@ msgstr "Une entreprise"
 msgid "A contact needs a name, a company or an address."
 msgstr "Un contact doit avoir un nom, une entreprise ou une adresse."
 
-#: frappe_webmail/webmail_api.py:1800
+#: frappe_webmail/webmail_api.py:1879
 msgid "A folder with this name already exists"
 msgstr "Un dossier portant ce nom existe déjà"
 
@@ -101,7 +101,7 @@ msgstr ""
 "Lien affiché sous les coordonnées. Il doit avoir à la fois un libellé et une"
 " adresse https://."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:85
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:87
 msgid "A mailbox cannot be renamed."
 msgstr "Une boîte mail ne peut pas être renommée."
 
@@ -109,11 +109,11 @@ msgstr "Une boîte mail ne peut pas être renommée."
 msgid "A mailbox shared with you is set up by its owner."
 msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
 
-#: frappe_webmail/mailcraft_jmap.py:1542
+#: frappe_webmail/mailcraft_jmap.py:1606
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1417
+#: frappe_webmail/mailcraft_jmap.py:1481
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
 
@@ -127,7 +127,7 @@ msgstr "Un nom"
 msgid "A number"
 msgstr "Un numéro"
 
-#: frappe_webmail/webmail_api.py:671
+#: frappe_webmail/webmail_api.py:737
 msgid "A password is required"
 msgstr "Un mot de passe est requis"
 
@@ -152,10 +152,14 @@ msgstr ""
 "salon, une offre) : au format PNG, JPEG ou GIF, chargée comme fichier "
 "public. Sans image, pas de bannière."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:254
 msgid "A short list of the new emails: sender, time, subject."
 msgstr "Une courte liste des nouveaux e-mails : expéditeur, heure, objet."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:36
+msgid "A signature cannot be given to someone else."
+msgstr "Une signature ne peut pas être attribuée à une autre personne."
 
 #: frappe_webmail/neomail_folders.py:62
 msgid "A special folder keeps its name and its place."
@@ -187,14 +191,14 @@ msgid "Accent Colour"
 msgstr "Couleur d'accent"
 
 #. Label of a Password field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:225
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:234
 msgid "Access Token"
 msgstr "Jeton d'accès"
 
-#: frappe_webmail/webmail_api.py:290 frappe_webmail/webmail_api.py:2232
-#: frappe_webmail/webmail_api.py:2295 frappe_webmail/webmail_api.py:2324
-#: frappe_webmail/webmail_api.py:2864 frappe_webmail/webmail_api.py:2906
-#: frappe_webmail/webmail_api.py:3646
+#: frappe_webmail/webmail_api.py:307 frappe_webmail/webmail_api.py:2311
+#: frappe_webmail/webmail_api.py:2374 frappe_webmail/webmail_api.py:2403
+#: frappe_webmail/webmail_api.py:2944 frappe_webmail/webmail_api.py:2986
+#: frappe_webmail/webmail_api.py:3736
 msgid "Access denied"
 msgstr "Accès refusé"
 
@@ -210,19 +214,20 @@ msgstr "Accès refusé à ce compte"
 msgid "Account"
 msgstr "Compte"
 
-#: frappe_webmail/webmail_api.py:3514
+#: frappe_webmail/webmail_api.py:3599
 msgid "Account is disabled"
 msgstr "Le compte est désactivé"
 
-#: frappe_webmail/webmail_api.py:219
+#: frappe_webmail/webmail_api.py:236
 msgid "Account is not configured for OAuth2"
 msgstr "Le compte n'est pas configuré pour OAuth2"
 
-#: frappe_webmail/webmail_api.py:344
+#: frappe_webmail/webmail_api.py:361
 msgid "Account is not using OAuth2"
 msgstr "Le compte n'utilise pas OAuth2"
 
-#: frappe_webmail/webmail_api.py:3495 frappe_webmail/webmail_api.py:3511
+#: frappe_webmail/webmail_api.py:3578 frappe_webmail/webmail_api.py:3580
+#: frappe_webmail/webmail_api.py:3596
 msgid "Account not found"
 msgstr "Compte introuvable"
 
@@ -264,7 +269,7 @@ msgstr "Active sur cette boîte"
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
-#: frappe_webmail/mailcraft_jmap.py:1673
+#: frappe_webmail/mailcraft_jmap.py:1737
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -293,7 +298,7 @@ msgid "Add-ons"
 msgstr "Modules complémentaires"
 
 #. Description of the 'Shared With' (Table) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:91
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:92
 msgid "Additional users who can access this email account"
 msgstr ""
 "Utilisateurs supplémentaires pouvant accéder à ce compte de messagerie"
@@ -309,8 +314,8 @@ msgstr "Recherche avancée…"
 #. Name of a role
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:175
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:67
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:362
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:371
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:482
 #: frontend/src/components/EmailList.vue:78
 msgid "All"
@@ -332,7 +337,7 @@ msgstr "Toutes les boîtes"
 msgid "Already among the scanned documents"
 msgstr "Déjà parmi les scans de documents"
 
-#: frappe_webmail/webmail_api.py:3114
+#: frappe_webmail/webmail_api.py:3194
 msgid "Already in trusted list"
 msgstr "Déjà dans la liste de confiance"
 
@@ -367,12 +372,12 @@ msgstr "Toujours pour {0}"
 msgid "An address"
 msgstr "Une adresse"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:828
 msgid "An error occurred"
 msgstr "Une erreur s'est produite"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:448
 msgid "Any invoices to process in this mailbox?"
 msgstr "Des factures à traiter dans cette boîte ?"
@@ -399,7 +404,7 @@ msgstr "Appliquer maintenant"
 msgid "Applying..."
 msgstr "Application..."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1160
 msgid "Approved"
 msgstr "Approuvée"
@@ -414,7 +419,7 @@ msgid "Archive"
 msgstr "Archives"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:325
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:334
 msgid "Archive Folder"
 msgstr "Dossier d'archives"
 
@@ -440,7 +445,7 @@ msgstr "Voulez-vous vraiment supprimer cet email ?"
 msgid "Are you sure you want to delete this signature?"
 msgstr "Voulez-vous vraiment supprimer cette signature ?"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:250
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:251
 msgid ""
 "Are you sure you want to disconnect OAuth? You will need to reconnect to use"
 " this account."
@@ -553,7 +558,7 @@ msgstr "Joint à {0} {1}"
 msgid "Attaching…"
 msgstr "Ajout en cours…"
 
-#: frappe_webmail/webmail_api.py:2007
+#: frappe_webmail/webmail_api.py:2086
 msgid "Attachment not found"
 msgstr "Pièce jointe introuvable"
 
@@ -568,12 +573,12 @@ msgid "Attachments JSON"
 msgstr "JSON des pièces jointes"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:100
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:101
 msgid "Authentication"
 msgstr "Authentification"
 
 #. Label of a Select field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:107
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:108
 msgid "Authentication Type"
 msgstr "Type d'authentification"
 
@@ -581,7 +586,7 @@ msgstr "Type d'authentification"
 msgid "Auto-refresh on"
 msgstr "Actualisation auto activée"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:361
 msgid "Automation created"
 msgstr "Automatisation créée"
@@ -684,15 +689,15 @@ msgstr "Annuler"
 msgid "Cancelled"
 msgstr "Annulée"
 
-#: frappe_webmail/webmail_api.py:1882
+#: frappe_webmail/webmail_api.py:1961
 msgid "Cannot delete folder with subfolders"
 msgstr "Impossible de supprimer un dossier contenant des sous-dossiers"
 
-#: frappe_webmail/webmail_api.py:1869
+#: frappe_webmail/webmail_api.py:1948
 msgid "Cannot delete this folder"
 msgstr "Impossible de supprimer ce dossier"
 
-#: frappe_webmail/webmail_api.py:1788
+#: frappe_webmail/webmail_api.py:1867
 msgid "Cannot rename this folder"
 msgstr "Impossible de renommer ce dossier"
 
@@ -733,7 +738,7 @@ msgstr "Chat"
 msgid "Chat with Nora"
 msgstr "Discuter avec Nora"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:450
 msgid "Check this mailbox every hour for invoices"
 msgstr "Relève cette boîte toutes les heures pour les factures"
@@ -783,7 +788,7 @@ msgid "Collapse"
 msgstr "Réduire"
 
 #. Label of a Code field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:282
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:291
 msgid "Collapsed Folders"
 msgstr "Dossiers réduits"
 
@@ -842,7 +847,7 @@ msgstr "Configurer un compte"
 
 #. Description of the 'Folder Mapping' (Section Break) field in DocType
 #. 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:290
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:299
 msgid ""
 "Configure which IMAP folders to use for each category. Leave empty for auto-"
 "detection."
@@ -851,7 +856,7 @@ msgstr ""
 "pour une détection automatique."
 
 #. Label of a Button field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:137
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:138
 msgid "Connect OAuth"
 msgstr "Connecter OAuth"
 
@@ -859,29 +864,29 @@ msgstr "Connecter OAuth"
 msgid "Connecting to servers..."
 msgstr "Connexion aux serveurs..."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:230
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:231
 msgid "Connection Test Results"
 msgstr "Résultats du test de connexion"
 
-#: frappe_webmail/webmail_api.py:799
+#: frappe_webmail/webmail_api.py:876
 msgid "Connection successful"
 msgstr "Connexion réussie"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:199
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:200
 msgid "Connection successful! Both IMAP and SMTP are working."
 msgstr "Connexion réussie ! IMAP et SMTP fonctionnent."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1149
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1143
 #, python-brace-format
 msgid "Contact created: {0}"
 msgstr "Contact créé : {0}"
 
-#: frappe_webmail/webmail_api.py:2745
+#: frappe_webmail/webmail_api.py:2824
 msgid "Contact not found"
 msgstr "Contact non trouvé"
 
-#: frappe_webmail/webmail_api.py:2586
+#: frappe_webmail/webmail_api.py:2665
 msgid "Contact with this email already exists"
 msgstr "Un contact avec cet email existe déjà"
 
@@ -890,7 +895,7 @@ msgstr "Un contact avec cet email existe déjà"
 msgid "Contact: {0}"
 msgstr "Contact : {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:903
 msgid "Content inserted"
 msgstr "Contenu inséré"
@@ -900,7 +905,7 @@ msgstr "Contenu inséré"
 msgid "Copy to"
 msgstr "Copier vers"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:949
 msgid "Corrected draft"
 msgstr "Brouillon corrigé"
@@ -911,26 +916,26 @@ msgstr ""
 "Impossible de se connecter au serveur de messagerie. Vérifiez les paramètres"
 " du compte."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:365
 msgid "Could not create the automation"
 msgstr "Impossible de créer l’automatisation"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:426
 msgid "Could not delete the automation"
 msgstr "Impossible de supprimer l’automatisation"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:328
 msgid "Could not load the automations"
 msgstr "Impossible de charger les automatisations"
 
-#: frappe_webmail/webmail_api.py:3726
+#: frappe_webmail/webmail_api.py:3816
 msgid "Could not read file content"
 msgstr "Impossible de lire le contenu du fichier"
 
-#: frappe_webmail/webmail_api.py:900
+#: frappe_webmail/webmail_api.py:978
 #, python-brace-format
 msgid ""
 "Could not sign in to {0} for {1}. The OAuth connection is no longer valid - "
@@ -939,7 +944,7 @@ msgstr ""
 "Impossible de se connecter à {0} pour {1}. La connexion OAuth n'est plus "
 "valide - veuillez reconnecter le compte."
 
-#: frappe_webmail/webmail_api.py:904
+#: frappe_webmail/webmail_api.py:982
 #, python-brace-format
 msgid ""
 "Could not sign in to {0} for {1}. The email address or password is "
@@ -948,12 +953,12 @@ msgstr ""
 "Impossible de se connecter à {0} pour {1}. L'adresse e-mail ou le mot de "
 "passe est incorrect."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:885
 msgid "Could not start the analysis"
 msgstr "Impossible de démarrer l’analyse"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:409
 msgid "Could not update the automation"
 msgstr "Impossible de mettre à jour l’automatisation"
@@ -996,7 +1001,7 @@ msgstr "Créée"
 msgid "Creating..."
 msgstr "Création en cours..."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:625
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
 #: frontend/src/components/EmailComposer.vue:486
 msgid "Date:"
 msgstr "Date :"
@@ -1012,7 +1017,7 @@ msgstr "Par défaut"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
 #. Label of a Link field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:242
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:251
 msgid "Default Signature"
 msgstr "Signature par défaut"
 
@@ -1066,7 +1071,7 @@ msgstr "Supprimer le dossier"
 msgid "Delete permanently"
 msgstr "Supprimer définitivement"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:416
 #, python-brace-format
 msgid "Delete the automation « {0} »?"
@@ -1081,7 +1086,7 @@ msgstr "Supprimer le dossier {0} ?"
 msgid "Delivery"
 msgstr "Livraison"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:486
 msgid "Delivery notes"
 msgstr "Bons de livraison"
@@ -1127,23 +1132,23 @@ msgstr "Mention légale"
 msgid "Disconnect OAuth"
 msgstr "Déconnecter OAuth"
 
-#: frappe_webmail/webmail_api.py:3941
+#: frappe_webmail/webmail_api.py:4031
 msgid "DocType and document name are required"
 msgstr "Le DocType et le nom du document sont requis"
 
-#: frappe_webmail/webmail_api.py:3832 frappe_webmail/webmail_api.py:3861
+#: frappe_webmail/webmail_api.py:3922 frappe_webmail/webmail_api.py:3951
 msgid "DocType is required"
 msgstr "Le DocType est requis"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:441
 #, fuzzy
 msgid "Document"
 msgstr "Document"
 
-#: frappe_webmail/webmail_api.py:3946
+#: frappe_webmail/webmail_api.py:4036
 msgid "Document not found"
 msgstr "Document introuvable"
 
@@ -1152,23 +1157,23 @@ msgstr "Document introuvable"
 msgid "Domain"
 msgstr "Domaine"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1230
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1224
 msgid "Domain added to the trusted list"
 msgstr "Domaine ajouté à la liste de confiance"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1038
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1032
 msgid "Done"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:384
 #, python-brace-format
 msgid "Done — {0}"
 msgstr "Terminé — {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1042
 #, python-brace-format
 msgid ""
@@ -1186,7 +1191,7 @@ msgstr "Terminé."
 msgid "Done: NeoMail shows it at its next Send/Receive."
 msgstr "Terminé : NeoMail l’affichera à son prochain Envoyer/Recevoir."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/EmailComposer.vue:316
 msgid "Draft"
 msgstr "Brouillon"
@@ -1195,7 +1200,7 @@ msgstr "Brouillon"
 msgid "Draft deleted"
 msgstr "Brouillon supprimé"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:908
 msgid ""
 "Draft inserted in a new message — add the recipient and the subject, then "
@@ -1204,11 +1209,11 @@ msgstr ""
 "J'ai inséré le brouillon dans un nouveau message — ajoutez le destinataire "
 "et l'objet, puis envoyez."
 
-#: frappe_webmail/webmail_api.py:2290 frappe_webmail/webmail_api.py:2319
+#: frappe_webmail/webmail_api.py:2369 frappe_webmail/webmail_api.py:2398
 msgid "Draft not found"
 msgstr "Brouillon non trouvé"
 
-#: frappe_webmail/webmail_api.py:1679
+#: frappe_webmail/webmail_api.py:1758
 #: frontend/src/components/EmailComposer.vue:747
 msgid "Draft saved"
 msgstr "Brouillon sauvegardé"
@@ -1219,17 +1224,17 @@ msgid "Drafts"
 msgstr "Brouillons"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:307
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:316
 msgid "Drafts Folder"
 msgstr "Dossier des brouillons"
 
-#: frappe_webmail/webmail_api.py:1653
+#: frappe_webmail/webmail_api.py:1732
 msgid "Drafts folder not found"
 msgstr "Dossier Brouillons non trouvé"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:301
 #: frontend/src/components/AttachmentPicker.vue:445
 #, fuzzy
@@ -1264,11 +1269,11 @@ msgid "Email"
 msgstr "E-mail"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:75
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:76
 msgid "Email Address"
 msgstr "Adresse email"
 
-#: frappe_webmail/webmail_api.py:924 frontend/src/utils/webmailErrors.js:98
+#: frappe_webmail/webmail_api.py:1002 frontend/src/utils/webmailErrors.js:98
 msgid "Email Connection Failed"
 msgstr "Échec de la connexion e-mail"
 
@@ -1283,11 +1288,11 @@ msgid "Email Filter"
 msgstr "Filtre d'email"
 
 #. Label of a Int field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:266
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:275
 msgid "Email List Width"
 msgstr "Largeur de la liste des e-mails"
 
-#: frappe_webmail/webmail_api.py:913
+#: frappe_webmail/webmail_api.py:991
 msgid "Email Sign-in Failed"
 msgstr "Échec de connexion à l'e-mail"
 
@@ -1315,7 +1320,7 @@ msgstr "Modèle de signature e-mail"
 msgid "Email address"
 msgstr "Adresse e-mail"
 
-#: frappe_webmail/webmail_api.py:2579
+#: frappe_webmail/webmail_api.py:2658
 msgid "Email address is required"
 msgstr "L'adresse email est requise"
 
@@ -1344,9 +1349,9 @@ msgstr "E-mail déplacé"
 msgid "Email moved to {0}"
 msgstr "E-mail déplacé vers {0}"
 
-#: frappe_webmail/webmail_api.py:1209 frappe_webmail/webmail_api.py:1507
-#: frappe_webmail/webmail_api.py:1996 frappe_webmail/webmail_api.py:2635
-#: frappe_webmail/webmail_api.py:2943
+#: frappe_webmail/webmail_api.py:1287 frappe_webmail/webmail_api.py:1586
+#: frappe_webmail/webmail_api.py:2075 frappe_webmail/webmail_api.py:2714
+#: frappe_webmail/webmail_api.py:3023
 msgid "Email not found"
 msgstr "Email non trouvé"
 
@@ -1355,7 +1360,7 @@ msgstr "Email non trouvé"
 msgid "Email or Domain"
 msgstr "E-mail ou domaine"
 
-#: frappe_webmail/webmail_api.py:1464
+#: frappe_webmail/webmail_api.py:1543
 msgid "Email sent successfully"
 msgstr "Email envoyé avec succès"
 
@@ -1365,7 +1370,7 @@ msgstr "Email envoyé !"
 
 #. Description of the 'Trusted Sources' (Table) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:335
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:344
 msgid ""
 "Emails from trusted senders or domains will automatically display external "
 "images"
@@ -1383,7 +1388,7 @@ msgctxt "Folder action"
 msgid "Empty folder"
 msgstr "Vider le dossier"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:663
 msgid "Empty message"
 msgstr "Message vide"
@@ -1397,13 +1402,13 @@ msgstr "Activer"
 #. Label of a Check field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:35
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:72
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:59
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:60
 msgid "Enabled"
 msgstr "Activé"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:805
-#: frontend/src/components/EmailViewer.vue:558
+#: frontend/src/components/EmailViewer.vue:560
 #: frontend/src/components/NoraBar.vue:41
 msgid "English"
 msgstr "Anglais"
@@ -1422,16 +1427,16 @@ msgstr "Saisir un nouveau nom"
 msgid "Enter the current password for this account to reconnect."
 msgstr "Saisissez le mot de passe actuel de ce compte pour vous reconnecter."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:338
 msgid "Enter the email address to report to"
 msgstr "Saisissez l’adresse e-mail à laquelle envoyer le rapport"
 
-#: frappe_webmail/webmail_api.py:3766
+#: frappe_webmail/webmail_api.py:3856
 msgid "Entity name is required"
 msgstr "Le nom de l'entité est requis"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:240
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:241
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:490
 #: frontend/src/components/AdvancedSearch.vue:313
 #: frontend/src/components/EmailList.vue:656
@@ -1515,7 +1520,7 @@ msgstr "Erreur d'enregistrement"
 msgid "Error saving draft"
 msgstr "Erreur de sauvegarde du brouillon"
 
-#: frontend/src/components/EmailViewer.vue:735
+#: frontend/src/components/EmailViewer.vue:729
 msgid "Error sending reply"
 msgstr "Erreur lors de l'envoi"
 
@@ -1523,11 +1528,11 @@ msgstr "Erreur lors de l'envoi"
 msgid "Error updating emails"
 msgstr "Erreur lors de la mise à jour des e-mails"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:221
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:222
 msgid "Errors:"
 msgstr "Erreurs :"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1150
 #, python-brace-format
 msgid "Every Monday at {0}"
@@ -1537,21 +1542,21 @@ msgstr "Tous les lundis à {0}"
 msgid "Every day"
 msgstr "Tous les jours"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1148
 #: frontend/src/components/AutomationsPanel.vue:304
 #, python-brace-format
 msgid "Every day at {0}"
 msgstr "Tous les jours à {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1147
 #: frontend/src/components/AutomationsPanel.vue:130
 #: frontend/src/components/AutomationsPanel.vue:299
 msgid "Every hour"
 msgstr "Toutes les heures"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:242
 msgid ""
 "Every new PDF attachment is read by the OCR and filed in Document Scan."
@@ -1587,13 +1592,13 @@ msgstr "Ex : newsletter@"
 msgid "Expand"
 msgstr "Développer"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1164
 msgid "Expired"
 msgstr "Expirée"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:506
-#: frontend/src/components/EmailViewer.vue:623
+#: frontend/src/components/EmailViewer.vue:617
 msgid "External image blocked"
 msgstr "Image externe bloquée"
 
@@ -1610,60 +1615,60 @@ msgstr "Les images externes ont été bloquées pour votre sécurité."
 msgid "Facebook"
 msgstr "Facebook"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1163
 msgid "Failed"
 msgstr "Échec"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:989
 #, python-brace-format
 msgid "Failed to attach file: {0}"
 msgstr "Échec de l'ajout de la pièce jointe : {0}"
 
-#: frappe_webmail/utils/imap_client.py:312
+#: frappe_webmail/utils/imap_client.py:314
 #, python-brace-format
 msgid "Failed to connect to IMAP server: {0}"
 msgstr "Échec de connexion au serveur IMAP : {0}"
 
-#: frappe_webmail/webmail_api.py:3979
+#: frappe_webmail/webmail_api.py:4069
 #, python-brace-format
 msgid "Failed to generate PDF: {0}"
 msgstr "Échec de la génération du PDF : {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:819
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:813
 msgid "Failed to generate reply"
 msgstr "Échec de la génération de la réponse"
 
-#: frappe_webmail/webmail_api.py:313
+#: frappe_webmail/webmail_api.py:330
 msgid "Failed to get OAuth tokens"
 msgstr "Échec de récupération des jetons OAuth"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:660
 msgid "Failed to load files"
 msgstr "Échec du chargement des fichiers"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:221
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:225
 msgid "Failed to refresh OAuth token"
 msgstr "Échec du rafraîchissement du jeton OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:241
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:246
 #, python-brace-format
 msgid "Failed to refresh OAuth token: {0}"
 msgstr "Échec du rafraîchissement du jeton OAuth : {0}"
 
-#: frappe_webmail/webmail_api.py:1470
+#: frappe_webmail/webmail_api.py:1549
 #, python-brace-format
 msgid "Failed to send email: {0}"
 msgstr "Échec de l'envoi de l'email : {0}"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:242
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:243
 msgid "Failed to test connection. Please check your settings."
 msgstr "Échec du test de connexion. Veuillez vérifier vos paramètres."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:385
 #, python-brace-format
 msgid "Failed: {0}"
@@ -1678,15 +1683,15 @@ msgctxt "NeoMail pane"
 msgid "Favourites"
 msgstr "Favoris"
 
-#: frappe_webmail/webmail_api.py:3704
+#: frappe_webmail/webmail_api.py:3794
 msgid "File URL is required"
 msgstr "L'URL du fichier est requise"
 
-#: frappe_webmail/webmail_api.py:3717
+#: frappe_webmail/webmail_api.py:3807
 msgid "File not found"
 msgstr "Fichier introuvable"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:298
 #: frontend/src/components/AttachmentPicker.vue:440
 msgid "Files"
@@ -1700,7 +1705,7 @@ msgstr ""
 
 #. Description of the 'Provider preset' (Select) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:113
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:114
 msgid ""
 "Fills the IMAP and SMTP servers of a provider that signs in with an address "
 "and a password."
@@ -1729,7 +1734,7 @@ msgstr "Nom du filtre"
 msgid "Filter name is required"
 msgstr "Le nom du filtre est requis"
 
-#: frappe_webmail/webmail_api.py:2859 frappe_webmail/webmail_api.py:2901
+#: frappe_webmail/webmail_api.py:2939 frappe_webmail/webmail_api.py:2981
 msgid "Filter not found"
 msgstr "Filtre non trouvé"
 
@@ -1746,17 +1751,17 @@ msgid "Filters allow you to automatically sort your emails."
 msgstr "Les filtres permettent de trier automatiquement vos emails."
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:289
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:298
 msgid "Folder Mapping"
 msgstr "Mappage des dossiers"
 
-#: frappe_webmail/webmail_api.py:1020
+#: frappe_webmail/webmail_api.py:1098
 msgid "Folder already exists"
 msgstr "Le dossier existe déjà"
 
 #. Description of the 'Sidebar Collapsed' (Check) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:270
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:279
 msgid "Folder column collapsed to an icon rail (per-account UI preference)"
 msgstr ""
 "Colonne des dossiers repliée en bandeau d’icônes (préférence d’interface par"
@@ -1778,11 +1783,11 @@ msgstr "Dossier supprimé"
 msgid "Folder name"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/webmail_api.py:998
+#: frappe_webmail/webmail_api.py:1076
 msgid "Folder name is required"
 msgstr "Le nom du dossier est requis"
 
-#: frappe_webmail/webmail_api.py:1796 frappe_webmail/webmail_api.py:1877
+#: frappe_webmail/webmail_api.py:1875 frappe_webmail/webmail_api.py:1956
 msgid "Folder not found"
 msgstr "Dossier introuvable"
 
@@ -1801,7 +1806,7 @@ msgstr "Dossiers"
 msgid "Font"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:303
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:304
 msgid "Forget my style"
 msgstr "Oublier votre style"
 
@@ -1829,7 +1834,7 @@ msgstr "UID de transfert"
 msgid "Forwarded"
 msgstr "Transféré"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:623
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
 #: frontend/src/components/EmailComposer.vue:484
 msgid "Forwarded message"
 msgstr "Message transféré"
@@ -1838,9 +1843,9 @@ msgstr "Message transféré"
 msgid "Frappe Drive is not installed"
 msgstr "Frappe Drive n'est pas installé"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:805
-#: frontend/src/components/EmailViewer.vue:556
+#: frontend/src/components/EmailViewer.vue:558
 #: frontend/src/components/NoraBar.vue:40
 msgid "French"
 msgstr "Français"
@@ -1862,7 +1867,7 @@ msgstr "Date de début"
 msgid "From — sender email"
 msgstr "De — adresse expéditeur"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:624
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:625
 #: frontend/src/components/EmailComposer.vue:485
 #: frontend/src/components/FilterManager.vue:37
 msgid "From:"
@@ -1878,7 +1883,7 @@ msgstr "De : {0}"
 msgid "Full name"
 msgstr "Nom complet"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:659
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:660
 #: frontend/src/pages/Webmail.vue:1373
 #, python-brace-format
 msgid "Fwd: {0}"
@@ -1892,9 +1897,9 @@ msgstr "Tr : {0}"
 msgid "Georgia"
 msgstr "Georgia"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:805
-#: frontend/src/components/EmailViewer.vue:557
+#: frontend/src/components/EmailViewer.vue:559
 #: frontend/src/components/NoraBar.vue:42
 msgid "German"
 msgstr "Allemand"
@@ -1907,7 +1912,7 @@ msgstr "Donnez un nom au dossier, sans « {0} »."
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:124
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:125
 #, fuzzy
 msgid "Gmail"
 msgstr "Gmail"
@@ -1967,7 +1972,7 @@ msgstr "Accueil"
 msgid "How often"
 msgstr "Fréquence"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:891
 msgid ""
 "I opened the reply in the editor with a draft — read it, adjust it, then "
@@ -1977,70 +1982,70 @@ msgstr ""
 "le, puis envoyez."
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:148
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:149
 msgid "IMAP Host"
 msgstr "Serveur IMAP"
 
 #. Label of a Password field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:171
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:172
 msgid "IMAP Password"
 msgstr "Mot de passe IMAP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:103
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:105
 msgid "IMAP Password is required for Password authentication"
 msgstr ""
 "Le mot de passe IMAP est requis pour l'authentification par mot de passe"
 
 #. Label of a Int field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:155
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:156
 msgid "IMAP Port"
 msgstr "Port IMAP"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:142
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:143
 msgid "IMAP Settings"
 msgstr "Paramètres IMAP"
 
-#: frappe_webmail/utils/imap_client.py:432
+#: frappe_webmail/utils/imap_client.py:434
 msgid "IMAP client is not connected"
 msgstr "Le client IMAP n'est pas connecté"
 
 #. Description of the 'Archive Folder' (Data) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:326
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:335
 msgid "IMAP folder name for archived emails"
 msgstr "Nom du dossier IMAP pour les e-mails archivés"
 
 #. Description of the 'Drafts Folder' (Data) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:308
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:317
 msgid "IMAP folder name for drafts"
 msgstr "Nom du dossier IMAP pour les brouillons"
 
 #. Description of the 'Inbox Folder' (Data) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:296
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:305
 msgid "IMAP folder name for inbox (usually INBOX)"
 msgstr "Nom du dossier IMAP pour la boîte de réception (généralement INBOX)"
 
 #. Description of the 'Sent Folder' (Data) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:302
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:311
 msgid "IMAP folder name for sent emails (e.g., Sent, Sent Items, Sent Mail)"
 msgstr ""
 "Nom du dossier IMAP pour les e-mails envoyés (p. ex. Sent, Sent Items, Sent "
 "Mail)"
 
 #. Description of the 'Spam Folder' (Data) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:320
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:329
 msgid "IMAP folder name for spam (e.g., Spam, Junk, Junk E-mail)"
 msgstr ""
 "Nom du dossier IMAP pour les indésirables (p. ex. Spam, Junk, Junk E-mail)"
 
 #. Description of the 'Trash Folder' (Data) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:314
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:323
 msgid "IMAP folder name for trash (e.g., Trash, Deleted Items)"
 msgstr "Nom du dossier IMAP pour la corbeille (p. ex. Trash, Deleted Items)"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:209
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:210
 msgid "IMAP: Connected successfully"
 msgstr "IMAP : Connexion réussie"
 
@@ -2056,7 +2061,7 @@ msgstr "Ignorer"
 msgid "Image"
 msgstr "Image"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:541
 #: frontend/src/components/SignatureEditor.vue:416
 msgid "Image URL:"
@@ -2070,24 +2075,24 @@ msgstr "URL de l'image :"
 msgid "Important"
 msgstr "Important"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:800
 #: frontend/src/components/NoraBar.vue:23
 #: frontend/src/components/NoraBar.vue:26
 msgid "Improve"
 msgstr "Améliorer"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:436
 msgid "Improve the wording"
 msgstr "Améliore la formulation"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:954
 msgid "Improved draft"
 msgstr "Brouillon amélioré"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:799
 msgid "Improving..."
 msgstr "Amélioration en cours…"
@@ -2131,7 +2136,7 @@ msgid "Inbox"
 msgstr "Réception"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:295
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:304
 msgid "Inbox Folder"
 msgstr "Dossier de réception"
 
@@ -2143,7 +2148,7 @@ msgstr "Mot de passe incorrect"
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Provider preset' (Select) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:117
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:118
 #, fuzzy
 msgid "Infomaniak"
 msgstr "Infomaniak"
@@ -2157,47 +2162,47 @@ msgstr "Infomaniak"
 msgid "Instagram"
 msgstr "Instagram"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:95
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:97
 msgid "Invalid IMAP port number"
 msgstr "Numéro de port IMAP invalide"
 
-#: frappe_webmail/webmail_api.py:275
+#: frappe_webmail/webmail_api.py:292
 msgid "Invalid OAuth callback"
 msgstr "Callback OAuth invalide"
 
-#: frappe_webmail/mailcraft_jmap.py:449
+#: frappe_webmail/mailcraft_jmap.py:513
 msgid "Invalid Request"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:97
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:99
 msgid "Invalid SMTP port number"
 msgstr "Numéro de port SMTP invalide"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:90
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:92
 #, python-brace-format
 msgid "Invalid email address: {0}"
 msgstr "Adresse email invalide : {0}"
 
-#: frappe_webmail/webmail_api.py:280
+#: frappe_webmail/webmail_api.py:297
 msgid "Invalid or expired OAuth state"
 msgstr "État OAuth invalide ou expiré"
 
-#: frappe_webmail/webmail_api.py:3106
+#: frappe_webmail/webmail_api.py:3186
 msgid "Invalid source type. Must be 'Sender' or 'Domain'"
 msgstr "Type de source invalide. Doit être 'Sender' ou 'Domain'"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:483
 msgid "Invoices"
 msgstr "Factures"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:248
 #, python-brace-format
 msgid "Invoices from {0}"
 msgstr "Factures de {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1139
 #: frontend/src/components/AutomationsPanel.vue:241
 msgid "Invoices → Document Scan"
@@ -2215,7 +2220,7 @@ msgstr "Italique"
 
 #. Description of the 'Collapsed Folders' (Code) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:278
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:287
 msgid "JSON array of collapsed folder names"
 msgstr "Tableau JSON des noms de dossiers réduits"
 
@@ -2238,14 +2243,14 @@ msgstr "Dernière application"
 msgid "Last Saved"
 msgstr "Dernière sauvegarde"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:313
 #: frontend/src/components/AutomationsPanel.vue:318
 #, python-brace-format
 msgid "Last run {0}"
 msgstr "Dernière exécution {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:316
 #, python-brace-format
 msgid "Last run {0} — {1} failure(s)"
@@ -2266,7 +2271,7 @@ msgstr "En retard"
 msgid "Layout"
 msgstr "Mise en page"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:299
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:300
 msgid "Learn my style again"
 msgstr "Réapprendre votre style"
 
@@ -2279,13 +2284,13 @@ msgstr "Apprendre mon style d’écriture à partir de mes e-mails envoyés"
 msgid "Link"
 msgstr "Lien"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:534
 #: frontend/src/components/SignatureEditor.vue:409
 msgid "Link URL:"
 msgstr "URL du lien :"
 
-#: frappe_webmail/webmail_api.py:2755
+#: frappe_webmail/webmail_api.py:2834
 msgid "Link already exists"
 msgstr "Le lien existe déjà"
 
@@ -2343,7 +2348,7 @@ msgstr "Chargement…"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:295
 #: frontend/src/components/AttachmentPicker.vue:439
 #, fuzzy
@@ -2462,8 +2467,8 @@ msgstr "Marquer comme spam"
 msgid "Mark as unread"
 msgstr "Marquer comme non lu"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:941
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:935
 msgid "Marked as unread"
 msgstr "Marqué comme non lu"
 
@@ -2491,7 +2496,7 @@ msgstr "Message"
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1281
+#: frappe_webmail/mailcraft_jmap.py:1345
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
@@ -2510,7 +2515,7 @@ msgstr "Les messages sont importés, et non créés."
 msgid "Mobile"
 msgstr "Mobile"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:302
 #, python-brace-format
 msgid "Mondays at {0}"
@@ -2554,7 +2559,7 @@ msgstr "Mon style"
 msgid "Name of the folder"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/mailcraft_jmap.py:1147
+#: frappe_webmail/mailcraft_jmap.py:1211
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
@@ -2583,7 +2588,7 @@ msgstr "NeoMail n’est pas proposé sur ce site."
 msgid "Network"
 msgstr "Réseau"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:308
 msgid "Never run yet"
 msgstr "Jamais exécutée"
@@ -2624,19 +2629,19 @@ msgstr "Nouveau dossier"
 msgid "New folder in {0}"
 msgstr "Nouveau dossier dans {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:258
 #, python-brace-format
 msgid "New mail in {0}"
 msgstr "Nouveau courrier dans {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1140
 #: frontend/src/components/AutomationsPanel.vue:253
 msgid "New mail summary"
 msgstr "Résumé des nouveaux e-mails"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/EmailComposer.vue:317
 msgid "New message"
 msgstr "Nouveau message"
@@ -2665,12 +2670,12 @@ msgstr ""
 "Aucune automatisation pour l’instant. Créez-en une ci-dessous — Nora "
 "surveillera cette boîte selon l’horaire défini."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:836
 msgid "No changes needed"
 msgstr "Aucune modification nécessaire"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/ContactAutocomplete.vue:83
 msgid "No contact found. Press Enter to add."
 msgstr "Aucun contact trouvé. Appuyez sur Entrée pour ajouter."
@@ -2713,7 +2718,7 @@ msgstr "Aucun dossier disponible"
 msgid "No free name is left for this file in this folder of the Drive"
 msgstr "Aucun nom libre ne reste pour ce fichier dans ce dossier du Drive"
 
-#: frontend/src/components/EmailViewer.vue:543
+#: frontend/src/components/EmailViewer.vue:545
 msgid "No invoice this year"
 msgstr "Aucune facture cette année"
 
@@ -2736,7 +2741,7 @@ msgstr ""
 msgid "No one else on this message uses Synk."
 msgstr "Aucune autre personne de ce message n’utilise Synk."
 
-#: frappe_webmail/webmail_api.py:3835 frappe_webmail/webmail_api.py:3865
+#: frappe_webmail/webmail_api.py:3925 frappe_webmail/webmail_api.py:3955
 #, python-brace-format
 msgid "No permission to read {0}"
 msgstr "Aucune autorisation pour lire {0}"
@@ -2772,34 +2777,34 @@ msgstr "Chat Nora"
 msgid "Nora chat (desk)"
 msgstr "Chat Nora (bureau)"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1235
 msgid "Nora could not apply this action"
 msgstr "Nora n'a pas pu appliquer cette action"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:778
 msgid "Nora could not be reached. Please try again."
 msgstr "Impossible de joindre Nora. Veuillez réessayer."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:800
 msgid "Nora did not answer in time. Try again in a moment."
 msgstr "Nora n'a pas répondu à temps. Réessayez dans un instant."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:319
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:320
 msgid "Nora does not prepare replies to your e-mails."
 msgstr "Nora ne prépare pas de réponses à vos e-mails."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
 #: frontend/src/components/EmailComposer.vue:855
 #: frontend/src/components/EmailComposer.vue:891
-#: frontend/src/components/EmailViewer.vue:786
-#: frontend/src/components/EmailViewer.vue:826
+#: frontend/src/components/EmailViewer.vue:780
+#: frontend/src/components/EmailViewer.vue:820
 msgid "Nora encountered an error. Please try again."
 msgstr "Nora a rencontré une erreur. Veuillez réessayer."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:874
 msgid "Nora is drafting the reply… (about 10 s)"
 msgstr "Je rédige la réponse… (environ 10 s)"
@@ -2808,7 +2813,7 @@ msgstr "Je rédige la réponse… (environ 10 s)"
 msgid "Nora is drafting…"
 msgstr "Je rédige…"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:878
 msgid ""
 "Nora is learning your writing style from your sent emails. This takes a "
@@ -2817,7 +2822,7 @@ msgstr ""
 "Nora apprend votre style d’écriture à partir de vos e-mails envoyés. Cela "
 "prend une minute."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:957
 msgid "Nora is working on your draft…"
 msgstr "Je travaille sur votre brouillon…"
@@ -2826,12 +2831,12 @@ msgstr "Je travaille sur votre brouillon…"
 msgid "Nora is working…"
 msgstr "Nora travaille…"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:898
 msgid "Nora is writing… (about 10 s)"
 msgstr "J'écris… (environ 10 s)"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:255
 msgid ""
 "Nora lists the emails received since the previous run — sender, time and "
@@ -2842,11 +2847,11 @@ msgstr ""
 "expéditeur, heure et objet — et l’envoie au canal de votre choix. Rien n’est"
 " déplacé ni marqué comme lu dans votre boîte."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:318
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:319
 msgid "Nora prepares replies to your e-mails in your way of writing."
 msgstr "Nora prépare des réponses à vos e-mails à votre manière d'écrire."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:245
 msgid ""
 "Nora reads the new emails of this mailbox, sends each PDF attachment through"
@@ -2858,7 +2863,7 @@ msgstr ""
 "comptabilité. Les e-mails déjà traités sont mémorisés (ils ne sont jamais "
 "réimportés)."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:306
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:307
 msgid ""
 "Nora will forget what she learnt of your way of writing, and learn no more "
 "until you ask her to."
@@ -2866,7 +2871,7 @@ msgstr ""
 "Nora oubliera ce qu'elle a appris de votre manière d'écrire et n'apprendra "
 "plus rien tant que vous ne le lui demanderez pas."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:291
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:292
 msgid ""
 "Nora will prepare replies to your e-mails in your way of writing, learnt "
 "from your sent e-mails. She never sends anything: you choose, change and "
@@ -2876,7 +2881,7 @@ msgstr ""
 "de vos e-mails envoyés. Elle n'envoie jamais rien : c'est vous qui "
 "choisissez, modifiez et envoyez."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:699
 msgid ""
 "Nora's model did not answer (service busy). Please try again in a moment."
@@ -2888,7 +2893,7 @@ msgstr ""
 msgid "Not a template"
 msgstr "Ce n'est pas un modèle."
 
-#: frappe_webmail/webmail_api.py:3137 frappe_webmail/webmail_api.py:3155
+#: frappe_webmail/webmail_api.py:3217 frappe_webmail/webmail_api.py:3235
 msgid "Not found in trusted list"
 msgstr "Introuvable dans la liste de confiance"
 
@@ -2898,9 +2903,9 @@ msgstr "Introuvable dans la liste de confiance"
 msgid "Not in the Compact layout."
 msgstr "Non affiché dans la mise en page Compact."
 
-#: frappe_webmail/mailcraft_jmap.py:573 frappe_webmail/mailcraft_jmap.py:848
+#: frappe_webmail/mailcraft_jmap.py:637 frappe_webmail/mailcraft_jmap.py:912
 #: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:888
-#: frappe_webmail/webmail_api.py:2357 frappe_webmail/webmail_api.py:2425
+#: frappe_webmail/webmail_api.py:2436 frappe_webmail/webmail_api.py:2504
 msgid "Not permitted"
 msgstr ""
 
@@ -2930,34 +2935,34 @@ msgid "OAuth"
 msgstr "OAuth"
 
 #. Label of a Select field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:123
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:124
 msgid "OAuth Provider"
 msgstr "Fournisseur OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:108
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:110
 msgid "OAuth Provider is required for OAuth2 authentication"
 msgstr "Le fournisseur OAuth est requis pour l'authentification OAuth2"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:130
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:131
 msgid "OAuth Status"
 msgstr "Statut OAuth"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:219
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:228
 msgid "OAuth Tokens (Internal)"
 msgstr "Jetons OAuth (Interne)"
 
-#: frappe_webmail/webmail_api.py:335
+#: frappe_webmail/webmail_api.py:352
 msgid "OAuth authentication failed"
 msgstr "Échec de l'authentification OAuth"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:205
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:209
 #, python-brace-format
 msgid "OAuth credentials not configured for {0}"
 msgstr "Identifiants OAuth non configurés pour {0}"
 
-#: frappe_webmail/webmail_api.py:229
+#: frappe_webmail/webmail_api.py:246
 #, python-brace-format
 msgid ""
 "OAuth credentials not configured. Add webmail_oauth_{0} to site_config.json"
@@ -2965,20 +2970,20 @@ msgstr ""
 "Identifiants OAuth non configurés. Ajoutez webmail_oauth_{0} à "
 "site_config.json"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:261
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:262
 msgid "OAuth disconnected successfully."
 msgstr "OAuth déconnecté avec succès."
 
-#: frappe_webmail/webmail_api.py:272
+#: frappe_webmail/webmail_api.py:289
 #, python-brace-format
 msgid "OAuth error: {0}"
 msgstr "Erreur OAuth : {0}"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:192
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:196
 msgid "OAuth token expired. Please reconnect your account."
 msgstr "Jeton OAuth expiré. Veuillez reconnecter votre compte."
 
-#: frappe_webmail/webmail_api.py:383 frappe_webmail/webmail_api.py:611
+#: frappe_webmail/webmail_api.py:400 frappe_webmail/webmail_api.py:674
 msgid "OAuth token not available"
 msgstr "Jeton OAuth non disponible"
 
@@ -2986,12 +2991,12 @@ msgstr "Jeton OAuth non disponible"
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:108
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:109
 #, fuzzy
 msgid "OAuth2"
 msgstr "OAuth2"
 
-#: frappe_webmail/webmail_api.py:756
+#: frappe_webmail/webmail_api.py:829
 msgid "OAuth2 not connected. Please authorize your account first."
 msgstr "OAuth2 non connecté. Veuillez d'abord autoriser votre compte."
 
@@ -3011,7 +3016,7 @@ msgstr ""
 "Seuls les dossiers Éléments supprimés et Courrier indésirable peuvent être "
 "vidés."
 
-#: frappe_webmail/webmail_api.py:1842
+#: frappe_webmail/webmail_api.py:1921
 msgid "Only Trash and Spam folders can be emptied"
 msgstr "Seuls les dossiers Corbeille et Indésirables peuvent être vidés"
 
@@ -3027,15 +3032,15 @@ msgstr ""
 msgid "Only a PDF or a picture can be sent to the scanned documents."
 msgstr "Seul un PDF ou une image peut être envoyé aux scans de documents."
 
-#: frappe_webmail/mailcraft_jmap.py:1094
+#: frappe_webmail/mailcraft_jmap.py:1158
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1678
+#: frappe_webmail/mailcraft_jmap.py:1742
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:77
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:79
 msgid "Only an administrator can give a mailbox to someone else."
 msgstr ""
 "Seul un administrateur peut attribuer une boîte mail à quelqu'un d'autre."
@@ -3050,7 +3055,7 @@ msgstr "Seules les adresses https:// sont acceptées."
 msgid "Only its owner deletes a note."
 msgstr "Seul le propriétaire peut supprimer une note."
 
-#: frappe_webmail/webmail_api.py:665
+#: frappe_webmail/webmail_api.py:731
 msgid "Only the account owner can change the password"
 msgstr "Seul le propriétaire du compte peut modifier le mot de passe"
 
@@ -3060,13 +3065,13 @@ msgstr ""
 "Seuls les utilisateurs du bureau peuvent faire des choix pour la signature "
 "de la société."
 
-#: frappe_webmail/webmail_api.py:3524
+#: frappe_webmail/webmail_api.py:3614
 msgid "Only the owner of this mailbox can change its settings."
 msgstr ""
 "Seul le propriétaire de cette boîte mail peut en modifier les paramètres."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1033
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1027
 msgid "Open"
 msgstr ""
 
@@ -3096,7 +3101,7 @@ msgstr "Ouvrir dans {0}"
 msgid "Open it"
 msgstr "Ouvrir"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:925
 msgid ""
 "Open the editor first (New message or Reply) and write your draft — I will "
@@ -3105,7 +3110,7 @@ msgstr ""
 "Ouvrez d'abord l'éditeur (Nouveau message ou Répondre) et rédigez votre "
 "brouillon — je travaillerai sur le texte qui s'y trouve."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:868
 msgid ""
 "Open the message you want to answer first — I will draft the reply from it."
@@ -3125,7 +3130,7 @@ msgstr "Ouvrir le webmail"
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:485
 msgid "Orders"
 msgstr "Commandes"
@@ -3144,13 +3149,13 @@ msgstr "Autres boîtes mail"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'OAuth Provider' (Select) field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:124
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:125
 #, fuzzy
 msgid "Outlook"
 msgstr "Outlook"
 
 #. Label of a Link field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:67
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:68
 msgid "Owner"
 msgstr "Propriétaire"
 
@@ -3163,7 +3168,7 @@ msgstr "PDF"
 
 #. Option for the 'Authentication Type' (Select) field in DocType 'Webmail
 #. Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:108
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:109
 msgid "Password"
 msgstr "Mot de passe"
 
@@ -3242,7 +3247,7 @@ msgstr "Photo à gauche"
 msgid "Plain text version"
 msgstr "Version en texte brut"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:665
 msgid "Please enter a message before sending."
 msgstr "Veuillez saisir un message avant d'envoyer."
@@ -3255,7 +3260,7 @@ msgstr "Veuillez saisir un nom"
 msgid "Please enter an email address."
 msgstr "Veuillez entrer une adresse email."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:654
 msgid "Please enter at least one recipient."
 msgstr "Veuillez saisir au moins un destinataire."
@@ -3284,7 +3289,7 @@ msgstr "Veuillez d'abord enregistrer le document."
 msgid "Please select an OAuth provider."
 msgstr "Veuillez sélectionner un fournisseur OAuth."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:288
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:289
 msgid "Prepare ready replies"
 msgstr "Préparer des réponses prêtes"
 
@@ -3309,34 +3314,34 @@ msgstr "Aperçu en tant que"
 msgid "Processing..."
 msgstr "Traitement en cours..."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:788
 #: frontend/src/components/NoraBar.vue:14
 #: frontend/src/components/NoraBar.vue:17
 msgid "Proofread"
 msgstr "Corriger"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:435
 msgid "Proofread my draft"
 msgstr "Corrige mon brouillon"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:787
 msgid "Proofreading..."
 msgstr "Correction en cours…"
 
 #. Label of a Select field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:116
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:117
 msgid "Provider preset"
 msgstr "Préréglage du fournisseur"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:484
 msgid "Quotations"
 msgstr "Devis"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/ContactAutocomplete.vue:61
 msgid "Recent contacts"
 msgstr "Contacts récents"
@@ -3345,7 +3350,7 @@ msgstr "Contacts récents"
 msgid "Recent searches"
 msgstr "Recherches récentes"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:652
 msgid "Recipient required"
 msgstr "Destinataire requis"
@@ -3374,15 +3379,26 @@ msgid "Refresh"
 msgstr "Actualiser"
 
 #. Label of a Password field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:231
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:240
 msgid "Refresh Token"
 msgstr "Jeton de rafraîchissement"
+
+#. Description of the 'Verify the SMTP server's certificate' (Check) field in
+#. DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:207
+msgid ""
+"Refuse an SMTP server whose certificate is not valid for its address, so "
+"that nobody on the way can read the password or the messages sent."
+msgstr ""
+"Refuser un serveur SMTP dont le certificat n'est pas valide pour son "
+"adresse, afin que personne sur le trajet ne puisse lire le mot de passe ni "
+"les messages envoyés."
 
 #: frontend/src/components/AgentPanel.vue:273
 msgid "Reject"
 msgstr "Rejeter"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1162
 msgid "Rejected"
 msgstr "Refusée"
@@ -3462,7 +3478,7 @@ msgstr "ID du message de réponse"
 msgid "Reply To UID"
 msgstr "UID de réponse"
 
-#: frontend/src/components/EmailViewer.vue:731
+#: frontend/src/components/EmailViewer.vue:725
 msgid "Reply sent"
 msgstr "Réponse envoyée"
 
@@ -3483,7 +3499,7 @@ msgstr "Rédiger la réponse avec Nora"
 msgid "Report to"
 msgstr "Envoyer le rapport à"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/ContactAutocomplete.vue:39
 #: frontend/src/pages/Webmail.vue:81
 msgid "Results"
@@ -3514,7 +3530,7 @@ msgstr "Ligne {0} : l'adresse d'un lien social doit commencer par https://"
 msgid "Rules"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AutomationsPanel.vue:391
 msgid "Run failed"
 msgstr "Échec de l’exécution"
@@ -3524,31 +3540,31 @@ msgid "Run now"
 msgstr "Exécuter maintenant"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:182
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:183
 msgid "SMTP Host"
 msgstr "Serveur SMTP"
 
 #. Label of a Password field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:211
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:220
 msgid "SMTP Password"
 msgstr "Mot de passe SMTP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:105
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:107
 msgid "SMTP Password is required for Password authentication"
 msgstr ""
 "Le mot de passe SMTP est requis pour l'authentification par mot de passe"
 
 #. Label of a Int field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:189
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:190
 msgid "SMTP Port"
 msgstr "Port SMTP"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:177
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:178
 msgid "SMTP Settings"
 msgstr "Paramètres SMTP"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:215
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:216
 msgid "SMTP: Connected successfully"
 msgstr "SMTP : Connexion réussie"
 
@@ -3679,7 +3695,7 @@ msgstr "Rechercher dans tous les champs…"
 msgid "Search mail"
 msgstr "Rechercher dans le courrier"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AdvancedSearch.vue:93
 #: frontend/src/components/AdvancedSearch.vue:109
 #: frontend/src/components/AttachmentPicker.vue:224
@@ -3729,12 +3745,12 @@ msgid "Sender"
 msgstr "Expéditeur"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:83
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:84
 msgid "Sender Name"
 msgstr "Nom de l'expéditeur"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1204
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1198
 msgid "Sender added to the trusted list"
 msgstr "Expéditeur ajouté à la liste de confiance"
 
@@ -3746,7 +3762,7 @@ msgstr "Envoi..."
 msgid "Sending…"
 msgstr "Envoi en cours…"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1161
 msgid "Sent"
 msgstr "Envoyés"
@@ -3757,11 +3773,11 @@ msgid "Sent"
 msgstr "Envoyés"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:301
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:310
 msgid "Sent Folder"
 msgstr "Dossier Envoyés"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1232
 msgid "Sent by Nora"
 msgstr "Envoyé par Nora"
@@ -3800,7 +3816,7 @@ msgid "Share with"
 msgstr ""
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:88
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:89
 msgid "Shared Access"
 msgstr "Accès partagé"
 
@@ -3809,7 +3825,7 @@ msgid "Shared Drive"
 msgstr "Drive partagé"
 
 #. Label of a Table field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:94
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:95
 msgid "Shared With"
 msgstr "Partagé avec"
 
@@ -3835,11 +3851,11 @@ msgstr "Partagés avec moi"
 msgid "Shared with {0}"
 msgstr "Partagé avec {0}"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:329
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:330
 msgid "She has not learnt your way of writing yet."
 msgstr "Elle n'a pas encore appris votre manière d'écrire."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:322
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:323
 msgid "She is learning your way of writing."
 msgstr "Elle apprend votre manière d'écrire."
 
@@ -3875,12 +3891,12 @@ msgstr ""
 " est cochée ci-dessus."
 
 #. Label of a Check field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:274
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:283
 msgid "Sidebar Collapsed"
 msgstr "Colonne des dossiers repliée"
 
 #. Label of a Int field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:260
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:269
 msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
@@ -3939,11 +3955,11 @@ msgstr "Liens vers les réseaux sociaux"
 msgid "Social links"
 msgstr "Liens sociaux"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:923
-#: frontend/src/components/EmailViewer.vue:943
-#: frontend/src/components/EmailViewer.vue:1209
-#: frontend/src/components/EmailViewer.vue:1235
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:917
+#: frontend/src/components/EmailViewer.vue:937
+#: frontend/src/components/EmailViewer.vue:1203
+#: frontend/src/components/EmailViewer.vue:1229
 msgid "Something went wrong"
 msgstr ""
 
@@ -3958,13 +3974,13 @@ msgid "Spam"
 msgstr "Indésirables"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:319
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:328
 msgid "Spam Folder"
 msgstr "Dossier Indésirables"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/webmail_api.py:3920
+#: frappe_webmail/webmail_api.py:4010
 #, fuzzy
 msgid "Standard"
 msgstr "Standard"
@@ -3981,7 +3997,7 @@ msgstr "Ajouter le suivi"
 msgid "Starred"
 msgstr "Suivis"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:869
 msgid "Starting style analysis..."
 msgstr "Démarrage de l’analyse du style…"
@@ -3991,7 +4007,7 @@ msgstr "Démarrage de l’analyse du style…"
 msgid "Statistics"
 msgstr "Statistiques"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:285
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:286
 msgid "Stop ready replies"
 msgstr "Arrêter les réponses prêtes"
 
@@ -4014,18 +4030,18 @@ msgstr "Objet contient"
 msgid "Subject contains…"
 msgstr "Sujet contient…"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:626
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:627
 #: frontend/src/components/EmailComposer.vue:72
 #: frontend/src/components/EmailComposer.vue:487
 #: frontend/src/components/FilterManager.vue:43
 msgid "Subject:"
 msgstr "Objet :"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:197
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:198
 msgid "Success"
 msgstr "Succès"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:442
 msgid "Summarise this email"
 msgstr "Résumer ce mail"
@@ -4060,7 +4076,7 @@ msgstr "Synk n’est pas accessible pour vous."
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:83
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:368
 #: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:87
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:355
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:364
 msgid "System Manager"
 msgstr "Gestionnaire système"
 
@@ -4109,7 +4125,7 @@ msgstr "Contenu texte"
 msgid "Text only"
 msgstr "Texte seul"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:978
 #: frontend/src/components/AgentPanel.vue:1107
 #: frontend/src/components/AgentPanel.vue:1127
@@ -4131,7 +4147,7 @@ msgstr "Le Drive est injoignable. Réessayez dans un instant."
 #: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:120
 #: frappe_webmail/attachments.py:131 frappe_webmail/drive.py:39
 #: frappe_webmail/neomail_attachments.py:519
-#: frappe_webmail/webmail_api.py:3753 frappe_webmail/webmail_api.py:3764
+#: frappe_webmail/webmail_api.py:3843 frappe_webmail/webmail_api.py:3854
 msgid "The Drive is not installed on this instance"
 msgstr "Le Drive n'est pas installé sur cette instance"
 
@@ -4179,7 +4195,7 @@ msgstr "L'adresse de l'appel à l'action doit commencer par https://"
 msgid "The attachment could not be sent to the scanned documents."
 msgstr "La pièce jointe n’a pas pu être envoyée aux scans de documents."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1051
 msgid "The automation could not be created — see the message above."
 msgstr "L'automatisation n'a pas pu être créée — voir le message ci-dessus."
@@ -4204,21 +4220,21 @@ msgid "The base font size must be between {0} and {1} pixels."
 msgstr ""
 "La taille de la police de base doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1780
+#: frappe_webmail/mailcraft_jmap.py:1844
 msgid "The connection to the mail server ended before the message was sent."
 msgstr ""
 "La connexion au serveur de messagerie s'est interrompue avant l'envoi du "
 "message."
 
-#: frappe_webmail/mailcraft_jmap.py:1722
+#: frappe_webmail/mailcraft_jmap.py:1786
 msgid ""
 "The connection to the mail server failed while the message was on its way."
 msgstr ""
 "La connexion au serveur de messagerie a échoué pendant que le message était "
 "en cours d'envoi."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:519
-#: frontend/src/components/EmailViewer.vue:1163
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:520
+#: frontend/src/components/EmailViewer.vue:1157
 msgid "The contact could not be created"
 msgstr "Le contact n'a pas pu être créé"
 
@@ -4245,7 +4261,7 @@ msgstr ""
 "Les dates de l’ERP sont en lecture seule ici : modifiez-les dans le document"
 " d’origine."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:965
 msgid "The draft is already in that language."
 msgstr "Le brouillon est déjà dans cette langue."
@@ -4289,28 +4305,28 @@ msgstr "Le dossier n’a pas pu être créé."
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1776
+#: frappe_webmail/mailcraft_jmap.py:1840
 msgid "The mail server can't take the recipients just now."
 msgstr ""
 "Le serveur de messagerie ne peut pas accepter les destinataires pour le "
 "moment."
 
-#: frappe_webmail/mailcraft_jmap.py:587 frappe_webmail/mailcraft_jmap.py:747
-#: frappe_webmail/mailcraft_jmap.py:852
+#: frappe_webmail/mailcraft_jmap.py:651 frappe_webmail/mailcraft_jmap.py:811
+#: frappe_webmail/mailcraft_jmap.py:916
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1751
+#: frappe_webmail/mailcraft_jmap.py:1815
 msgid "The mail server could not be reached or signed in to."
 msgstr ""
 "Le serveur de messagerie est injoignable ou l'authentification a échoué."
 
 #: frappe_webmail/tests/test_imap_timeouts.py:470
-#: frappe_webmail/utils/imap_client.py:88
+#: frappe_webmail/utils/imap_client.py:89
 msgid "The mail server is not answering quickly enough."
 msgstr "Le serveur de messagerie ne répond pas assez vite."
 
-#: frappe_webmail/mailcraft_jmap.py:1773
+#: frappe_webmail/mailcraft_jmap.py:1837
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 
@@ -4322,27 +4338,27 @@ msgstr "La boîte entière"
 msgid "The message could not be shared."
 msgstr "Le message n’a pas pu être partagé."
 
-#: frappe_webmail/webmail_api.py:1147
+#: frappe_webmail/webmail_api.py:1225
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1686
+#: frappe_webmail/mailcraft_jmap.py:1750
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1536
+#: frappe_webmail/mailcraft_jmap.py:1600
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1684
+#: frappe_webmail/mailcraft_jmap.py:1748
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1560
+#: frappe_webmail/mailcraft_jmap.py:1624
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:493
 msgid "The most recent"
 msgstr "Les plus récents"
@@ -4379,7 +4395,7 @@ msgstr "L'aperçu n'a pas pu être affiché."
 msgid "The scanned document could not be created"
 msgstr "Le scan de document n'a pas pu être créé"
 
-#: frappe_webmail/webmail_api.py:668
+#: frappe_webmail/webmail_api.py:734
 msgid ""
 "This account uses OAuth2. Please reconnect it instead of setting a password."
 msgstr ""
@@ -4420,7 +4436,7 @@ msgstr "Ce fichier n'existe plus dans le Drive"
 msgid "This folder no longer exists in the Drive"
 msgstr "Ce dossier n'existe plus dans le Drive"
 
-#: frappe_webmail/mailcraft_jmap.py:1661 frappe_webmail/mailcraft_jmap.py:1665
+#: frappe_webmail/mailcraft_jmap.py:1725 frappe_webmail/mailcraft_jmap.py:1729
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -4430,7 +4446,7 @@ msgstr "Ce message"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:181
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:184
-#: frappe_webmail/mailcraft_jmap.py:1265 frappe_webmail/neomail_share.py:191
+#: frappe_webmail/mailcraft_jmap.py:1329 frappe_webmail/neomail_share.py:191
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
 
@@ -4447,7 +4463,7 @@ msgstr ""
 "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec "
 "« Enregistrer sous »."
 
-#: frappe_webmail/mailcraft_jmap.py:1269
+#: frappe_webmail/mailcraft_jmap.py:1333
 #: frappe_webmail/neomail_attachments.py:461
 #: frappe_webmail/neomail_share.py:194
 msgid ""
@@ -4473,12 +4489,12 @@ msgid "This note is changed in Neoffice's Notes: open it there."
 msgstr ""
 "Cette note a été modifiée dans Notes de Neoffice : veuillez l'ouvrir là-bas."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:43
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:52
 msgid "This signature has nothing a recipient could be shown."
 msgstr "Cette signature ne contient rien qu'un destinataire puisse voir."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:40
-#: frappe_webmail/webmail_api.py:2360
+#: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:49
+#: frappe_webmail/webmail_api.py:2439
 msgid "This signature is too large."
 msgstr "Cette signature est trop volumineuse."
 
@@ -4494,7 +4510,7 @@ msgstr ""
 "Pour cette personne, ce modèle ne contient rien : tout ce qu'il affiche est "
 "vide ou désactivé."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:492
 msgid "Those of the recipients first, then the most recent"
 msgstr "Ceux des destinataires d'abord, puis les plus récents"
@@ -4521,7 +4537,7 @@ msgstr "À"
 msgid "To Contains"
 msgstr "À contient"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:636
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:637
 #: frontend/src/components/AgentPanel.vue:1159
 msgid "To approve"
 msgstr "À approuver"
@@ -4543,7 +4559,7 @@ msgctxt "fr"
 msgid "To-dos and tasks"
 msgstr "À faire et tâches"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:627
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:628
 #: frontend/src/components/EmailComposer.vue:44
 #: frontend/src/components/EmailComposer.vue:488
 #: frontend/src/components/FilterManager.vue:40
@@ -4560,16 +4576,16 @@ msgid "Toggle star"
 msgstr "Étoile (activer/désactiver)"
 
 #. Label of a Datetime field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:237
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:246
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1681
+#: frappe_webmail/mailcraft_jmap.py:1745
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr ""
 "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:814
+#: frappe_webmail/mailcraft_jmap.py:878
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
@@ -4579,7 +4595,7 @@ msgstr "Trop de messages en attente de classement."
 msgid "Translate"
 msgstr "Traduire"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:437
 msgid "Translate my draft into English"
 msgstr "Traduis mon brouillon en anglais"
@@ -4589,13 +4605,13 @@ msgstr "Traduis mon brouillon en anglais"
 msgid "Translated by Nora into {0}"
 msgstr "Traduit par Nora · {0}"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:813
 #, python-brace-format
 msgid "Translating to {0}..."
 msgstr "Traduction vers {0} en cours…"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:944
 #: frontend/src/components/EmailComposer.vue:814
 msgid "Translation"
@@ -4607,7 +4623,7 @@ msgid "Trash"
 msgstr "Corbeille"
 
 #. Label of a Data field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:313
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:322
 msgid "Trash Folder"
 msgstr "Dossier Corbeille"
 
@@ -4626,11 +4642,11 @@ msgstr "Source d'e-mail fiable"
 
 #. Label of a Section Break field in DocType 'Webmail Account'
 #. Label of a Table field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:332
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:341
 msgid "Trusted Sources"
 msgstr "Sources fiables"
 
-#: frappe_webmail/webmail_api.py:3101
+#: frappe_webmail/webmail_api.py:3181
 msgid ""
 "Trusted sources feature is not available. Please update the Webmail Account "
 "DocType."
@@ -4655,7 +4671,7 @@ msgid "Type words to search subject, body and sender."
 msgstr "Tapez des mots pour chercher dans le sujet, le corps et l'expéditeur."
 
 #. Label of a Section Break field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:254
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:263
 msgid "UI Preferences"
 msgstr "Préférences de l'interface"
 
@@ -4676,8 +4692,8 @@ msgstr "Impossible de déterminer quel compte mettre à jour."
 msgid "Underline"
 msgstr "Souligné"
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:200
-#: frappe_webmail/webmail_api.py:223
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.py:204
+#: frappe_webmail/webmail_api.py:240
 msgid "Unknown OAuth provider"
 msgstr "Fournisseur OAuth inconnu"
 
@@ -4691,12 +4707,12 @@ msgid "Unread"
 msgstr "Non lus"
 
 #. Label of a Check field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:161
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:162
 msgid "Use SSL"
 msgstr "Utiliser SSL"
 
 #. Label of a Check field in DocType 'Webmail Account'
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:201
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:202
 msgid "Use STARTTLS"
 msgstr "Utiliser STARTTLS"
 
@@ -4728,13 +4744,18 @@ msgstr "Utilisateur {0} introuvable"
 msgid "Verdana"
 msgstr "Verdana"
 
+#. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:210
+msgid "Verify the SMTP server's certificate"
+msgstr "Vérifier le certificat du serveur SMTP"
+
 #: frappe_webmail/frappe_webmail/page/webmail/webmail.js:105
 #: frappe_webmail/frappe_webmail/page/webmail/webmail.js:176
 msgid "Webmail"
 msgstr "Messagerie"
 
 #. Name of a DocType
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:347
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:356
 msgid "Webmail Account"
 msgstr "Compte Webmail"
 
@@ -4760,7 +4781,7 @@ msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 msgid "Website"
 msgstr ""
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:1149
 #: frontend/src/components/AutomationsPanel.vue:301
 #, python-brace-format
@@ -4785,7 +4806,7 @@ msgstr ""
 "visites : ses règles et catégories, et, pour chaque boîte, ses expéditeurs "
 "de confiance et ses expéditeurs bloqués."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:444
 msgid "What should I reply?"
 msgstr "Que répondre ?"
@@ -4823,7 +4844,7 @@ msgstr ""
 "Destination d'un clic sur la bannière : une adresse https://. Sans adresse, "
 "la bannière n'est qu'une image."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:449
 msgid "Which automations are active?"
 msgstr "Quelles automatisations sont actives ?"
@@ -4842,12 +4863,12 @@ msgstr "Fenêtre"
 msgid "With attachment"
 msgstr "Avec pièce jointe"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/AgentPanel.vue:443
 msgid "Write a reply"
 msgstr "Rédige une réponse"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/EmailComposer.vue:379
 msgid "Write your message..."
 msgstr "Écrivez votre message..."
@@ -4900,7 +4921,7 @@ msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 #: frontend/src/components/EmailComposer.vue:674
 msgid "You have not entered a subject. Do you want to send anyway?"
 msgstr "Vous n'avez pas saisi d'objet. Voulez-vous envoyer quand même ?"
@@ -4980,7 +5001,7 @@ msgstr ""
 msgid "Your rights do not allow it."
 msgstr "Vos droits ne le permettent pas."
 
-#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:326
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:327
 #, python-brace-format
 msgid "Your way of writing was learnt on {0} from {1}."
 msgstr "Votre manière d'écrire a été apprise le {0} à partir de {1}."
@@ -5011,7 +5032,7 @@ msgstr "n'importe lequel"
 msgid "delete"
 msgstr "supprimer"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 msgid "delivered"
 msgstr "livré"
 
@@ -5024,22 +5045,22 @@ msgstr "désactivé"
 msgid "emails selected"
 msgstr "e-mails sélectionnés"
 
-#: frappe_webmail/webmail_api.py:640 frappe_webmail/webmail_api.py:702
-#: frappe_webmail/webmail_api.py:936 frappe_webmail/webmail_api.py:962
-#: frappe_webmail/webmail_api.py:995 frappe_webmail/webmail_api.py:1080
-#: frappe_webmail/webmail_api.py:1145 frappe_webmail/webmail_api.py:1190
-#: frappe_webmail/webmail_api.py:1300 frappe_webmail/webmail_api.py:1590
-#: frappe_webmail/webmail_api.py:1724 frappe_webmail/webmail_api.py:1747
-#: frappe_webmail/webmail_api.py:1763 frappe_webmail/webmail_api.py:1781
-#: frappe_webmail/webmail_api.py:1811 frappe_webmail/webmail_api.py:1832
-#: frappe_webmail/webmail_api.py:1862 frappe_webmail/webmail_api.py:1893
-#: frappe_webmail/webmail_api.py:1972 frappe_webmail/webmail_api.py:2073
-#: frappe_webmail/webmail_api.py:2624 frappe_webmail/webmail_api.py:2918
-#: frappe_webmail/webmail_api.py:3020
+#: frappe_webmail/webmail_api.py:706 frappe_webmail/webmail_api.py:773
+#: frappe_webmail/webmail_api.py:1014 frappe_webmail/webmail_api.py:1040
+#: frappe_webmail/webmail_api.py:1073 frappe_webmail/webmail_api.py:1158
+#: frappe_webmail/webmail_api.py:1223 frappe_webmail/webmail_api.py:1268
+#: frappe_webmail/webmail_api.py:1378 frappe_webmail/webmail_api.py:1669
+#: frappe_webmail/webmail_api.py:1803 frappe_webmail/webmail_api.py:1826
+#: frappe_webmail/webmail_api.py:1842 frappe_webmail/webmail_api.py:1860
+#: frappe_webmail/webmail_api.py:1890 frappe_webmail/webmail_api.py:1911
+#: frappe_webmail/webmail_api.py:1941 frappe_webmail/webmail_api.py:1972
+#: frappe_webmail/webmail_api.py:2051 frappe_webmail/webmail_api.py:2152
+#: frappe_webmail/webmail_api.py:2703 frappe_webmail/webmail_api.py:2998
+#: frappe_webmail/webmail_api.py:3100
 msgid "imapclient package is not installed"
 msgstr "Le paquet imapclient n'est pas installé"
 
-#: frappe_webmail/utils/imap_client.py:280
+#: frappe_webmail/utils/imap_client.py:281
 msgid "imapclient package is not installed. Run: pip install imapclient"
 msgstr ""
 "Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
@@ -5109,7 +5130,7 @@ msgstr "déplacer"
 msgid "paused"
 msgstr "en pause"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:630
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:631
 msgid "see the Nora logs"
 msgstr "voir les journaux Nora"
 
@@ -5153,7 +5174,7 @@ msgstr "le serveur est sollicité trop souvent en ce moment ({0})"
 msgid "the server won't hand it out ({0})"
 msgstr "le serveur refuse de la transmettre ({0})"
 
-#: frappe_webmail/webmail_api.py:901 frappe_webmail/webmail_api.py:905
+#: frappe_webmail/webmail_api.py:975
 msgid "this account"
 msgstr "ce compte"
 
@@ -5216,13 +5237,13 @@ msgstr "{0} e-mails déplacés"
 msgid "{0} emails updated"
 msgstr "{0} e-mails mis à jour"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:596
 #, python-brace-format
 msgid "{0} exceeds 25 MB limit"
 msgstr "{0} dépasse la limite de 25 Mo"
 
-#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:615
+#: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:616
 #: frontend/src/components/AttachmentPicker.vue:465
 #, python-brace-format
 msgid "{0} files selected"
@@ -5233,7 +5254,7 @@ msgstr "{0} fichiers sélectionnés"
 msgid "{0} filter(s)"
 msgstr "{0} filtre(s)"
 
-#: frontend/src/components/EmailViewer.vue:546
+#: frontend/src/components/EmailViewer.vue:548
 #, python-brace-format
 msgid "{0} invoices this year"
 msgstr "{0} factures cette année"
@@ -5255,12 +5276,12 @@ msgstr "{0} n’est pas installé sur ce site."
 msgid "{0} new messages"
 msgstr "{0} nouveaux messages"
 
-#: frontend/src/components/EmailViewer.vue:526
+#: frontend/src/components/EmailViewer.vue:527
 #, python-brace-format
 msgid "{0} older messages in this conversation"
 msgstr "{0} messages plus anciens dans cette conversation"
 
-#: frontend/src/components/EmailViewer.vue:530
+#: frontend/src/components/EmailViewer.vue:531
 #, python-brace-format
 msgid "{0} other messages in this conversation"
 msgstr "{0} autres messages dans cette conversation"
@@ -5284,26 +5305,26 @@ msgstr "{0} résultat(s) sur {1}"
 msgid "{0} unread"
 msgstr "{0} non lus"
 
-#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2748
+#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2827
 #, python-brace-format
 msgid "{0} {1} not found"
 msgstr ""
 
-#: frappe_webmail/webmail_api.py:832
+#: frappe_webmail/webmail_api.py:909
 #, python-brace-format
 msgid "{0}: Authentication failed. Check your email address and password."
 msgstr ""
 "{0} : Échec d'authentification. Vérifiez votre adresse email et mot de "
 "passe."
 
-#: frappe_webmail/webmail_api.py:827
+#: frappe_webmail/webmail_api.py:904
 #, python-brace-format
 msgid "{0}: Cannot resolve server address '{1}'. Check the server hostname."
 msgstr ""
 "{0} : Impossible de résoudre l'adresse du serveur '{1}'. Vérifiez le nom "
 "d'hôte."
 
-#: frappe_webmail/webmail_api.py:851
+#: frappe_webmail/webmail_api.py:928
 #, python-brace-format
 msgid ""
 "{0}: Connection closed unexpectedly. Check SSL settings - you may need SSL "
@@ -5311,7 +5332,7 @@ msgid ""
 msgstr ""
 "{0} : Connexion fermée de manière inattendue. Vérifiez les paramètres SSL."
 
-#: frappe_webmail/webmail_api.py:813
+#: frappe_webmail/webmail_api.py:890
 #, python-brace-format
 msgid ""
 "{0}: Connection refused to {1}:{2}. Check that the server address and port "
@@ -5319,7 +5340,7 @@ msgid ""
 msgstr ""
 "{0} : Connexion refusée à {1}:{2}. Vérifiez l'adresse du serveur et le port."
 
-#: frappe_webmail/webmail_api.py:818
+#: frappe_webmail/webmail_api.py:895
 #, python-brace-format
 msgid ""
 "{0}: Connection timeout. The server is not responding. Check your network "
@@ -5328,20 +5349,20 @@ msgstr ""
 "{0} : Délai de connexion dépassé. Le serveur ne répond pas. Vérifiez votre "
 "réseau."
 
-#: frappe_webmail/webmail_api.py:847
+#: frappe_webmail/webmail_api.py:924
 #, python-brace-format
 msgid "{0}: Connection was reset by the server. Check SSL/TLS settings."
 msgstr ""
 "{0} : La connexion a été réinitialisée par le serveur. Vérifiez les "
 "paramètres SSL/TLS."
 
-#: frappe_webmail/webmail_api.py:841
+#: frappe_webmail/webmail_api.py:918
 #, python-brace-format
 msgid "{0}: SSL/TLS error. This server may require SSL. Try enabling SSL."
 msgstr ""
 "{0} : Erreur SSL/TLS. Ce serveur peut nécessiter SSL. Essayez d'activer SSL."
 
-#: frappe_webmail/webmail_api.py:837
+#: frappe_webmail/webmail_api.py:914
 #, python-brace-format
 msgid ""
 "{0}: SSL/TLS error. Try disabling SSL or check the server's SSL "
@@ -5350,12 +5371,12 @@ msgstr ""
 "{0} : Erreur SSL/TLS. Essayez de désactiver SSL ou vérifiez la configuration"
 " SSL du serveur."
 
-#: frappe_webmail/webmail_api.py:844
+#: frappe_webmail/webmail_api.py:921
 #, python-brace-format
 msgid "{0}: STARTTLS error. Try toggling the STARTTLS option."
 msgstr "{0} : Erreur STARTTLS. Essayez de changer l'option STARTTLS."
 
-#: frappe_webmail/webmail_api.py:855
+#: frappe_webmail/webmail_api.py:932
 #, python-brace-format
 msgid "{0}: {1}"
 msgstr "{0} : {1}"
