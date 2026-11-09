@@ -1190,6 +1190,20 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, on
 		return {"emails": emails, "total": total, "has_more": offset + limit < total}
 
 
+def _iso_with_zone(value):
+	"""A message date as ISO text that says its zone (the same rule as mailcraft_jmap.utc_date).
+
+	imapclient hands an ENVELOPE date over naive, in the local time of this process (the fleet runs in UTC), and
+	a browser or a phone reads a zone-less ISO text as ITS OWN local time: a message received at 10:34 in
+	Switzerland in summer showed 08:34. The zone of the process is said, so every client reads the same moment.
+	"""
+	if not value:
+		return None
+	if value.tzinfo is None:
+		value = value.astimezone()
+	return value.isoformat()
+
+
 def _summary(uid, msg_data, previews, folder=None):
 	"""A message as a list shows it (get_emails, get_conversation): who, what, when, its flags, its first words."""
 	env = msg_data[b"ENVELOPE"]
@@ -1200,7 +1214,7 @@ def _summary(uid, msg_data, previews, folder=None):
 		"from_email": format_address(env.from_[0]) if env.from_ else "",
 		"from_name": (decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""),
 		"to": format_address(env.to[0]) if env.to else "",
-		"date": env.date.isoformat() if env.date else None,
+		"date": _iso_with_zone(env.date),
 		"seen": b"\\Seen" in flags,
 		"flagged": b"\\Flagged" in flags,
 		"answered": b"\\Answered" in flags,
@@ -1355,7 +1369,7 @@ def get_email_content(account_name, uid, folder="INBOX", mark_read=True):
 			# Who « Reply » and « Reply all » write to, the same rule for both screens (replies.reply_recipients)
 			"reply": reply_recipients(account.email, from_email, reply_to, to, cc),
 			"reply_all": reply_recipients(account.email, from_email, reply_to, to, cc, reply_all=True),
-			"date": env.date.isoformat() if env.date else None,
+			"date": _iso_with_zone(env.date),
 			"html": html_content,
 			"text": text_content,
 			"attachments": attachments,
@@ -2265,7 +2279,7 @@ def search_emails(
 						decode_mime_header(env.from_[0].name) if env.from_ and env.from_[0].name else ""
 					),
 					"to": format_address(env.to[0]) if env.to else "",
-					"date": env.date.isoformat() if env.date else None,
+					"date": _iso_with_zone(env.date),
 					"seen": b"\\Seen" in flags,
 					"flagged": b"\\Flagged" in flags,
 					"answered": b"\\Answered" in flags,
