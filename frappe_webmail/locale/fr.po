@@ -5424,3 +5424,66 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#. Label of a Data field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:184
+msgid "Address for Everyone"
+msgstr "Adresse pour tout le monde"
+
+#. Description of the 'Signature Logo' (Attach Image) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:268
+msgid "In place of the company's logo: a PNG, JPEG or GIF among the public files. Mail clients do not show a vector logo, and dark letters on a transparent picture disappear when the reader's mail is dark: a logo on a light background stays readable."
+msgstr "À la place du logo de la société : une image PNG, JPEG ou GIF parmi les fichiers publics. Les clients de messagerie n'affichent pas de logo vectoriel, et les lettres sombres sur une image transparente disparaissent lorsque la messagerie du destinataire est en mode sombre : un logo sur fond clair reste lisible."
+
+#. Description of the 'SMTP Password' (Password) field in DocType 'Webmail
+#. Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:221
+msgid "Left empty: the IMAP password. The same address signs in to both servers at most providers."
+msgstr "Laissé vide : le mot de passe IMAP. La même adresse permet de se connecter aux deux serveurs chez la plupart des fournisseurs."
+
+#. Description of the 'Font' (Select) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:242
+msgid "Mail clients load no font of the web: Karla shows where the reader has it, Helvetica or Arial elsewhere."
+msgstr "Les clients de messagerie ne chargent aucune police du web : Karla s'affiche là où le destinataire l'a installée, Helvetica ou Arial ailleurs."
+
+#. Description of the 'Address for Everyone' (Data) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:181
+msgid "Shown in everyone's signature in place of their own address: the company's general address, for example. Empty: each person's own."
+msgstr "Affichée dans la signature de tout le monde à la place de sa propre adresse : l'adresse générale de la société, par exemple. Vide : celle de chaque personne."
+
+#. Label of a Attach Image field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:271
+msgid "Signature Logo"
+msgstr "Logo de signature"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:150
+#, python-brace-format
+msgid "The address for everyone must be an e-mail address, for example {0}."
+msgstr "L'adresse pour tout le monde doit être une adresse e-mail, par exemple {0}."
+
+#. Description of the 'Email' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:174
+msgid "The address of the mailbox the person writes from, unless the template gives one for everyone below."
+msgstr "L'adresse de la boîte de messagerie depuis laquelle la personne écrit, sauf si le modèle en donne une pour tout le monde ci-dessous."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:171
+msgid "The signature logo must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
+msgstr "Le logo de signature doit être une image PNG, JPEG ou GIF parmi les fichiers publics de cette instance (et non privés) : toutes les personnes qui écrivent avec cette signature l'affichent."
+
+# no opinion on purpose: a provider's name, the same in every language
+#. Option for the 'Provider preset' (Select) field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:118
+#, fuzzy
+msgid "EmailArray"
+msgstr "EmailArray"
+
+# no opinion on purpose: a typeface's name, the same in every language
+#. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:246
+#, fuzzy
+msgid "Karla"
+msgstr "Karla"
