@@ -17,9 +17,11 @@ from frappe_webmail.signatures import (
 	banner_src,
 	clean_color,
 	https_url,
+	logo_src,
+	mail_link,
 )
 
-# The pictures a banner may be: the ones every mail client shows, and NeoMail keeps (www/neomail.py)
+# The pictures a banner or the signature's own logo may be: the ones every mail client shows, and NeoMail keeps (www/neomail.py)
 BANNER_TYPES = ("image/png", "image/jpeg", "image/gif")
 
 
@@ -44,14 +46,16 @@ class EmailSignatureTemplate(Document):
 		banner_url: DF.Data | None
 		banner_width: DF.Int
 		company: DF.Link | None
+		contact_email: DF.Data | None
 		cta_label: DF.Data | None
 		cta_url: DF.Data | None
 		department: DF.Link | None
 		disclaimer: DF.SmallText | None
 		enabled: DF.Check
-		font: DF.Literal["Arial", "Helvetica", "Verdana", "Georgia", "Tahoma", "Trebuchet MS"]
+		font: DF.Literal["Arial", "Helvetica", "Verdana", "Georgia", "Tahoma", "Trebuchet MS", "Karla"]
 		font_size: DF.Int
 		layout: DF.Literal["Text only", "Logo left", "Logo above", "Compact", "Photo left"]
+		logo: DF.AttachImage | None
 		logo_width: DF.Int
 		preview_user: DF.Link | None
 		show_company_address: DF.Check
@@ -75,6 +79,8 @@ class EmailSignatureTemplate(Document):
 		self.validate_scope()
 		self.validate_look()
 		self.validate_links()
+		self.validate_contact_email()
+		self.validate_logo()
 		self.validate_banner()
 		# Whom the preview was written for is the form's business, not the template's: kept, it would link the template
 		# to that user (who could then not be deleted).
@@ -135,6 +141,36 @@ class EmailSignatureTemplate(Document):
 			if not url:
 				frappe.throw(_("The address of the call to action must start with https://"))
 			self.cta_url = url
+
+	def validate_contact_email(self):
+		"""The address the template gives everyone, when it gives one, is an e-mail address."""
+		self.contact_email = (self.contact_email or "").strip() or None
+		if self.contact_email and not mail_link(self.contact_email):
+			frappe.throw(
+				_("The address for everyone must be an e-mail address, for example {0}.").format(
+					"hello@example.com"
+				)
+			)
+
+	def validate_logo(self):
+		"""The signature's own logo is, as the banner, a public picture of the instance's files (everyone who writes with
+		the signature shows it) of a kind every mail client shows: never a vector file, which most of them leave out."""
+		import mimetypes
+
+		self.logo = (self.logo or "").strip() or None
+		if not self.logo:
+			return
+		src = logo_src(self)
+		if (
+			not src
+			or mimetypes.guess_type(src.split("?", 1)[0])[0] not in BANNER_TYPES
+			or not _a_picture(src)
+		):
+			frappe.throw(
+				_(
+					"The signature logo must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
+				)
+			)
 
 	def validate_banner(self):
 		"""A banner is a public picture of the instance's files (every person who writes with the signature shows it,

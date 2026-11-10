@@ -35,6 +35,15 @@ frappe.ui.form.on("Webmail Account", {
 				smtp_ssl: 0,
 				smtp_starttls: 1,
 			},
+			EmailArray: {
+				imap_host: "imap.emailarray.com",
+				imap_port: 993,
+				imap_ssl: 1,
+				smtp_host: "smtp.emailarray.com",
+				smtp_port: 465,
+				smtp_ssl: 1,
+				smtp_starttls: 0,
+			},
 		};
 		const settings = presets[frm.doc.provider_preset];
 		if (settings) {
@@ -280,33 +289,36 @@ function show_nora(frm) {
 		.then((r) => {
 			const style = r && r.message;
 			if (!style || !style.success) return;
-			frm.dashboard.set_headline(nora_headline(style), style.ready_replies ? "green" : "blue");
+			frm.dashboard.set_headline(
+				nora_headline(style),
+				style.ready_replies ? "green" : "blue"
+			);
 			// Beside « Test Connection », not in a group: the theme shows a form's own buttons under its title and no group.
 			if (style.ready_replies) {
 				frm.add_custom_button(__("Stop ready replies"), () => nora_style(frm, "disable"));
 			} else {
-				frm.add_custom_button(
-					__("Prepare ready replies"),
-					() =>
-						frappe.confirm(
-							__(
-								"Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
-							),
-							() => nora_style(frm, "enable")
-						)
+				frm.add_custom_button(__("Prepare ready replies"), () =>
+					frappe.confirm(
+						__(
+							"Nora will prepare replies to your e-mails in your way of writing, learnt from your sent e-mails. She never sends anything: you choose, change and send."
+						),
+						() => nora_style(frm, "enable")
+					)
 				);
 			}
 			if (style.own_mailbox) {
-				frm.add_custom_button(__("Learn my style again"), () => nora_style(frm, "relearn"));
+				frm.add_custom_button(__("Learn my style again"), () =>
+					nora_style(frm, "relearn")
+				);
 			}
 			if (style.exists && (style.learnt_on || (style.points || []).length)) {
-				frm.add_custom_button(
-					__("Forget my style"),
-					() =>
-						frappe.confirm(
-							__("Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."),
-							() => nora_style(frm, "forget")
-						)
+				frm.add_custom_button(__("Forget my style"), () =>
+					frappe.confirm(
+						__(
+							"Nora will forget what she learnt of your way of writing, and learn no more until you ask her to."
+						),
+						() => nora_style(frm, "forget")
+					)
 				);
 			}
 		})

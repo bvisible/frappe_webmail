@@ -239,6 +239,27 @@ class TestTheInstancePicturesGoAsParts(TestWebmailAPIBase):
 		with patch("frappe_webmail.signatures.company_of_user", side_effect=RuntimeError("boom")):
 			self.assertEqual(inline_images.sender_logo(), "", "never in the way of a message")
 
+	def test_the_sender_s_logo_is_the_template_s_own_when_it_has_one(self):
+		"""A template with a logo of its own (a picture made for mail) draws it in place of the company's: that is the
+		logo the message carries and sizes, not the company's."""
+		own = frappe._dict(logo="/files/inline-logo-template.png", logo_width=180)
+		with (
+			patch("frappe_webmail.signatures.template_for", return_value=own),
+			patch("frappe_webmail.signatures.company_of_user", side_effect=AssertionError("not asked")),
+		):
+			self.assertEqual(inline_images.sender_logo(), "/files/inline-logo-template.png")
+			self.assertEqual(
+				inline_images.logo_sized('<p>Camille</p><img src="/files/inline-logo-template.png">'),
+				'<p>Camille</p><img width="180" src="/files/inline-logo-template.png">',
+			)
+		# A template without one, or with one that is no public file: the company's (none here)
+		for template in (frappe._dict(logo=None), frappe._dict(logo="/private/files/x.png"), None):
+			with (
+				patch("frappe_webmail.signatures.template_for", return_value=template),
+				patch("frappe_webmail.signatures.company_of_user", return_value=None),
+			):
+				self.assertEqual(inline_images.sender_logo(), "", repr(template))
+
 	def test_the_logo_leaves_at_the_width_its_template_draws_it(self):
 		"""The desk's editor keeps a picture's address but not its size: the sender's company logo gets back its width."""
 		logo = "/files/inline-logo-sized.png"

@@ -44,7 +44,11 @@ OAUTH_PROVIDERS = {
 
 # Providers that sign in with an address and a password (no OAuth): only their servers are preset.
 # Infomaniak: IMAP 993 SSL; SMTP 587 STARTTLS (465 SSL answers too). Checked live with this app's
-# IMAP client (IMAPClient) and smtplib on a real mailbox, 14.10.2026. The form script mirrors this table.
+# IMAP client (IMAPClient) and smtplib on a real mailbox, 14.10.2026.
+# EmailArray: the same servers for every domain it hosts, IMAP 993 SSL and SMTP 465 SSL, the settings the
+# user manual gives for the mailboxes it sells (STARTTLS answers on 143 and 587 too); the server's names are
+# the ones its certificate is made for. Reached from a cloud server with a valid certificate, 10.11.2026.
+# The form script mirrors this table.
 PASSWORD_PROVIDERS = {
 	"Infomaniak": {
 		"imap_host": "mail.infomaniak.com",
@@ -54,6 +58,15 @@ PASSWORD_PROVIDERS = {
 		"smtp_port": 587,
 		"smtp_ssl": 0,
 		"smtp_starttls": 1,
+	},
+	"EmailArray": {
+		"imap_host": "imap.emailarray.com",
+		"imap_port": 993,
+		"imap_ssl": 1,
+		"smtp_host": "smtp.emailarray.com",
+		"smtp_port": 465,
+		"smtp_ssl": 1,
+		"smtp_starttls": 0,
 	},
 }
 

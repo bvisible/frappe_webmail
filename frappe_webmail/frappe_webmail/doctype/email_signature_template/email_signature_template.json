@@ -22,6 +22,7 @@
   "show_phone",
   "show_mobile",
   "show_email",
+  "contact_email",
   "cb_show",
   "show_website",
   "show_company_name",
@@ -35,6 +36,7 @@
   "accent_color",
   "cb_look",
   "font_size",
+  "logo",
   "logo_width",
   "sb_social_links",
   "social_links",
@@ -155,23 +157,32 @@
   },
   {
    "default": "1",
+   "description": "The User's phone, else the company's main number.",
    "fieldname": "show_phone",
    "fieldtype": "Check",
-   "label": "Phone",
-   "description": "The User's phone, else the company's main number."
+   "label": "Phone"
   },
   {
    "default": "0",
+   "description": "The Employee's cell number, else the User's mobile: often a private number, so it is off unless the company wants it.",
    "fieldname": "show_mobile",
    "fieldtype": "Check",
-   "label": "Mobile",
-   "description": "The Employee's cell number, else the User's mobile: often a private number, so it is off unless the company wants it."
+   "label": "Mobile"
   },
   {
    "default": "1",
+   "description": "The address of the mailbox the person writes from, unless the template gives one for everyone below.",
    "fieldname": "show_email",
    "fieldtype": "Check",
    "label": "Email"
+  },
+  {
+   "depends_on": "eval:doc.show_email",
+   "description": "Shown in everyone's signature in place of their own address: the company's general address, for example. Empty: each person's own.",
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Address for Everyone",
+   "options": "Email"
   },
   {
    "fieldname": "cb_show",
@@ -228,10 +239,11 @@
   },
   {
    "default": "Arial",
+   "description": "Mail clients load no font of the web: Karla shows where the reader has it, Helvetica or Arial elsewhere.",
    "fieldname": "font",
    "fieldtype": "Select",
    "label": "Font",
-   "options": "Arial\nHelvetica\nVerdana\nGeorgia\nTahoma\nTrebuchet MS"
+   "options": "Arial\nHelvetica\nVerdana\nGeorgia\nTahoma\nTrebuchet MS\nKarla"
   },
   {
    "default": "#1f3a5f",
@@ -250,6 +262,13 @@
    "fieldname": "font_size",
    "fieldtype": "Int",
    "label": "Base Font Size"
+  },
+  {
+   "depends_on": "eval:doc.show_logo",
+   "description": "In place of the company's logo: a PNG, JPEG or GIF among the public files. Mail clients do not show a vector logo, and dark letters on a transparent picture disappear when the reader's mail is dark: a logo on a light background stays readable.",
+   "fieldname": "logo",
+   "fieldtype": "Attach Image",
+   "label": "Signature Logo"
   },
   {
    "default": "120",
@@ -354,7 +373,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-20 10:00:00.000000",
+ "modified": "2026-11-10 12:00:43.331146",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "Email Signature Template",

@@ -13,9 +13,9 @@ then a company's, then everyone's. `render` writes a template for a person.
 The HTML is meant for mail clients, which drop what they do not know: tables to place things, a style written on each
 element, no <style> block, no class, no margin on a table, no flex or grid, a picture with its width and, when its file
 says it, its height. It keeps to the tags, attributes and CSS properties that the cleaning of a message sent keeps
-(webmail_api.send_email, EMAIL_CSS_PROPERTIES), so that what the form shows is what leaves. A logo is the company's file
-as stored: the message sent turns a file of the instance into a part of the message (inline_images.files_inlined), and
-the signature never writes a `data:` image. Every value is escaped (the Jinja environment below escapes by default) and
+(webmail_api.send_email, EMAIL_CSS_PROPERTIES), so that what the form shows is what leaves. A logo is the template's own
+picture, else the company's file as stored: the message sent turns a file of the instance into a part of the message
+(inline_images.files_inlined), and the signature never writes a `data:` image. Every value is escaped (the Jinja environment below escapes by default) and
 no field is ever taken as HTML. Each line of text is a block of its own: the desk's composer (TipTap) keeps neither
 tables nor styles nor the size of a picture, and reads the lines as paragraphs.
 
@@ -26,6 +26,10 @@ their mobile is shown. A banner (a link when it has an https address) goes under
 layout is drawn as it is, the banner on a row under it (_banner.html, `_draw`). The banner is a public picture of the
 instance, which every composer shows; the photo a private file, which the person's own composer shows and the message
 sent carries as its own part (inline_images.sender_photo).
+
+The address a signature gives is the one the template sets for everyone (the company's general one), else the address
+of the mailbox the person writes from: a person who signs in as one address and writes from another (their login is
+not their mailbox) is answered where they wrote from.
 """
 
 import os
@@ -61,6 +65,9 @@ FONTS = {
 	"Georgia": "Georgia,Times New Roman,serif",
 	"Tahoma": "Tahoma,Geneva,sans-serif",
 	"Trebuchet MS": "Trebuchet MS,Helvetica,sans-serif",
+	# A typeface of the web that no mail client loads (a message carries no <style>, so no @font-face, and Gmail drops
+	# one anyway): it shows where the reader has it, and the system faces that look like it everywhere else
+	"Karla": "Karla,Helvetica Neue,Helvetica,Arial,sans-serif",
 }
 DEFAULT_FONT = "Arial"
 # A neutral dark blue
@@ -470,7 +477,8 @@ def signature_for(user: str, account: dict | None = None, memo: dict | None = No
 	A mailbox shared with the person (`account` is someone else's) signs as its owner set it to, when it names a
 	signature of its own: a team's card under info@. Without one, the template is written for the mailbox (its name and
 	address, the company's number): under a template, it never carries the writer's own signature, job or numbers. With
-	no template, the webmail signs as it always has (the writer's default one).
+	no template, the webmail signs as it always has (the writer's default one). Under one of their own mailboxes, the
+	template gives the mailbox's address rather than the one they sign in with (unless it sets one for everyone).
 
 	`memo`, a dict the caller keeps for one request, spares working out the template and the person again for each of
 	their mailboxes. A failure is logged once a request and answered as if no template could be read: the mailbox's own
@@ -511,6 +519,9 @@ def _signature_for(user: str, account: dict | None, memo: dict, shared: bool) ->
 		if "company_phone" not in memo:
 			memo["company_phone"] = _company_phone(user)
 		person = _team_of(person, account, memo["company_phone"])
+	elif isinstance(account, dict) and (mailbox := _one_line(account.get("email"))):
+		# One of their own mailboxes: the address they write from, which need not be the one they sign in with
+		person = frappe._dict(person, email=mailbox)
 	key = ("written", tuple(sorted(person.items())))
 	if key not in memo:
 		memo[key] = render_person(template, person)
@@ -686,7 +697,8 @@ def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dic
 		contacts.append({"label": _("Phone"), "text": phone, "href": None})
 	if mobile := given("show_mobile", person.mobile):
 		contacts.append({"label": _("Mobile"), "text": mobile, "href": None})
-	if email := given("show_email", person.email):
+	# The address the template gives everyone (the company's general one), else the person's own
+	if email := given("show_email", contact_email(template) or person.email):
 		contacts.append({"label": _("Email"), "text": email, "href": mail_link(email)})
 	if shown("show_website") and (site := web_address(person.website)):
 		contacts.append({"label": _("Website"), "text": site[0], "href": site[1]})
@@ -730,9 +742,25 @@ def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dic
 	}
 
 
+def contact_email(template) -> str:
+	"""The address the template shows in place of each person's own ('' when it gives none): one that looks like an
+	address, on one line."""
+	address = _one_line(unescape(template.get("contact_email") or ""))
+	return address if mail_link(address) else ""
+
+
+def logo_src(template) -> str | None:
+	"""The address of the template's own logo, a public picture of the instance; None when it has none (the company's
+	logo is drawn then). Public, as the banner: every person who writes with the signature shows it in their composer."""
+	src = _plain_instance_file(template.get("logo"))
+	return src if src and src.startswith("/files/") else None
+
+
 def _logo_of(template, person: frappe._dict) -> dict | None:
-	"""The logo as the layout draws it: its address as stored, its width and, when its file says, its height."""
-	src = _logo_src(person.logo)
+	"""The logo as the layout draws it: the template's own picture, else the company's file as stored; its width and,
+	when its file says, its height. A template has a logo of its own when the company's does not suit a message: a
+	vector file most mail clients do not show, or dark letters on nothing that a reader's dark mode turns unreadable."""
+	src = logo_src(template) or _logo_src(person.logo)
 	if not src:
 		return None
 	width = _number(template.get("logo_width"), LOGO_WIDTH, DEFAULT_LOGO_WIDTH)

@@ -617,6 +617,51 @@ class TestRendering(FrappeTestCase):
 		self.assertIn("alex at example", html)
 		self.assertNotIn("mailto:", html)
 
+	def test_the_template_may_give_everyone_one_address(self):
+		"""The company's general address in everyone's signature (where its people all give hello@), in place of their
+		own; something that is not an address is not shown in its place."""
+		html = render_person(template(contact_email="hello@example.com"), person())["html"]
+		self.assertEqual(soup(html).find("a", string="hello@example.com")["href"], "mailto:hello@example.com")
+		self.assertNotIn("alex@example.com", html)
+		self.assertIn(
+			f"{_('Email')}: hello@example.com",
+			render_person(template(contact_email="hello@example.com"), person())["text"],
+		)
+		for unused in ("", None, "   ", "not an address"):
+			html = render_person(template(contact_email=unused), person())["html"]
+			self.assertIn("alex@example.com", html, repr(unused))
+		# Off is off, whatever address the template gives
+		html = render_person(template(contact_email="hello@example.com", show_email=0), person())["html"]
+		self.assertNotIn("hello@example.com", html)
+
+	def test_karla_falls_back_on_the_faces_of_the_system(self):
+		"""A typeface of the web that no mail client loads: shown where the reader has it, Helvetica or Arial elsewhere."""
+		html = render_person(template(font="Karla"), person())["html"]
+		self.assertIn("font-family:Karla,Helvetica Neue,Helvetica,Arial,sans-serif;", html)
+		self.assertNotIn("@font-face", html)
+		self.assertNotIn("<style", html)
+
+	def test_the_template_s_own_logo_is_drawn_in_place_of_the_company_s(self):
+		own = f"/files/{PREFIX}-signature-logo.png"
+		image = soup(render_person(template("Logo left", logo=own), person())["html"]).find("img")
+		self.assertEqual(image["src"], own)
+		self.assertEqual(image["alt"], "Example Ltd")
+		# Without one, or with one that is no public file of the instance, the company's
+		for unused in (
+			None,
+			"",
+			f"/private/files/{PREFIX}-logo.png",
+			"https://cdn.example.com/logo.png",
+			"/files/../x.png",
+		):
+			image = soup(render_person(template("Logo left", logo=unused), person())["html"]).find("img")
+			self.assertEqual(image["src"], MISSING_LOGO, repr(unused))
+		# Off is off, and a layout without a logo draws none
+		self.assertIsNone(
+			soup(render_person(template("Logo left", logo=own, show_logo=0), person())["html"]).find("img")
+		)
+		self.assertIsNone(soup(render_person(template("Compact", logo=own), person())["html"]).find("img"))
+
 	def test_the_logo_is_the_company_file_as_stored(self):
 		for stored in (
 			MISSING_LOGO,
@@ -1252,6 +1297,41 @@ class TestWhatTheComposersAreGiven(SignatureTestCase):
 		named = signature_for(USER, {**shared, "default_signature": team.name})
 		self.assertEqual(named, {"html": team.content, "text": "The team card"})
 
+	def test_an_own_mailbox_signs_with_its_own_address(self):
+		"""A person who signs in as one address and writes from a mailbox of another (their login is not their
+		mailbox): the signature gives the mailbox's address, where they are answered. The template's address for
+		everyone wins over both; a shared mailbox signs as the mailbox, as before."""
+		self.make_template("own-address")
+		writer = person(user=USER, name="Sigtest Person", email=USER)
+		box = {"email": "sigtest.person@company.test", "default_signature": None, "user": USER}
+		with patch.object(signatures, "person_of", return_value=writer):
+			given = signature_for(USER, box)
+			no_box = signature_for(USER)
+		self.assertIn("sigtest.person@company.test", given["html"])
+		self.assertIn(f"{_('Email')}: sigtest.person@company.test", given["text"])
+		self.assertNotIn(USER, given["html"])
+		self.assertIn(USER, no_box["html"], "no mailbox: the address the person is known by")
+		# The rest of the card is the person's
+		for words in ("Sigtest Person", "Head of Sales"):
+			self.assertIn(words, given["html"], words)
+
+	def test_the_template_s_address_for_everyone_wins_over_the_mailbox_s(self):
+		self.make_template("for-everyone", contact_email="hello@company.test")
+		writer = person(user=USER, name="Sigtest Person", email=USER)
+		box = {"email": "sigtest.person@company.test", "default_signature": None, "user": USER}
+		with (
+			patch.object(signatures, "person_of", return_value=writer),
+			patch.object(signatures, "_company_phone", return_value="+41 00 000 00 10"),
+		):
+			given = signature_for(USER, box)
+			shared = signature_for(USER, self.shared_box())
+		self.assertIn("hello@company.test", given["html"])
+		self.assertNotIn("sigtest.person@company.test", given["html"])
+		self.assertNotIn(USER, given["html"])
+		# A shared mailbox gives it too: the company's address, never the writer's
+		self.assertIn("hello@company.test", shared["html"])
+		self.assertNotIn(USER, shared["html"])
+
 	def shared_box(self):
 		"""A mailbox of OTHER's that USER writes from, with no signature of its own."""
 		return {
@@ -1342,8 +1422,12 @@ class TestWhatTheComposersAreGiven(SignatureTestCase):
 		self.assertIn("signatures_team@webmail.test", under_team)
 		self.assertNotIn("Sigtest Person", under_team)
 		self.assertNotIn(USER, under_team)
+		# Under their own mailbox, the person's own card with the mailbox's address; with none, the address they
+		# are known by
+		under_own = get_default_signature(own.name)
+		self.assertIn("signatures_own@webmail.test", under_own)
 		self.assertEqual(
-			get_default_signature(), get_default_signature(own.name), "no mailbox: the person's own"
+			get_default_signature(), under_own.replace("signatures_own@webmail.test", USER), "the same card"
 		)
 		with self.assertRaises(frappe.ValidationError):
 			get_default_signature(closed.name)
@@ -1364,7 +1448,8 @@ class TestWhatTheComposersAreGiven(SignatureTestCase):
 				for n in range(3)
 			]
 		self.assertEqual((found.call_count, known.call_count), (1, 1))
-		self.assertEqual(given[0], given[2])
+		# The same card, each with its mailbox's address
+		self.assertEqual(given[0]["html"].replace("box0@", "box2@"), given[2]["html"])
 		self.assertIn("Sigtest Person", given[0]["html"])
 
 	def test_a_portal_account_keeps_what_it_had(self):
@@ -1398,12 +1483,16 @@ class TestWhatTheComposersAreGiven(SignatureTestCase):
 			boxes = neomail.host_mailboxes()
 		self.assertEqual(len(boxes), 1)
 		handed = boxes[0]["signature"]
-		self.assertEqual(handed["html"], get_default_signature(), "the same HTML")
+		# The desk asks for the same mailbox's (get_default_signature builds this row from the Webmail Account)
+		desk = {key: account[key] for key in ("user", "email", "sender_name", "default_signature")}
+		self.assertEqual(handed["html"], signature_for(USER, desk)["html"], "the same HTML")
 		self.assertIn("Sigtest Person", handed["text"])
-		self.assertIn(USER, handed["text"])
+		self.assertIn("signatures_box@webmail.test", handed["text"], "the mailbox's address")
 		self.assertEqual(
-			handed["text"], signature_for(USER)["text"], "the text written with it, line for line"
+			handed["text"], signature_for(USER, desk)["text"], "the text written with it, line for line"
 		)
+		# Its card is the one the desk gives with no mailbox, but for the address
+		self.assertEqual(handed["html"], get_default_signature().replace(USER, "signatures_box@webmail.test"))
 
 	def test_neomail_keeps_its_signatures_when_no_template_applies(self):
 		from frappe_webmail.www import neomail

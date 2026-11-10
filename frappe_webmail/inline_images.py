@@ -186,19 +186,23 @@ def _picture(path: str, logo: str = "", photo: str = "") -> tuple[str, bytes] | 
 
 
 def sender_logo() -> str:
-	"""The logo of the company of the person sending, as stored ('' when there is none): the one the company signature
-	draws (signatures.py), which may leave in their message whether its file is public or private. Never another
-	company's, nor any other private file a message names. Only for the desk's people, as the company signature is: a
-	portal account is told nothing of the company. A person without an Employee chooses their company themselves (their
-	default one, signatures.company_of_user), but a company's logo is on everything it sends: it is no secret."""
+	"""The logo the company signature draws for the person sending, as stored ('' when there is none): the template's own
+	picture when the template that applies to them has one (a public file), else their company's logo, which may leave in
+	their message whether its file is public or private. Never another company's, nor any other private file a message
+	names. Only for the desk's people, as the company signature is: a portal account is told nothing of the company. A
+	person without an Employee chooses their company themselves (their default one, signatures.company_of_user), but a
+	company's logo is on everything it sends: it is no secret."""
 	import frappe
 
-	from frappe_webmail.signatures import company_of_user
+	from frappe_webmail.signatures import company_of_user, logo_src, template_for
 
 	user = frappe.session.user
 	try:
 		if frappe.db.get_value("User", user, "user_type") != "System User":
 			return ""
+		template = template_for(user)
+		if template is not None and (own := logo_src(template)):
+			return own
 		company = company_of_user(user)
 		if not company or not frappe.db.table_exists("Company"):
 			return ""

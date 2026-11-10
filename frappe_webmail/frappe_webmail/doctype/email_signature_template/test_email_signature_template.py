@@ -282,6 +282,33 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 			with self.assertRaises(frappe.ValidationError, msg=str(values)):
 				self.make(**values).insert(ignore_permissions=True)
 
+	def test_the_address_for_everyone_is_an_email_address(self):
+		self.assertIsNone(self.saved().contact_email, "none unless it is said")
+		self.assertEqual(self.saved(contact_email=" hello@example.com ").contact_email, "hello@example.com")
+		self.assertIsNone(self.saved(contact_email="   ").contact_email)
+		for bad in ("hello", "hello at example.com", "<b>@x.y</b>", "a@b"):
+			with self.assertRaises(frappe.ValidationError, msg=bad):
+				self.make(contact_email=bad).insert(ignore_permissions=True)
+
+	def test_the_signature_logo_is_a_public_picture_of_the_instance(self):
+		"""Its own logo is shown in every composer and every message, as the banner: a PNG, JPEG or GIF among the public
+		files, never a vector file (most mail clients leave one out), never a private one or an address elsewhere."""
+		picture = self.banner_file()
+		self.assertEqual(self.saved(logo=f" {picture} ").logo, picture)
+		self.assertEqual(self.saved(logo=self.banner_file("gif")).logo.endswith(".gif"), True)
+		self.assertIsNone(self.saved(logo="  ").logo)
+		for bad in (
+			self.banner_file("svg"),
+			self.banner_file(private=1),
+			self.banner_file(content=b"GIF? no: text"),
+			f"/files/{PREFIX}-gone.png",
+			"https://cdn.example.com/logo.png",
+			"/files/../private/files/x.png",
+			"/files/%2e%2e/private/files/x.png",
+		):
+			with self.assertRaises(frappe.ValidationError, msg=bad):
+				self.make(logo=bad).insert(ignore_permissions=True)
+
 	def test_the_banner_s_words_are_shown_as_they_were_written(self):
 		picture = self.banner_file()
 		words = "Fair <b>2027</b> & more"

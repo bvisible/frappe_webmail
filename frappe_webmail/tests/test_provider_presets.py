@@ -80,8 +80,39 @@ class TestPasswordProviderPreset(unittest.TestCase):
 
 		self.assertEqual(doc.imap_host, "imap.example.com")
 
+	def test_emailarray_fills_its_servers_with_ssl_on_both(self):
+		# The settings the user manual gives for the mailboxes it hosts: 993 and 465, SSL/TLS on both
+		doc = _account(provider_preset="EmailArray")
+
+		doc.apply_password_provider_settings()
+
+		self.assertEqual((doc.imap_host, doc.imap_port, doc.imap_ssl), ("imap.emailarray.com", 993, 1))
+		self.assertEqual(
+			(doc.smtp_host, doc.smtp_port, doc.smtp_ssl, doc.smtp_starttls),
+			("smtp.emailarray.com", 465, 1, 0),
+		)
+
 	def test_the_presets_are_declared_for_the_form_script_to_mirror(self):
+		import json
+		import os
+
+		from frappe_webmail.frappe_webmail.doctype import webmail_account
+
 		self.assertIn("Infomaniak", PASSWORD_PROVIDERS)
+		self.assertIn("EmailArray", PASSWORD_PROVIDERS)
+		folder = os.path.dirname(webmail_account.__file__)
+		with open(os.path.join(folder, "webmail_account.json")) as handle:
+			field = next(f for f in json.load(handle)["fields"] if f["fieldname"] == "provider_preset")
+		# The Select offers every preset, and only them
+		self.assertEqual(set(filter(None, field["options"].split("\n"))), set(PASSWORD_PROVIDERS))
+		# The form script fills the same servers as the controller
+		with open(os.path.join(folder, "webmail_account.js")) as handle:
+			script = handle.read()
+		for name, settings in PASSWORD_PROVIDERS.items():
+			self.assertIn(f"{name}: {{", script)
+			for value in (settings["imap_host"], settings["smtp_host"]):
+				self.assertIn(f'"{value}"', script)
+			self.assertIn(f"smtp_port: {settings['smtp_port']},", script)
 
 
 if __name__ == "__main__":
