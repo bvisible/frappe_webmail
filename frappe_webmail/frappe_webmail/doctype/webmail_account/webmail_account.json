@@ -218,7 +218,7 @@
       "fieldname": "smtp_password",
       "fieldtype": "Password",
       "label": "SMTP Password",
-      "mandatory_depends_on": "eval:doc.auth_type=='Password'"
+      "description": "Left empty: the IMAP password. The same address signs in to both servers at most providers."
     },
     {
       "collapsible": 1,
@@ -350,7 +350,7 @@
   ],
   "index_web_pages_for_search": 1,
   "links": [],
-  "modified": "2026-11-10 12:00:00.000000",
+  "modified": "2026-11-10 13:00:00.000000",
   "modified_by": "Administrator",
   "module": "Frappe Webmail",
   "name": "Webmail Account",

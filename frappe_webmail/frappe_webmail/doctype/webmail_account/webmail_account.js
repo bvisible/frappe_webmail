@@ -164,14 +164,9 @@ function test_connection(frm) {
 	if (frm.doc.auth_type === "Password") {
 		// Get passwords from form fields (they may be unsaved)
 		const imap_password = frm.doc.imap_password;
-		const smtp_password = frm.doc.smtp_password;
 
 		if (!imap_password) {
 			frappe.msgprint(__("Please enter the IMAP password."));
-			return;
-		}
-		if (!smtp_password) {
-			frappe.msgprint(__("Please enter the SMTP password."));
 			return;
 		}
 	}
@@ -194,7 +189,8 @@ function test_connection(frm) {
 			smtp_verify_certificate: frm.doc.smtp_verify_certificate ? 1 : 0,
 			auth_type: frm.doc.auth_type || "Password",
 			imap_password: frm.doc.imap_password || "",
-			smtp_password: frm.doc.smtp_password || "",
+			// Left empty, the SMTP password is the IMAP one (as the controller saves it)
+			smtp_password: frm.doc.smtp_password || frm.doc.imap_password || "",
 			oauth_provider: frm.doc.oauth_provider || "",
 			oauth_access_token: frm.doc.oauth_access_token || "",
 		},

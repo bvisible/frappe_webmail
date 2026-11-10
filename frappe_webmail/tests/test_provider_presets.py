@@ -92,6 +92,21 @@ class TestPasswordProviderPreset(unittest.TestCase):
 			("smtp.emailarray.com", 465, 1, 0),
 		)
 
+	def test_the_smtp_password_left_empty_is_the_imap_one(self):
+		"""One password typed once: the same address signs in to both servers at every preset's provider."""
+		doc = _account(imap_password="typed once", smtp_password=None)
+		doc.validate_auth()
+		self.assertEqual(doc.smtp_password, "typed once")
+		# One typed for SMTP stays its own
+		doc = _account(imap_password="for imap", smtp_password="for smtp")
+		doc.validate_auth()
+		self.assertEqual(doc.smtp_password, "for smtp")
+		# A stored password is shown as asterisks: never copied, and an SMTP one is still asked for
+		with self.assertRaises(frappe.ValidationError):
+			_account(imap_password="*********", smtp_password=None).validate_auth()
+		with self.assertRaises(frappe.ValidationError):
+			_account(imap_password=None, smtp_password="for smtp").validate_auth()
+
 	def test_the_presets_are_declared_for_the_form_script_to_mirror(self):
 		import json
 		import os

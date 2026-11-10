@@ -16,8 +16,9 @@ says it, its height. It keeps to the tags, attributes and CSS properties that th
 (webmail_api.send_email, EMAIL_CSS_PROPERTIES), so that what the form shows is what leaves. A logo is the template's own
 picture, else the company's file as stored: the message sent turns a file of the instance into a part of the message
 (inline_images.files_inlined), and the signature never writes a `data:` image. Every value is escaped (the Jinja environment below escapes by default) and
-no field is ever taken as HTML. Each line of text is a block of its own: the desk's composer (TipTap) keeps neither
-tables nor styles nor the size of a picture, and reads the lines as paragraphs.
+no field is ever taken as HTML. Each line of text is a block of its own: an editor that keeps neither tables nor styles
+nor the size of a picture still reads the lines as paragraphs (the desk's composer keeps the signature whole, as one
+block: frontend/src/signatureBlock.js).
 
 The layouts are the files of templates/signatures, each one more entry of LAYOUTS drawing the same card and look. "Photo
 left" draws the person's photo, and only for a person who agreed to show it (Email Signature Preference, which they set

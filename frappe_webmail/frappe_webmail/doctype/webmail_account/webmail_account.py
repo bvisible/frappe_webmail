@@ -116,6 +116,10 @@ class WebmailAccount(Document):
 		if self.auth_type == "Password":
 			if not self.imap_password:
 				frappe.throw(_("IMAP Password is required for Password authentication"))
+			# One password typed once: the same address signs in to both servers at most providers (every preset's).
+			# Only a password just typed is taken: a stored one is shown as asterisks, which are no password.
+			if not self.smtp_password and not self.is_dummy_password(self.imap_password):
+				self.smtp_password = self.imap_password
 			if not self.smtp_password:
 				frappe.throw(_("SMTP Password is required for Password authentication"))
 		elif self.auth_type == "OAuth2":
