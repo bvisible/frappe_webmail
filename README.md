@@ -24,7 +24,7 @@ A native webmail client for Frappe Framework with full IMAP/SMTP support, rich t
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
-bench get-app https://github.com/your-org/frappe_webmail --branch main
+bench get-app https://github.com/bvisible/frappe_webmail --branch version-15
 bench --site your-site.local install-app frappe_webmail
 ```
 
@@ -215,5 +215,5 @@ MIT License - see [license.txt](license.txt)
 
 ## Support
 
-- [GitHub Issues](https://github.com/your-org/frappe_webmail/issues)
+- [GitHub Issues](https://github.com/bvisible/frappe_webmail/issues)
 - [Frappe Forum](https://discuss.frappe.io)
