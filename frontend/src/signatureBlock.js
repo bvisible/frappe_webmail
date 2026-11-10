@@ -39,6 +39,13 @@ export function signatureBlock(html) {
 	return html ? `<div ${SIGNATURE_ATTRIBUTE}="">${html}</div>` : "";
 }
 
+// The signature as it follows the text of a message: a line of space, then its block. No « -- » line before it: the
+// block already sets it apart, and a company's signature (signatures.py) is a card with its logo, which the old
+// plain-text separator only made look dated in every mail client (10.11.2026, the team's first messages).
+export function signatureAfterText(html) {
+	return html ? `<br>${signatureBlock(html)}` : "";
+}
+
 export const SignatureBlock = Node.create({
 	name: "signatureBlock",
 	group: "block",

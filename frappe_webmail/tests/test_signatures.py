@@ -1716,6 +1716,28 @@ class TestTheSignatureLeavesWithTheMessage(TestWebmailAPIBase):
 			self.assertIn("#aa3300", html, name)
 
 	@patch("frappe_webmail.api.smtplib.SMTP")
+	def test_the_text_leaves_in_the_face_of_the_company_s_signature(self, smtp_class):
+		"""10.11.2026, the team's first messages: the composer writes no face, so the text showed in each reader's own
+		above a signature in the company's. Under a template, the text takes the template's face; without one, the
+		message is as before; a template that cannot be read never stops a message."""
+		karla = signatures.FONTS["Karla"]
+		with patch.object(signatures, "template_for", return_value=frappe._dict(font="Karla")):
+			html = self.sent_html(smtp_class, "<p>Bonjour</p><p>Le texte.</p>")
+		wrapper = soup(html).find("div")
+		self.assertIn(f"font-family:{karla}", wrapper["style"])
+		self.assertEqual([p.get_text() for p in wrapper.find_all("p")], ["Bonjour", "Le texte."])
+		with patch.object(signatures, "template_for", return_value=None):
+			html = self.sent_html(smtp_class, "<p>Bonjour</p>")
+		self.assertNotIn("font-family", html)
+		with patch.object(signatures, "template_for", side_effect=RuntimeError("boom")):
+			html = self.sent_html(smtp_class, "<p>Bonjour</p>")
+		self.assertIn("Bonjour", html)
+		self.assertNotIn("font-family", html)
+		# A face the Select does not know is not written
+		with patch.object(signatures, "template_for", return_value=frappe._dict(font="Comic Sans; x")):
+			self.assertNotIn("font-family", self.sent_html(smtp_class, "<p>Bonjour</p>"))
+
+	@patch("frappe_webmail.api.smtplib.SMTP")
 	def test_a_style_that_places_or_fetches_does_not_leave(self, smtp_class):
 		"""The cleaning keeps the properties that style text and boxes and drops the others, values and all."""
 		html = self.sent_html(

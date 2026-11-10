@@ -436,6 +436,18 @@ def template_for(user: str):
 	return frappe.get_doc("Email Signature Template", fitting[0].name)
 
 
+def body_face(user: str) -> str | None:
+	"""The face the text of a message leaves in: the one of the company signature that applies to the writer, so that a
+	message reads in one face from its first line to its signature (the composer writes no face, and every mail client
+	showed the text in its own, beside a signature in the company's). None where no template applies (the client's own
+	face, as before), and whenever the template cannot be read: it never stands in the way of a message."""
+	try:
+		template = template_for(user)
+	except Exception:
+		return None
+	return FONTS.get(template.get("font")) if template is not None else None
+
+
 def _departments_above(department: str | None) -> list[str]:
 	"""The person's department and every department above it (Department is a tree), the nearest first: a template for
 	a department applies to the departments under it too."""

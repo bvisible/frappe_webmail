@@ -1436,6 +1436,14 @@ def send_email(
 	`draft_folder`: the draft this message was written in, deleted once it has left."""
 	account = get_account(account_name)
 
+	# The text in the face of the company's signature, when one applies to the writer (signatures.body_face): one face
+	# from the first line to the card, rather than the reader's own above a signature in the company's
+	from frappe_webmail.signatures import body_face
+
+	face = body_face(frappe.session.user)
+	if face and html_content:
+		html_content = f'<div style="font-family:{face};">{html_content}</div>'
+
 	# Images written in the text leave as parts of the message, before the cleaning (it would drop a `data:` image)
 	html_content, inline_parts = to_parts(html_content, (account.email or "webmail.local").split("@")[-1])
 

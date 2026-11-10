@@ -204,7 +204,7 @@ import ContactAutocomplete from "./ContactAutocomplete.vue";
 import AttachmentPicker from "./AttachmentPicker.vue";
 import NoraBar from "./NoraBar.vue";
 import { joinQuote, splitQuote } from "../quoteSplit";
-import { SignatureBlock, signatureBlock } from "../signatureBlock";
+import { SignatureBlock, signatureAfterText } from "../signatureBlock";
 import {
 	X,
 	Paperclip,
@@ -362,7 +362,7 @@ export default {
 			let initialContent = "";
 
 			if (this.signature) {
-				initialContent = `<p></p><br><p>--</p>${signatureBlock(this.signature)}`;
+				initialContent = `<p></p>${signatureAfterText(this.signature)}`;
 			}
 
 			this.editor = new Editor({
@@ -464,7 +464,7 @@ export default {
 			// Use Nora-generated draft if available (from Quick Reply)
 			let content = reply.noraDraftHtml || "<p></p>";
 			if (this.signature) {
-				content += `<br><p>--</p>${signatureBlock(this.signature)}`;
+				content += signatureAfterText(this.signature);
 			}
 			content += quoteContent;
 
@@ -492,7 +492,7 @@ export default {
 
 			let content = "<p></p>";
 			if (this.signature) {
-				content += `<br><p>--</p>${signatureBlock(this.signature)}`;
+				content += signatureAfterText(this.signature);
 			}
 			content += forwardContent;
 
@@ -525,7 +525,7 @@ export default {
 				this.editor
 					.chain()
 					.focus()
-					.insertContent(`<br><p>--</p>${signatureBlock(this.signature)}`)
+					.insertContent(signatureAfterText(this.signature))
 					.run();
 			}
 		},
