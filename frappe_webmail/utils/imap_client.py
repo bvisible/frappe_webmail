@@ -15,6 +15,8 @@ from html import escape as escape_html
 import frappe
 from frappe import _
 
+from frappe_webmail.utils.login_id import login_id_of
+
 try:
 	from imapclient import IMAPClient as _IMAPClient
 	from imapclient import SocketTimeout
@@ -306,7 +308,7 @@ class WebmailIMAPClient:
 				ssl=self.account.imap_ssl,
 				timeout=imap_timeout(),
 			)
-			self.client.login(self.account.email, self.account.get_password("imap_password"))
+			self.client.login(login_id_of(self.account), self.account.get_password("imap_password"))
 			self._connected = True
 		except Exception as e:
 			frappe.log_error("Webmail: IMAP connection failed", frappe.get_traceback())

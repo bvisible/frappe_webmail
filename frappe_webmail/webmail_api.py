@@ -45,6 +45,7 @@ from frappe_webmail.replies import appended_uid, reply_recipients
 
 # The IMAPClient the app builds: imapclient's, bounded with TLS too and watched (utils/imap_client.py)
 from frappe_webmail.utils.imap_client import IMAP_PROBE_TIMEOUT, IMAP_READ_TIMEOUT, IMAPClient, imap_timeout
+from frappe_webmail.utils.login_id import login_id_of
 
 try:
 	import bleach
@@ -404,7 +405,7 @@ def _imap_login_raw(client, account):
 	else:
 		# Password authentication
 		password = account.get_password("imap_password")
-		client.login(account.email, password)
+		client.login(login_id_of(account), password)
 
 
 def imap_login(client, account):
@@ -680,7 +681,7 @@ def _smtp_login_raw(server, account):
 	else:
 		# Password authentication
 		password = account.get_password("smtp_password")
-		server.login(account.email, password)
+		server.login(login_id_of(account), password)
 
 
 def smtp_login(server, account):
@@ -788,13 +789,15 @@ def test_connection_live(
 	oauth_access_token=None,
 	smtp_verify_certificate=None,
 	account_name=None,
+	login_id=None,
 ):
 	"""Test IMAP/SMTP connection with provided values (before saving). The desk's people only: the form that calls it is
 	the desk's, and a portal account made the server connect to any address and port it named (maintenance#2296); so many
 	a minute for the same reason.
 
 	`account_name` is the saved mailbox the form shows, when it is one: a password the person did not touch comes back
-	from the form as asterisks (see _password_to_test), and the stored one is tested in its place."""
+	from the form as asterisks (see _password_to_test), and the stored one is tested in its place. `login_id` is what
+	the servers sign the mailbox in as when that is not its address (empty: the address)."""
 	_require_desk_user()
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
@@ -822,6 +825,8 @@ def test_connection_live(
 	# As the form says it; not said (a form script from before the setting), not checked, as before it
 	account.smtp_verify_certificate = 1 if to_bool(smtp_verify_certificate) else 0
 	account.auth_type = auth_type
+	account.login_id = (login_id or "").strip()
+	account.login_id_is_different = 1 if account.login_id else 0
 	account.oauth_provider = oauth_provider
 	account.oauth_access_token = oauth_access_token
 

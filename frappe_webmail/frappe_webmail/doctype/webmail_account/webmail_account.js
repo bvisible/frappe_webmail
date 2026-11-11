@@ -169,6 +169,10 @@ function test_connection(frm) {
 			frappe.msgprint(__("Please enter the IMAP password."));
 			return;
 		}
+		if (frm.doc.login_id_is_different && !(frm.doc.login_id || "").trim()) {
+			frappe.msgprint(__("Please enter the login ID."));
+			return;
+		}
 	}
 
 	// Show loading indicator
@@ -196,6 +200,11 @@ function test_connection(frm) {
 			// A saved password is shown as asterisks: the server swaps them for the stored password of this
 			// saved account, instead of signing in with the asterisks
 			account_name: frm.is_new() ? "" : frm.doc.name,
+			// What the servers sign the mailbox in as, when that is not its address (empty: the address)
+			login_id:
+				frm.doc.auth_type === "Password" && frm.doc.login_id_is_different
+					? (frm.doc.login_id || "").trim()
+					: "",
 		},
 		callback: function (r) {
 			frappe.hide_progress();

@@ -125,6 +125,10 @@ class WebmailAccount(Document):
 	def validate_auth(self):
 		"""Validate authentication settings"""
 		if self.auth_type == "Password":
+			# What is left of the login ID is what the servers are signed in with: no stray spaces from a paste
+			# (read with get(): a site that has this code but not its migration yet has no such field)
+			if self.get("login_id"):
+				self.login_id = self.login_id.strip()
 			if not self.imap_password:
 				frappe.throw(_("IMAP Password is required for Password authentication"))
 			# One password typed once: the same address signs in to both servers at most providers (every preset's).
