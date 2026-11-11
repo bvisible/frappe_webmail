@@ -193,6 +193,9 @@ function test_connection(frm) {
 			smtp_password: frm.doc.smtp_password || frm.doc.imap_password || "",
 			oauth_provider: frm.doc.oauth_provider || "",
 			oauth_access_token: frm.doc.oauth_access_token || "",
+			// A saved password is shown as asterisks: the server swaps them for the stored password of this
+			// saved account, instead of signing in with the asterisks
+			account_name: frm.is_new() ? "" : frm.doc.name,
 		},
 		callback: function (r) {
 			frappe.hide_progress();

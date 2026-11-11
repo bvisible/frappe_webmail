@@ -25,6 +25,7 @@ import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import cint
+from frappe.utils.password import get_decrypted_password
 
 from frappe_webmail.conversations import conversation_of, message_id_of, one_per_message, references_for
 
@@ -747,6 +748,28 @@ def update_account_password(account_name, imap_password=None, smtp_password=None
 	return {"success": True}
 
 
+def _is_dummy_password(password):
+	"""What a form holds for a saved password: its length in asterisks (frappe's Document.is_dummy_password)."""
+	return bool(password) and set(password) == {"*"}
+
+
+def _password_to_test(account_name, fieldname, typed):
+	"""The password a connection test signs in with, or None when there is none.
+
+	The form shows a saved password as asterisks and sends them back as they are: the test signed in with the asterisks
+	and told a mailbox that works that its password was wrong. A password typed is taken as typed; one not touched is
+	read from the saved mailbox, for its owner alone. A colleague the mailbox is shared with signs in with it but does
+	not have it tested against a server they name, and a mailbox that is not theirs is answered as no password at all
+	(as get_account answers one that is not there)."""
+	if typed and not _is_dummy_password(typed):
+		return typed
+	if not isinstance(account_name, str) or not account_name:
+		return None
+	if frappe.db.get_value("Webmail Account", account_name, "user") != frappe.session.user:
+		return None
+	return get_decrypted_password("Webmail Account", account_name, fieldname, raise_exception=False)
+
+
 @frappe.whitelist(methods=["POST"])
 @rate_limit(limit=20, seconds=60)
 def test_connection_live(
@@ -764,13 +787,24 @@ def test_connection_live(
 	oauth_provider=None,
 	oauth_access_token=None,
 	smtp_verify_certificate=None,
+	account_name=None,
 ):
 	"""Test IMAP/SMTP connection with provided values (before saving). The desk's people only: the form that calls it is
 	the desk's, and a portal account made the server connect to any address and port it named (maintenance#2296); so many
-	a minute for the same reason."""
+	a minute for the same reason.
+
+	`account_name` is the saved mailbox the form shows, when it is one: a password the person did not touch comes back
+	from the form as asterisks (see _password_to_test), and the stored one is tested in its place."""
 	_require_desk_user()
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
+
+	if auth_type == "Password":
+		imap_password = _password_to_test(account_name, "imap_password", imap_password)
+		if not imap_password:
+			frappe.throw(_("Please enter the IMAP password."))
+		# Left empty, the SMTP password is the IMAP one (as the controller saves it)
+		smtp_password = _password_to_test(account_name, "smtp_password", smtp_password) or imap_password
 
 	# Create a mock account object with the provided values
 	class MockAccount:
