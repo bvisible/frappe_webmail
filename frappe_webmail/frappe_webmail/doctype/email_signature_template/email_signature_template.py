@@ -57,7 +57,6 @@ class EmailSignatureTemplate(Document):
 		layout: DF.Literal["Text only", "Logo left", "Logo above", "Compact", "Photo left"]
 		logo: DF.AttachImage | None
 		logo_width: DF.Int
-		preview_user: DF.Link | None
 		show_company_address: DF.Check
 		show_company_name: DF.Check
 		show_department: DF.Check
@@ -82,9 +81,6 @@ class EmailSignatureTemplate(Document):
 		self.validate_contact_email()
 		self.validate_logo()
 		self.validate_banner()
-		# Whom the preview was written for is the form's business, not the template's: kept, it would link the template
-		# to that user (who could then not be deleted).
-		self.preview_user = None
 
 	def validate_scope(self):
 		"""A template for a company or a department names it; one for everyone names neither."""

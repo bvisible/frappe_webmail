@@ -52,7 +52,6 @@
   "banner_description",
   "banner_width",
   "sb_preview",
-  "preview_user",
   "preview_html"
  ],
  "fields": [
@@ -358,14 +357,6 @@
    "label": "Preview"
   },
   {
-   "description": "The person whose details the preview is written with. It changes nothing in the template.",
-   "fieldname": "preview_user",
-   "fieldtype": "Link",
-   "label": "Preview As",
-   "no_copy": 1,
-   "options": "User"
-  },
-  {
    "fieldname": "preview_html",
    "fieldtype": "HTML",
    "label": "Preview"
@@ -373,7 +364,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-11-10 12:00:43.331146",
+ "modified": "2026-11-11 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "Email Signature Template",

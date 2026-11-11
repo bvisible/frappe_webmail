@@ -5,3 +5,4 @@
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 frappe_webmail.patches.smtp_certificate_check_stays_off_for_existing_mailboxes
+frappe_webmail.patches.signature_templates_drop_the_preview_user_column

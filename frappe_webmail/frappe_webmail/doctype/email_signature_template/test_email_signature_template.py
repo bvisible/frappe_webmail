@@ -69,8 +69,6 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 		self.assertEqual(meta.get_field("social_links").options, "Email Signature Social Link")
 		self.assertEqual(meta.get_field("company").options, "Company")
 		self.assertEqual(meta.get_field("department").options, "Department")
-		self.assertEqual(meta.get_field("preview_user").options, "User")
-		self.assertFalse(meta.get_field("preview_user").reqd)
 		self.assertEqual(meta.get_field("accent_color").fieldtype, "Color")
 		self.assertEqual(meta.get_field("disclaimer").fieldtype, "Small Text")
 		self.assertEqual(meta.get_field("preview_html").fieldtype, "HTML")
@@ -187,11 +185,25 @@ class TestEmailSignatureTemplate(FrappeTestCase):
 		self.assertIn(disclaimer, result["text"])
 		self.assertIn("Pay <now> & save: https://example.com/pay", result["text"])
 
-	def test_whom_the_preview_was_written_for_is_not_kept(self):
-		"""Kept, it would link the template to that person, who could then not be deleted."""
-		doc = self.saved(preview_user="Administrator")
-		self.assertIsNone(doc.preview_user)
-		self.assertIsNone(frappe.db.get_value(doc.doctype, doc.name, "preview_user"))
+	def test_whom_the_preview_is_written_for_is_not_a_field_of_the_template(self):
+		"""Choosing the person a preview is written for changes nothing in the template: a field of the DocType would
+		make the form unsaved at every choice (maintenance#2463), and, kept, would link the template to that person, who
+		could then not be deleted. The form draws its own control, outside the document."""
+		self.assertIsNone(frappe.get_meta("Email Signature Template").get_field("preview_user"))
+		doc = self.saved()
+		self.assertNotIn("preview_user", doc.as_dict())
+
+	def test_the_column_left_by_the_old_field_is_dropped(self):
+		from frappe_webmail.patches import signature_templates_drop_the_preview_user_column as patch
+
+		table = "tabEmail Signature Template"
+		if not frappe.db.has_column("Email Signature Template", "preview_user"):
+			frappe.db.sql_ddl(f"alter table `{table}` add column `preview_user` varchar(140)")
+		frappe.cache.hdel("table_columns", table)
+		patch.execute()
+		self.assertFalse(frappe.db.has_column("Email Signature Template", "preview_user"))
+		patch.execute()  # run again on a site that no longer has it: nothing happens
+		self.assertFalse(frappe.db.has_column("Email Signature Template", "preview_user"))
 
 	def test_an_address_may_be_as_long_as_its_field(self):
 		meta = frappe.get_meta("Email Signature Template")

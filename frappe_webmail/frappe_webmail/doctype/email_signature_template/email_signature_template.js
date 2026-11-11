@@ -20,10 +20,8 @@ frappe.ui.form.on("Email Signature Template", {
 	},
 
 	refresh: function (frm) {
-		// The preview is written with the details of the person who is editing, until another is chosen. Set without
-		// making the form unsaved: opening a template changes nothing in it.
-		frm.set_value("preview_user", frappe.session.user, true, true);
 		frm.trigger("enabled");
+		make_preview_person(frm);
 		frm.refresh_preview();
 		show_font_names(frm);
 	},
@@ -54,6 +52,39 @@ function show_font_names(frm) {
 	});
 }
 
+// The person whose details the preview is written with: the one who is editing, until another is chosen. Chosen in a
+// control of the form's own, outside the document: a field of the template would make it unsaved at every choice
+// (maintenance#2463), though choosing whom to preview for changes nothing in the template.
+function make_preview_person(frm) {
+	if (frm.preview_person_control) return;
+	const field = frm.get_field("preview_html");
+	if (!field || !field.$wrapper) return;
+
+	const holder = $('<div class="preview-person"></div>').insertBefore(field.$wrapper);
+	frm.preview_person_control = frappe.ui.form.make_control({
+		df: {
+			fieldtype: "Link",
+			fieldname: "preview_person",
+			options: "User",
+			label: __("Preview As"),
+			description: __(
+				"The person whose details the preview is written with. It changes nothing in the template."
+			),
+			change: function () {
+				frm.refresh_preview();
+			},
+		},
+		parent: holder,
+		render_input: true,
+	});
+	frm.preview_person_control.set_value(frappe.session.user);
+}
+
+function preview_person(frm) {
+	const control = frm.preview_person_control;
+	return (control && control.get_value()) || frappe.session.user;
+}
+
 function draw_preview(frm) {
 	const field = frm.get_field("preview_html");
 	if (!field || !field.$wrapper) return;
@@ -64,7 +95,7 @@ function draw_preview(frm) {
 
 	frappe.call({
 		method: "frappe_webmail.signatures.preview",
-		args: { doc: frm.doc, user: frm.doc.preview_user || frappe.session.user },
+		args: { doc: frm.doc, user: preview_person(frm) },
 		silent: true,
 		callback: function (r) {
 			if (ticket === frm.preview_ticket) show_preview(field.$wrapper, r.message);
