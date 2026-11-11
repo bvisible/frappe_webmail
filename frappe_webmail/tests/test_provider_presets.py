@@ -107,6 +107,22 @@ class TestPasswordProviderPreset(unittest.TestCase):
 		with self.assertRaises(frappe.ValidationError):
 			_account(imap_password=None, smtp_password="for smtp").validate_auth()
 
+	def test_a_port_from_a_link_is_read_as_a_number(self):
+		"""A form opened from a link (`/app/webmail-account/new?imap_port=993`) holds its fields as the text of the
+		address: the ports are checked and kept as the numbers they are (11.11.2026: such a link made every save a server
+		error, `'<' not supported between instances of 'str' and 'int'`)."""
+		doc = _account(imap_port="993", smtp_port=" 465 ")
+		doc.validate_ports()
+		self.assertEqual((doc.imap_port, doc.smtp_port), (993, 465))
+		# A port that is no port is refused, typed or from a link
+		for wrong in ("99999", "abc", "-1", "0x3e1", 70000):
+			with self.assertRaises(frappe.ValidationError):
+				_account(imap_port=wrong).validate_ports()
+		# An empty one stays empty, as a number typed in the form stays the number it is
+		doc = _account(imap_port="", smtp_port=587)
+		doc.validate_ports()
+		self.assertEqual((doc.imap_port, doc.smtp_port), (None, 587))
+
 	def test_the_presets_are_declared_for_the_form_script_to_mirror(self):
 		import json
 		import os

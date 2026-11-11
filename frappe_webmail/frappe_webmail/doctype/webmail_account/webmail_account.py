@@ -105,11 +105,22 @@ class WebmailAccount(Document):
 			frappe.throw(_("Invalid email address: {0}").format(self.email))
 
 	def validate_ports(self):
-		"""Validate port numbers"""
-		if self.imap_port and (self.imap_port < 1 or self.imap_port > 65535):
-			frappe.throw(_("Invalid IMAP port number"))
-		if self.smtp_port and (self.smtp_port < 1 or self.smtp_port > 65535):
-			frappe.throw(_("Invalid SMTP port number"))
+		"""Validate the port numbers, read as the numbers they are. A form opened from a link
+		(`/app/webmail-account/new?imap_port=993`) holds the text of the address, and Frappe types a field only when it
+		writes the document, after `validate` (11.11.2026: every save of such a form ended in a server error)."""
+		for fieldname, message in (
+			("imap_port", _("Invalid IMAP port number")),
+			("smtp_port", _("Invalid SMTP port number")),
+		):
+			port = getattr(self, fieldname, None)
+			if isinstance(port, str):
+				text = port.strip()
+				if text and not text.isdigit():
+					frappe.throw(message)
+				port = int(text) if text else None
+				setattr(self, fieldname, port)
+			if port and not 1 <= port <= 65535:
+				frappe.throw(message)
 
 	def validate_auth(self):
 		"""Validate authentication settings"""
