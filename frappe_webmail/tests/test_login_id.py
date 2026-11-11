@@ -5,6 +5,7 @@
 
 Some servers sign a mailbox in with a username or an account number, not with its address. The mailbox says so (a box
 to tick and a login ID), and the same one signs it in to IMAP and to SMTP; the address stays the one mail is sent from.
+A sending server that wants yet another (a relay with an account of its own) has its own box and login ID.
 
 - Left unticked (every mailbox made before), the servers are signed in with the address, as always.
 - OAuth2 mailboxes are signed in with their address: the provider knows them by it.
@@ -78,6 +79,68 @@ class TestLoginId(FrappeTestCase):
 		client.oauth2_login.assert_called_once_with(ADDRESS, "access-token")
 		client.login.assert_not_called()
 
+	def test_smtp_follows_the_login_of_the_mailbox_unless_it_has_one_of_its_own(self):
+		from frappe_webmail.utils.login_id import smtp_login_id_of
+
+		self.assertEqual(smtp_login_id_of(_account()), ADDRESS)
+		# No login of its own: the mailbox's (the same one for both servers, as before)
+		self.assertEqual(smtp_login_id_of(_account(login_id_is_different=1, login_id="user42")), "user42")
+		# Ticked and empty, or unticked with one left behind: not used
+		self.assertEqual(smtp_login_id_of(_account(smtp_login_id_is_different=1, smtp_login_id=" ")), ADDRESS)
+		self.assertEqual(smtp_login_id_of(_account(smtp_login_id="left-behind")), ADDRESS)
+		own = _account(
+			login_id_is_different=1,
+			login_id="user42",
+			smtp_login_id_is_different=1,
+			smtp_login_id=" relay-user ",
+		)
+		self.assertEqual(smtp_login_id_of(own), "relay-user")
+		# A mailbox made before the fields existed has none of these attributes
+		self.assertEqual(smtp_login_id_of(SimpleNamespace(email=ADDRESS)), ADDRESS)
+
+	def test_smtp_is_signed_in_with_its_own_login_and_imap_keeps_the_mailbox_s(self):
+		account = _account(
+			login_id_is_different=1,
+			login_id="user42",
+			smtp_login_id_is_different=1,
+			smtp_login_id="relay-user",
+		)
+		client, server = MagicMock(), MagicMock()
+		webmail_api._imap_login_raw(client, account)
+		webmail_api._smtp_login_raw(server, account)
+		client.login.assert_called_once_with("user42", "imap-secret")
+		server.login.assert_called_once_with("relay-user", "smtp-secret")
+
+	def test_smtp_login_of_its_own_alone_leaves_imap_on_the_address(self):
+		account = _account(smtp_login_id_is_different=1, smtp_login_id="relay-user")
+		client, server = MagicMock(), MagicMock()
+		webmail_api._imap_login_raw(client, account)
+		webmail_api._smtp_login_raw(server, account)
+		client.login.assert_called_once_with(ADDRESS, "imap-secret")
+		server.login.assert_called_once_with("relay-user", "smtp-secret")
+
+	def test_the_form_declares_the_smtp_login_next_to_the_smtp_password_and_asks_for_it_when_ticked(self):
+		path = os.path.join(
+			os.path.dirname(webmail_api.__file__),
+			"frappe_webmail",
+			"doctype",
+			"webmail_account",
+			"webmail_account.json",
+		)
+		with open(path) as f:
+			doctype = json.load(f)
+		fields = {df["fieldname"]: df for df in doctype["fields"]}
+		order = doctype["field_order"]
+		self.assertEqual(fields["smtp_login_id_is_different"]["fieldtype"], "Check")
+		self.assertEqual(fields["smtp_login_id"]["fieldtype"], "Data")
+		self.assertIn("Password", fields["smtp_login_id_is_different"]["depends_on"])
+		self.assertIn("smtp_login_id_is_different", fields["smtp_login_id"]["depends_on"])
+		self.assertIn("smtp_login_id_is_different", fields["smtp_login_id"]["mandatory_depends_on"])
+		self.assertLess(order.index("smtp_login_id_is_different"), order.index("smtp_login_id"))
+		self.assertLess(order.index("smtp_login_id"), order.index("smtp_password"))
+		# In the SMTP section, not the IMAP one
+		self.assertGreater(order.index("smtp_login_id"), order.index("sb_smtp"))
+
 	def test_the_form_declares_the_login_id_next_to_the_password_and_asks_for_it_when_ticked(self):
 		path = os.path.join(
 			os.path.dirname(webmail_api.__file__),
@@ -146,6 +209,13 @@ class TestConnectionTestLoginId(FrappeTestCase):
 		self.assertTrue(result["success"], result)
 		self.imap.login.assert_called_once_with("user42", "typed-imap")
 		self.smtp.login.assert_called_once_with("user42", "typed-smtp")
+
+	def test_the_connection_test_signs_in_to_smtp_with_its_own_login_when_the_form_gives_one(self):
+		with as_role("sales_user", email=OWNER):
+			result = self._test_the_form(login_id="user42", smtp_login_id="relay-user")
+		self.assertTrue(result["success"], result)
+		self.imap.login.assert_called_once_with("user42", "typed-imap")
+		self.smtp.login.assert_called_once_with("relay-user", "typed-smtp")
 
 	def test_the_connection_test_signs_in_with_the_address_when_no_login_id_is_given(self):
 		with as_role("sales_user", email=OWNER):

@@ -45,7 +45,7 @@ from frappe_webmail.replies import appended_uid, reply_recipients
 
 # The IMAPClient the app builds: imapclient's, bounded with TLS too and watched (utils/imap_client.py)
 from frappe_webmail.utils.imap_client import IMAP_PROBE_TIMEOUT, IMAP_READ_TIMEOUT, IMAPClient, imap_timeout
-from frappe_webmail.utils.login_id import login_id_of
+from frappe_webmail.utils.login_id import login_id_of, smtp_login_id_of
 
 try:
 	import bleach
@@ -396,6 +396,12 @@ def _imap_login_raw(client, account):
 	Regular operations should call imap_login() instead, which translates
 	failures into typed, user-friendly webmail errors.
 	"""
+	# A server that offers TLS by STARTTLS (usually port 143) answers in the clear first: switched to TLS before anything
+	# is sent, with the certificate and the name checked. Not when the connection is TLS from its first byte (SSL), nor
+	# for a mailbox made before the field existed. A server that refuses fails here, before any password is given.
+	if cint(getattr(account, "imap_starttls", 0)) and not cint(account.imap_ssl):
+		client.starttls(ssl_context=_ssl.create_default_context())
+
 	if account.auth_type == "OAuth2":
 		access_token = account.get_oauth_access_token()
 		if not access_token:
@@ -681,7 +687,7 @@ def _smtp_login_raw(server, account):
 	else:
 		# Password authentication
 		password = account.get_password("smtp_password")
-		server.login(login_id_of(account), password)
+		server.login(smtp_login_id_of(account), password)
 
 
 def smtp_login(server, account):
@@ -790,6 +796,8 @@ def test_connection_live(
 	smtp_verify_certificate=None,
 	account_name=None,
 	login_id=None,
+	imap_starttls=None,
+	smtp_login_id=None,
 ):
 	"""Test IMAP/SMTP connection with provided values (before saving). The desk's people only: the form that calls it is
 	the desk's, and a portal account made the server connect to any address and port it named (maintenance#2296); so many
@@ -797,7 +805,9 @@ def test_connection_live(
 
 	`account_name` is the saved mailbox the form shows, when it is one: a password the person did not touch comes back
 	from the form as asterisks (see _password_to_test), and the stored one is tested in its place. `login_id` is what
-	the servers sign the mailbox in as when that is not its address (empty: the address)."""
+	the servers sign the mailbox in as when that is not its address (empty: the address), `smtp_login_id` the sending
+	server's own when it wants another (empty: the same), `imap_starttls` whether the IMAP connection is switched to TLS
+	after it opens (only without SSL)."""
 	_require_desk_user()
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
@@ -827,6 +837,9 @@ def test_connection_live(
 	account.auth_type = auth_type
 	account.login_id = (login_id or "").strip()
 	account.login_id_is_different = 1 if account.login_id else 0
+	account.smtp_login_id = (smtp_login_id or "").strip()
+	account.smtp_login_id_is_different = 1 if account.smtp_login_id else 0
+	account.imap_starttls = 1 if to_bool(imap_starttls) else 0
 	account.oauth_provider = oauth_provider
 	account.oauth_access_token = oauth_access_token
 

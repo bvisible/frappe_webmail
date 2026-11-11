@@ -17,3 +17,13 @@ def login_id_of(account):
 		if login_id:
 			return login_id
 	return account.email
+
+
+def smtp_login_id_of(account):
+	"""What the sending server signs a password mailbox in as: its own login ID when the mailbox says its sending server
+	wants another (a relay with its own account), else the one of the mailbox (login_id_of), as before the setting."""
+	if cint(getattr(account, "smtp_login_id_is_different", 0)):
+		smtp_login_id = (getattr(account, "smtp_login_id", None) or "").strip()
+		if smtp_login_id:
+			return smtp_login_id
+	return login_id_of(account)

@@ -173,6 +173,10 @@ function test_connection(frm) {
 			frappe.msgprint(__("Please enter the login ID."));
 			return;
 		}
+		if (frm.doc.smtp_login_id_is_different && !(frm.doc.smtp_login_id || "").trim()) {
+			frappe.msgprint(__("Please enter the SMTP login ID."));
+			return;
+		}
 	}
 
 	// Show loading indicator
@@ -205,6 +209,13 @@ function test_connection(frm) {
 				frm.doc.auth_type === "Password" && frm.doc.login_id_is_different
 					? (frm.doc.login_id || "").trim()
 					: "",
+			// The sending server's own login ID, when it wants another (empty: the same one)
+			smtp_login_id:
+				frm.doc.auth_type === "Password" && frm.doc.smtp_login_id_is_different
+					? (frm.doc.smtp_login_id || "").trim()
+					: "",
+			// IMAP switched to TLS after it opens (only means something without SSL)
+			imap_starttls: frm.doc.imap_starttls && !frm.doc.imap_ssl ? 1 : 0,
 		},
 		callback: function (r) {
 			frappe.hide_progress();
