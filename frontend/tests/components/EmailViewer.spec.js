@@ -407,14 +407,21 @@ describe("EmailViewer", () => {
 		wrapper.vm.showExternalImages = true;
 		wrapper.vm.hasBlockedImages = true;
 
-		// Change email
+		// Change email, whose sender is not a trusted one. The answer for the first message (the mock's default, `{}`,
+		// reads as trusted) may come back after the change: it must not show the images of the second.
+		frappe.call.mockImplementation(async (options) => ({
+			message:
+				options?.method === "frappe_webmail.webmail_api.is_sender_trusted" ? false : {},
+		}));
 		await wrapper.setProps({
 			email: { ...mockEmail, uid: 2, subject: "Different Email" },
 		});
+		await flushPromises();
 
 		// State should be reset
 		expect(wrapper.vm.showExternalImages).toBe(false);
 		expect(wrapper.vm.hasBlockedImages).toBe(false);
+		frappe.call.mockResolvedValue({ message: {} });
 	});
 
 	describe("the conversation, unfolded while a message is read (board 20)", () => {

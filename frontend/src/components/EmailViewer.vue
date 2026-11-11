@@ -1162,17 +1162,20 @@ ${frameStyle(this.frame)}
 
 		async checkTrustedSender() {
 			if (!this.email?.from_email) return;
+			// The answer is for this message: one read meanwhile keeps its own (the images of a trusted sender
+			// must not show in the next message, from someone else, because the answer came back late).
+			const asked = this.email;
 
 			try {
 				const response = await frappe.call({
 					method: "frappe_webmail.webmail_api.is_sender_trusted",
 					args: {
 						account_name: this.account,
-						from_email: this.email.from_email,
+						from_email: asked.from_email,
 					},
 				});
 
-				if (response.message) {
+				if (response.message && this.email === asked) {
 					this.showExternalImages = true;
 				}
 			} catch (error) {

@@ -17,7 +17,10 @@ describe("the signature after the text of a message", () => {
 		holder.innerHTML = html;
 		const block = holder.querySelector(`[${SIGNATURE_ATTRIBUTE}]`);
 		expect(block).not.toBeNull();
-		expect(block.innerHTML).toBe(CARD);
+		// The card as a browser writes it back (a table gets its tbody)
+		const card = document.createElement("div");
+		card.innerHTML = CARD;
+		expect(block.innerHTML).toBe(card.innerHTML);
 		// Nothing but the space before the block: no paragraph holding a separator
 		expect(holder.querySelectorAll("p")).toHaveLength(0);
 	});

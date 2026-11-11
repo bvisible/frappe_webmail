@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { blockRemote, framePolicy, isLocal, styleFetches } from "../src/utils/remoteContent.js";
 
-/** The first element of `html`, as the sanitizer's hook is given it. */
+/** The first element of `html`, as the sanitizer's hook is given it. Parsed in a template, where a cell or a row
+ * stays what it is: in a div the HTML parser drops a `<td>` without its table, as every browser does. */
 function element(html) {
-	const box = document.createElement("div");
+	const box = document.createElement("template");
 	box.innerHTML = html;
-	return box.firstElementChild;
+	return box.content.firstElementChild;
 }
 
 describe("blockRemote", () => {
