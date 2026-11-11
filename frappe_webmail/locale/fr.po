@@ -5539,3 +5539,28 @@ msgstr "Certains serveurs identifient une boîte aux lettres autrement que par s
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:176
 msgid "Use a different login ID"
 msgstr "Utiliser un autre identifiant de connexion"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:177
+msgid "Please enter the SMTP login ID."
+msgstr "Veuillez saisir l'identifiant de connexion SMTP."
+
+#. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:256
+msgid "SMTP Login ID"
+msgstr "Identifiant de connexion SMTP"
+
+#. Description of the 'Use STARTTLS' (Check) field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:172
+msgid "The connection starts unencrypted and switches to an encrypted one, usually on port 143: for servers that do not offer SSL on a port of their own. Without SSL or STARTTLS, the password is sent in the clear."
+msgstr "La connexion démarre non chiffrée puis passe à un mode chiffré, généralement sur le port 143 : pour les serveurs qui n'offrent pas SSL sur un port dédié. Sans SSL ni STARTTLS, le mot de passe est envoyé en clair."
+
+#. Description of the 'Use a different SMTP login ID' (Check) field in DocType
+#. 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:247
+msgid "The sending server wants another login ID than the one the mailbox is read with, as a sending relay with an account of its own does."
+msgstr "Le serveur sortant demande un autre identifiant de connexion que celui avec lequel la boîte est consultée, comme c'est le cas d'un relais d'envoi disposant de son propre compte."
+
+#. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:250
+msgid "Use a different SMTP login ID"
+msgstr "Utiliser un autre identifiant de connexion pour le serveur sortant (SMTP)"
