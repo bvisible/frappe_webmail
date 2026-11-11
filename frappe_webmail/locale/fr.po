@@ -5519,3 +5519,23 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#. Label of a Data field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:182
+msgid "Login ID"
+msgstr "Identifiant de connexion"
+
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:173
+msgid "Please enter the login ID."
+msgstr "Veuillez saisir l'identifiant de connexion."
+
+#. Description of the 'Use a different login ID' (Check) field in DocType
+#. 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:173
+msgid "Some servers sign a mailbox in with something other than its address: a username, an account number. Used for IMAP and SMTP."
+msgstr "Certains serveurs identifient une boîte aux lettres autrement que par son adresse : un nom d'utilisateur, un numéro de compte. Utilisé pour IMAP et SMTP."
+
+#. Label of a Check field in DocType 'Webmail Account'
+#: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:176
+msgid "Use a different login ID"
+msgstr "Utiliser un autre identifiant de connexion"
