@@ -829,7 +829,9 @@ export default {
 				.sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role));
 			const own = this.navFolders.filter((f) => !order.includes(f.role));
 			const others = this.accounts.filter((a) => a.name !== this.currentAccount);
-			const local = (email) => (email || "").split("@")[0] + "@";
+			// A mailbox is named by its whole address: the domain is what tells mailboxes apart when a person has several
+			// (info@ of two domains), and NeoMail's cockpit names them so. It was cut after the @ (« DANIEL@ »).
+			const whole = (email) => (email || "").trim();
 			const nav = [];
 			// « Toutes les boîtes » heads the mailboxes (board 20): the inbox of every one, one click away
 			if (others.length) {
@@ -847,7 +849,7 @@ export default {
 				});
 			}
 			nav.push({
-				label: local(this.currentAccountEmail),
+				label: whole(this.currentAccountEmail),
 				items: special.map((f) => item(f, true)),
 			});
 			if (others.length) {
@@ -856,7 +858,7 @@ export default {
 						? this.__("Shared mailboxes")
 						: this.__("Other mailboxes"),
 					items: others.map((a) => ({
-						label: local(a.email),
+						label: whole(a.email),
 						icon: "lucide-users",
 						badge: this.boxUnread[a.name] || undefined,
 						onClick: () => this.switchAccount(a.name),
