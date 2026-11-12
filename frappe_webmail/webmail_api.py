@@ -760,20 +760,52 @@ def _is_dummy_password(password):
 	return bool(password) and set(password) == {"*"}
 
 
-def _password_to_test(account_name, fieldname, typed):
+def _flag(account, fieldname):
+	"""A checkbox of a mailbox as 0 or 1; one the site's table does not have yet (code ahead of its migrate) is off."""
+	return 1 if cint(getattr(account, fieldname, 0)) else 0
+
+
+def _sign_in_target(account):
+	"""Where a connection test signs in and as whom: servers, ports, encryption, the certificate check and the login
+	names, read the way the servers read them. `account` is a saved mailbox or the form's values shaped as one, so the
+	two compare."""
+	return (
+		(getattr(account, "imap_host", None) or "").strip().lower(),
+		cint(getattr(account, "imap_port", 0)),
+		_flag(account, "imap_ssl"),
+		1 if _flag(account, "imap_starttls") and not _flag(account, "imap_ssl") else 0,
+		(getattr(account, "smtp_host", None) or "").strip().lower(),
+		cint(getattr(account, "smtp_port", 0)),
+		_flag(account, "smtp_ssl"),
+		1 if _flag(account, "smtp_starttls") and not _flag(account, "smtp_ssl") else 0,
+		_flag(account, "smtp_verify_certificate"),
+		login_id_of(account),
+		smtp_login_id_of(account),
+	)
+
+
+def _password_to_test(account_name, fieldname, typed, target):
 	"""The password a connection test signs in with, or None when there is none.
+
+	`target` is what the test is about to sign in to: the form's values shaped as a mailbox (see _sign_in_target).
 
 	The form shows a saved password as asterisks and sends them back as they are: the test signed in with the asterisks
 	and told a mailbox that works that its password was wrong. A password typed is taken as typed; one not touched is
-	read from the saved mailbox, for its owner alone. A colleague the mailbox is shared with signs in with it but does
-	not have it tested against a server they name, and a mailbox that is not theirs is answered as no password at all
-	(as get_account answers one that is not there)."""
+	read from the saved mailbox. For its owner whatever servers the form names: it is their own secret. For
+	Administrator and a colleague the mailbox is shared with, who open the form and press the button too
+	(maintenance#2595), only when the form names the very servers and logins the mailbox signs in with: an edit of any
+	of them would send a password that is not theirs wherever they like (maintenance#2296), so they type it. Whoever
+	may not open the mailbox is answered as no password at all (as get_account answers one that is not there)."""
 	if typed and not _is_dummy_password(typed):
 		return typed
-	if not isinstance(account_name, str) or not account_name:
+	if not isinstance(account_name, str) or not frappe.db.exists("Webmail Account", account_name):
 		return None
-	if frappe.db.get_value("Webmail Account", account_name, "user") != frappe.session.user:
-		return None
+	saved = frappe.get_doc("Webmail Account", account_name)
+	user = frappe.session.user
+	if saved.user != user:
+		may_open = user == "Administrator" or any(row.user == user for row in saved.allowed_users)
+		if not may_open or _sign_in_target(saved) != _sign_in_target(target):
+			return None
 	return get_decrypted_password("Webmail Account", account_name, fieldname, raise_exception=False)
 
 
@@ -812,13 +844,6 @@ def test_connection_live(
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
-	if auth_type == "Password":
-		imap_password = _password_to_test(account_name, "imap_password", imap_password)
-		if not imap_password:
-			frappe.throw(_("Please enter the IMAP password."))
-		# Left empty, the SMTP password is the IMAP one (as the controller saves it)
-		smtp_password = _password_to_test(account_name, "smtp_password", smtp_password) or imap_password
-
 	# Create a mock account object with the provided values
 	class MockAccount:
 		pass
@@ -842,6 +867,15 @@ def test_connection_live(
 	account.imap_starttls = 1 if to_bool(imap_starttls) else 0
 	account.oauth_provider = oauth_provider
 	account.oauth_access_token = oauth_access_token
+
+	if auth_type == "Password":
+		imap_password = _password_to_test(account_name, "imap_password", imap_password, account)
+		if not imap_password:
+			frappe.throw(_("Please enter the IMAP password."))
+		# Left empty, the SMTP password is the IMAP one (as the controller saves it)
+		smtp_password = (
+			_password_to_test(account_name, "smtp_password", smtp_password, account) or imap_password
+		)
 
 	# For password auth, we need to handle passwords specially
 	if auth_type == "Password":
