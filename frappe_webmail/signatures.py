@@ -489,9 +489,11 @@ def signature_for(user: str, account: dict | None = None, memo: dict | None = No
 
 	A mailbox shared with the person (`account` is someone else's) signs as its owner set it to, when it names a
 	signature of its own: a team's card under info@. Without one, the template is written for the mailbox (its name and
-	address, the company's number): under a template, it never carries the writer's own signature, job or numbers. With
-	no template, the webmail signs as it always has (the writer's default one). Under one of their own mailboxes, the
-	template gives the mailbox's address rather than the one they sign in with (unless it sets one for everyone).
+	address, the company's number): under a template, it never carries the writer's own signature, job or numbers,
+	unless the template says each person signs as themselves on a shared mailbox (`sign_as_writer_on_shared_mailbox`):
+	then it is written for the writer, from the mailbox's address, as under one of their own. With no template, the
+	webmail signs as it always has (the writer's default one). Under one of their own mailboxes, the template gives the
+	mailbox's address rather than the one they sign in with (unless it sets one for everyone).
 
 	`memo`, a dict the caller keeps for one request, spares working out the template and the person again for each of
 	their mailboxes. A failure is logged once a request and answered as if no template could be read: the mailbox's own
@@ -528,12 +530,16 @@ def _signature_for(user: str, account: dict | None, memo: dict, shared: bool) ->
 	if "person" not in memo:
 		memo["person"] = person_of(user)
 	person = memo["person"]
-	if shared:
+	# A template may have each person sign as themselves under a shared mailbox (a team address where who writes
+	# matters); off, a shared mailbox signs as the mailbox
+	as_the_mailbox = shared and not cint(getattr(template, "sign_as_writer_on_shared_mailbox", 0))
+	if as_the_mailbox:
 		if "company_phone" not in memo:
 			memo["company_phone"] = _company_phone(user)
 		person = _team_of(person, account, memo["company_phone"])
 	elif isinstance(account, dict) and (mailbox := _one_line(account.get("email"))):
-		# One of their own mailboxes: the address they write from, which need not be the one they sign in with
+		# The mailbox they write from (their own, or a shared one they sign from): its address, which need not be the
+		# one they sign in with
 		person = frappe._dict(person, email=mailbox)
 	key = ("written", tuple(sorted(person.items())))
 	if key not in memo:
@@ -541,8 +547,9 @@ def _signature_for(user: str, account: dict | None, memo: dict, shared: bool) ->
 	signature = memo[key]
 	if signature["html"]:
 		return signature
-	# A template that has nothing to show leaves a person their own; a shared mailbox has none of its own here
-	return None if shared else own_signature(user, account)
+	# A template that has nothing to show leaves a person their own; a shared mailbox signing as the mailbox has none
+	# of its own here
+	return None if as_the_mailbox else own_signature(user, account)
 
 
 def _team_of(person: frappe._dict, account: dict, phone: str) -> frappe._dict:

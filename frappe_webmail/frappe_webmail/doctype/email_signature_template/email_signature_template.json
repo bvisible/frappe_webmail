@@ -13,6 +13,7 @@
   "department",
   "cb_scope",
   "allow_personal",
+  "sign_as_writer_on_shared_mailbox",
   "sb_layout",
   "layout",
   "sb_show",
@@ -116,6 +117,13 @@
    "fieldname": "allow_personal",
    "fieldtype": "Check",
    "label": "People may use their own signature instead"
+  },
+  {
+   "default": "0",
+   "description": "A mailbox that someone else owns and shares with them signs as the mailbox by default: its name and the company's main number. Checked, each person signs with their own name, job and numbers, from the mailbox's address. A mailbox that names a signature of its own keeps that one.",
+   "fieldname": "sign_as_writer_on_shared_mailbox",
+   "fieldtype": "Check",
+   "label": "On a shared mailbox, each person signs as themselves"
   },
   {
    "fieldname": "sb_layout",
@@ -364,7 +372,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-11-11 12:00:00.000000",
+ "modified": "2026-11-12 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "Email Signature Template",

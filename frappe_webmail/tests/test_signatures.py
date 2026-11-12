@@ -1297,6 +1297,50 @@ class TestWhatTheComposersAreGiven(SignatureTestCase):
 		named = signature_for(USER, {**shared, "default_signature": team.name})
 		self.assertEqual(named, {"html": team.content, "text": "The team card"})
 
+	def test_a_template_may_have_each_person_sign_as_themselves_on_a_shared_mailbox(self):
+		"""Under a team address (hello@) who writes matters: with the setting on, the card written from a shared mailbox
+		is the writer's (their name, job and numbers) from the mailbox's address, not the mailbox's name and the
+		company's main number."""
+		self.make_template("as-the-writer", show_mobile=1, sign_as_writer_on_shared_mailbox=1)
+		shared = {
+			"email": "team@webmail.test",
+			"sender_name": "The Team",
+			"default_signature": None,
+			"user": OTHER,
+		}
+		writer = person(user=USER, name="Sigtest Person", email=USER)
+		with (
+			patch.object(signatures, "person_of", return_value=writer),
+			patch.object(signatures, "_company_phone", return_value="+41 00 000 00 10"),
+		):
+			given = signature_for(USER, shared)
+		for words in (
+			"Sigtest Person",
+			"Head of Sales",
+			"+41 00 000 00 00",
+			"+41 00 000 00 01",
+			"team@webmail.test",
+			"Example Ltd",
+		):
+			self.assertIn(words, given["html"], words)
+			self.assertIn(words, given["text"], words)
+		for words in ("The Team", "+41 00 000 00 10", USER):
+			self.assertNotIn(words, given["html"], words)
+			self.assertNotIn(words, given["text"], words)
+
+	def test_the_setting_leaves_a_shared_mailbox_that_names_a_card_of_its_own_as_it_was(self):
+		self.make_template("as-the-writer-named", sign_as_writer_on_shared_mailbox=1)
+		team = self.personal(user=OTHER, content="<p>The team card</p>", default=False)
+		shared = {
+			"email": "team@webmail.test",
+			"sender_name": "The Team",
+			"default_signature": team.name,
+			"user": OTHER,
+		}
+		writer = person(user=USER, name="Sigtest Person", email=USER)
+		with patch.object(signatures, "person_of", return_value=writer):
+			self.assertEqual(signature_for(USER, shared), {"html": team.content, "text": "The team card"})
+
 	def test_an_own_mailbox_signs_with_its_own_address(self):
 		"""A person who signs in as one address and writes from a mailbox of another (their login is not their
 		mailbox): the signature gives the mailbox's address, where they are answered. The template's address for
