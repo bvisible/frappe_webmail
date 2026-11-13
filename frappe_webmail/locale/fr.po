@@ -5198,3 +5198,14 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#. Description of the 'On a shared mailbox, each person signs as themselves'
+#. (Check) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:123
+msgid "A mailbox that someone else owns and shares with them signs as the mailbox by default: its name and the company's main number. Checked, each person signs with their own name, job and numbers, from the mailbox's address. A mailbox that names a signature of its own keeps that one."
+msgstr "Une boîte partagée avec vous par son propriétaire signe par défaut au nom de la boîte : son nom et le numéro principal de l'entreprise. Si cette case est cochée, chaque personne signe à son propre nom, avec son poste et ses numéros, depuis l'adresse de la boîte. Une boîte qui indique une signature propre garde celle-ci."
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:126
+msgid "On a shared mailbox, each person signs as themselves"
+msgstr "Sur une boîte partagée, chacun signe à son nom"
