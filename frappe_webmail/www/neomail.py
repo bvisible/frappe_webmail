@@ -43,7 +43,7 @@ PRODUCT = "NeoMail"
 # (Webmail.vue, applyUrlIntent).
 SIGNATURES = "/app/webmail?signatures=1"
 # Where the mailboxes are set up: the person's Webmail Accounts (their servers, password, name on their mail), one
-# mailbox's form under it. NeoMail cannot change them (its account settings are its own, lost with the tab): its File ›
+# mailbox's form under it. NeoMail cannot change them (its account settings are its own, lost with the tab): its File >
 # Info opens these (29.10: its Settings button there did nothing that lasted, and nothing led here).
 ACCOUNTS = "/app/webmail-account"
 
@@ -120,6 +120,9 @@ def handover(sample=False, build=None):
 			"product": PRODUCT,
 			"signatures": signatures_url(),
 			"accounts_home": accounts_url(),
+			# Whose the mailboxes are: the build keeps a copy of them in the browser under this person and these mailboxes
+			# (IndexedDB « neomail », the person's alone), which signing out deletes (forget_on_sign_out).
+			"person": frappe.session.user,
 		},
 		"no_mailbox": not mailboxes and not sample,
 	}
@@ -458,6 +461,30 @@ def _script_json(data):
 	import json
 
 	return json.dumps(data).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+# Where someone who signed out lands: the sign-in page (the desk's and the cockpit's « Log out », and an ended session,
+# lead there) and the website's « Logged Out » (web_logout).
+SIGNED_OUT = ("/api/method/web_logout", "/api/method/frappe.handler.web_logout")
+SIGN_OUT_COMMANDS = ("web_logout", "frappe.handler.web_logout")
+# What such a page runs: NeoMail's copy of the mailboxes deleted from the browser. The build never keeps it from going
+# (it closes its connection when asked), and a browser without IndexedDB has none to delete.
+FORGET = '<script>try{indexedDB.deleteDatabase("neomail")}catch(e){}</script>'
+
+
+def forget_on_sign_out(context):
+	"""update_website_context: the page someone who signed out lands on deletes NeoMail's copy of their mailboxes, which
+	the build keeps in the browser between visits (IndexedDB « neomail », under `person`): the next one to use this
+	browser finds none. The sign-in page shown to a visitor (an ended session, a « Log out » of the desk or the cockpit)
+	and the website's « Logged Out »; any other page, and anyone signed in, are left as they are. Neodesk deletes its own
+	when the instance says it is signed out."""
+	request = getattr(frappe.local, "request", None)
+	path = (getattr(request, "path", "") or "").rstrip("/")
+	cmd = str((getattr(frappe.local, "form_dict", None) or {}).get("cmd") or "")
+	signed_out = path in SIGNED_OUT or cmd in SIGN_OUT_COMMANDS
+	if not signed_out and not (path == "/login" and frappe.session.user == "Guest"):
+		return None
+	return {"body_include": (context.get("body_include") or "") + FORGET}
 
 
 def _redirect(location):

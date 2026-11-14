@@ -1160,6 +1160,7 @@ class TestMailCraftJmap(FrappeTestCase):
 				"product": "NeoMail",
 				"signatures": frappe.utils.get_url("/app/webmail?signatures=1"),
 				"accounts_home": frappe.utils.get_url("/app/webmail-account"),
+				"person": SHARED,
 			},
 		)
 		self.assertEqual(
@@ -1281,7 +1282,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertIs(next(a for a in neomail.host_mailboxes() if a["email"] == MAILBOX)["shared"], True)
 
 	def test_a_mailbox_of_the_person_s_own_names_where_its_settings_are_changed(self):
-		"""NeoMail's File › Info opens a mailbox's settings on the instance (its Webmail Account form), by their whole
+		"""NeoMail's File > Info opens a mailbox's settings on the instance (its Webmail Account form), by their whole
 		address: Neodesk, handed the same, is no page of it. A mailbox shared with the person has none for them: only its
 		owner changes its servers and password (29.10: its Settings button there led nowhere that lasted)."""
 		from frappe_webmail.www import neomail

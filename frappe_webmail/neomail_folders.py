@@ -175,6 +175,17 @@ def mailbox_set(args):
 				out["destroyed"].append(mid)
 			except _Refused as e:
 				out["notDestroyed"][mid] = e.answer
+	# What this call did, in the folders' journal (mailcraft_changes): a folder renamed or moved has another id, the
+	# old one let go and the new one made; the folders moved along with it are found by the next Mailbox/get.
+	from frappe_webmail import mailcraft_changes
+
+	renamed = {mid: moved["id"] for mid, moved in out["updated"].items() if moved}
+	out["oldState"], out["newState"] = mailcraft_changes.boxes_logged(
+		own,
+		created=[made["id"] for made in out["created"].values()] + list(renamed.values()),
+		updated=[mid for mid in out["updated"] if mid not in renamed],
+		destroyed=out["destroyed"] + list(renamed),
+	)
 	return out
 
 

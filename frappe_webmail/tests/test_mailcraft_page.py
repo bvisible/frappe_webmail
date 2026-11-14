@@ -141,6 +141,33 @@ class TestMailCraftPage(FrappeTestCase):
 			url = self._context(sample=True).build_url
 		self.assertTrue(url.endswith("&author=Jeanne%20%26%20Co%20Muster%231"), url)
 
+	def test_the_page_names_whose_the_mailboxes_are_and_signing_out_forgets_them(self):
+		"""The build keeps a copy of the mailboxes in the browser under `person`; the page someone signed out lands on
+		deletes it (IndexedDB « neomail »), any other page and anyone signed in are left as they are."""
+		import json
+		from types import SimpleNamespace
+
+		from frappe_webmail.www import neomail
+
+		frappe.set_user(STAFF)
+		self.assertEqual(json.loads(self._context(sample=True).host_json)["person"], STAFF)
+
+		def page(path, user, cmd=None, body=None):
+			frappe.set_user(user)
+			with (
+				patch.object(frappe.local, "request", SimpleNamespace(path=path), create=True),
+				patch.object(frappe.local, "form_dict", frappe._dict({"cmd": cmd} if cmd else {})),
+			):
+				return neomail.forget_on_sign_out(frappe._dict(body_include=body))
+
+		forget = 'indexedDB.deleteDatabase("neomail")'
+		self.assertIn(forget, page("/login", "Guest")["body_include"])
+		self.assertTrue(page("/login", "Guest", body="<i></i>")["body_include"].startswith("<i></i>"))
+		self.assertIn(forget, page("/api/method/web_logout", STAFF)["body_include"])
+		self.assertIn(forget, page("/", "Guest", cmd="web_logout")["body_include"])
+		for path, user in (("/login", STAFF), ("/neomail", STAFF), ("/", "Guest"), ("/app/neomail", STAFF)):
+			self.assertIsNone(page(path, user), path)
+
 	def test_the_page_names_where_the_signatures_are_written(self):
 		"""MailCraft's own signatures name the webmail's for the mailboxes the page hands it, by their whole address:
 		Neodesk, which is handed the same, is no page of the instance."""

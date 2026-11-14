@@ -263,7 +263,11 @@ after_request = ["frappe_webmail.mailcraft_jmap.no_store", "frappe_webmail.mailc
 # The desk's page /app/neomail is listed only where the site offers it (`neomail_in_desk`, page/neomail/neomail.py).
 extend_bootinfo = ["frappe_webmail.frappe_webmail.page.neomail.neomail.extend_bootinfo"]
 # There, a load of the webmail's desk page (/app/webmail…) goes to /app/neomail (the desk's address is a website page).
-update_website_context = ["frappe_webmail.frappe_webmail.page.neomail.neomail.lead_to_neomail"]
+# And the page someone who signed out lands on deletes NeoMail's copy of their mailboxes from the browser.
+update_website_context = [
+	"frappe_webmail.frappe_webmail.page.neomail.neomail.lead_to_neomail",
+	"frappe_webmail.www.neomail.forget_on_sign_out",
+]
 
 # Automatically update python controller files with type annotations for this app.
 export_python_type_annotations = True

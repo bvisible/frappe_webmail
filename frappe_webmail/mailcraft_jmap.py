@@ -8,8 +8,9 @@ of the plan that brings Nora into MailCraft).
 
 It serves what MailCraft's browser build asks for and reads, nothing more: the folders, a window of the newest
 messages of a folder, their keywords, size, date, preview and raw header fields, the raw source of a message,
-keyword changes, moves, deletes, drafts and sending. No */changes, no threads, no search: MailCraft re-reads its
-window at each sync and searches its own cache. Every mailbox call goes through the webmail's own rules
+keyword changes, moves, deletes, drafts and sending. Its states are real (mailcraft_changes): Email/changes,
+Email/queryChanges and Mailbox/changes say what changed since one, so that NeoMail, reopened on what it kept, reads that
+and no more. No threads, no search: MailCraft searches its own cache. Every mailbox call goes through the webmail's own rules
 (`get_account`: the owner or a person the mailbox is shared with) and its pooled IMAP connection (`imap_session`).
 Only what the webmail has no function for is done here: the raw source, INTERNALDATE, UIDVALIDITY and the raw header
 fields, appending a given message, sending a given message. The instance's contacts come as an address book
@@ -394,7 +395,7 @@ def hand_over(**kwargs):
 		"product": PRODUCT,
 		# Where the signatures of those mailboxes are written, which NeoMail's own signatures name for them.
 		"signatures": signatures_url(),
-		# Where those mailboxes are set up (each one's own: `settings`), which NeoMail's File › Info opens.
+		# Where those mailboxes are set up (each one's own: `settings`), which NeoMail's File > Info opens.
 		"accounts_home": accounts_url(),
 		# Whether NeoMail's band may call Nora: the instance has her.
 		"nora": nora_installed(),
@@ -817,8 +818,10 @@ def _api():
 def _more_methods():
 	"""The address book's, the calendars', the notes', the kept settings', the streams' and the folders' methods
 	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders,
-	neomail_history, which read this module: imported when first asked)."""
+	neomail_history), and what changed in the mail and the folders (mailcraft_changes), which read this module: imported
+	when first asked."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
+	from frappe_webmail.mailcraft_changes import METHODS as CHANGES_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
 	from frappe_webmail.mailcraft_notes import METHODS as NOTE_METHODS
 	from frappe_webmail.mailcraft_settings import METHODS as SETTINGS_METHODS
@@ -834,6 +837,7 @@ def _more_methods():
 		**STREAM_METHODS,
 		**FOLDER_METHODS,
 		**HISTORY_METHODS,
+		**CHANGES_METHODS,
 	}
 
 
@@ -1083,8 +1087,26 @@ def _validities(account, folders):
 
 
 def mailbox_get(args):
+	from frappe_webmail import mailcraft_changes
+
 	account = _account(args.get("accountId"))
 	wanted = _ids(args)
+	# A few folders: the state as it stands, read before them. All of them: compared with the last list, the state after
+	# (mailcraft_changes).
+	before = None if wanted is None else mailcraft_changes.mailbox_state(account)
+	listed = mailbox_entries(account, wanted)
+	state = before if wanted is not None else mailcraft_changes.mailbox_state(account, listed)
+	found = {e["id"] for e in listed}
+	return {
+		"accountId": account_id(account.name),
+		"state": state,
+		"list": [_only(entry, args.get("properties")) for entry in listed],
+		"notFound": [i for i in (wanted or []) if i not in found],
+	}
+
+
+def mailbox_entries(account, wanted=None):
+	"""The folders of a mailbox as Mailbox/get gives them, all their properties: those `wanted` names, or all."""
 	folders = webmail.get_folders(account.name)
 	names = {f["name"] for f in folders}
 	# The roles (RFC 8621 2): the account's own folder settings, else what the server marks (special-use attributes)
@@ -1129,14 +1151,8 @@ def mailbox_get(args):
 			},
 			"isSubscribed": True,
 		}
-		listed.append(_only(entry, args.get("properties")))
-	found = {e["id"] for e in listed}
-	return {
-		"accountId": account_id(account.name),
-		"state": "0",
-		"list": listed,
-		"notFound": [i for i in (wanted or []) if i not in found],
-	}
+		listed.append(entry)
+	return listed
 
 
 def _only(entry, properties):
@@ -1150,8 +1166,9 @@ def _only(entry, properties):
 # ---------------------------------------------------------------------------------------------------------------
 
 
-def email_query(args):
-	account = _account(args.get("accountId"))
+def query_shape(args):
+	"""The folder an Email/query (or its queryChanges) lists, and whether oldest first: a folder is all it filters on, the
+	arrival all it sorts on."""
 	flt = args.get("filter") or {}
 	folder = _folder_of(flt.get("inMailbox")) if isinstance(flt, dict) else None
 	if not folder or set(flt) - {"inMailbox"}:
@@ -1162,10 +1179,19 @@ def email_query(args):
 	):
 		raise JmapError("unsupportedSort", "receivedAt")
 	# RFC 8620 §5.5: ascending unless said otherwise.
-	ascending = bool(sort[0].get("isAscending", True)) if sort else True
+	return folder, bool(sort[0].get("isAscending", True)) if sort else True
+
+
+def email_query(args):
+	from frappe_webmail import mailcraft_changes
+
+	account = _account(args.get("accountId"))
+	folder, ascending = query_shape(args)
 	limit = max(0, min(cint(args.get("limit") or MAX_OBJECTS), MAX_OBJECTS))
 	position = max(0, cint(args.get("position") or 0))
 	with webmail.imap_session(account) as client:
+		# The folder swept first: its queryState is never newer than the list read after it (mailcraft_changes).
+		query_state = mailcraft_changes.query_state(account, client, folder)
 		validity = _select(client, folder)
 		# A folder that holds no messages (\Noselect, a parent only) lists none, rather than failing every sync.
 		uids = _arrival_order(client) if validity else []
@@ -1174,8 +1200,8 @@ def email_query(args):
 	window = uids[position : position + limit]
 	return {
 		"accountId": account_id(account.name),
-		"queryState": "0",
-		"canCalculateChanges": False,
+		"queryState": query_state,
+		"canCalculateChanges": query_state != mailcraft_changes.UNKNOWN,
 		"position": position,
 		"ids": [email_id(folder, validity, uid) for uid in window],
 		"total": len(uids),
@@ -1215,6 +1241,10 @@ def email_get(args):
 	items = sorted({_ITEMS[p] for p in properties if p in _ITEMS} | {b"FLAGS"})
 	folders, not_found = _by_folder(ids)
 	listed = []
+	from frappe_webmail import mailcraft_changes
+
+	# The state before the messages are read: what is read is never older than it (mailcraft_changes).
+	state = mailcraft_changes.email_state(account)
 	with webmail.imap_session(account) as client:
 		for folder, wanted in folders.items():
 			validity = _select(client, folder)
@@ -1230,7 +1260,7 @@ def email_get(args):
 					not_found.append(jid)
 					continue
 				listed.append(_email(jid, folder, uid, msg, previews, properties))
-	return {"accountId": account_id(account.name), "state": "0", "list": listed, "notFound": not_found}
+	return {"accountId": account_id(account.name), "state": state, "list": listed, "notFound": not_found}
 
 
 def _email(jid, folder, uid, msg, previews, properties):
@@ -1445,10 +1475,21 @@ def email_set(args):
 		)
 		not_destroyed.update(failed)
 		destroyed.extend(jid for jid, _uid in items if jid not in failed)
+	# What this call did, logged as it did it: a moved message is destroyed where it was and, where its new id could be
+	# told, created where it went (an id names a place); the others of a move are found by the next sweep.
+	from frappe_webmail import mailcraft_changes
+
+	moved = [jid for jid, change in changes.items() if change[4] != change[0]]
+	old_state, new_state = mailcraft_changes.logged(
+		account,
+		created=[moved_to[jid] for jid in moved if moved_to.get(jid)],
+		updated=[jid for jid in changes if jid not in moved],
+		destroyed=destroyed + moved,
+	)
 	return {
 		"accountId": account_id(account.name),
-		"oldState": "0",
-		"newState": "0",
+		"oldState": old_state,
+		"newState": new_state,
 		"updated": {jid: ({"id": moved_to[jid]} if moved_to.get(jid) else None) for jid in changes},
 		"destroyed": destroyed,
 		"notUpdated": not_updated,
@@ -1629,10 +1670,13 @@ def email_import(args):
 		# Only what this person has just filed may be sent (EmailSubmission/set).
 		frappe.cache().set_value(_filed_key(jid), 1, expires_in_sec=FILED_SECONDS)
 		created[cid] = {"id": jid, "blobId": "B" + jid[1:], "threadId": jid, "size": len(data)}
+	from frappe_webmail import mailcraft_changes
+
+	old_state, new_state = mailcraft_changes.logged(account, created=[c["id"] for c in created.values()])
 	return {
 		"accountId": account_id(account.name),
-		"oldState": "0",
-		"newState": "0",
+		"oldState": old_state,
+		"newState": new_state,
 		"created": created,
 		"notCreated": not_created,
 	}
