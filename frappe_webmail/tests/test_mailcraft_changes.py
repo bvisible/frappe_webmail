@@ -11,6 +11,7 @@ Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_changes
 """
 
+import contextlib
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -333,6 +334,74 @@ class TestMailCraftChanges(FrappeTestCase):
 			self.assertNotEqual(filed["oldState"], filed["newState"])
 			self.assertIn(filed["created"]["k"]["id"], self._changes(filed["oldState"])["created"])
 
+	def test_a_sweep_that_lost_its_lock_writes_nothing(self):
+		"""A sweep that outlived its lock (another worker took it since) writes nothing: what it saw is seen again by the
+		next one, never written over another's entry."""
+		server = ModseqServer()
+		server.put("INBOX", message("one"))
+
+		@contextlib.contextmanager
+		def lost(key, wait=None):
+			def guard():
+				raise changes._Busy
+
+			yield guard
+
+		with served(server):
+			before = self._state()
+			server.put("INBOX", message("two"))
+			with patch.object(changes, "_locked", lost):
+				stale = self._changes(before)
+			self.assertEqual(
+				(stale["newState"], stale["created"]), (before, []), "answered from the journal as is"
+			)
+			self.assertEqual(self._changes(before)["created"], [eid("INBOX", 2)])
+
+	def test_a_folder_the_server_answers_wrongly_stops_nothing(self):
+		server = ModseqServer()
+		server.put("INBOX", message("one"))
+		server.put("Sent", message("sent"))
+		with served(server):
+			before = self._state()
+			server.flag("INBOX", 1, b"\\Flagged")
+			server.flag("Sent", 1, b"\\Flagged")
+			fetch = server.fetch
+
+			def broken(uids, items, modifiers=None):
+				if server.selected == "Sent":
+					raise Exception("BAD Internal error")
+				return fetch(uids, items, modifiers)
+
+			with patch.object(server, "fetch", broken), patch.object(changes, "log_quietly") as noted:
+				out = self._changes(before)
+			self.assertEqual((out["updated"], noted.call_count), ([eid("INBOX", 1)], 1))
+			self.assertEqual(
+				self._changes(out["newState"])["updated"], [eid("Sent", 1)], "seen once it answers"
+			)
+
+	def test_a_message_that_comes_and_goes_between_two_sweeps_is_told_gone(self):
+		"""It came between STATUS and FETCH, so the sweep told it made; it went before the next one, so that the count
+		alone says nothing moved: the view counted it all the same, and its going is told."""
+		server = ModseqServer()
+		server.put("INBOX", message("one"))
+		with served(server):
+			before = self._state()
+			status = server.folder_status
+			came = []
+
+			def late(folder, items):
+				out = status(folder, items)
+				if folder == "INBOX" and not came:
+					came.append(server.put("INBOX", message("late")))
+				return out
+
+			server.flag("INBOX", 1, b"\\Seen")
+			with patch.object(server, "folder_status", late):
+				first = self._changes(before)
+			self.assertEqual(first["created"], [eid("INBOX", came[0])])
+			expunged(server, "INBOX", came[0])
+			self.assertEqual(self._changes(first["newState"])["destroyed"], [eid("INBOX", came[0])])
+
 	def test_a_stranger_is_refused(self):
 		self._as(STRANGER)
 		with served(FakeServer()):
@@ -493,3 +562,7 @@ class TestMailCraftChanges(FrappeTestCase):
 		marks = [merged.note("e", "c"), merged.note("a", "d")]
 		merged.undo(marks)
 		self.assertEqual((merged.lists()["created"], merged.count), (["a"], 3))
+		# Told gone by a sweep, then updated by a call's own entry: still gone
+		merged.note("f", "d")
+		merged.note("f", "u")
+		self.assertIn("f", merged.lists()["destroyed"])

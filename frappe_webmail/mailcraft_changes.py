@@ -10,7 +10,8 @@ changed and no more. Until then every state was "0", and NeoMail read the window
 it: a state of before is then answered `cannotCalculateChanges`, and NeoMail reads its windows again, as it used to):
 - each folder as the last *sweep* saw it (`_views_key`): its UIDVALIDITY, UIDNEXT, number of messages and unseen ones, its
   HIGHESTMODSEQ where the server has CONDSTORE (RFC 7162), and the UIDs it shows (those not marked \\Deleted); without
-  CONDSTORE, the flags of each of them, digested (the folder's fingerprint), and when they were read;
+  CONDSTORE, the flags of each of them, digested (the folder's fingerprint, `_flags_key`, apart: read only for a folder
+  compared again), and when they were read;
 - the entries (`_log_key`): for each sweep or change that found something, its number and, by folder, the UIDs of the
   messages created, updated and destroyed, or a break (the folder's UIDVALIDITY changed: its UIDs now name other
   messages), the oldest ones let go past MAX_ENTRIES or MAX_LOG_CHARS (`floor`: a state older than that is not answered);
@@ -19,8 +20,9 @@ it: a state of before is then answered `cannotCalculateChanges`, and NeoMail rea
 
 A state is "<epoch>-<number>", a folder's queryState "<epoch>-<touched>": the same as long as nothing changed.
 
-**A sweep** compares the server with the folders as last seen, under a lock of the mailbox, and logs what differs under
-the next number (nothing, and the state stays, when nothing does). A folder whose STATUS says nothing moved (the same
+**A sweep** compares the server with the folders as last seen, under a lock of the mailbox (renewed at each folder, and
+checked before anything is written: a sweep that lost it writes nothing), and logs what differs under the next number
+(nothing, and the state stays, when nothing does); a folder the server answers wrongly is left as it was. A folder whose STATUS says nothing moved (the same
 UIDVALIDITY, UIDNEXT and number of messages, and the same HIGHESTMODSEQ) is not opened. With CONDSTORE, one that moved is
 read for the messages changed since its HIGHESTMODSEQ (FETCH CHANGEDSINCE), and for its UIDs (UID SEARCH ALL) when its
 count says some went. Without, the flags of all its messages are read again as soon as its STATUS moved (a new message,
@@ -45,6 +47,7 @@ stays open; NeoMail asks Email/changes at each run instead.
 
 import contextlib
 import json
+import pickle
 import secrets
 import time
 import zlib
@@ -75,10 +78,14 @@ MAX_BOX_ENTRIES = 300
 # read again (cannotCalculateChanges), which costs less than thousands of ids to fetch one by one.
 MAX_CHANGES = 5000
 # Without CONDSTORE, how long a folder whose STATUS didn't move is taken for unchanged before its flags are read again.
-FLAGS_RECHECK = 120
-# The lock of a mailbox's journal: how long it holds at most (a sweep of a large mailbox), how long a call waits for it.
-LOCK_SECONDS = 300
-LOCK_WAIT = 20
+FLAGS_RECHECK = 300
+# The lock of a mailbox's journal: how long it holds unless renewed (a sweep renews it at each folder), and how long a
+# call waits for it before it answers from the journal as it stands: Email/changes, which wants the sweep, a while;
+# Email/query, Email/get and Mailbox/get a few seconds; Email/set and Email/import, which have done their work, hardly.
+LOCK_SECONDS = 120
+LOCK_WAIT = 5
+LOCK_WAIT_CHANGES = 15
+LOCK_WAIT_LOGGED = 2
 # The state of a mailbox whose journal can't be read or written: no change is ever calculated from it.
 UNKNOWN = "-"
 # What a Mailbox/changes reports in `updatedProperties` when only the counts of the folders moved.
@@ -106,6 +113,12 @@ def _views_key(name):
 	return f"mailcraft_jmap_changes_folders:{name}"
 
 
+def _flags_key(name):
+	"""Without CONDSTORE, each folder's digests of its messages' flags: apart from the views, read only for a folder whose
+	flags are compared again (a sweep reads every view)."""
+	return f"mailcraft_jmap_changes_flags:{name}"
+
+
 def _boxes_key(name, user):
 	return f"mailcraft_jmap_changes_boxes:{name}:{user}"
 
@@ -117,7 +130,13 @@ def _read(key):
 
 
 def _write(key, value):
-	frappe.cache().set_value(key, value, expires_in_sec=JOURNAL_SECONDS)
+	"""Kept for JOURNAL_SECONDS, by Redis's own SETEX, which fails aloud where the wrapper's set_value lets a lost write
+	pass: a number handed out that Redis never kept would be handed out again for other changes."""
+	cache = frappe.cache()
+	made = cache.make_key(key)
+	with contextlib.suppress(Exception):
+		frappe.local.cache.pop(made, None)
+	cache.setex(made, JOURNAL_SECONDS, pickle.dumps(value))
 
 
 def _all_views(name):
@@ -128,33 +147,42 @@ def _all_views(name):
 	}
 
 
-def _one_view(name, folder):
-	"""One folder's view, read from Redis: what hget kept in the request's memory is dropped first."""
+def _one(hash_key, field):
+	"""One field of a hash, read from Redis: what hget kept in the request's memory is dropped first."""
 	cache = frappe.cache()
 	with contextlib.suppress(Exception):
-		frappe.local.cache.pop(cache.make_key(_views_key(name)), None)
-	return cache.hget(_views_key(name), folder)
+		frappe.local.cache.pop(cache.make_key(hash_key), None)
+	return cache.hget(hash_key, field)
 
 
 def _keep_alive(name):
-	"""The journal's entries and views live as long as its head: their expiry starts again with it."""
+	"""The journal's entries, views and digests live as long as its head: their expiry starts again with it."""
 	cache = frappe.cache()
-	for key in (_log_key(name), _views_key(name)):
+	for key in (_log_key(name), _views_key(name), _flags_key(name)):
 		with contextlib.suppress(Exception):
 			cache.expire(cache.make_key(key), JOURNAL_SECONDS)
 
 
 @contextlib.contextmanager
-def _locked(key):
-	"""The lock of a journal, across the instance's workers; _Busy when another holds it past LOCK_WAIT."""
+def _locked(key, wait=LOCK_WAIT):
+	"""The lock of a journal, across the instance's workers; _Busy when another holds it past `wait`. It yields `guard`,
+	called before each write and at each folder of a sweep: the lock is still this request's, for LOCK_SECONDS more, or
+	_Busy, and nothing is written (a sweep that outlived its lock would write over what another wrote since)."""
 	cache = frappe.cache()
 	lock = cache.lock(
-		cache.make_key("mailcraft_jmap_changes_lock:" + key), timeout=LOCK_SECONDS, blocking_timeout=LOCK_WAIT
+		cache.make_key("mailcraft_jmap_changes_lock:" + key), timeout=LOCK_SECONDS, blocking_timeout=wait
 	)
 	if not lock.acquire(blocking=True):
 		raise _Busy
+
+	def guard():
+		try:
+			lock.reacquire()
+		except Exception as e:
+			raise _Busy from e
+
 	try:
-		yield
+		yield guard
 	finally:
 		# Past LOCK_SECONDS the lock went by itself: nothing to give back.
 		with contextlib.suppress(Exception):
@@ -270,34 +298,45 @@ def _status(client, folder, condstore):
 	}
 
 
-def _look(client, folder, old, status, now):
+def _look(client, folder, old, status, now, flags_of):
 	"""What became of `folder` since the journal's view of it (`old`; None for one it doesn't know): (its view now, the
-	change), the change None when nothing did, or {"x": True} when its UIDVALIDITY changed."""
+	change, its digests). The change is None when nothing changed, {"x": True} when its UIDVALIDITY did. The digests (no
+	CONDSTORE) are the flags of its messages to keep apart, False to drop those kept, None to leave them; `flags_of(folder)`
+	reads those kept.
+
+	With CONDSTORE a view keeps, besides STATUS's numbers, how many messages the folder held (`k`) and the UID from which
+	a message is one that came since (`a`), both as of what was read after STATUS: a message that came between STATUS and
+	the FETCH, and went before the next sweep, still breaks the count, so that its going is seen."""
 	if old and (old["v"], old["n"], old["c"]) == (status["v"], status["n"], status["c"]):
 		if status["m"] and status["m"] == old.get("m"):
-			return old, None
+			return old, None, None
 		recent = now - old.get("at", 0) < FLAGS_RECHECK
-		if not status["m"] and "f" in old and old.get("s") == status["s"] and recent:
-			return old, None
+		if not status["m"] and old.get("fl") and old.get("s") == status["s"] and recent:
+			return old, None, None
 	validity = _select(client, folder)
 	if not validity:
-		return old, None
+		return old, None, None
 	status = {**status, "v": validity}
 	broken = bool(old) and old["v"] != validity
 	base = None if broken else old
+	digests = False
 	if status["m"] and base and base.get("m"):
 		# CONDSTORE: the messages changed since the view's HIGHESTMODSEQ, and the UIDs gone when the count says so.
 		shown = set(unpack(base["u"]))
+		since, held = base.get("a", base["n"]), base.get("k", base["c"])
 		changed = (
 			client.fetch("1:*", ["FLAGS"], modifiers=[f"CHANGEDSINCE {base['m']}"]) if status["c"] else {}
 		)
-		arrived = sum(1 for uid in changed if uid >= base["n"])
-		destroyed = set()
-		if base["c"] + arrived != status["c"]:
-			destroyed = shown - set(client.search(["ALL"])) if status["c"] else set(shown)
-		created, updated = set(), set()
+		present = None
+		if held + sum(1 for uid in changed if since <= uid < status["n"]) != status["c"]:
+			present = set(client.search(["ALL"])) if status["c"] else set()
+		created, updated, destroyed = set(), set(), (shown - present) if present is not None else set()
 		for uid, got in changed.items():
-			if _deleted(got):
+			if present is not None and uid not in present:
+				# Gone between the FETCH and the SEARCH
+				if uid in shown:
+					destroyed.add(uid)
+			elif _deleted(got):
 				if uid in shown:
 					destroyed.add(uid)
 			elif uid in shown:
@@ -305,59 +344,84 @@ def _look(client, folder, old, status, now):
 			else:
 				created.add(uid)
 		updated -= destroyed
-		view = {**status, "u": pack((shown - destroyed) | created)}
+		if present is not None:
+			held, since = (
+				len(present),
+				max([status["n"], *(uid + 1 for uid in present), *(uid + 1 for uid in changed)]),
+			)
+		else:
+			late = [uid for uid in changed if uid >= status["n"]]
+			held, since = status["c"] + len(late), max([status["n"], *(uid + 1 for uid in late)])
+		view = {**status, "u": pack((shown - destroyed) | created), "k": held, "a": since}
 	elif status["m"] and not base:
 		# CONDSTORE, a folder seen for the first time: its UIDs are all it takes.
-		created = set(client.search(["NOT", "DELETED"])) if status["c"] else set()
+		present = set(client.search(["ALL"])) if status["c"] else set()
+		created = set(client.search(["NOT", "DELETED"])) & present if present else set()
 		updated, destroyed = set(), set()
-		view = {**status, "u": pack(created)}
+		since = max([status["n"], *(uid + 1 for uid in present)])
+		view = {**status, "u": pack(created), "k": len(present), "a": since}
 	else:
 		# Without CONDSTORE (or when it came or went): the flags of every message, compared one by one.
 		fetched = client.fetch("1:*", ["FLAGS"]) if status["c"] else {}
 		digests = {uid: _digest(got.get(b"FLAGS")) for uid, got in fetched.items() if not _deleted(got)}
+		before = flags_of(folder) if base and base.get("fl") else None
 		if not base:
 			created, updated, destroyed = set(digests), set(), set()
-		elif "f" in base:
-			before = base["f"]
+		elif before is not None:
 			created, destroyed = set(digests) - set(before), set(before) - set(digests)
 			updated = {uid for uid, digest in digests.items() if uid in before and before[uid] != digest}
 		else:
+			# Its digests are not there (CONDSTORE came or went, or the cache let them go): all of them told again.
 			shown = set(unpack(base["u"]))
 			created, destroyed, updated = set(digests) - shown, shown - set(digests), set(digests) & shown
 		view = {**status, "u": pack(digests)}
-		if not status["m"]:
-			view.update(f=digests, at=now)
+		if status["m"]:
+			digests = False
+		else:
+			view.update(fl=True, at=now)
 	if broken:
-		return view, {"f": folder, "v": validity, "x": True}
+		return view, {"f": folder, "v": validity, "x": True}, digests
 	if not (created or updated or destroyed):
-		return view, None
-	return view, {
-		"f": folder,
-		"v": validity,
-		"c": pack(created),
-		"u": pack(updated),
-		"d": pack(destroyed),
-	}
+		return view, None, digests
+	change = {"f": folder, "v": validity, "c": pack(created), "u": pack(updated), "d": pack(destroyed)}
+	return view, change, digests
 
 
-def _start(name, client):
+def _looked(client, folder, old, status, now, flags_of):
+	"""_look, a folder the server answers wrongly left as it was (logged): one bad folder never stops the journal."""
+	try:
+		return _look(client, folder, old, status, now, flags_of)
+	except Exception as e:
+		if webmail._imap_is_connection_error(e):
+			raise
+		log_quietly("MailCraft JMAP: a folder could not be compared", e)
+		return old, None, None
+
+
+def _start(name, client, guard):
 	"""A new journal: every folder as the server shows it now, under a new epoch, nothing logged. The head after."""
 	condstore, now = _has_condstore(client), time.time()
-	views = {}
+	views, flags = {}, {}
 	for folder in _listed(client):
+		guard()
 		status = _status(client, folder, condstore)
 		if status is None:
 			continue
-		view, _change = _look(client, folder, None, status, now)
+		view, _change, digests = _looked(client, folder, None, status, now, lambda _f: None)
 		if view:
 			views[folder] = view
+			if digests:
+				flags[folder] = digests
 	epoch = secrets.token_hex(4)
 	head = {"epoch": epoch, "number": 0, "touched": dict.fromkeys(views, 0)}
+	guard()
 	cache = frappe.cache()
 	_write(_log_key(name), {"epoch": epoch, "floor": 0, "entries": []})
-	cache.delete_value(_views_key(name))
+	cache.delete_value([_views_key(name), _flags_key(name)])
 	for folder, view in views.items():
 		cache.hset(_views_key(name), folder, view)
+	for folder, digests in flags.items():
+		cache.hset(_flags_key(name), folder, digests)
 	_keep_alive(name)
 	# The head last: a journal is usable only once all of it is there (_usable).
 	_write(_head_key(name), head)
@@ -366,10 +430,11 @@ def _start(name, client):
 
 def _append(name, head, log, changes):
 	"""Log `changes` under the next number; the head after. The entries first and the head after them: a reader never
-	sees a number whose entry isn't there yet."""
+	sees a number whose entry isn't there yet. An entry above the head (its write was lost) is let go."""
 	number = head["number"] + 1
 	size = sum(len(c.get(k) or "") for c in changes for k in ("c", "u", "d")) + 40 * len(changes)
-	entries = [*log["entries"], {"n": number, "changes": changes, "size": size}]
+	entries = [e for e in log["entries"] if e["n"] <= head["number"]]
+	entries.append({"n": number, "changes": changes, "size": size})
 	floor = log.get("floor", 0)
 	while len(entries) > MAX_ENTRIES or (
 		len(entries) > 1 and sum(e.get("size", 0) for e in entries) > MAX_LOG_CHARS
@@ -386,13 +451,14 @@ def _append(name, head, log, changes):
 	return head
 
 
-def _commit(name, head, log, changes, views, gone):
-	"""Log what a sweep found, then keep the folders' views (in that order: a view kept before its change is logged would
-	lose the change, should the rest fail). The head after."""
+def _commit(name, head, log, changes, views, flags, gone, guard):
+	"""Log what a sweep found, then keep the folders' views and digests (in that order: a view kept before its change is
+	logged would lose the change, should the rest fail; a view lost only has its changes told again). The head after."""
 	touched = dict(head.get("touched") or {})
 	for folder in views:
 		touched.setdefault(folder, head["number"])
 	head = {**head, "touched": touched}
+	guard()
 	if changes:
 		head = _append(name, head, log, changes)
 	# A folder let go is known no more (after _append, which marks it touched by its messages' going).
@@ -401,44 +467,55 @@ def _commit(name, head, log, changes, views, gone):
 	cache = frappe.cache()
 	for folder, view in views.items():
 		cache.hset(_views_key(name), folder, view)
+	for folder, digests in flags.items():
+		if digests:
+			cache.hset(_flags_key(name), folder, digests)
+		else:
+			cache.hdel(_flags_key(name), folder)
 	for folder in gone:
 		cache.hdel(_views_key(name), folder)
+		cache.hdel(_flags_key(name), folder)
 	_keep_alive(name)
 	return head
 
 
-def _sweep(account, client, only=None):
+def _sweep(account, client, only=None, wait=LOCK_WAIT):
 	"""Compare the server's folders (all, or the one `only` names) with the journal and log what differs; start the
-	journal when it is missing or broken. The head after, or as it stands when another request holds the lock (what it
-	sweeps is logged all the same), None when there is none."""
+	journal when it is missing or broken. The head after, or as it stands when another request holds the lock past
+	`wait` (what it sweeps is logged all the same), None when there is none."""
 	name = account.name
 	try:
-		with _locked(name):
+		with _locked(name, wait) as guard:
 			head, log = _read(_head_key(name)), _read(_log_key(name))
 			if not _usable(head, log):
-				return _start(name, client)
+				return _start(name, client, guard)
 			known = head.get("touched") or {}
 			condstore, now = _has_condstore(client), time.time()
 			if only is None:
 				views = _all_views(name)
 				if any(folder not in views for folder in known):
 					# A view the cache let go: what changed in that folder can't be told any more.
-					return _start(name, client)
+					return _start(name, client, guard)
 				listed = _listed(client)
 			else:
-				old = _one_view(name, only)
+				old = _one(_views_key(name), only)
 				if old is None and only in known:
-					return _start(name, client)
+					return _start(name, client, guard)
 				views, listed = ({only: old} if old else {}), [only]
-			changes, kept = [], {}
+			changes, kept, flags = [], {}, {}
 			for folder in listed:
+				guard()
 				status = _status(client, folder, condstore)
 				if status is None:
 					continue
 				old = views.get(folder)
-				view, change = _look(client, folder, old, status, now)
+				view, change, digests = _looked(
+					client, folder, old, status, now, lambda f: _one(_flags_key(name), f)
+				)
 				if view is not None and view is not old:
 					kept[folder] = view
+				if digests is not None:
+					flags[folder] = digests
 				if change:
 					changes.append(change)
 			gone = []
@@ -447,7 +524,7 @@ def _sweep(account, client, only=None):
 					gone.append(folder)
 					if views[folder].get("u"):
 						changes.append({"f": folder, "v": views[folder]["v"], "d": views[folder]["u"]})
-			return _commit(name, head, log, changes, kept, gone)
+			return _commit(name, head, log, changes, kept, flags, gone, guard)
 	except _Busy:
 		head, log = _read(_head_key(name)), _read(_log_key(name))
 		return head if _usable(head, log) else None
@@ -515,7 +592,7 @@ def logged(account, created=(), updated=(), destroyed=()):
 					by_folder.setdefault((folder, validity), {"c": [], "u": [], "d": []})[kind].append(uid)
 		name = account.name
 		try:
-			with _locked(name):
+			with _locked(name, LOCK_WAIT_LOGGED) as guard:
 				head, log = _read(_head_key(name)), _read(_log_key(name))
 				if not _usable(head, log):
 					return UNKNOWN, UNKNOWN
@@ -526,6 +603,7 @@ def logged(account, created=(), updated=(), destroyed=()):
 					{"f": folder, "v": validity, **{kind: pack(uids) for kind, uids in kinds.items()}}
 					for (folder, validity), kinds in by_folder.items()
 				]
+				guard()
 				return before, _state(_append(name, head, log, changes))
 		except _Busy:
 			head = _read(_head_key(name))
@@ -550,6 +628,9 @@ class _Merged:
 
 	def note(self, jid, kind):
 		before = self.ids.get(jid)
+		if kind == "u" and before and not before[1]:
+			# Told gone, then updated (a call's own change logged after another's sweep saw it go): still gone.
+			return jid, before
 		after = (before[0] if before else kind != "c", kind != "d")
 		self.ids[jid] = after
 		self.count += any(after) - (any(before) if before else 0)
@@ -627,7 +708,7 @@ def email_changes(args):
 	limit = _max_changes(args)
 	epoch, number = _parse(since)
 	with webmail.imap_session(account) as client:
-		head = _sweep(account, client)
+		head = _sweep(account, client, wait=LOCK_WAIT_CHANGES)
 	log = _read(_log_key(account.name))
 	if not _usable(head, log) or epoch != head["epoch"]:
 		raise _cannot("This state is not known here: read the mailbox again.")
@@ -738,7 +819,7 @@ def mailbox_state(account, listed=None):
 			return _state(kept) if _boxes_usable(kept) else UNKNOWN
 		view = {e["id"]: (_props(e), e.get("totalEmails"), e.get("unreadEmails")) for e in listed}
 		try:
-			with _locked(key):
+			with _locked(key) as guard:
 				kept = _read(key)
 				if not _boxes_usable(kept):
 					kept = {"epoch": secrets.token_hex(4), "number": 0, "floor": 0, "view": view, "log": []}
@@ -751,6 +832,7 @@ def mailbox_state(account, listed=None):
 						props = any(view[m][0] != old[m][0] for m in updated)
 						kept = _boxes_append(kept, created, updated, destroyed, props)
 					kept["view"] = view
+				guard()
 				_write(key, kept)
 				return _state(kept)
 		except _Busy:
@@ -777,7 +859,7 @@ def boxes_logged(account, created=(), updated=(), destroyed=()):
 
 	def run():
 		try:
-			with _locked(key):
+			with _locked(key, LOCK_WAIT_LOGGED) as guard:
 				kept = _read(key)
 				if not _boxes_usable(kept):
 					return UNKNOWN, UNKNOWN
@@ -785,6 +867,7 @@ def boxes_logged(account, created=(), updated=(), destroyed=()):
 				if not (created or updated or destroyed):
 					return before, before
 				kept = _boxes_append(kept, list(created), list(updated), list(destroyed), True)
+				guard()
 				_write(key, kept)
 				return before, _state(kept)
 		except _Busy:
