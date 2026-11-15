@@ -147,7 +147,16 @@ has_permission = {
 # What NeoMail's facade remembers of a create (mailcraft_calendars, mailcraft_contacts, mailcraft_notes: the uid a client
 # gave, for a week), so that a create sent again after its answer was lost finds what it made: not erased by
 # frappe.clear_cache (a migrate, a deploy), which would make the resend a second contact, event or note.
-persistent_cache_keys = ["mailcraft_event_uid:*", "mailcraft_card_uid:*", "mailcraft_note_uid:*"]
+# And the journal of the facade's states (mailcraft_changes: head, entries, views, digests, locks): erased, every state
+# NeoMail kept is unknown and every mailbox is read again whole; `bench clear-cache` runs after each translation, deploy
+# and migrate (15.11: one at 00:50 UTC on osiris made two of three mailboxes read again 50 s after they were read). Every
+# key carries a TTL (30 days, a lock 120 s): kept, they cannot grow the cache.
+persistent_cache_keys = [
+	"mailcraft_event_uid:*",
+	"mailcraft_card_uid:*",
+	"mailcraft_note_uid:*",
+	"mailcraft_jmap_changes*",
+]
 
 doc_events = {
 	"Email Signature": {

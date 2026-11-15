@@ -535,6 +535,23 @@ class TestMailCraftChanges(FrappeTestCase):
 
 	# The units -------------------------------------------------------------------------------------------------
 
+	def test_every_key_of_the_journal_outlives_bench_clear_cache(self):
+		"""frappe.clear_cache (every `bench clear-cache`: a translation, a deploy, a migrate) erases every key of the site
+		but those `persistent_cache_keys` names, read as a glob with a `*` added (RedisWrapper.get_keys). A journal erased
+		makes every state NeoMail kept unknown, and every mailbox read again whole (15.11, osiris)."""
+		from fnmatch import fnmatchcase
+
+		kept = frappe.get_hooks("persistent_cache_keys")
+		for key in (
+			changes._head_key(MAILBOX),
+			changes._log_key(MAILBOX),
+			changes._views_key(MAILBOX),
+			changes._flags_key(MAILBOX),
+			changes._boxes_key(MAILBOX, SHARED),
+			"mailcraft_jmap_changes_lock:" + MAILBOX,
+		):
+			self.assertTrue(any(fnmatchcase(key, pattern + "*") for pattern in kept), key)
+
 	def test_uids_are_packed_as_imap_writes_a_set(self):
 		self.assertEqual(changes.pack([7, 3, 5, 6, 3, 1]), "1,3,5:7")
 		self.assertEqual(list(changes.unpack("1,3,5:7")), [1, 3, 5, 6, 7])
