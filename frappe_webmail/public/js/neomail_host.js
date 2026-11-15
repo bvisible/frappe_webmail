@@ -351,23 +351,32 @@ window.neomailHost = (function () {
 			return folder.role === "inbox" ? favorite.account : favorite.account + " · " + folder.name;
 		};
 		const nav = [];
-		if (favorites.length) {
-			nav.push({
-				label: texts.favorites,
-				items: favorites.map((favorite) => {
-					const folder = known.get(key(favorite.account, favorite.folder));
-					const role = (folder && folder.role) || null;
-					return {
-						label: favoriteLabel(favorite, folder),
-						onContextMenu: menu && folder ? (event) => menu(event, favorite.account, folder) : undefined,
-						icon: icon(role),
-						badge: badgeOf(folder || favorite),
-						badgeTone: tone(role),
-						active: fromFavorites && shown(favorite.account, favorite.folder),
-						onClick: select(favorite.account, favorite.folder, "favorites"),
-					};
-				}),
+		// « Toutes les boîtes » (NeoMail's `allInboxes`: its name, whether it is shown, the unread mail of the Inboxes; null
+		// with one mailbox): first of the favourites, lit while NeoMail shows it, a click asks NeoMail for it.
+		const all = now.allInboxes && typeof now.allInboxes === "object" ? now.allInboxes : null;
+		const allItem = all && {
+			label: String(all.name || ""),
+			icon: "lucide-gallery-vertical-end",
+			badge: typeof all.unread === "number" && all.unread > 0 ? all.unread : undefined,
+			badgeTone: "accent",
+			active: !page.front && now.module === "mail" && all.on === true,
+			onClick: () => send("view.allInboxes", {}, "favorites"),
+		};
+		if (favorites.length || allItem) {
+			const favoriteItems = favorites.map((favorite) => {
+				const folder = known.get(key(favorite.account, favorite.folder));
+				const role = (folder && folder.role) || null;
+				return {
+					label: favoriteLabel(favorite, folder),
+					onContextMenu: menu && folder ? (event) => menu(event, favorite.account, folder) : undefined,
+					icon: icon(role),
+					badge: badgeOf(folder || favorite),
+					badgeTone: tone(role),
+					active: fromFavorites && shown(favorite.account, favorite.folder),
+					onClick: select(favorite.account, favorite.folder, "favorites"),
+				};
 			});
+			nav.push({ label: texts.favorites, items: allItem ? [allItem].concat(favoriteItems) : favoriteItems });
 		}
 		for (const box of accounts) {
 			const folders = Array.isArray(box.folders) ? box.folders : [];

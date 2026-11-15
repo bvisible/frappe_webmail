@@ -481,6 +481,33 @@ describe("navSections", () => {
 			["Lost", undefined],
 		]);
 	});
+
+	it("puts « Toutes les boîtes » first of the favourites when NeoMail offers it, lit while it is shown", () => {
+		const all = { name: "Toutes les boîtes", on: false, unread: 4 };
+		const { nav, sent } = lent({ ...STATE, allInboxes: all });
+		expect(nav[0].label).toBe("Favoris");
+		expect(nav[0].items[0]).toMatchObject({
+			label: "Toutes les boîtes",
+			icon: "lucide-gallery-vertical-end",
+			badge: 4,
+			badgeTone: "accent",
+			active: false,
+		});
+		expect(nav[0].items.slice(1).map((item) => item.label)).toEqual(["ada@example.org", "team@example.org · Éléments envoyés"]);
+		nav[0].items[0].onClick();
+		expect(sent).toEqual([{ name: "view.allInboxes", params: {}, from: "favorites" }]);
+		// Shown: lit (and the Mail view), no folder of a mailbox (NeoMail says none is in view)
+		const shown = { ...STATE, account: null, folder: null, allInboxes: { ...all, on: true } };
+		expect(active(lent(shown).nav)).toEqual(["Favoris › Toutes les boîtes", " › Courrier"]);
+		// Not while one of the page's own views is in front; no badge without unread mail
+		expect(lent(shown, { page: { front: "synk", views: [] } }).nav[0].items[0].active).toBe(false);
+		expect(lent({ ...STATE, allInboxes: { ...all, unread: 0 } }).nav[0].items[0].badge).toBeUndefined();
+		// With no favourite of its own the section still holds it; from an older NeoMail (no field) nothing changes
+		const alone = lent({ ...STATE, favorites: [], allInboxes: all }).nav[0].items;
+		expect(alone.map((item) => item.label)).toEqual(["Toutes les boîtes"]);
+		expect(lent({ ...STATE, allInboxes: null }).nav[0].items).toHaveLength(2);
+		expect(lent(STATE).nav[0].items).toHaveLength(2);
+	});
 });
 
 describe("viewDock", () => {
