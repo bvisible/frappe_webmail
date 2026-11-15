@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-13 21:58+0000\n"
+"POT-Creation-Date: 2026-11-15 03:21+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language: fr\n"
@@ -111,11 +111,11 @@ msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
 msgid "A mailbox that someone else owns and shares with them signs as the mailbox by default: its name and the company's main number. Checked, each person signs with their own name, job and numbers, from the mailbox's address. A mailbox that names a signature of its own keeps that one."
 msgstr "Une boîte partagée avec vous par son propriétaire signe par défaut au nom de la boîte : son nom et le numéro principal de l'entreprise. Si cette case est cochée, chaque personne signe à son propre nom, avec son poste et ses numéros, depuis l'adresse de la boîte. Une boîte qui indique une signature propre garde celle-ci."
 
-#: frappe_webmail/mailcraft_jmap.py:1606
+#: frappe_webmail/mailcraft_jmap.py:1647
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1481
+#: frappe_webmail/mailcraft_jmap.py:1522
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
 
@@ -258,7 +258,7 @@ msgstr "Active sur cette boîte"
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
-#: frappe_webmail/mailcraft_jmap.py:1737
+#: frappe_webmail/mailcraft_jmap.py:1781
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -2098,7 +2098,7 @@ msgstr "Numéro de port IMAP invalide"
 msgid "Invalid OAuth callback"
 msgstr "Callback OAuth invalide"
 
-#: frappe_webmail/mailcraft_jmap.py:513
+#: frappe_webmail/mailcraft_jmap.py:514
 msgid "Invalid Request"
 msgstr ""
 
@@ -2445,7 +2445,7 @@ msgstr "Message"
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1345
+#: frappe_webmail/mailcraft_jmap.py:1375
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
@@ -2507,7 +2507,7 @@ msgstr "Mon style"
 msgid "Name of the folder"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/mailcraft_jmap.py:1211
+#: frappe_webmail/mailcraft_jmap.py:1237
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
@@ -2813,7 +2813,7 @@ msgstr "Introuvable dans la liste de confiance"
 msgid "Not in the Compact layout."
 msgstr "Non affiché dans la mise en page Compact."
 
-#: frappe_webmail/mailcraft_jmap.py:637 frappe_webmail/mailcraft_jmap.py:912
+#: frappe_webmail/mailcraft_jmap.py:638 frappe_webmail/mailcraft_jmap.py:916
 #: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:936
 #: frappe_webmail/webmail_api.py:2544 frappe_webmail/webmail_api.py:2612
 msgid "Not permitted"
@@ -2939,11 +2939,11 @@ msgstr "Seuls les fichiers .docx, .xlsx, .pptx ou .pdf s’ouvrent dans un édit
 msgid "Only a PDF or a picture can be sent to the scanned documents."
 msgstr "Seul un PDF ou une image peut être envoyé aux scans de documents."
 
-#: frappe_webmail/mailcraft_jmap.py:1158
+#: frappe_webmail/mailcraft_jmap.py:1175
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1742
+#: frappe_webmail/mailcraft_jmap.py:1786
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
@@ -4117,11 +4117,11 @@ msgstr "La taille de la police de base doit être comprise entre {0} et {1} pixe
 msgid "The connection starts unencrypted and switches to an encrypted one, usually on port 143: for servers that do not offer SSL on a port of their own. Without SSL or STARTTLS, the password is sent in the clear."
 msgstr "La connexion démarre non chiffrée puis passe à un mode chiffré, généralement sur le port 143 : pour les serveurs qui n'offrent pas SSL sur un port dédié. Sans SSL ni STARTTLS, le mot de passe est envoyé en clair."
 
-#: frappe_webmail/mailcraft_jmap.py:1844
+#: frappe_webmail/mailcraft_jmap.py:1888
 msgid "The connection to the mail server ended before the message was sent."
 msgstr "La connexion au serveur de messagerie s'est interrompue avant l'envoi du message."
 
-#: frappe_webmail/mailcraft_jmap.py:1786
+#: frappe_webmail/mailcraft_jmap.py:1830
 msgid "The connection to the mail server failed while the message was on its way."
 msgstr "La connexion au serveur de messagerie a échoué pendant que le message était en cours d'envoi."
 
@@ -4179,16 +4179,16 @@ msgstr "Le dossier n’a pas pu être créé."
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1840
+#: frappe_webmail/mailcraft_jmap.py:1884
 msgid "The mail server can't take the recipients just now."
 msgstr "Le serveur de messagerie ne peut pas accepter les destinataires pour le moment."
 
-#: frappe_webmail/mailcraft_jmap.py:651 frappe_webmail/mailcraft_jmap.py:811
-#: frappe_webmail/mailcraft_jmap.py:916
+#: frappe_webmail/mailcraft_jmap.py:652 frappe_webmail/mailcraft_jmap.py:812
+#: frappe_webmail/mailcraft_jmap.py:920
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1815
+#: frappe_webmail/mailcraft_jmap.py:1859
 msgid "The mail server could not be reached or signed in to."
 msgstr "Le serveur de messagerie est injoignable ou l'authentification a échoué."
 
@@ -4197,7 +4197,7 @@ msgstr "Le serveur de messagerie est injoignable ou l'authentification a échou�
 msgid "The mail server is not answering quickly enough."
 msgstr "Le serveur de messagerie ne répond pas assez vite."
 
-#: frappe_webmail/mailcraft_jmap.py:1837
+#: frappe_webmail/mailcraft_jmap.py:1881
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 
@@ -4213,19 +4213,19 @@ msgstr "Le message n’a pas pu être partagé."
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1750
+#: frappe_webmail/mailcraft_jmap.py:1794
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1600
+#: frappe_webmail/mailcraft_jmap.py:1641
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1748
+#: frappe_webmail/mailcraft_jmap.py:1792
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1624
+#: frappe_webmail/mailcraft_jmap.py:1665
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
 
@@ -4296,7 +4296,7 @@ msgstr "Ce fichier n'existe plus dans le Drive"
 msgid "This folder no longer exists in the Drive"
 msgstr "Ce dossier n'existe plus dans le Drive"
 
-#: frappe_webmail/mailcraft_jmap.py:1725 frappe_webmail/mailcraft_jmap.py:1729
+#: frappe_webmail/mailcraft_jmap.py:1769 frappe_webmail/mailcraft_jmap.py:1773
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -4306,7 +4306,7 @@ msgstr "Ce message"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:181
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:184
-#: frappe_webmail/mailcraft_jmap.py:1329 frappe_webmail/neomail_share.py:191
+#: frappe_webmail/mailcraft_jmap.py:1359 frappe_webmail/neomail_share.py:191
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
 
@@ -4319,7 +4319,7 @@ msgstr "Ce message n’a pas d’expéditeur."
 msgid "This message is larger than {0} MB: save the attachment with Save As instead."
 msgstr "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec « Enregistrer sous »."
 
-#: frappe_webmail/mailcraft_jmap.py:1333
+#: frappe_webmail/mailcraft_jmap.py:1363
 #: frappe_webmail/neomail_attachments.py:461
 #: frappe_webmail/neomail_share.py:194
 msgid "This message is no longer in its folder: refresh the list and try again."
@@ -4424,11 +4424,11 @@ msgstr "Étoile (activer/désactiver)"
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1745
+#: frappe_webmail/mailcraft_jmap.py:1789
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:878
+#: frappe_webmail/mailcraft_jmap.py:882
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
