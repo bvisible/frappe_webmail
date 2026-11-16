@@ -1235,20 +1235,27 @@ def _text_criteria(text):
 
 
 @frappe.whitelist()
-def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, only=None, order="newest"):
+def get_emails(
+	account_name, folder="INBOX", limit=50, offset=0, search=None, only=None, order="newest", uids=None
+):
 	"""Get emails from a folder with pagination.
 
 	`only`: « unread » or « flagged » (asked of the server, so that every such message is found, not those of the first
-	page alone); `order`: « newest » first (the default) or « oldest » first."""
+	page alone); `order`: « newest » first (the default) or « oldest » first. `uids`: only these messages of the folder
+	(a JSON list, or numbers separated by commas): a client that knows them from another list (Nora's « Prioritaire »)
+	reads their rows, whatever their rank in the folder; one no longer there is simply not listed.
+	The answer says the folder's `uidvalidity` too: a message's place is its folder, this number and its UID."""
 	if not IMAPClient:
 		frappe.throw(_("imapclient package is not installed"))
 
 	account = get_account(account_name)
 	limit = min(int(limit), 100)  # Max 100 per request
 	offset = int(offset)
+	wanted = _listed_uids(uids)
 
 	with imap_session(account) as client:
-		client.select_folder(folder)
+		selected = client.select_folder(folder)
+		validity = _validity_of(selected)
 
 		# Search criteria (flat on purpose: see _search_charset)
 		criteria = _text_criteria(search) or ["NOT", "DELETED"]
@@ -1258,6 +1265,9 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, on
 			criteria = [*criteria, "FLAGGED"]
 
 		messages = client.search(criteria, charset=_search_charset(criteria))
+		if wanted is not None:
+			# The messages named, among those the search finds: never a UID sent to the server as a criterion of its own
+			messages = [uid for uid in messages if uid in wanted]
 		total = len(messages)
 
 		# Pagination (newest first, unless the oldest are asked for)
@@ -1265,7 +1275,7 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, on
 		page = messages[offset : offset + limit]
 
 		if not page:
-			return {"emails": [], "total": total, "has_more": False}
+			return {"emails": [], "total": total, "has_more": False, "uidvalidity": validity}
 
 		# Fetch envelope data
 		data = client.fetch(page, ["ENVELOPE", "FLAGS", "BODYSTRUCTURE", "RFC822.SIZE"])
@@ -1273,7 +1283,40 @@ def get_emails(account_name, folder="INBOX", limit=50, offset=0, search=None, on
 
 		emails = [_summary(uid, data[uid], previews) for uid in page if uid in data]  # Maintain order
 
-		return {"emails": emails, "total": total, "has_more": offset + limit < total}
+		return {
+			"emails": emails,
+			"total": total,
+			"has_more": offset + limit < total,
+			"uidvalidity": validity,
+		}
+
+
+def _listed_uids(uids):
+	"""The UIDs a list asks for (get_emails `uids`): a set of positive numbers, at most 100; None when none is asked."""
+	if uids is None or uids == "":
+		return None
+	if isinstance(uids, str):
+		text = uids.strip()
+		uids = frappe.parse_json(text) if text.startswith("[") else text.split(",")
+	if not isinstance(uids, list | tuple):
+		frappe.throw(_("The messages asked for are not a list"))
+	wanted = set()
+	for uid in uids:
+		uid = str(uid).strip()
+		if uid.isdigit() and int(uid) > 0:
+			wanted.add(int(uid))
+	if len(wanted) > 100:
+		frappe.throw(_("At most 100 messages can be asked for at once"))
+	return wanted
+
+
+def _validity_of(selected):
+	"""The UIDVALIDITY of the folder just selected (what select_folder answers), or None when the server said none."""
+	value = selected.get(b"UIDVALIDITY") if isinstance(selected, dict) else None
+	try:
+		return int(value) if value is not None else None
+	except (TypeError, ValueError):
+		return None
 
 
 def _iso_with_zone(value):
