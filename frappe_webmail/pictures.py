@@ -473,18 +473,19 @@ def _ask(place, deadline, look_up):
 		raise PictureError("timeout" if time.monotonic() >= deadline else "broken") from None
 
 
-def _read(response, deadline):
-	"""The body of `response`, MAX_BYTES at most, and all of what the server said it would send."""
+def _read(response, deadline, limit=None):
+	"""The body of `response`, `limit` bytes at most (MAX_BYTES), and all of what the server said it would send."""
+	limit = MAX_BYTES if limit is None else limit
 	length = (response.getheader("Content-Length") or "").strip()
 	# A body sent in chunks has no length of its own: what it says beside them doesn't count (RFC 9112).
 	length = int(length) if length.isascii() and length.isdigit() and not response.chunked else None
-	if length is not None and length > MAX_BYTES:
+	if length is not None and length > limit:
 		raise PictureError("too_large")
 	body = bytearray()
 	while True:
 		if time.monotonic() >= deadline:
 			raise PictureError("timeout")
-		chunk = response.read(min(CHUNK, MAX_BYTES + 1 - len(body)))
+		chunk = response.read(min(CHUNK, limit + 1 - len(body)))
 		if not chunk:
 			# An end that the picture's timer made is not the end of the picture.
 			if time.monotonic() >= deadline:
@@ -494,7 +495,7 @@ def _read(response, deadline):
 				raise PictureError("broken")
 			return bytes(body)
 		body += chunk
-		if len(body) > MAX_BYTES:
+		if len(body) > limit:
 			raise PictureError("too_large")
 
 
@@ -504,10 +505,13 @@ def _retry_after(value):
 	return min(max(wait, RETRY_WAIT), MAX_RETRY_WAIT)
 
 
-def fetch(url, look_up=_look_up):
-	"""The picture at `url`, an address a message gave: (its bytes, its kind), or PictureError. It blocks for PATIENCE
-	at most."""
-	deadline = time.monotonic() + PATIENCE
+def fetch(url, look_up=_look_up, patience=None, kind_of=None, max_bytes=None):
+	"""The picture at `url`, an address a message gave: (its bytes, its kind), or PictureError. It blocks for `patience`
+	at most (PATIENCE, read when it is called), and takes `max_bytes` at most as they come (MAX_BYTES). `kind_of` says
+	what kind of picture bytes are (picture_kind; the icons of senders' domains also take an ICO, and far fewer bytes:
+	neomail_icons)."""
+	deadline = time.monotonic() + (PATIENCE if patience is None else patience)
+	kind_of = kind_of or picture_kind
 	place = address(url)
 	redirects, asked_again, pause = 0, False, 0.0
 	while True:
@@ -533,7 +537,7 @@ def fetch(url, look_up=_look_up):
 				continue
 			if not 200 <= status < 300:
 				raise PictureError("status", status)
-			body = _read(response, deadline)
+			body = _read(response, deadline, max_bytes)
 			codings = response.headers.get_all("Content-Encoding") or []
 		except (http.client.HTTPException, OSError, ValueError):
 			raise PictureError("timeout" if time.monotonic() >= deadline else "broken") from None
@@ -541,7 +545,7 @@ def fetch(url, look_up=_look_up):
 			timer.cancel()
 			connection.close()
 		body = unpack(body, ",".join(codings), deadline)
-		kind = picture_kind(body)
+		kind = kind_of(body)
 		if kind is None:
 			raise PictureError("not_picture")
 		return body, kind

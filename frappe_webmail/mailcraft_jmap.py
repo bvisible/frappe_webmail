@@ -673,6 +673,7 @@ def _session(address):
 		mailcraft_settings,
 		mailcraft_stream,
 		neomail_history,
+		neomail_icons,
 	)
 
 	account = webmail.get_account(address)
@@ -691,6 +692,8 @@ def _session(address):
 	# What was said with someone, for NeoMail's « Échanges » pane: who they are, their messages in every folder, what Neoffice
 	# links them to (neomail_history).
 	history, account_history = _optional_parts(neomail_history.session_parts, account)
+	# The icon of a sender's domain, for the round of NeoMail's rows (neomail_icons).
+	icons, account_icons = _optional_parts(neomail_icons.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -712,6 +715,7 @@ def _session(address):
 			**settings,
 			**streams,
 			**history,
+			**icons,
 		},
 		"accounts": {
 			aid: {
@@ -735,6 +739,7 @@ def _session(address):
 					**account_settings,
 					**account_streams,
 					**account_history,
+					**account_icons,
 				},
 			}
 		},
@@ -744,7 +749,7 @@ def _session(address):
 			QUOTA: aid,
 			**{
 				capability: aid
-				for capability in (*contacts, *calendars, *notes, *settings, *streams, *history)
+				for capability in (*contacts, *calendars, *notes, *settings, *streams, *history, *icons)
 			},
 		},
 		"username": frappe.session.user,
@@ -818,8 +823,8 @@ def _api():
 def _more_methods():
 	"""The address book's, the calendars', the notes', the kept settings', the streams' and the folders' methods
 	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders,
-	neomail_history), and what changed in the mail and the folders (mailcraft_changes), which read this module: imported
-	when first asked."""
+	neomail_history, neomail_icons), and what changed in the mail and the folders (mailcraft_changes), which read this
+	module: imported when first asked."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_changes import METHODS as CHANGES_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
@@ -828,6 +833,7 @@ def _more_methods():
 	from frappe_webmail.mailcraft_stream import METHODS as STREAM_METHODS
 	from frappe_webmail.neomail_folders import METHODS as FOLDER_METHODS
 	from frappe_webmail.neomail_history import METHODS as HISTORY_METHODS
+	from frappe_webmail.neomail_icons import METHODS as ICON_METHODS
 
 	return {
 		**CONTACT_METHODS,
@@ -837,6 +843,7 @@ def _more_methods():
 		**STREAM_METHODS,
 		**FOLDER_METHODS,
 		**HISTORY_METHODS,
+		**ICON_METHODS,
 		**CHANGES_METHODS,
 	}
 
