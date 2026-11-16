@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-15 03:21+0000\n"
+"POT-Creation-Date: 2026-11-16 03:24+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language: fr\n"
@@ -254,7 +254,7 @@ msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1208
-#: frappe_webmail/www/neomail.html:737
+#: frappe_webmail/www/neomail.html:746
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
@@ -3022,7 +3022,7 @@ msgstr "Ouvrir l'enregistrement"
 msgid "Open the webmail"
 msgstr "Ouvrir le webmail"
 
-#: frappe_webmail/www/neomail.html:739
+#: frappe_webmail/www/neomail.html:748
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -3788,7 +3788,7 @@ msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1059
-#: frappe_webmail/www/neomail.html:745
+#: frappe_webmail/www/neomail.html:754
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -4749,7 +4749,7 @@ msgid "You have no channel in Synk and nobody to write to yet."
 msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1206
-#: frappe_webmail/www/neomail.html:735
+#: frappe_webmail/www/neomail.html:744
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -4778,7 +4778,7 @@ msgstr ""
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1057
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1227
-#: frappe_webmail/www/neomail.html:724 frappe_webmail/www/neomail.html:744
+#: frappe_webmail/www/neomail.html:733 frappe_webmail/www/neomail.html:753
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
