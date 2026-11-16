@@ -326,7 +326,7 @@ def _uids_of(uids):
 
 
 @frappe.whitelist()
-def get_streams(account_name, folder="INBOX", uids=None):
+def get_streams(account_name, folder="INBOX", uids=None):  # permission-check: ok jmap.webmail.get_account refuses a portal account and a mailbox that is not the caller's
 	"""The kind of sender of these messages of a folder, for the groups of the phone's Mail tab (Notifications and
 	Newsletters at the foot of each day, as NeoMail has them): `{enabled, streams: {uid: stream}, pending: [uid]}`.
 
