@@ -236,3 +236,66 @@ def test_the_same_message_in_two_folders_is_two_keys():
 	assert ms._key("a@b.example", "INBOX", 7, 1) != ms._key("a@b.example", "Archive", 7, 1)
 	assert ms._key("a@b.example", "INBOX", 7, 1) != ms._key("a@b.example", "INBOX", 8, 1)
 	assert ms._key("a@b.example", "INBOX", 7, 1) == ms._key("a@b.example", "INBOX", 7, 1)
+
+
+# The phone's Mail tab (get_streams): the same answer, named by a folder and the UIDs of its list
+
+
+@pytest.fixture
+def phone(box, monkeypatch):
+	box.validity = 7
+	box.accounts = []
+	monkeypatch.setattr(ms, "_validity", lambda account, folder: box.validity)
+
+	def get_account(name):
+		box.accounts.append(name)
+		return ACCOUNT
+
+	monkeypatch.setattr(jmap.webmail, "get_account", get_account)
+	return box
+
+
+def test_the_phone_reads_the_kind_of_each_message_by_its_uid(phone):
+	answer = ms.get_streams(ACCOUNT.name, "INBOX", "[1, 2, 3]")
+	assert answer == {
+		"enabled": True,
+		"streams": {"1": "newsletter", "2": "notification", "3": "person"},
+		"pending": [],
+	}
+	# the mailbox is checked under the webmail's rule (owner or shared), and the same cache serves NeoMail's tabs
+	assert phone.accounts == [ACCOUNT.name]
+	assert len(phone.cache.store) == 3
+
+
+def test_the_phone_reads_numbers_separated_by_commas_and_never_twice_the_same(phone):
+	answer = ms.get_streams(ACCOUNT.name, "INBOX", "2, 2,1")
+	assert set(answer["streams"]) == {"1", "2"} and phone.reads == [("INBOX", 7, [2, 1])]
+
+
+def test_the_phone_asks_again_what_the_model_has_not_answered(phone, monkeypatch):
+	phone.delay = 0.6
+	monkeypatch.setattr(ms, "BUDGET_S", 0.05)
+	answer = ms.get_streams(ACCOUNT.name, "INBOX", "[1, 3]")
+	assert answer["streams"] == {"1": "newsletter"} and answer["pending"] == [3]
+
+
+def test_nothing_is_read_where_the_site_does_not_offer_the_tabs(phone, monkeypatch):
+	monkeypatch.setattr(ms, "enabled", lambda: False)
+	assert ms.get_streams(ACCOUNT.name, "INBOX", "[1]") == {"enabled": False, "streams": {}, "pending": []}
+	assert phone.reads == [] and phone.accounts == []
+
+
+def test_a_folder_that_cannot_be_opened_says_nothing(phone):
+	phone.validity = None
+	assert ms.get_streams(ACCOUNT.name, "Gone", "[1]") == {"enabled": True, "streams": {}, "pending": []}
+	assert phone.reads == []
+
+
+TOO_MANY = ",".join(str(n) for n in range(1, ms.MAX_IDS + 2))
+
+
+@pytest.mark.parametrize("uids", ['["x"]', "a,b", "[0]", "[-3]", TOO_MANY])
+def test_the_uids_are_checked(phone, uids):
+	with pytest.raises(frappe.ValidationError):
+		ms.get_streams(ACCOUNT.name, "INBOX", uids)
+	assert phone.reads == []

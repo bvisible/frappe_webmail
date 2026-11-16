@@ -27,6 +27,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
 import frappe
+from frappe import _
 
 from frappe_webmail import mailcraft_jmap as jmap
 from frappe_webmail import stream
@@ -295,6 +296,58 @@ def finish(account_name, folder, validity, uids):
 			entry,
 			expires_in_sec=CACHE_S if entry["source"] != "default" else DEFAULT_CACHE_S,
 		)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The phone's Mail tab: the same answer, named by the folder and the UIDs its list holds
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def _validity(account, folder):
+	"""The UIDVALIDITY of `folder`, or None when it cannot be opened (replaced in the tests)."""
+	with jmap.webmail.imap_session(account) as client:
+		return jmap._select(client, folder)
+
+
+def _uids_of(uids):
+	"""The UIDs a call names: a JSON list, or numbers separated by commas; at most MAX_IDS."""
+	if isinstance(uids, str):
+		text = uids.strip()
+		uids = frappe.parse_json(text) if text.startswith("[") else [u for u in text.split(",") if u.strip()]
+	try:
+		wanted = [int(u) for u in uids or []]
+	except (TypeError, ValueError):
+		frappe.throw(_("The messages asked for are not valid."), frappe.ValidationError)
+	if len(wanted) > MAX_IDS or any(u <= 0 for u in wanted):
+		frappe.throw(
+			_("At most {0} messages can be asked for at once.").format(MAX_IDS), frappe.ValidationError
+		)
+	return list(dict.fromkeys(wanted))
+
+
+@frappe.whitelist()
+def get_streams(account_name, folder="INBOX", uids=None):
+	"""The kind of sender of these messages of a folder, for the groups of the phone's Mail tab (Notifications and
+	Newsletters at the foot of each day, as NeoMail has them): `{enabled, streams: {uid: stream}, pending: [uid]}`.
+
+	The same work as NeomailStream/get (the cache, the headers, the model, the job that finishes what is pending), named by
+	the folder and the UIDs the phone's list holds instead of NeoMail's ids: the phone does not know the UIDVALIDITY of each
+	mailbox of « Toutes les boîtes ». `pending` are the messages the model has not answered yet: ask them again in a few
+	seconds. Where the site does not offer the tabs, `enabled` is false and nothing is read."""
+	if not enabled():
+		return {"enabled": False, "streams": {}, "pending": []}
+	wanted = _uids_of(uids)
+	account = jmap.webmail.get_account(account_name)
+	validity = _validity(account, folder) if wanted else None
+	if not validity:
+		return {"enabled": True, "streams": {}, "pending": []}
+	ids = {jmap.email_id(folder, validity, uid): uid for uid in wanted}
+	answer = stream_get({"accountId": "A" + jmap._b64(account.name), "ids": list(ids)})
+	return {
+		"enabled": True,
+		"streams": {str(ids[e["id"]]): e["stream"] for e in answer["list"] if e["id"] in ids},
+		"pending": [ids[jid] for jid in answer["pending"] if jid in ids],
+	}
 
 
 METHODS = {"NeomailStream/get": stream_get}
