@@ -75,6 +75,9 @@ class TestTheTeamsCard(FrappeTestCase):
 		self.assertEqual(len(rows), 2)
 		small = rows[-1]
 		self.assertEqual(small.td.get("colspan"), "3")
+		# Given a width, the small print no longer widens the card to the whole message (the logo floated, in Gmail)
+		self.assertEqual(small.td.get("width"), "480")
+		self.assertEqual(cells[1].get("align"), "center")
 		self.assertIn("text-align:center", small.div["style"])
 		self.assertIn("Vertraulich", small.get_text())
 

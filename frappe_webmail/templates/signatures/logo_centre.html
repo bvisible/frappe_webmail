@@ -2,22 +2,25 @@
 	two light rules; the ways to reach the person on the right, the number first and the address last; the small print under
 	the three, centred. A column with nothing to show is left out, with its rule. The widest layout (about 450 px): a phone
 	scales it down to fit. -#}
-{% from "_blocks.html" import contacts, extras, identity, logo %}
+{% from "_blocks.html" import contacts, extras, identity %}
 {%- set right = card.contacts or card.address or card.social or card.action -%}
 {%- set columns = (1 if card.identity else 0) + (1 if card.logo else 0) + (1 if right else 0) -%}
+{#- The small print is given a width (about the card's own): a long text would otherwise widen the table to the whole
+	message, and the three columns would drift apart around a logo floating in a wide cell (seen in Gmail, 17.11). -#}
+{%- set fine_width = 480 -%}
 <table cellpadding="0" cellspacing="0" border="0" style="{{ look.table }}">
 <tr>
 {% if card.identity %}
 <td valign="middle" align="right" style="{{ look.cell }}vertical-align:middle;text-align:right;padding:0 12px 0 0;">{{ identity(card, look) }}</td>
 {% endif %}
 {% if card.logo %}
-<td valign="middle" style="{{ look.cell }}vertical-align:middle;padding:6px 12px;{% if card.identity %}border-left:{{ look.light_rule }};{% endif %}{% if right %}border-right:{{ look.light_rule }};{% endif %}">{{ logo(card.logo) }}</td>
+<td valign="middle" align="center" style="{{ look.cell }}vertical-align:middle;text-align:center;padding:6px 12px;{% if card.identity %}border-left:{{ look.light_rule }};{% endif %}{% if right %}border-right:{{ look.light_rule }};{% endif %}"><img src="{{ card.logo.src }}" width="{{ card.logo.width }}"{% if card.logo.height %} height="{{ card.logo.height }}"{% endif %} alt="{{ card.logo.alt }}" style="{{ card.logo.style | replace('display:block;', 'display:inline-block;') }}"></td>
 {% endif %}
 {% if right %}
 <td valign="middle" style="{{ look.cell }}vertical-align:middle;padding:0 0 0 12px;">{{ contacts(card, look, ("phone", "mobile", "website", "email")) }}{{ extras(card, look) }}</td>
 {% endif %}
 </tr>
 {% if card.disclaimer %}
-<tr><td colspan="{{ columns or 1 }}" valign="top" style="{{ look.fine }}padding:14px 0 0 0;"><div style="{{ look.fine }}text-align:center;border-top:{{ look.light_rule }};padding:8px 0 0 0;">{% for line in card.disclaimer %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></td></tr>
+<tr><td colspan="{{ columns or 1 }}" width="{{ fine_width }}" valign="top" style="{{ look.fine }}padding:14px 0 0 0;"><div style="{{ look.fine }}text-align:center;border-top:{{ look.light_rule }};padding:8px 0 0 0;">{% for line in card.disclaimer %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div></td></tr>
 {% endif %}
 </table>
