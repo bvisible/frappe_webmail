@@ -140,15 +140,19 @@ frappe.provide("frappe_webmail.signature_builder");
 			primary_action: () => save(),
 		});
 		d.neo_is_dirty = () => S.dirty;
-		d.add_footer_link(__("All the settings: logo, font, small print, banner"), () => {
-			const m = S.models[S.at];
-			frappe.set_route(
-				m && m.name
-					? ["Form", "Email Signature Template", m.name]
-					: ["List", "Email Signature Template"]
-			);
-			d.hide();
-		});
+		const $settings = d.add_footer_link(
+			__("All the settings: logo, font, small print, banner"),
+			() => {
+				const m = S.models[S.at];
+				frappe.set_route(
+					m && m.name
+						? ["Form", "Email Signature Template", m.name]
+						: ["List", "Email Signature Template"]
+				);
+				d.hide();
+			}
+		);
+		$settings.addClass("hide");
 		const $body = d.fields_dict.body.$wrapper;
 		$body.html(`<div class="sigb"><div class="sigb-empty">${esc(__("Loading…"))}</div></div>`);
 		d.show();
@@ -177,6 +181,8 @@ frappe.provide("frappe_webmail.signature_builder");
 		function set_title() {
 			d.set_title(S.tab === "team" ? __("The team's signatures") : __("My signature"));
 			d.get_primary_btn().toggleClass("hide", S.tab !== "team");
+			// The template's whole form is for those who make the company's signatures, from their tab
+			$settings.toggleClass("hide", S.tab !== "team" || !(S.data && S.data.can_edit));
 		}
 
 		function draw() {
@@ -582,7 +588,8 @@ frappe.provide("frappe_webmail.signature_builder");
 		}
 
 		// The signature in a message, as a reader's mail client draws it: a white page, its own pictures; « dark » as a
-		// client that inverts everything but pictures, « phone » 343 px wide, scaled down to fit as a phone's client does
+		// client that inverts everything but pictures; « phone » 343 px wide. A signature wider than the frame is scaled
+		// down whole to fit, as a phone's client does, rather than squeezed (a table squeezed wraps the name).
 		function paint(html) {
 			const frame = $body.find(".sigb-frame")[0];
 			if (!frame) return;
@@ -590,19 +597,18 @@ frappe.provide("frappe_webmail.signature_builder");
 			frame.classList.toggle("phone", S.view === "phone");
 			const dark = S.view === "dark" ? "filter:invert(1) hue-rotate(180deg);" : "";
 			const unflip = S.view === "dark" ? "img{filter:invert(1) hue-rotate(180deg)}" : "";
-			frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><style>html{background:#fff;${dark}}body{margin:0;padding:18px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#141414}${unflip}.msg{margin:0 0 18px}</style></head><body><div class="msg">${esc(
+			frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><style>html{background:#fff;${dark}}body{margin:0;padding:18px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#141414}${unflip}.msg{margin:0 0 18px}#sig{width:max-content}</style></head><body><div class="msg">${esc(
 				__("Hello,")
 			)}<br><br>${esc(__("Here is the document we spoke about."))}<br><br>${esc(
 				__("Have a good day,")
 			)}</div><div id="sig">${signature}</div></body></html>`;
 			frame.onload = () => {
 				const doc = frame.contentDocument;
-				if (!doc || !doc.body) return;
-				if (S.view === "phone") {
-					const wide = doc.body.scrollWidth;
-					const room = frame.clientWidth;
-					if (wide > room) doc.body.style.zoom = String(room / wide);
-				}
+				const sig = doc && doc.getElementById("sig");
+				if (!sig) return;
+				const room = frame.clientWidth - 32;
+				const wide = sig.scrollWidth;
+				if (wide > room && room > 0) sig.style.zoom = String(room / wide);
 			};
 		}
 
