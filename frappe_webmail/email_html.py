@@ -340,7 +340,10 @@ def _link_text(link, pre):
 		return target
 
 	def bare(value):
-		return re.sub(r"^(https?://|mailto:|tel:)", "", value.strip().lower()).rstrip("/")
+		value = re.sub(r"^(https?://|mailto:|tel:)", "", value.strip().lower()).rstrip("/")
+		# A number says the same with or without its spaces, dots, dashes and brackets ('+41 21 519 25 68' is
+		# 'tel:+41215192568'), and with the (0) a number written for abroad may carry
+		return re.sub(r"[\s.\-/()]", "", value.replace("(0)", "")) if lowered.startswith("tel:") else value
 
 	return words if bare(words) == bare(target) else f"{words} ({target})"
 

@@ -139,6 +139,8 @@ _SCHEME = re.compile(r"[a-z][a-z0-9+.-]*://", re.IGNORECASE)
 # What an address in a link or a picture may not hold: spaces, quotes, angle brackets and control characters
 _UNSAFE_IN_URL = re.compile(r"[\s<>\"'\x00-\x1f\x7f]")
 _MAIL_ADDRESS = re.compile(r"[^\s@<>\"',;:()\[\]\\]+@[^\s@<>\"',;:()\[\]\\]+\.[^\s@<>\"',;:()\[\]\\]+")
+# A phone number as people write one: digits, an opening '+', spaces, dots, dashes, slashes and brackets
+_PHONE_NUMBER = re.compile(r"\+?[\d\s().\-/]+")
 
 
 # What is written ---------------------------------------------------------------------------------------------------
@@ -193,6 +195,21 @@ def web_address(value) -> tuple[str, str] | None:
 def mail_link(address: str) -> str | None:
 	"""`mailto:` link of an e-mail address, None when it does not look like one (it is then shown as words only)."""
 	return "mailto:" + address if _MAIL_ADDRESS.fullmatch(address) else None
+
+
+def phone_link(number: str) -> str | None:
+	"""`tel:` link of a phone number as people write one ('+41 21 519 25 68', '021 519 25 68'), None when it does not
+	read as one (it is then shown as words only). A number that is no link is found by the reader's mail client
+	itself (Gmail, Apple Mail) and drawn in its own blue, underlined; as a link it keeps the card's ink."""
+	if not isinstance(number, str) or not _PHONE_NUMBER.fullmatch(number.strip()):
+		return None
+	written = number.strip()
+	international = written.startswith("+")
+	# '+41 (0)21 …': the 0 is dialled from inside the country only, never after the country's code
+	digits = re.sub(r"\D", "", written.replace("(0)", "") if international else written)
+	if not 6 <= len(digits) <= 15:
+		return None
+	return ("tel:+" if international else "tel:") + digits
 
 
 def _one_line(value) -> str:
@@ -792,9 +809,9 @@ def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dic
 
 	contacts = []
 	if phone := given("show_phone", person.phone):
-		contacts.append(contact("phone", _("Phone"), phone, None))
+		contacts.append(contact("phone", _("Phone"), phone, phone_link(phone)))
 	if mobile := given("show_mobile", person.mobile):
-		contacts.append(contact("mobile", _("Mobile"), mobile, None))
+		contacts.append(contact("mobile", _("Mobile"), mobile, phone_link(mobile)))
 	# The address the template gives everyone (the company's general one), else the person's own
 	if email := given("show_email", contact_email(template) or person.email):
 		contacts.append(contact("email", _("Email"), email, mail_link(email)))

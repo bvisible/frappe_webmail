@@ -559,7 +559,7 @@ class TestRendering(FrappeTestCase):
 				self.assertNotIn(refused, result["html"], f"{layout}: {refused}")
 				self.assertNotIn(refused, result["text"], f"{layout}: {refused}")
 			for anchor in tree.find_all("a"):
-				self.assertRegex(anchor["href"], r"^(https://|mailto:)", layout)
+				self.assertRegex(anchor["href"], r"^(https://|mailto:|tel:\+?\d+$)", layout)
 		off = render_person(template(social_links=links, show_social_links=0), person())
 		self.assertNotIn("LinkedIn", off["html"])
 		self.assertNotIn("LinkedIn", off["text"])
@@ -622,6 +622,60 @@ class TestRendering(FrappeTestCase):
 		html = render_person(template(), person(email="alex at example"))["html"]
 		self.assertIn("alex at example", html)
 		self.assertNotIn("mailto:", html)
+
+	def test_the_numbers_are_links_in_the_card_s_ink(self):
+		"""A number that is no link is found by the reader's mail client and drawn in its own blue, underlined (Gmail,
+		17.11.2026): each number is a `tel:` link in the card's colour, in every layout, with or without the icons, and
+		the text of the message says it once."""
+		from frappe_webmail.email_html import plain_text
+
+		numbers = (("+41 00 000 00 00", "tel:+41000000000"), ("+41 00 000 00 01", "tel:+41000000001"))
+		for layout in LAYOUTS:
+			for icons in (0, 1):
+				html = render_person(
+					template(layout, show_mobile=1, show_contact_icons=icons, accent_color="#141414"),
+					person(),
+				)["html"]
+				for number, href in numbers:
+					found = soup(html).find("a", string=number)
+					self.assertIsNotNone(found, f"{layout}, icons {icons}: {number}")
+					self.assertEqual(found["href"], href, layout)
+					self.assertIn("text-decoration:none", found["style"], layout)
+					self.assertIn("color:#141414", found["style"], layout)
+					text = plain_text(html)
+					self.assertEqual(text.count(number), 1, f"{layout}, icons {icons}: {text}")
+					self.assertNotIn(
+						href.removeprefix("tel:"), text, f"{layout}: the number once, as written"
+					)
+		# The compact layout still names its numbers, and a number that does not read as one stays words
+		compact = render_person(template("Compact", show_mobile=1), person())["html"]
+		self.assertIn(f"{_('Phone')}:", compact)
+		self.assertIn(f"{_('Mobile')}:", compact)
+		html = render_person(template(), person(phone="ask the front desk"))["html"]
+		self.assertIn("ask the front desk", html)
+		self.assertNotIn("tel:", html, "the mobile is not shown by default, the phone is no number")
+
+	def test_a_number_is_a_link_only_when_it_reads_as_one(self):
+		for written, href in (
+			("+41 21 000 00 00", "tel:+41210000000"),
+			("+41 (0)21 000 00 00", "tel:+41210000000"),
+			("021 000 00 00", "tel:0210000000"),
+			("+1 (555) 010-0163", "tel:+15550100163"),
+			("079/000.00.00", "tel:0790000000"),
+			("  +41 79 000 00 00 ", "tel:+41790000000"),
+		):
+			self.assertEqual(signatures.phone_link(written), href, written)
+		for written in (
+			"ask the front desk",
+			"+41 21 000 00 00 ext. 4",
+			"javascript:alert(1)",
+			"12 34",
+			"1" * 16,
+			"+",
+			"",
+			None,
+		):
+			self.assertIsNone(signatures.phone_link(written), written)
 
 	def test_the_template_may_give_everyone_one_address(self):
 		"""The company's general address in everyone's signature (where its people all give hello@), in place of their
@@ -1999,7 +2053,7 @@ class TestThePhotoAndTheBannerAreDrawn(FrappeTestCase):
 			for image in tree.find_all("img"):
 				self.assertTrue(image.get("width") and image.get("alt"), layout)
 			for anchor in tree.find_all("a"):
-				self.assertRegex(anchor["href"], r"^(https://|mailto:)", layout)
+				self.assertRegex(anchor["href"], r"^(https://|mailto:|tel:\+?\d+$)", layout)
 
 
 class PhotoTestCase(SignatureTestCase):
