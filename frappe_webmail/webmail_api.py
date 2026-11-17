@@ -18,7 +18,7 @@ from email.header import decode_header
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formatdate, make_msgid
+from email.utils import formataddr, formatdate, getaddresses, make_msgid
 from html import escape as _escape_html
 
 import frappe
@@ -1540,6 +1540,24 @@ def mark_email_nora_seen(account_name, uid, seen=True, folder="INBOX"):
 # ============================================
 
 
+def address_header(value) -> str:
+	"""An address header (To, Cc, Bcc) as RFC 5322 writes it: each address bare, its name an encoded word when it is not
+	plain ASCII. Set as typed (« André Simone <andre@…> »), Python encoded the whole header, address included, into one
+	encoded word, an address no server can read, and Gmail refused the message (550 5.7.1, 17.11.2026). What does not
+	read as addresses is left as it was."""
+	pairs = [(name, address) for name, address in getaddresses([value or ""]) if address and "@" in address]
+	if not pairs:
+		return value
+	return ", ".join(formataddr((name.strip(), address.strip()), charset="utf-8") for name, address in pairs)
+
+
+def sender_header(account) -> str:
+	"""The From of a message of `account`: its sender name (an encoded word when it is not plain ASCII) and its address,
+	which stays readable (address_header says why)."""
+	name = " ".join((account.sender_name or "").split())
+	return formataddr((name, account.email), charset="utf-8") if name else account.email
+
+
 @frappe.whitelist(methods=["POST"])
 def send_email(
 	account_name,
@@ -1590,8 +1608,8 @@ def send_email(
 
 	# Build message
 	msg = MIMEMultipart("mixed")
-	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
-	msg["To"] = to
+	msg["From"] = sender_header(account)
+	msg["To"] = address_header(to)
 	msg["Subject"] = subject
 	# Its date and its Message-ID, the same in the copy kept in « Envoyés » as in the message received: the copy had
 	# neither, so it showed no date and the answers to it could not find it (a conversation, get_conversation)
@@ -1599,7 +1617,7 @@ def send_email(
 	msg["Message-ID"] = make_msgid(domain=(account.email or "webmail.local").split("@")[-1])
 
 	if cc:
-		msg["Cc"] = cc
+		msg["Cc"] = address_header(cc)
 
 	if reply_to_message_id:
 		msg["In-Reply-To"] = reply_to_message_id
@@ -1823,13 +1841,13 @@ def save_draft_imap(
 
 	# Build draft message
 	msg = MIMEMultipart("mixed")
-	msg["From"] = f'"{account.sender_name}" <{account.email}>' if account.sender_name else account.email
+	msg["From"] = sender_header(account)
 	if to:
-		msg["To"] = to
+		msg["To"] = address_header(to)
 	if cc:
-		msg["Cc"] = cc
+		msg["Cc"] = address_header(cc)
 	if bcc:
-		msg["Bcc"] = bcc
+		msg["Bcc"] = address_header(bcc)
 	if subject:
 		msg["Subject"] = subject
 	# When it was last written, shown in « Brouillons »
