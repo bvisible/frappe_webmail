@@ -124,6 +124,8 @@ permission_query_conditions = {
 	"Email Draft": "frappe_webmail.frappe_webmail.doctype.email_draft.email_draft.get_permission_query_conditions",
 	# A person's choices of the company signature (their photo, their mobile) are theirs and a System Manager's
 	"Email Signature Preference": "frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.get_permission_query_conditions",
+	# A signature is its person's: the list shows the signatures its form opens (EmailSignature.has_permission).
+	"Email Signature": "frappe_webmail.frappe_webmail.doctype.email_signature.email_signature.get_permission_query_conditions",
 }
 
 has_permission = {

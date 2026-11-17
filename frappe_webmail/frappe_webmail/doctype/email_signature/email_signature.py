@@ -112,6 +112,16 @@ class EmailSignature(Document):
 		return frappe.db.get_value("Email Signature", self.name, "user")
 
 
+def get_permission_query_conditions(user=None):
+	"""A signature is its person's: the list shows the signatures its form opens (EmailSignature.has_permission). The
+	role permissions read every signature for « Admin », so a list showed a colleague's signature that then refused to
+	open, and showed it to someone it is not for (maintenance#2805)."""
+	user = user or frappe.session.user
+	if user == "Administrator":
+		return ""
+	return f"(`tabEmail Signature`.`user` = {frappe.db.escape(user)})"
+
+
 def before_save(doc, method):
 	"""Hook called before saving Email Signature"""
 	doc.handle_default_signature()
