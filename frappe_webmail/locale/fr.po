@@ -5209,3 +5209,238 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#: frappe_webmail/public/js/signature_builder.js:354
+msgid "+ Add a role"
+msgstr "+ Ajouter un rôle"
+
+#. Description of the 'Contact Icons' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:265
+msgid "A small picture before each number and address, in place of its label."
+msgstr "Une petite icône devant chaque numéro et adresse, à la place de son libellé."
+
+#: frappe_webmail/public/js/signature_builder.js:143
+msgid "All the settings: logo, font, small print, banner"
+msgstr "Tous les réglages : logo, police, mention de confidentialité, bandeau"
+
+#: frappe_webmail/public/js/signature_builder.js:393
+msgid "An icon before each number and address"
+msgstr "Une icône devant chaque numéro et adresse"
+
+#: frappe_webmail/public/js/signature_builder.js:677
+msgid "As your messages carry it"
+msgstr "Tel que l'affichent vos messages"
+
+#: frappe_webmail/webmail_api.py:1309
+msgid "At most 100 messages can be asked for at once"
+msgstr "Vous ne pouvez demander que 100 messages au maximum à la fois"
+
+#: frappe_webmail/mailcraft_stream.py:323
+#, python-brace-format
+msgid "At most {0} messages can be asked for at once."
+msgstr "Vous ne pouvez demander que {0} messages au maximum à la fois."
+
+#: frappe_webmail/public/js/signature_builder.js:321
+msgid "Choose a company"
+msgstr "Choisissez une société"
+
+#: frappe_webmail/public/js/signature_builder.js:327
+msgid "Choose a department"
+msgstr "Choisissez un département"
+
+#: frappe_webmail/public/js/signature_builder.js:334
+msgid "Choose a user group"
+msgstr "Choisissez un groupe d'utilisateurs"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:110
+msgid "Choose at least one role this template applies to."
+msgstr "Choisissez au moins un rôle auquel ce modèle s'applique."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:100
+msgid "Choose the user group this template applies to."
+msgstr "Choisissez le groupe d'utilisateurs auquel ce modèle s'applique."
+
+#: frappe_webmail/new_senders.py:244
+msgid "Choose to accept or to block the sender."
+msgstr "Choisissez d'accepter ou de bloquer l'expéditeur."
+
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:268
+msgid "Contact Icons"
+msgstr "Icônes de contact"
+
+#: frappe_webmail/public/js/signature_builder.js:400
+msgid "Each person may keep their own signature"
+msgstr "Chaque personne peut garder sa propre signature"
+
+#. Description of the 'Roles' (Table MultiSelect) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:124
+msgid "Every person of the desk who has one of these roles gets this template."
+msgstr "Toute personne du bureau qui a l'un de ces rôles reçoit ce modèle."
+
+#: frappe_webmail/public/js/signature_builder.js:362
+msgid "For example: Support"
+msgstr "Par exemple : Support"
+
+#: frappe_webmail/public/js/signature_builder.js:610
+msgid "Give the model a name."
+msgstr "Donnez un nom au modèle."
+
+#: frappe_webmail/public/js/signature_builder.js:366
+#: frappe_webmail/public/js/signature_builder.js:367
+msgid "Given to"
+msgstr "Donné à"
+
+#: frappe_webmail/public/js/signature_builder.js:593
+msgid "Have a good day,"
+msgstr "Belle journée,"
+
+#: frappe_webmail/public/js/signature_builder.js:592
+msgid "Here is the document we spoke about."
+msgstr "Voici le document dont nous avons parlé."
+
+#: frappe_webmail/public/js/signature_builder.js:471
+msgid "How it is seen"
+msgstr "Affichage"
+
+#: frappe_webmail/signature_builder.py:158
+msgid "job title"
+msgstr "fonction"
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
+msgid "Logo centre"
+msgstr "Logo au centre"
+
+#: frappe_webmail/public/js/signature_builder.js:77
+msgid "Logo in the centre"
+msgstr "Logo au centre"
+
+#: frappe_webmail/public/js/signature_builder.js:672
+msgid "My own signatures"
+msgstr "Mes propres signatures"
+
+#: frappe_webmail/public/js/signature_builder.js:359
+msgid "Name of the model"
+msgstr "Nom du modèle"
+
+#: frappe_webmail/public/js/signature_builder.js:566
+msgid "No longer"
+msgstr "Plus maintenant"
+
+#: frappe_webmail/public/js/signature_builder.js:645
+msgid "No model of the company applies to you: your messages carry your own signature, if you wrote one in the webmail."
+msgstr "Aucun modèle de la société ne vous concerne : vos messages portent votre propre signature, si vous en avez rédigé une dans le webmail."
+
+#: frappe_webmail/public/js/signature_builder.js:337
+msgid "No user group yet: make one in User Group, then come back."
+msgstr "Aucun groupe d'utilisateurs pour l'instant : créez-en un dans Groupe d'utilisateurs, puis revenez ici."
+
+#: frappe_webmail/public/js/signature_builder.js:570
+#, python-brace-format
+msgid "No {0} on their record"
+msgstr "Manque sur sa fiche : {0}"
+
+#: frappe_webmail/public/js/signature_builder.js:551
+msgid "Nobody yet: choose whom it is given to."
+msgstr "Personne pour l'instant : choisissez à qui il est donné."
+
+#: frappe_webmail/public/js/signature_builder.js:564
+msgid "Not in use"
+msgstr "Non utilisé"
+
+#: frappe_webmail/public/js/signature_builder.js:196
+msgid "One model for each group of people: give it to roles, a user group, a department or the whole company. Each person gets it filled from their own record."
+msgstr "Un modèle par groupe de personnes : attribuez-le à des rôles, à un groupe d'utilisateurs, à un département ou à toute la société. Chaque personne le reçoit rempli à partir de sa propre fiche."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:30
+msgid "Open in the signature builder"
+msgstr "Ouvrir dans le constructeur de signatures"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template_list.js:10
+msgid "Open the signature builder"
+msgstr "Ouvrir le constructeur de signatures"
+
+#: frappe_webmail/public/js/signature_builder.js:446
+msgid "Preview for"
+msgstr "Aperçu pour"
+
+#: frappe_webmail/public/js/signature_builder.js:629
+msgid "Saved. NeoMail, the webmail and the phone use it from the next message."
+msgstr "Enregistré. NeoMail, le webmail et le téléphone l'utilisent dès le prochain message."
+
+#: frappe_webmail/public/js/signature_builder.js:559
+msgid "Sends it"
+msgstr "L'envoie"
+
+#: frappe_webmail/public/js/signature_builder.js:655
+msgid "Show my photo"
+msgstr "Afficher ma photo"
+
+#: frappe_webmail/public/js/signature_builder.js:564
+#, python-brace-format
+msgid "Takes {0}"
+msgstr "Prend {0}"
+
+#: frappe_webmail/new_senders.py:259
+msgid "The list of senders is full."
+msgstr "La liste des expéditeurs est pleine."
+
+#: frappe_webmail/webmail_api.py:1302
+msgid "The messages asked for are not a list"
+msgstr "Les messages demandés ne forment pas une liste."
+
+#: frappe_webmail/mailcraft_stream.py:320
+msgid "The messages asked for are not valid."
+msgstr "Les messages demandés ne sont pas valides."
+
+#: frappe_webmail/public/js/signature_builder.js:396
+msgid "The mobile number"
+msgstr "Le numéro de mobile"
+
+#. Description of the 'Applies To' (Select) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:86
+msgid "The most specific template wins: the one for a person's department, else the one for a user group they belong to, else the one for one of their roles, else the one for their company, else the one for everyone."
+msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui d'un groupe d'utilisateurs auquel elle appartient, sinon celui de l'un de ses rôles, sinon celui de sa société, sinon celui de tout le monde."
+
+#: frappe_webmail/public/js/signature_builder.js:199
+msgid "The signature your messages carry, from NeoMail, the webmail and the phone alike."
+msgstr "La signature que portent vos messages, depuis NeoMail, le webmail comme le téléphone."
+
+#: frappe_webmail/public/js/signature_builder.js:397
+msgid "The small print"
+msgstr "La mention"
+
+#: frappe_webmail/public/js/signature_builder.js:178
+#: frappe_webmail/public/js/signature_builder.js:188
+msgid "The team's signatures"
+msgstr "Les signatures de l'équipe"
+
+#: frappe_webmail/new_senders.py:249 frappe_webmail/new_senders.py:251
+msgid "This is not an email address."
+msgstr "Ceci n'est pas une adresse e-mail."
+
+#: frappe_webmail/public/js/signature_builder.js:225
+msgid "When several models fit a person, the most precise wins: their department, then their group, then their roles, then their company."
+msgstr "Quand plusieurs modèles conviennent à une personne, le plus précis l'emporte : son département, puis son groupe, puis ses rôles, puis sa société."
+
+#: frappe_webmail/public/js/signature_builder.js:460
+#: frappe_webmail/public/js/signature_builder.js:547
+msgid "Who sends it"
+msgstr "Qui l'envoie"
+
+#: frappe_webmail/public/js/signature_builder.js:644
+#, python-brace-format
+msgid "You send the model « {0} »."
+msgstr "Vous envoyez le modèle « {0} »."
+
+#: frappe_webmail/public/js/signature_builder.js:667
+msgid "Your choices"
+msgstr "Vos choix"
+
+#: frappe_webmail/public/js/signature_builder.js:660
+msgid "Your model"
+msgstr "Votre modèle"

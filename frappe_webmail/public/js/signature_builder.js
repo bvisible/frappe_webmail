@@ -441,6 +441,9 @@ frappe.provide("frappe_webmail.signature_builder");
 
 		function draw_right() {
 			const people = S.data.people || [];
+			// The person who asks when they are one the models reach, else the first of them (Administrator is none)
+			if (people.length && !people.some((p) => p.user === S.person))
+				S.person = people[0].user;
 			$body.find(".sigb-right").html(`
 				<div class="sigb-preview-bar">
 					<label class="sigb-label" for="sigb-person">${esc(__("Preview for"))}</label>
