@@ -41,11 +41,13 @@ GROUP = f"{PREFIX}-group"
 def centre(**values):
 	return template(
 		"Logo centre",
-		show_mobile=1,
-		show_disclaimer=1,
-		disclaimer="Confidential\nVertraulich",
-		show_contact_icons=1,
-		**values,
+		**{
+			"show_mobile": 1,
+			"show_disclaimer": 1,
+			"disclaimer": "Confidential\nVertraulich",
+			"show_contact_icons": 1,
+		}
+		| values,
 	)
 
 

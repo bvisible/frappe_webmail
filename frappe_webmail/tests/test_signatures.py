@@ -328,7 +328,13 @@ class TestRendering(FrappeTestCase):
 		# The defaults are the ones the form has
 		self.assertEqual(
 			{name: value for name, value in signatures.SWITCHES.items() if not value},
-			{"show_department": 0, "show_mobile": 0, "show_company_address": 0, "show_disclaimer": 0},
+			{
+				"show_department": 0,
+				"show_mobile": 0,
+				"show_company_address": 0,
+				"show_disclaimer": 0,
+				"show_contact_icons": 0,
+			},
 		)
 
 	def test_each_layout_is_a_table_of_inline_styles_and_has_its_text(self):

@@ -115,12 +115,13 @@ def _unsaved(doc) -> "frappe.model.document.Document":
 		if isinstance(row, dict)
 	]
 	template = frappe.get_doc({**values, "doctype": TEMPLATE})
-	template.name = doc.get("name") or "__unsaved__"
+	name = doc.get("name")
+	template.name = name if isinstance(name, str) and name else "__unsaved__"
 	return template
 
 
 @frappe.whitelist(methods=["POST"])
-def reach(doc) -> dict:
+def reach(doc: str | dict) -> dict:
 	"""Who a template (as the builder has it, saved or not) reaches: each of the desk's people, whether it applies to them
 	(`applies`), whether they would send it once saved (`sends`: no more specific template takes them), the template they
 	send today, as the templates are saved (`today`), and what their card lacks (`missing`: job title, mobile). Only for those who may write the templates:
@@ -171,7 +172,7 @@ def reach(doc) -> dict:
 
 
 @frappe.whitelist(methods=["POST"])
-def preview(doc, user: str | None = None) -> dict:
+def preview(doc: str | dict, user: str | None = None) -> dict:
 	"""The signature a template (saved or not) gives a person, as their messages carry it: {html, text}. The person who
 	asks by default; another person only for those who may write the templates."""
 	asker = _desk_person()
@@ -200,7 +201,7 @@ def my_preview() -> dict:
 
 @frappe.whitelist(methods=["POST"])
 @rate_limit(limit=30, seconds=60)
-def save(doc) -> dict:
+def save(doc: str | dict) -> dict:
 	"""Save a template from the builder: a new one when it names none, else the one it names, with the template's own
 	checks (EmailSignatureTemplate.validate). Answers the template as the builder edits it."""
 	_desk_person()
@@ -208,7 +209,9 @@ def save(doc) -> dict:
 		doc = frappe.parse_json(doc)
 	if not isinstance(doc, dict):
 		frappe.throw(_("Not a template"))
-	name = doc.get("name")
+	name = doc.get("name") or ""
+	if not isinstance(name, str):
+		frappe.throw(_("Not a template"))
 	if name and frappe.db.exists(TEMPLATE, name):
 		template = frappe.get_doc(TEMPLATE, name)
 		template.check_permission("write")
