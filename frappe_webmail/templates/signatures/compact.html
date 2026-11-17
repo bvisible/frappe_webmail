@@ -8,7 +8,7 @@
 <div style="{{ look.line }}">{% for part in card.identity %}{% if not loop.first %}<span style="{{ look.label }}"> | </span>{% endif %}{% if part.kind == "name" %}<span style="{{ look.strong }}">{{ part.text }}</span>{% else %}{{ part.text }}{% endif %}{% endfor %}</div>
 {% endif %}
 {% if card.contacts %}
-<div style="{{ look.line }}">{% for contact in card.contacts %}{% if not loop.first %}<span style="{{ look.label }}"> &middot; </span>{% endif %}{% if contact.href %}<a href="{{ contact.href }}" style="{{ look.link }}">{{ contact.text }}</a>{% else %}<span style="{{ look.label }}">{{ contact.label }}:</span> {{ contact.text }}{% endif %}{% endfor %}</div>
+<div style="{{ look.line }}">{% for contact in card.contacts %}{% if not loop.first %}<span style="{{ look.label }}"> &middot; </span>{% endif %}{% if contact.icon %}<img src="{{ contact.icon.src }}" width="{{ contact.icon.size }}" height="{{ contact.icon.size }}" alt="{{ contact.icon.alt }}" style="display:inline-block;vertical-align:middle;border:0;width:{{ contact.icon.size }}px;height:{{ contact.icon.size }}px;">&nbsp;{% endif %}{% if contact.href %}<a href="{{ contact.href }}" style="{{ look.link }}">{{ contact.text }}</a>{% elif contact.icon %}{{ contact.text }}{% else %}<span style="{{ look.label }}">{{ contact.label }}:</span> {{ contact.text }}{% endif %}{% endfor %}</div>
 {% endif %}
 {% if card.address %}
 <div style="{{ look.small }}">{{ card.address }}</div>
