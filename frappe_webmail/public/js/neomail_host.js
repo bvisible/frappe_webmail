@@ -66,7 +66,8 @@ window.neomailHost = (function () {
 				},
 			});
 			// The sign-in page sends someone signed in straight back, with a page that has the new session's token.
-			if (answer.status === 401 || answer.status === 403 || (await refusedAsStale(answer))) told(false);
+			if (answer.status === 401 || answer.status === 403 || (await refusedAsStale(answer)))
+				told(false);
 			if (!answer.ok) return null;
 			told(true);
 			return (await answer.json()).message || null;
@@ -91,7 +92,8 @@ window.neomailHost = (function () {
 		};
 		let flying = 0;
 		const waiting = [];
-		const turn = () => new Promise((go) => (flying < AT_ONCE ? (flying++, go()) : waiting.push(go)));
+		const turn = () =>
+			new Promise((go) => (flying < AT_ONCE ? (flying++, go()) : waiting.push(go)));
 		const done = () => {
 			const next = waiting.shift();
 			if (next) next();
@@ -120,7 +122,11 @@ window.neomailHost = (function () {
 					const answer = await ask(url);
 					if (answer.ok) {
 						const bytes = new Uint8Array(await answer.arrayBuffer());
-						return { status: answer.status, contentType: answer.headers.get("Content-Type") || "", bytes };
+						return {
+							status: answer.status,
+							contentType: answer.headers.get("Content-Type") || "",
+							bytes,
+						};
 					}
 					// The token was refused (it expired with the cache, or after twelve hours): a new one, once.
 					if ((answer.status === 401 || answer.status === 403) && !renewed) {
@@ -133,7 +139,8 @@ window.neomailHost = (function () {
 						continue;
 					}
 					// Refused again with a new token: the session itself ended (the page's banner says it too).
-					if (answer.status === 401 || answer.status === 403) throw new Error(opts.sessionEnded || "");
+					if (answer.status === 401 || answer.status === 403)
+						throw new Error(opts.sessionEnded || "");
 					let detail = "";
 					try {
 						detail = (await answer.json()).detail || "";
@@ -176,7 +183,8 @@ window.neomailHost = (function () {
 	function followDeskTheme(doc, frame, Observer) {
 		const root = doc.documentElement;
 		const apply = () => {
-			frame.style.colorScheme = root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+			frame.style.colorScheme =
+				root.getAttribute("data-theme") === "dark" ? "dark" : "light";
 		};
 		apply();
 		if (typeof Observer !== "function") return () => {};
@@ -209,7 +217,12 @@ window.neomailHost = (function () {
 		outbox: "lucide-clock",
 	};
 	// NeoMail's views, in its order, and their icons (lucide names, without the prefix the menu's items take).
-	const VIEW_ICONS = { mail: "mail", calendar: "calendar", people: "users", notes: "sticky-note" };
+	const VIEW_ICONS = {
+		mail: "mail",
+		calendar: "calendar",
+		people: "users",
+		notes: "sticky-note",
+	};
 	const VIEWS = Object.keys(VIEW_ICONS);
 	// Synk, the instance's Raven, an icon the desk's page adds after NeoMail's views (neoffice-apps,
 	// docs/raven-in-neomail-study.md, section 8): on the web, Raven's own app, opened in a tab of its own.
@@ -240,7 +253,9 @@ window.neomailHost = (function () {
 	function viewsOf(state, send, texts, page) {
 		const now = state || {};
 		const own = page || {};
-		const offered = Array.isArray(now.views) ? now.views.filter((view) => VIEW_ICONS[view]) : VIEWS;
+		const offered = Array.isArray(now.views)
+			? now.views.filter((view) => VIEW_ICONS[view])
+			: VIEWS;
 		const views = offered.map((view) => ({
 			view,
 			title: texts[view],
@@ -260,7 +275,13 @@ window.neomailHost = (function () {
 	 */
 	function viewDock(state, send, texts, page) {
 		return viewsOf(state, send, texts, page).map((view) => {
-			const item = { id: view.view, title: view.title, icon: view.icon, active: view.active, onClick: view.onClick };
+			const item = {
+				id: view.view,
+				title: view.title,
+				icon: view.icon,
+				active: view.active,
+				onClick: view.onClick,
+			};
 			if (view.badge !== undefined) item.badge = view.badge;
 			return item;
 		});
@@ -268,8 +289,14 @@ window.neomailHost = (function () {
 
 	/* Raven's unread messages as Synk's badge: the sum of `get_unread_count_for_channels`, none at 0, « 99+ » above 99. */
 	function synkBadge(counts) {
-		const count = (row) => (row && Number.isFinite(row.unread_count) && row.unread_count > 0 ? row.unread_count : 0);
-		const total = (Array.isArray(counts) ? counts : []).reduce((sum, row) => sum + count(row), 0);
+		const count = (row) =>
+			row && Number.isFinite(row.unread_count) && row.unread_count > 0
+				? row.unread_count
+				: 0;
+		const total = (Array.isArray(counts) ? counts : []).reduce(
+			(sum, row) => sum + count(row),
+			0
+		);
 		if (!total) return undefined;
 		return total > 99 ? "99+" : total;
 	}
@@ -328,7 +355,11 @@ window.neomailHost = (function () {
 		const accounts = Array.isArray(now.accounts) ? now.accounts : [];
 		const favorites = Array.isArray(now.favorites) ? now.favorites : [];
 		const shown = (account, folder) =>
-			!page.front && now.module === "mail" && folder != null && account === now.account && folder === now.folder;
+			!page.front &&
+			now.module === "mail" &&
+			folder != null &&
+			account === now.account &&
+			folder === now.folder;
 		const chosen = opts.chosen;
 		const fromFavorites =
 			Boolean(chosen) &&
@@ -337,7 +368,8 @@ window.neomailHost = (function () {
 			shown(chosen.account, chosen.folder);
 		const tone = (role) => (role === "inbox" ? "accent" : undefined);
 		const icon = (role) => ROLE_ICONS[role] || "lucide-folder";
-		const select = (account, folder, from) => () => send("folder.select", { account, folder }, from);
+		const select = (account, folder, from) => () =>
+			send("folder.select", { account, folder }, from);
 		const key = (account, folder) => JSON.stringify([account, folder]);
 		const known = new Map();
 		for (const box of accounts) {
@@ -348,7 +380,9 @@ window.neomailHost = (function () {
 		const several = accounts.length > 1;
 		const favoriteLabel = (favorite, folder) => {
 			if (!several || !folder || !favorite.account) return favorite.name;
-			return folder.role === "inbox" ? favorite.account : favorite.account + " · " + folder.name;
+			return folder.role === "inbox"
+				? favorite.account
+				: favorite.account + " · " + folder.name;
 		};
 		const nav = [];
 		// « Toutes les boîtes » (NeoMail's `allInboxes`: its name, whether it is shown, the unread mail of the Inboxes; null
@@ -368,7 +402,10 @@ window.neomailHost = (function () {
 				const role = (folder && folder.role) || null;
 				return {
 					label: favoriteLabel(favorite, folder),
-					onContextMenu: menu && folder ? (event) => menu(event, favorite.account, folder) : undefined,
+					onContextMenu:
+						menu && folder
+							? (event) => menu(event, favorite.account, folder)
+							: undefined,
 					icon: icon(role),
 					badge: badgeOf(folder || favorite),
 					badgeTone: tone(role),
@@ -376,7 +413,10 @@ window.neomailHost = (function () {
 					onClick: select(favorite.account, favorite.folder, "favorites"),
 				};
 			});
-			nav.push({ label: texts.favorites, items: allItem ? [allItem].concat(favoriteItems) : favoriteItems });
+			nav.push({
+				label: texts.favorites,
+				items: allItem ? [allItem].concat(favoriteItems) : favoriteItems,
+			});
 		}
 		for (const box of accounts) {
 			const folders = Array.isArray(box.folders) ? box.folders : [];
@@ -385,7 +425,11 @@ window.neomailHost = (function () {
 			const depth = (folder) => {
 				const seen = new Set([folder.id]);
 				let level = 0;
-				for (let up = folder.parent; up != null && parentOf.has(up) && !seen.has(up); up = parentOf.get(up)) {
+				for (
+					let up = folder.parent;
+					up != null && parentOf.has(up) && !seen.has(up);
+					up = parentOf.get(up)
+				) {
 					seen.add(up);
 					if (++level === MAX_DEPTH) break;
 				}
@@ -401,7 +445,9 @@ window.neomailHost = (function () {
 					badgeTone: tone(folder.role),
 					active: !fromFavorites && shown(box.email, folder.id),
 					onClick:
-						folder.selectable === false ? undefined : select(box.email, folder.id, "mailbox"),
+						folder.selectable === false
+							? undefined
+							: select(box.email, folder.id, "mailbox"),
 					onContextMenu: menu ? (event) => menu(event, box.email, folder) : undefined,
 				})),
 			});
@@ -409,7 +455,12 @@ window.neomailHost = (function () {
 		if (!opts.dock) {
 			nav.push({
 				items: viewsOf(now, send, texts, page).map((view) => {
-					const item = { label: view.title, icon: "lucide-" + view.icon, active: view.active, onClick: view.onClick };
+					const item = {
+						label: view.title,
+						icon: "lucide-" + view.icon,
+						active: view.active,
+						onClick: view.onClick,
+					};
 					if (view.badge !== undefined) item.badge = view.badge;
 					return item;
 				}),
@@ -449,7 +500,10 @@ window.neomailHost = (function () {
 	function followChoice(chosen, state) {
 		if (!chosen) return null;
 		const now = state || {};
-		const showing = now.module === "mail" && now.account === chosen.account && now.folder === chosen.folder;
+		const showing =
+			now.module === "mail" &&
+			now.account === chosen.account &&
+			now.folder === chosen.folder;
 		if (showing) return chosen.seen ? chosen : { ...chosen, seen: true };
 		return chosen.seen ? null : chosen;
 	}
@@ -520,7 +574,9 @@ window.neomailHost = (function () {
 	 * `/raven/<workspace>/<id>`, each part URL-encoded): a path of Raven's app, nothing else; null otherwise.
 	 */
 	function synkRoute(route) {
-		return typeof route === "string" && /^\/raven(\/[A-Za-z0-9%._~-]+){2}$/.test(route) ? route : null;
+		return typeof route === "string" && /^\/raven(\/[A-Za-z0-9%._~-]+){2}$/.test(route)
+			? route
+			: null;
 	}
 
 	// What NeoMail may ask of an attachment, where the handover's `attachments` offers it (neomail_attachments.py).
@@ -539,8 +595,15 @@ window.neomailHost = (function () {
 		const message = shareOf(data);
 		const action = data && data.action;
 		const given = data && data.attachment;
-		if (!message || !ATTACHMENT_ACTIONS.includes(action) || !given || typeof given !== "object") return null;
-		const count = (value, most) => (Number.isInteger(value) && value >= 0 && value <= most ? value : null);
+		if (
+			!message ||
+			!ATTACHMENT_ACTIONS.includes(action) ||
+			!given ||
+			typeof given !== "object"
+		)
+			return null;
+		const count = (value, most) =>
+			Number.isInteger(value) && value >= 0 && value <= most ? value : null;
 		const text = (value, most) => (typeof value === "string" ? value.slice(0, most) : "");
 		const index = count(given.index, 100000);
 		const name = text(given.name, 1024);
@@ -613,9 +676,12 @@ window.neomailHost = (function () {
 		const lists = found || {};
 		const channels = Array.isArray(lists.channels) ? lists.channels : [];
 		const people = Array.isArray(lists.people) ? lists.people : [];
-		const named = (entry) => entry && typeof entry.id === "string" && entry.id && typeof entry.label === "string";
+		const named = (entry) =>
+			entry && typeof entry.id === "string" && entry.id && typeof entry.label === "string";
 		return [
-			...channels.filter(named).map((c) => ({ value: "channel:" + c.id, label: "# " + c.label })),
+			...channels
+				.filter(named)
+				.map((c) => ({ value: "channel:" + c.id, label: "# " + c.label })),
 			...people.filter(named).map((p) => ({ value: "user:" + p.id, label: p.label })),
 		];
 	}
@@ -629,6 +695,31 @@ window.neomailHost = (function () {
 	// What the webmail's address opens that NeoMail has no equivalent of yet: its signatures, filters and automations
 	// (page/neomail/neomail.py, WEBMAIL_ONLY).
 	const WEBMAIL_ONLY = ["signatures", "filters", "automations"];
+	// What both pages open alike: the signature builder (page/neomail/neomail.py, BUILDER)
+	const BUILDER = "signature_builder";
+
+	/*
+	 * Whether an address asks the signature builder (`?signature_builder=1`), and the address without it: {asked, rest}.
+	 */
+	function builderAsked(search) {
+		const query = new URLSearchParams(search || "");
+		const asked = query.has(BUILDER);
+		query.delete(BUILDER);
+		const rest = query.toString();
+		return { asked, rest: rest ? "?" + rest : "" };
+	}
+
+	/*
+	 * Open the signature builder (signature_builder.js, loaded at its first use) in the desk page `win` shows: the desk's
+	 * window only, a page of the desk (frappe.ui.Dialog). `options` go to the builder (its tab, a template to show).
+	 */
+	function openBuilder(win, options) {
+		const f = win.frappe;
+		if (!f || !f.require) return;
+		f.require("/assets/frappe_webmail/js/signature_builder.js", () => {
+			win.frappe_webmail.signature_builder.load_and_open(options || {});
+		});
+	}
 
 	/*
 	 * Where an address of the webmail's desk page leads where NeoMail is in the desk: /app/neomail with what the address
@@ -638,6 +729,8 @@ window.neomailHost = (function () {
 	function deskAddress(search) {
 		const query = new URLSearchParams(search || "");
 		if (WEBMAIL_ONLY.some((key) => query.has(key))) return null;
+		// The signature builder opens on either page (signature_builder.js)
+		if (query.has(BUILDER)) return "/app/neomail?" + BUILDER + "=1";
 		const kept = new URLSearchParams();
 		if (query.has("compose")) {
 			kept.set("compose", "1");
@@ -698,6 +791,8 @@ window.neomailHost = (function () {
 		withoutIntent,
 		mailboxOfEmail,
 		deskAddress,
+		builderAsked,
+		openBuilder,
 		commander,
 		refusedAsStale,
 	};

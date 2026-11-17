@@ -7,7 +7,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SOURCE = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), "../../frappe_webmail/public/js/neomail_host.js"),
+	resolve(
+		dirname(fileURLToPath(import.meta.url)),
+		"../../frappe_webmail/public/js/neomail_host.js"
+	),
 	"utf8"
 );
 
@@ -34,8 +37,12 @@ function page(answers = []) {
 }
 
 const json = (body, status = 200) =>
-	new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-const picture = (bytes) => new Response(new Uint8Array(bytes), { headers: { "Content-Type": "image/png" } });
+	new Response(JSON.stringify(body), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	});
+const picture = (bytes) =>
+	new Response(new Uint8Array(bytes), { headers: { "Content-Type": "image/png" } });
 const handed = (secret = "token-1") => ({
 	accounts: [{ email: "ada@example.org", secret, scheme: "bearer" }],
 	language: "fr",
@@ -45,7 +52,12 @@ const handed = (secret = "token-1") => ({
 describe("knowsFolder", () => {
 	it("answers only for a folder NeoMail has listed in that mailbox", () => {
 		const { host } = page();
-		const state = { accounts: [{ email: "a@x.example", folders: [{ id: "MRHJhZnRz" }] }, { email: "b@x.example" }] };
+		const state = {
+			accounts: [
+				{ email: "a@x.example", folders: [{ id: "MRHJhZnRz" }] },
+				{ email: "b@x.example" },
+			],
+		};
 		expect(host.knowsFolder(state, "a@x.example", "MRHJhZnRz")).toBe(true);
 		expect(host.knowsFolder(state, "a@x.example", "MTm90IGhlcmU")).toBe(false);
 		expect(host.knowsFolder(state, "b@x.example", "MRHJhZnRz")).toBe(false);
@@ -65,7 +77,9 @@ describe("install", () => {
 	});
 
 	it("renews with the page's session and its CSRF token, and says the session is alive", async () => {
-		const { win, host, asked } = page([json({ message: { accounts: [{ secret: "token-2" }] } })]);
+		const { win, host, asked } = page([
+			json({ message: { accounts: [{ secret: "token-2" }] } }),
+		]);
 		const told = [];
 		host.install(win, handed(), { onSession: (alive) => told.push(alive) });
 		const answer = await win.mailcraftJmapRenew();
@@ -122,7 +136,9 @@ describe("mailcraftFetchUrl", () => {
 		expect(asked[0].init.credentials).toBe("omit");
 		expect(asked[0].init.referrerPolicy).toBe("no-referrer");
 		expect(asked[0].init.headers.Authorization).toBe("Bearer token-1");
-		expect(JSON.parse(asked[0].init.body)).toEqual({ url: "https://pictures.example.net/a.png" });
+		expect(JSON.parse(asked[0].init.body)).toEqual({
+			url: "https://pictures.example.net/a.png",
+		});
 	});
 
 	it("renews a refused token once, then asks again with the new one", async () => {
@@ -149,11 +165,17 @@ describe("mailcraftFetchUrl", () => {
 	it("waits while the server is busy, and tells what it said of a picture it would not fetch", async () => {
 		const busy = page([json({}, 503), picture([7])]);
 		busy.host.install(busy.win, handed());
-		expect(Array.from((await busy.win.mailcraftFetchUrl("https://x.example/1.png")).bytes)).toEqual([7]);
+		expect(
+			Array.from((await busy.win.mailcraftFetchUrl("https://x.example/1.png")).bytes)
+		).toEqual([7]);
 		const refused = page([json({ detail: "Not a picture" }, 422), json({}, 500)]);
 		refused.host.install(refused.win, handed());
-		await expect(refused.win.mailcraftFetchUrl("https://x.example/2.png")).rejects.toThrow("Not a picture");
-		await expect(refused.win.mailcraftFetchUrl("https://x.example/3.png")).rejects.toThrow("HTTP 500");
+		await expect(refused.win.mailcraftFetchUrl("https://x.example/2.png")).rejects.toThrow(
+			"Not a picture"
+		);
+		await expect(refused.win.mailcraftFetchUrl("https://x.example/3.png")).rejects.toThrow(
+			"HTTP 500"
+		);
 	});
 
 	it("asks for two pictures at a time", async () => {
@@ -179,10 +201,20 @@ describe("listen", () => {
 		const frame = { contentWindow: { name: "neomail" } };
 		const other = { contentWindow: { name: "another frame" } };
 		const dirty = [];
-		const stop = host.listen(win, frame, { "mailcraft:dirty": (data) => dirty.push(data.dirty) });
+		const stop = host.listen(win, frame, {
+			"mailcraft:dirty": (data) => dirty.push(data.dirty),
+		});
 		const send = (event) => heard.forEach((fn) => fn(event));
-		send({ source: frame.contentWindow, origin: ORIGIN, data: { type: "mailcraft:dirty", dirty: true } });
-		send({ source: other.contentWindow, origin: ORIGIN, data: { type: "mailcraft:dirty", dirty: false } });
+		send({
+			source: frame.contentWindow,
+			origin: ORIGIN,
+			data: { type: "mailcraft:dirty", dirty: true },
+		});
+		send({
+			source: other.contentWindow,
+			origin: ORIGIN,
+			data: { type: "mailcraft:dirty", dirty: false },
+		});
 		send({
 			source: frame.contentWindow,
 			origin: "https://elsewhere.example",
@@ -201,7 +233,9 @@ describe("listen", () => {
 		const frame = { contentWindow: null };
 		const said = [];
 		host.listen(win, frame, { "mailcraft:dirty": (data) => said.push(data) });
-		heard.forEach((fn) => fn({ source: null, origin: ORIGIN, data: { type: "mailcraft:dirty" } }));
+		heard.forEach((fn) =>
+			fn({ source: null, origin: ORIGIN, data: { type: "mailcraft:dirty" } })
+		);
 		expect(said).toEqual([]);
 	});
 });
@@ -232,13 +266,18 @@ describe("frameHeight", () => {
 	it("ends at the window's bottom without NeoCockpit, and never below it", () => {
 		const host = window_host();
 		expect(host.frameHeight({ ...cockpit, panel: null })).toBe(900 - 15 - 70);
-		expect(host.frameHeight({ ...cockpit, panel: { bottom: 2000, borderBottom: 1, paddingBottom: 0 } })).toBe(
-			900 - 15 - 70
-		);
+		expect(
+			host.frameHeight({
+				...cockpit,
+				panel: { bottom: 2000, borderBottom: 1, paddingBottom: 0 },
+			})
+		).toBe(900 - 15 - 70);
 	});
 
 	it("keeps the frame usable in a window too small for it", () => {
-		expect(window_host().frameHeight({ ...cockpit, windowHeight: 200, panel: null })).toBe(300);
+		expect(window_host().frameHeight({ ...cockpit, windowHeight: 200, panel: null })).toBe(
+			300
+		);
 	});
 });
 
@@ -254,8 +293,18 @@ const STATE = {
 	account: "ada@example.org",
 	folder: "F-projects",
 	favorites: [
-		{ account: "ada@example.org", folder: "F-inbox", name: "Boîte de réception - ada@example.org", unread: 3 },
-		{ account: "team@example.org", folder: "T-sent", name: "Éléments envoyés - team@example.org", unread: 0 },
+		{
+			account: "ada@example.org",
+			folder: "F-inbox",
+			name: "Boîte de réception - ada@example.org",
+			unread: 3,
+		},
+		{
+			account: "team@example.org",
+			folder: "T-sent",
+			name: "Éléments envoyés - team@example.org",
+			unread: 0,
+		},
 	],
 	accounts: [
 		{
@@ -263,11 +312,46 @@ const STATE = {
 			name: "Ada Marlow",
 			unread: 3,
 			folders: [
-				{ id: "F-inbox", name: "Boîte de réception", role: "inbox", parent: null, unread: 3, selectable: true },
-				{ id: "F-clients", name: "Clients", role: null, parent: "F-inbox", unread: 0, selectable: true },
-				{ id: "F-projects", name: "Projets", role: null, parent: "F-clients", unread: 2, selectable: true },
-				{ id: "F-sent", name: "Éléments envoyés", role: "sent", parent: null, unread: 0, selectable: true },
-				{ id: "F-shelf", name: "Rayon", role: null, parent: null, unread: 0, selectable: false },
+				{
+					id: "F-inbox",
+					name: "Boîte de réception",
+					role: "inbox",
+					parent: null,
+					unread: 3,
+					selectable: true,
+				},
+				{
+					id: "F-clients",
+					name: "Clients",
+					role: null,
+					parent: "F-inbox",
+					unread: 0,
+					selectable: true,
+				},
+				{
+					id: "F-projects",
+					name: "Projets",
+					role: null,
+					parent: "F-clients",
+					unread: 2,
+					selectable: true,
+				},
+				{
+					id: "F-sent",
+					name: "Éléments envoyés",
+					role: "sent",
+					parent: null,
+					unread: 0,
+					selectable: true,
+				},
+				{
+					id: "F-shelf",
+					name: "Rayon",
+					role: null,
+					parent: null,
+					unread: 0,
+					selectable: false,
+				},
 			],
 		},
 		{
@@ -275,14 +359,41 @@ const STATE = {
 			name: "",
 			unread: 1,
 			folders: [
-				{ id: "T-inbox", name: "Boîte de réception", role: "inbox", parent: null, unread: 1, selectable: true },
-				{ id: "T-sent", name: "Éléments envoyés", role: "sent", parent: null, unread: 0, selectable: true },
-				{ id: "T-trash", name: "Éléments supprimés", role: "trash", parent: null, unread: 0, selectable: true },
+				{
+					id: "T-inbox",
+					name: "Boîte de réception",
+					role: "inbox",
+					parent: null,
+					unread: 1,
+					selectable: true,
+				},
+				{
+					id: "T-sent",
+					name: "Éléments envoyés",
+					role: "sent",
+					parent: null,
+					unread: 0,
+					selectable: true,
+				},
+				{
+					id: "T-trash",
+					name: "Éléments supprimés",
+					role: "trash",
+					parent: null,
+					unread: 0,
+					selectable: true,
+				},
 			],
 		},
 	],
 };
-const TEXTS = { favorites: "Favoris", mail: "Courrier", calendar: "Calendrier", people: "Contacts", notes: "Notes" };
+const TEXTS = {
+	favorites: "Favoris",
+	mail: "Courrier",
+	calendar: "Calendrier",
+	people: "Contacts",
+	notes: "Notes",
+};
 
 describe("navSections", () => {
 	function lent(state = STATE, options) {
@@ -297,7 +408,9 @@ describe("navSections", () => {
 	}
 	const active = (nav) =>
 		nav.flatMap((section) =>
-			section.items.filter((item) => item.active).map((item) => (section.label || "") + " › " + item.label)
+			section.items
+				.filter((item) => item.active)
+				.map((item) => (section.label || "") + " › " + item.label)
 		);
 
 	it("reproduces NeoMail's pane: favourites, then each mailbox with all its folders, then the views", () => {
@@ -310,7 +423,10 @@ describe("navSections", () => {
 		]);
 		// A favourite says its mailbox first (an inbox's icon says the rest): 29.10, « Boîte de réception - da… » three
 		// times over in the menu's narrow column
-		expect(nav[0].items.map((item) => item.label)).toEqual(["ada@example.org", "team@example.org · Éléments envoyés"]);
+		expect(nav[0].items.map((item) => item.label)).toEqual([
+			"ada@example.org",
+			"team@example.org · Éléments envoyés",
+		]);
 		expect(nav[1].items.map((item) => item.label)).toEqual([
 			"Boîte de réception",
 			"Clients",
@@ -341,16 +457,38 @@ describe("navSections", () => {
 
 	it("keeps NeoMail's own name for a favourite with one mailbox, or of a folder it does not list", () => {
 		const one = { ...STATE, accounts: [STATE.accounts[0]], favorites: [STATE.favorites[0]] };
-		expect(lent(one).nav[0].items.map((item) => item.label)).toEqual(["Boîte de réception - ada@example.org"]);
+		expect(lent(one).nav[0].items.map((item) => item.label)).toEqual([
+			"Boîte de réception - ada@example.org",
+		]);
 		const unknown = { ...STATE, favorites: [{ ...STATE.favorites[0], folder: "F-gone" }] };
-		expect(lent(unknown).nav[0].items.map((item) => item.label)).toEqual(["Boîte de réception - ada@example.org"]);
+		expect(lent(unknown).nav[0].items.map((item) => item.label)).toEqual([
+			"Boîte de réception - ada@example.org",
+		]);
 	});
 
 	it("draws a folder under its parents, with its unread mail from a NeoMail that gives no count", () => {
 		const [favorites, ada, team] = lent().nav;
-		expect(ada.items.map((item) => item.depth)).toEqual([undefined, 1, 2, undefined, undefined]);
-		expect(ada.items.map((item) => item.badge)).toEqual([3, undefined, 2, undefined, undefined]);
-		expect(ada.items.map((item) => item.badgeTone)).toEqual(["accent", undefined, undefined, undefined, undefined]);
+		expect(ada.items.map((item) => item.depth)).toEqual([
+			undefined,
+			1,
+			2,
+			undefined,
+			undefined,
+		]);
+		expect(ada.items.map((item) => item.badge)).toEqual([
+			3,
+			undefined,
+			2,
+			undefined,
+			undefined,
+		]);
+		expect(ada.items.map((item) => item.badgeTone)).toEqual([
+			"accent",
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		]);
 		expect(ada.items.map((item) => item.icon)).toEqual([
 			"lucide-inbox",
 			"lucide-folder",
@@ -358,7 +496,11 @@ describe("navSections", () => {
 			"lucide-send",
 			"lucide-folder",
 		]);
-		expect(team.items.map((item) => item.icon)).toEqual(["lucide-inbox", "lucide-send", "lucide-trash-2"]);
+		expect(team.items.map((item) => item.icon)).toEqual([
+			"lucide-inbox",
+			"lucide-send",
+			"lucide-trash-2",
+		]);
 		// A favourite has its folder's look: an inbox's count in the accent, a sent folder's icon
 		expect(favorites.items.map((item) => [item.icon, item.badge, item.badgeTone])).toEqual([
 			["lucide-inbox", 3, "accent"],
@@ -390,7 +532,9 @@ describe("navSections", () => {
 			" › Courrier",
 		]);
 		// The same folder's id in another mailbox is another folder
-		expect(active(lent({ ...STATE, account: "team@example.org", folder: "F-inbox" }).nav)).toEqual([" › Courrier"]);
+		expect(
+			active(lent({ ...STATE, account: "team@example.org", folder: "F-inbox" }).nav)
+		).toEqual([" › Courrier"]);
 		// Several folders, a search: none
 		expect(active(lent({ ...STATE, folder: null }).nav)).toEqual([" › Courrier"]);
 		// Another view in front: the folders stay, that view is marked
@@ -426,9 +570,21 @@ describe("navSections", () => {
 		expect(nav[1].items[4].onClick).toBeUndefined();
 		nav[3].items.forEach((item) => item.onClick());
 		expect(sent).toEqual([
-			{ name: "folder.select", params: { account: "team@example.org", folder: "T-sent" }, from: "favorites" },
-			{ name: "folder.select", params: { account: "ada@example.org", folder: "F-projects" }, from: "mailbox" },
-			{ name: "folder.select", params: { account: "team@example.org", folder: "T-inbox" }, from: "mailbox" },
+			{
+				name: "folder.select",
+				params: { account: "team@example.org", folder: "T-sent" },
+				from: "favorites",
+			},
+			{
+				name: "folder.select",
+				params: { account: "ada@example.org", folder: "F-projects" },
+				from: "mailbox",
+			},
+			{
+				name: "folder.select",
+				params: { account: "team@example.org", folder: "T-inbox" },
+				from: "mailbox",
+			},
 			{ name: "view.mail", params: {} },
 			{ name: "view.calendar", params: {} },
 			{ name: "view.people", params: {} },
@@ -445,13 +601,23 @@ describe("navSections", () => {
 			["Contacts", "lucide-users"],
 			["Notes", "lucide-sticky-note"],
 		]);
-		const noNotes = lent({ ...STATE, views: ["mail", "calendar", "people", "tasks"] }).nav.at(-1);
-		expect(noNotes.items.map((item) => item.label)).toEqual(["Courrier", "Calendrier", "Contacts"]);
+		const noNotes = lent({ ...STATE, views: ["mail", "calendar", "people", "tasks"] }).nav.at(
+			-1
+		);
+		expect(noNotes.items.map((item) => item.label)).toEqual([
+			"Courrier",
+			"Calendrier",
+			"Contacts",
+		]);
 	});
 
 	it("leaves the views to the cockpit's dock when it has one", () => {
 		const { nav } = lent(STATE, { dock: true });
-		expect(nav.map((section) => section.label)).toEqual(["Favoris", "ada@example.org", "team@example.org"]);
+		expect(nav.map((section) => section.label)).toEqual([
+			"Favoris",
+			"ada@example.org",
+			"team@example.org",
+		]);
 	});
 
 	it("takes a state with nothing yet, folders listed before their parents, and a loop", () => {
@@ -493,15 +659,22 @@ describe("navSections", () => {
 			badgeTone: "accent",
 			active: false,
 		});
-		expect(nav[0].items.slice(1).map((item) => item.label)).toEqual(["ada@example.org", "team@example.org · Éléments envoyés"]);
+		expect(nav[0].items.slice(1).map((item) => item.label)).toEqual([
+			"ada@example.org",
+			"team@example.org · Éléments envoyés",
+		]);
 		nav[0].items[0].onClick();
 		expect(sent).toEqual([{ name: "view.allInboxes", params: {}, from: "favorites" }]);
 		// Shown: lit (and the Mail view), no folder of a mailbox (NeoMail says none is in view)
 		const shown = { ...STATE, account: null, folder: null, allInboxes: { ...all, on: true } };
 		expect(active(lent(shown).nav)).toEqual(["Favoris › Toutes les boîtes", " › Courrier"]);
 		// Not while one of the page's own views is in front; no badge without unread mail
-		expect(lent(shown, { page: { front: "synk", views: [] } }).nav[0].items[0].active).toBe(false);
-		expect(lent({ ...STATE, allInboxes: { ...all, unread: 0 } }).nav[0].items[0].badge).toBeUndefined();
+		expect(lent(shown, { page: { front: "synk", views: [] } }).nav[0].items[0].active).toBe(
+			false
+		);
+		expect(
+			lent({ ...STATE, allInboxes: { ...all, unread: 0 } }).nav[0].items[0].badge
+		).toBeUndefined();
 		// With no favourite of its own the section still holds it; from an older NeoMail (no field) nothing changes
 		const alone = lent({ ...STATE, favorites: [], allInboxes: all }).nav[0].items;
 		expect(alone.map((item) => item.label)).toEqual(["Toutes les boîtes"]);
@@ -514,7 +687,11 @@ describe("viewDock", () => {
 	it("gives the cockpit's dock the views NeoMail offers, in its order, the one in front marked", () => {
 		const sent = [];
 		const host = page().host;
-		const dock = host.viewDock({ ...STATE, module: "people" }, (name, params) => sent.push(name), TEXTS);
+		const dock = host.viewDock(
+			{ ...STATE, module: "people" },
+			(name, params) => sent.push(name),
+			TEXTS
+		);
 		expect(dock.map(({ id, title, icon, active }) => ({ id, title, icon, active }))).toEqual([
 			{ id: "mail", title: "Courrier", icon: "mail", active: false },
 			{ id: "calendar", title: "Calendrier", icon: "calendar", active: false },
@@ -529,11 +706,20 @@ describe("viewDock", () => {
 });
 
 describe("Synk, the page's own view after NeoMail's", () => {
-	const synkView = (host, badge) => ({ view: host.synk.view, title: "Synk", icon: host.synk.icon, badge, onClick: () => {} });
+	const synkView = (host, badge) => ({
+		view: host.synk.view,
+		title: "Synk",
+		icon: host.synk.icon,
+		badge,
+		onClick: () => {},
+	});
 
 	it("comes after NeoMail's views in the dock, with its badge, and alone lit while in front", () => {
 		const host = page().host;
-		const behind = host.viewDock(STATE, () => {}, TEXTS, { front: null, views: [synkView(host, 3)] });
+		const behind = host.viewDock(STATE, () => {}, TEXTS, {
+			front: null,
+			views: [synkView(host, 3)],
+		});
 		expect(behind.map(({ id, icon, active, badge }) => [id, icon, active, badge])).toEqual([
 			["mail", "mail", true, undefined],
 			["calendar", "calendar", false, undefined],
@@ -543,17 +729,28 @@ describe("Synk, the page's own view after NeoMail's", () => {
 		]);
 		// NeoMail's items carry no badge key at all: the cockpit draws one for any key it finds
 		expect("badge" in behind[0]).toBe(false);
-		const ahead = host.viewDock(STATE, () => {}, TEXTS, { front: "synk", views: [synkView(host)] });
+		const ahead = host.viewDock(STATE, () => {}, TEXTS, {
+			front: "synk",
+			views: [synkView(host)],
+		});
 		expect(ahead.map((view) => view.active)).toEqual([false, false, false, false, true]);
 		expect("badge" in ahead[4]).toBe(false);
 	});
 
 	it("leaves no folder lit while it is in front, and joins the views at the end with an older cockpit", () => {
 		const host = page().host;
-		const nav = host.navSections(STATE, () => {}, TEXTS, { page: { front: "synk", views: [synkView(host, 2)] } });
-		const lit = nav.flatMap((section) => section.items.filter((item) => item.active).map((item) => item.label));
+		const nav = host.navSections(STATE, () => {}, TEXTS, {
+			page: { front: "synk", views: [synkView(host, 2)] },
+		});
+		const lit = nav.flatMap((section) =>
+			section.items.filter((item) => item.active).map((item) => item.label)
+		);
 		expect(lit).toEqual(["Synk"]);
-		expect(nav.at(-1).items.at(-1)).toMatchObject({ label: "Synk", icon: "lucide-message-circle", badge: 2 });
+		expect(nav.at(-1).items.at(-1)).toMatchObject({
+			label: "Synk",
+			icon: "lucide-message-circle",
+			badge: 2,
+		});
 	});
 
 	it("opens Raven's own app, Synk on the web", () => {
@@ -562,13 +759,20 @@ describe("Synk, the page's own view after NeoMail's", () => {
 
 	it("shows the sum of Raven's unread counts, none at 0, « 99+ » above 99", () => {
 		const { synkBadge } = page().host;
-		expect(synkBadge([{ name: "a", unread_count: 2 }, { name: "b", unread_count: 1 }])).toBe(3);
+		expect(
+			synkBadge([
+				{ name: "a", unread_count: 2 },
+				{ name: "b", unread_count: 1 },
+			])
+		).toBe(3);
 		expect(synkBadge([])).toBeUndefined();
 		expect(synkBadge([{ name: "a", unread_count: 0 }])).toBeUndefined();
 		expect(synkBadge([{ name: "a", unread_count: 120 }])).toBe("99+");
 		// Whatever is not a count is no count
 		expect(synkBadge(null)).toBeUndefined();
-		expect(synkBadge([{ name: "a", unread_count: "4" }, null, { name: "b", unread_count: -1 }])).toBeUndefined();
+		expect(
+			synkBadge([{ name: "a", unread_count: "4" }, null, { name: "b", unread_count: -1 }])
+		).toBeUndefined();
 	});
 
 	it("asks the count again only for an event that can change it, as Neodesk does", () => {
@@ -577,12 +781,24 @@ describe("Synk, the page's own view after NeoMail's", () => {
 		const bruno = "bruno@example.org";
 		const mine = new Set(["general", "ada-bruno"]);
 		// A read on another screen
-		expect(synkCountMoved({ channel_id: "general", sent_by: me, event_type: "track_visit" }, me, mine)).toBe(true);
+		expect(
+			synkCountMoved(
+				{ channel_id: "general", sent_by: me, event_type: "track_visit" },
+				me,
+				mine
+			)
+		).toBe(true);
 		// One's own message, in a channel or a direct message
-		expect(synkCountMoved({ channel_id: "general", sent_by: me, is_dm_channel: false }, me, mine)).toBe(false);
-		expect(synkCountMoved({ channel_id: "ada-bruno", sent_by: me, is_dm_channel: true }, me, mine)).toBe(false);
+		expect(
+			synkCountMoved({ channel_id: "general", sent_by: me, is_dm_channel: false }, me, mine)
+		).toBe(false);
+		expect(
+			synkCountMoved({ channel_id: "ada-bruno", sent_by: me, is_dm_channel: true }, me, mine)
+		).toBe(false);
 		// Someone else's direct message, even in a conversation the page does not know yet
-		expect(synkCountMoved({ channel_id: "new-dm", sent_by: bruno, is_dm_channel: true }, me, mine)).toBe(true);
+		expect(
+			synkCountMoved({ channel_id: "new-dm", sent_by: bruno, is_dm_channel: true }, me, mine)
+		).toBe(true);
 		// A channel's message: only in a channel of the person's
 		expect(synkCountMoved({ channel_id: "general", sent_by: bruno }, me, mine)).toBe(true);
 		expect(synkCountMoved({ channel_id: "elsewhere", sent_by: bruno }, me, mine)).toBe(false);
@@ -593,7 +809,10 @@ describe("Synk, the page's own view after NeoMail's", () => {
 
 	it("knows the person's channels and direct messages from get_all_channels", () => {
 		const { synkChannels } = page().host;
-		const names = synkChannels({ channels: [{ name: "general" }, { name: 4 }], dm_channels: [{ name: "ada-bruno" }] });
+		const names = synkChannels({
+			channels: [{ name: "general" }, { name: 4 }],
+			dm_channels: [{ name: "ada-bruno" }],
+		});
 		expect([...names]).toEqual(["general", "ada-bruno"]);
 		expect([...synkChannels(null)]).toEqual([]);
 	});
@@ -602,7 +821,11 @@ describe("Synk, the page's own view after NeoMail's", () => {
 describe("Share in Synk, what NeoMail asks and where it may go", () => {
 	it("takes a mailbox's address and an email id of the facade, and nothing else", () => {
 		const { shareOf } = page().host;
-		const asked = { type: "mailcraft:share", account: " ada@example.org ", email: "E7V31ZSU5CT1g" };
+		const asked = {
+			type: "mailcraft:share",
+			account: " ada@example.org ",
+			email: "E7V31ZSU5CT1g",
+		};
 		expect(shareOf(asked)).toEqual({ account: "ada@example.org", email: "E7V31ZSU5CT1g" });
 		for (const wrong of [
 			null,
@@ -620,8 +843,14 @@ describe("Share in Synk, what NeoMail asks and where it may go", () => {
 	it("lists the person's channels first, then the people, each with what the server takes", () => {
 		const { shareChoices } = page().host;
 		const found = {
-			channels: [{ id: "synk-atelier", label: "atelier", private: true }, { id: "", label: "nameless" }],
-			people: [{ id: "bruno@example.org", label: "Bruno Keller" }, { id: "carla@example.org" }],
+			channels: [
+				{ id: "synk-atelier", label: "atelier", private: true },
+				{ id: "", label: "nameless" },
+			],
+			people: [
+				{ id: "bruno@example.org", label: "Bruno Keller" },
+				{ id: "carla@example.org" },
+			],
 		};
 		expect(shareChoices(found)).toEqual([
 			{ value: "channel:synk-atelier", label: "# atelier" },
@@ -634,10 +863,24 @@ describe("Share in Synk, what NeoMail asks and where it may go", () => {
 describe("Chat in Synk, what NeoMail asks and where Synk opens", () => {
 	it("takes a message as the share does, and with whom: the sender or everyone", () => {
 		const { chatOf } = page().host;
-		const asked = { type: "mailcraft:chat", account: "ada@example.org", email: "E7V31ZSU5CT1g", who: "all" };
-		expect(chatOf(asked)).toEqual({ account: "ada@example.org", email: "E7V31ZSU5CT1g", who: "all" });
+		const asked = {
+			type: "mailcraft:chat",
+			account: "ada@example.org",
+			email: "E7V31ZSU5CT1g",
+			who: "all",
+		};
+		expect(chatOf(asked)).toEqual({
+			account: "ada@example.org",
+			email: "E7V31ZSU5CT1g",
+			who: "all",
+		});
 		expect(chatOf({ ...asked, who: "sender" }).who).toBe("sender");
-		for (const wrong of [null, { ...asked, who: "boss" }, { ...asked, who: undefined }, { ...asked, email: "M7" }]) {
+		for (const wrong of [
+			null,
+			{ ...asked, who: "boss" },
+			{ ...asked, who: undefined },
+			{ ...asked, email: "M7" },
+		]) {
 			expect(chatOf(wrong)).toBeNull();
 		}
 	});
@@ -645,7 +888,9 @@ describe("Chat in Synk, what NeoMail asks and where Synk opens", () => {
 	it("opens a conversation of Raven's app only", () => {
 		const { synkRoute } = page().host;
 		expect(synkRoute("/raven/dm-channel/dm-1")).toBe("/raven/dm-channel/dm-1");
-		expect(synkRoute("/raven/Synk/synk-devis-cuisine-3f9a2b")).toBe("/raven/Synk/synk-devis-cuisine-3f9a2b");
+		expect(synkRoute("/raven/Synk/synk-devis-cuisine-3f9a2b")).toBe(
+			"/raven/Synk/synk-devis-cuisine-3f9a2b"
+		);
 		expect(synkRoute("/raven/Mon%20espace/x")).toBe("/raven/Mon%20espace/x");
 		for (const wrong of [
 			null,
@@ -666,7 +911,12 @@ describe("Chat in Synk, what NeoMail asks and where Synk opens", () => {
 
 describe("followChoice", () => {
 	const { followChoice } = page().host;
-	const inbox = { type: "mailcraft:state", module: "mail", account: "ada@example.org", folder: "F-inbox" };
+	const inbox = {
+		type: "mailcraft:state",
+		module: "mail",
+		account: "ada@example.org",
+		folder: "F-inbox",
+	};
 	const chosen = { account: "ada@example.org", folder: "F-inbox", from: "favorites", id: 3 };
 
 	it("keeps a choice until NeoMail shows its folder, and while it does", () => {
@@ -712,13 +962,22 @@ describe("what an address asks NeoMail's page", () => {
 	});
 
 	it("asks nothing of an address without a mailbox, or with what is not a message", () => {
-		for (const search of ["", "?build=ucs", "?uid=31", "?account=a@b.c", "?account=a@b.c&uid=x", "?account=a@b.c&email=nope"]) {
+		for (const search of [
+			"",
+			"?build=ucs",
+			"?uid=31",
+			"?account=a@b.c",
+			"?account=a@b.c&uid=x",
+			"?account=a@b.c&email=nope",
+		]) {
 			expect(host.intentOf(search)).toBeNull();
 		}
 	});
 
 	it("takes the intent off the address, and leaves the rest", () => {
-		expect(host.withoutIntent("?build=ucs&account=a%40b.c&folder=INBOX&uid=3&sample")).toBe("?build=ucs&sample=");
+		expect(host.withoutIntent("?build=ucs&account=a%40b.c&folder=INBOX&uid=3&sample")).toBe(
+			"?build=ucs&sample="
+		);
 		expect(host.withoutIntent("?account=a%40b.c&email=E1V2ZSU5CT1g")).toBe("");
 		expect(host.withoutIntent("")).toBe("");
 	});
@@ -743,6 +1002,41 @@ describe("what an address asks NeoMail's page", () => {
 		expect(host.deskAddress("?filters=1")).toBeNull();
 		expect(host.deskAddress("?automations=1&account=a%40example.org")).toBeNull();
 	});
+
+	it("leads the signature builder's address to NeoMail's page, where it opens too", () => {
+		expect(host.deskAddress("?signature_builder=1")).toBe("/app/neomail?signature_builder=1");
+		expect(host.deskAddress("?signature_builder=1&compose=1")).toBe(
+			"/app/neomail?signature_builder=1"
+		);
+		// The person's own signatures stay the webmail's
+		expect(host.deskAddress("?signatures=1&signature_builder=1")).toBeNull();
+	});
+
+	it("says whether an address asks the signature builder, and the address without it", () => {
+		expect(host.builderAsked("?signature_builder=1")).toEqual({ asked: true, rest: "" });
+		expect(host.builderAsked("?build=ucs&signature_builder=1")).toEqual({
+			asked: true,
+			rest: "?build=ucs",
+		});
+		expect(host.builderAsked("?compose=1")).toEqual({ asked: false, rest: "?compose=1" });
+		expect(host.builderAsked("")).toEqual({ asked: false, rest: "" });
+	});
+
+	it("opens the builder in a desk page, loaded at its first use, and does nothing elsewhere", () => {
+		const opened = [];
+		const win = {
+			frappe: { require: (path, then) => (opened.push(path), then()) },
+			frappe_webmail: {
+				signature_builder: { load_and_open: (options) => opened.push(options) },
+			},
+		};
+		host.openBuilder(win, { tab: "mine" });
+		expect(opened).toEqual([
+			"/assets/frappe_webmail/js/signature_builder.js",
+			{ tab: "mine" },
+		]);
+		expect(() => host.openBuilder({})).not.toThrow();
+	});
 });
 
 describe("badgeOf", () => {
@@ -761,7 +1055,9 @@ describe("commander", () => {
 	it("posts each command to the frame on the page's own origin, with the next id", () => {
 		const { win, host } = page();
 		const posted = [];
-		const frame = { contentWindow: { postMessage: (message, origin) => posted.push([message, origin]) } };
+		const frame = {
+			contentWindow: { postMessage: (message, origin) => posted.push([message, origin]) },
+		};
 		const send = host.commander(win, frame);
 		expect(send("folder.select", { account: "ada@example.org", folder: "F-inbox" })).toBe(1);
 		expect(send("view.calendar")).toBe(2);
@@ -854,7 +1150,12 @@ describe("folderActions", () => {
 		const labels = page()
 			.host.folderActions({ id: "F-projects", role: null }, false, WORDS)
 			.map((entry) => entry.label);
-		expect(labels).toEqual([WORDS.newFolder, WORDS.renameFolder, WORDS.deleteFolder, WORDS.markAllRead]);
+		expect(labels).toEqual([
+			WORDS.newFolder,
+			WORDS.renameFolder,
+			WORDS.deleteFolder,
+			WORDS.markAllRead,
+		]);
 	});
 
 	it("keeps a special folder's name and place, and empties Trash and Junk only", () => {
@@ -866,7 +1167,9 @@ describe("folderActions", () => {
 		]);
 		expect(offered({ id: "F-trash", role: "trash" }).at(-1)).toEqual(["empty", false]);
 		expect(offered({ id: "F-junk", role: "spam" }).at(-1)).toEqual(["empty", false]);
-		expect(offered({ id: "F-sent", role: "sent" }).map(([action]) => action)).not.toContain("empty");
+		expect(offered({ id: "F-sent", role: "sent" }).map(([action]) => action)).not.toContain(
+			"empty"
+		);
 	});
 
 	it("offers nothing on a mailbox shared with the person, nor on a folder only NeoMail has", () => {

@@ -49,12 +49,14 @@ LAYOUTS = {
 	"Text only": "text_only.html",
 	"Logo left": "logo_left.html",
 	"Logo above": "logo_above.html",
+	# The name on the left, the logo in the middle, the ways to reach the person on the right (Neoservice's card)
+	"Logo centre": "logo_centre.html",
 	"Compact": "compact.html",
 	"Photo left": "photo_left.html",
 }
 DEFAULT_LAYOUT = "Text only"
 # The layouts that have a place for the logo (the others never fetch it); Photo left draws it under the details
-WITH_LOGO = frozenset(("Logo left", "Logo above", "Photo left"))
+WITH_LOGO = frozenset(("Logo left", "Logo above", "Logo centre", "Photo left"))
 # The layouts that have a place for the person's photo
 WITH_PHOTO = frozenset(("Photo left",))
 
@@ -75,6 +77,18 @@ DEFAULT_FONT = "Arial"
 DEFAULT_ACCENT = "#1f3a5f"
 INK = "#333333"
 MUTED = "#6b7280"
+# A rule that separates without weighing (the Logo centre layout's, either side of the logo, and above its small print)
+LIGHT_RULE = "#dcd4c7"
+# The small picture before each way to reach the person (`show_contact_icons`), by the kind of the contact: PNGs of the
+# app's public files, drawn at ICON_SIZE pixels from three times as many (sharp on a phone), the clay of the Neoffice
+# design system's icons (neoffice-design-system, assets/icons/email), which reads on a light and on a dark message alike
+ICON_SIZE = 14
+ICONS = {
+	"phone": "/assets/frappe_webmail/images/signature/phone.png",
+	"mobile": "/assets/frappe_webmail/images/signature/mobile.png",
+	"email": "/assets/frappe_webmail/images/signature/email.png",
+	"website": "/assets/frappe_webmail/images/signature/website.png",
+}
 FONT_SIZE = (11, 16)
 DEFAULT_FONT_SIZE = 13
 LOGO_WIDTH = (60, 240)
@@ -108,10 +122,12 @@ SWITCHES = {
 	"show_photo": 1,
 	"show_social_links": 1,
 	"show_disclaimer": 0,
+	"show_contact_icons": 0,
 }
 
-# Between templates that apply to a person, the lower rank wins (then the most recently modified)
-RANK = {"Department": 0, "Company": 1, "Everyone": 2}
+# Between templates that apply to a person, the lower rank wins (then the most recently modified): the narrower the
+# group of people a template names, the more it says about that person
+RANK = {"Department": 0, "User Group": 1, "Role": 2, "Company": 3, "Everyone": 4}
 
 # The files of the instance a logo may be (as Frappe stores them); the rest of the addresses it may be are https ones
 INSTANCE_FILES = ("/files/", "/private/files/")
@@ -405,35 +421,84 @@ def _company_address(company: str) -> str:
 def template_for(user: str):
 	"""The enabled Email Signature Template that applies to the person, None when none does.
 
-	The most specific first: one for the department of their Employee, then one for their company, then one for
-	everyone. Between templates of the same kind, the most recently modified."""
+	The most specific first: one for the department of their Employee, then one for a user group they belong to, then
+	one for one of their roles, then one for their company, then one for everyone. Between templates of the same kind,
+	the most recently modified."""
 	if not frappe.db.table_exists("Email Signature Template"):
 		return None
 	# The desk's people only: a portal account writes no mail from the instance and is told nothing of the company
 	if frappe.db.get_value("User", user, "user_type") != "System User":
 		return None
-	candidates = frappe.get_all(
-		"Email Signature Template",
-		filters={"enabled": 1},
-		fields=["name", "applies_to", "company", "department"],
-		order_by="modified desc, name asc",
-	)
+	candidates = enabled_templates()
 	if not candidates:
 		return None
+	given = roles_given(row.name for row in candidates if row.applies_to == "Role")
+	name = winning_template(scope_of(user, candidates), candidates, given)
+	return frappe.get_doc("Email Signature Template", name) if name else None
+
+
+def enabled_templates() -> list:
+	"""The enabled templates, what each is given to, the latest modified first."""
+	fields = ["name", "applies_to", "company", "department"]
+	if frappe.get_meta("Email Signature Template").has_field("user_group"):
+		fields.append("user_group")
+	return frappe.get_all(
+		"Email Signature Template",
+		filters={"enabled": 1},
+		fields=fields,
+		order_by="modified desc, name asc",
+	)
+
+
+def scope_of(user: str, candidates) -> frappe._dict:
+	"""What a template may be given to that the person is part of: their department and every one above it, their
+	company, their user groups and their roles (the last two read only when a candidate is given to some)."""
 	employee = _employee_of(user)
-	departments, company = _departments_above(employee.department), employee.company or _default_company(user)
-	fitting = [row for row in candidates if _applies(row, departments, company)]
+	return frappe._dict(
+		departments=_departments_above(employee.department),
+		company=employee.company or _default_company(user),
+		groups=_groups_of(user) if any(row.get("user_group") for row in candidates) else set(),
+		roles=set(frappe.get_roles(user)) if any(row.applies_to == "Role" for row in candidates) else set(),
+	)
+
+
+def winning_template(person, candidates, given: dict) -> str | None:
+	"""The name of the template, among `candidates` (the latest modified first), that applies to a person of that scope
+	(scope_of): the most specific of those that apply. `given`: the roles each template is given to (roles_given)."""
+	fitting = [row for row in candidates if _applies(row, person, given.get(row.name, set()))]
 	if not fitting:
 		return None
 
-	# A stable sort: the order of the query (the latest first) stays within each rank, and a department's template
+	# A stable sort: the order of the candidates (the latest first) stays within each rank, and a department's template
 	# comes before the one of a department above it
 	def rank(row):
-		nearest = departments.index(row.department) if row.applies_to == "Department" else 0
-		return (RANK[row.applies_to], nearest)
+		nearest = person.departments.index(row.department) if row.applies_to == "Department" else 0
+		return (RANK.get(row.applies_to, len(RANK)), nearest)
 
 	fitting.sort(key=rank)
-	return frappe.get_doc("Email Signature Template", fitting[0].name)
+	return fitting[0].name
+
+
+def _groups_of(user: str) -> set[str]:
+	"""The user groups the person is a member of (Frappe's User Group), none on a site that has no such DocType."""
+	if not frappe.db.table_exists("User Group Member"):
+		return set()
+	return set(frappe.get_all("User Group Member", filters={"user": user}, pluck="parent"))
+
+
+def roles_given(names) -> dict[str, set[str]]:
+	"""The roles each of these templates is given to (their `roles`), by template."""
+	names = list(names)
+	if not names or not frappe.db.table_exists("Email Signature Template Role"):
+		return {}
+	given: dict[str, set[str]] = {}
+	for row in frappe.get_all(
+		"Email Signature Template Role",
+		filters={"parent": ["in", names], "parenttype": "Email Signature Template"},
+		fields=["parent", "role"],
+	):
+		given.setdefault(row.parent, set()).add(row.role)
+	return given
 
 
 def body_face(user: str) -> str | None:
@@ -467,12 +532,17 @@ def _departments_above(department: str | None) -> list[str]:
 	return above or [department]
 
 
-def _applies(row, departments: list[str], company: str | None) -> bool:
-	"""Whether a template (its kind and what it names) is for a person of those departments and that company."""
+def _applies(row, person, given_roles: set[str]) -> bool:
+	"""Whether a template (its kind and what it names) is for that person: their departments (theirs and every one above),
+	their company, their user groups and their roles. `given_roles`: the roles the template is given to."""
 	if row.applies_to == "Department":
-		return bool(row.department) and row.department in departments
+		return bool(row.department) and row.department in person.departments
 	if row.applies_to == "Company":
-		return bool(row.company) and row.company == company
+		return bool(row.company) and row.company == person.company
+	if row.applies_to == "User Group":
+		return bool(row.get("user_group")) and row.get("user_group") in person.groups
+	if row.applies_to == "Role":
+		return bool(given_roles & person.roles)
 	return row.applies_to == "Everyone"
 
 
@@ -712,16 +782,24 @@ def card_of(template, person: frappe._dict, layout: str = DEFAULT_LAYOUT) -> dic
 	if company := given("show_company_name", person.company_name):
 		identity.append({"kind": "company", "text": company})
 
+	# Each way to reach the person with its kind, and its icon when the template draws them (an absolute address: the
+	# picture is fetched by the reader's mail client, and NeoMail sends the signature as it is written)
+	icons = shown("show_contact_icons")
+
+	def contact(kind: str, label: str, text: str, href: str | None) -> dict:
+		icon = {"src": frappe.utils.get_url(ICONS[kind]), "size": ICON_SIZE, "alt": label} if icons else None
+		return {"kind": kind, "label": label, "text": text, "href": href, "icon": icon}
+
 	contacts = []
 	if phone := given("show_phone", person.phone):
-		contacts.append({"label": _("Phone"), "text": phone, "href": None})
+		contacts.append(contact("phone", _("Phone"), phone, None))
 	if mobile := given("show_mobile", person.mobile):
-		contacts.append({"label": _("Mobile"), "text": mobile, "href": None})
+		contacts.append(contact("mobile", _("Mobile"), mobile, None))
 	# The address the template gives everyone (the company's general one), else the person's own
 	if email := given("show_email", contact_email(template) or person.email):
-		contacts.append({"label": _("Email"), "text": email, "href": mail_link(email)})
+		contacts.append(contact("email", _("Email"), email, mail_link(email)))
 	if shown("show_website") and (site := web_address(person.website)):
-		contacts.append({"label": _("Website"), "text": site[0], "href": site[1]})
+		contacts.append(contact("website", _("Website"), site[0], site[1]))
 
 	social = []
 	if shown("show_social_links"):
@@ -885,6 +963,8 @@ def look_of(template) -> dict:
 		"link": f"color:{accent};text-decoration:none;",
 		"action": f"color:{accent};text-decoration:underline;",
 		"rule": f"border-left:1px solid {accent};",
+		# The Logo centre layout's rules, either side of the logo and above the small print: light, so as not to weigh
+		"light_rule": f"1px solid {LIGHT_RULE}",
 		# A picture that is a link (the banner): no underline, no border around it
 		"picture_link": "display:block;border:0;text-decoration:none;",
 	}

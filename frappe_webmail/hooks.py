@@ -280,6 +280,9 @@ update_website_context = [
 	"frappe_webmail.www.neomail.forget_on_sign_out",
 ]
 
+# The company's administrator (Neoffice's Admin role) makes the company's signatures in the builder (signature_builder.py)
+after_migrate = ["frappe_webmail.signature_builder.let_the_company_admin_write"]
+
 # Automatically update python controller files with type annotations for this app.
 export_python_type_annotations = True
 

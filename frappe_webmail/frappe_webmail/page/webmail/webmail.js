@@ -192,6 +192,16 @@ function webmail_build(wrapper) {
 // on_page_load again — collapse the cockpit on every show.
 frappe.pages["webmail"].on_page_show = function (wrapper) {
 	if (webmail_leads_to_neomail()) return;
+	// The signature builder, when the address asks it (`?signature_builder=1`): taken off the address, then opened
+	const builder = window.neomailHost && window.neomailHost.builderAsked(window.location.search);
+	if (builder && builder.asked) {
+		window.history.replaceState(
+			window.history.state,
+			"",
+			window.location.pathname + builder.rest + window.location.hash
+		);
+		window.neomailHost.openBuilder(window);
+	}
 	// First reached for what stays the webmail's (its signatures), after a visit that led to NeoMail: built now
 	if (!wrapper.page) webmail_build(wrapper);
 	// An app that something unmounted (frappe.webmail.destroy) is mounted again on the way back: it stayed blank

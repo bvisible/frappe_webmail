@@ -11,6 +11,8 @@
   "applies_to",
   "company",
   "department",
+  "user_group",
+  "roles",
   "cb_scope",
   "allow_personal",
   "sign_as_writer_on_shared_mailbox",
@@ -32,6 +34,7 @@
   "show_photo",
   "show_social_links",
   "show_disclaimer",
+  "show_contact_icons",
   "sb_look",
   "font",
   "accent_color",
@@ -80,13 +83,13 @@
   },
   {
    "default": "Everyone",
-   "description": "The most specific template wins: the one for a person's department, else the one for their company, else the one for everyone.",
+   "description": "The most specific template wins: the one for a person's department, else the one for a user group they belong to, else the one for one of their roles, else the one for their company, else the one for everyone.",
    "fieldname": "applies_to",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Applies To",
-   "options": "Everyone\nCompany\nDepartment",
+   "options": "Everyone\nCompany\nDepartment\nUser Group\nRole",
    "reqd": 1
   },
   {
@@ -106,6 +109,24 @@
    "label": "Department",
    "mandatory_depends_on": "eval:doc.applies_to=='Department'",
    "options": "Department"
+  },
+  {
+   "depends_on": "eval:doc.applies_to=='User Group'",
+   "fieldname": "user_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User Group",
+   "mandatory_depends_on": "eval:doc.applies_to=='User Group'",
+   "options": "User Group"
+  },
+  {
+   "depends_on": "eval:doc.applies_to=='Role'",
+   "description": "Every person of the desk who has one of these roles gets this template.",
+   "fieldname": "roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Roles",
+   "mandatory_depends_on": "eval:doc.applies_to=='Role'",
+   "options": "Email Signature Template Role"
   },
   {
    "fieldname": "cb_scope",
@@ -135,7 +156,7 @@
    "fieldname": "layout",
    "fieldtype": "Select",
    "label": "Layout",
-   "options": "Text only\nLogo left\nLogo above\nCompact\nPhoto left",
+   "options": "Text only\nLogo left\nLogo above\nLogo centre\nCompact\nPhoto left",
    "reqd": 1
   },
   {
@@ -238,6 +259,13 @@
    "fieldname": "show_disclaimer",
    "fieldtype": "Check",
    "label": "Disclaimer"
+  },
+  {
+   "default": "0",
+   "description": "A small picture before each number and address, in place of its label.",
+   "fieldname": "show_contact_icons",
+   "fieldtype": "Check",
+   "label": "Contact Icons"
   },
   {
    "fieldname": "sb_look",
@@ -372,7 +400,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-11-12 18:00:00.000000",
+ "modified": "2026-11-17 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "Email Signature Template",

@@ -175,7 +175,7 @@ class TestMailCraftPage(FrappeTestCase):
 
 		frappe.set_user(STAFF)
 		host = json.loads(self._context(sample=True).host_json)
-		self.assertEqual(host["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
+		self.assertEqual(host["signatures"], frappe.utils.get_url("/app/webmail?signature_builder=1"))
 		self.assertTrue(host["signatures"].startswith(("https://", "http://")), host["signatures"])
 
 	def test_the_trial_build_opens_where_it_is_installed_and_only_when_asked(self):

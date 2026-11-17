@@ -1,6 +1,8 @@
 // Copyright (c) 2026, Neoservice and contributors
 // For license information, please see license.txt
 
+/* global frappe_webmail */
+
 // The preview is drawn by the server (frappe_webmail.signatures.preview), from the form as it stands, saved or not:
 // what the form shows is what people get, never a second drawing made in the browser.
 frappe.ui.form.on("Email Signature Template", {
@@ -24,6 +26,10 @@ frappe.ui.form.on("Email Signature Template", {
 		make_preview_person(frm);
 		frm.refresh_preview();
 		show_font_names(frm);
+		// The builder shows every model side by side, whom each reaches, and each as a person sends it
+		frm.add_custom_button(__("Open in the signature builder"), function () {
+			open_builder(frm.is_new() ? null : frm.doc.name);
+		});
 	},
 
 	enabled: function (frm) {
@@ -156,4 +162,11 @@ function show_preview_message(wrapper, message) {
 	note.className = "text-muted";
 	note.textContent = message;
 	wrapper.empty().append(note);
+}
+
+// The signature builder (public/js/signature_builder.js), loaded at its first use
+function open_builder(template) {
+	frappe.require("/assets/frappe_webmail/js/signature_builder.js", function () {
+		frappe_webmail.signature_builder.load_and_open({ template: template });
+	});
 }

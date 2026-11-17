@@ -52,7 +52,8 @@
 
 (function () {
 	const HANDOVER = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.hand_over";
-	const MESSAGE_KEY = "/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.message_key";
+	const MESSAGE_KEY =
+		"/api/method/frappe_webmail.frappe_webmail.page.neomail.neomail.message_key";
 	const PAGE = "neomail";
 	// On the body while the page is in front: the desk's panel draws nothing around it (neomail.css).
 	const FULL = "neomail-desk-full";
@@ -185,8 +186,14 @@
 		}
 		document.body.append(menu);
 		// Where the click was, inside the window
-		const x = Math.min((event && event.clientX) || 0, window.innerWidth - menu.offsetWidth - 8);
-		const y = Math.min((event && event.clientY) || 0, window.innerHeight - menu.offsetHeight - 8);
+		const x = Math.min(
+			(event && event.clientX) || 0,
+			window.innerWidth - menu.offsetWidth - 8
+		);
+		const y = Math.min(
+			(event && event.clientY) || 0,
+			window.innerHeight - menu.offsetHeight - 8
+		);
 		menu.style.left = Math.max(8, x) + "px";
 		menu.style.top = Math.max(8, y) + "px";
 		const away = (e) => {
@@ -224,16 +231,28 @@
 				.then(() => reread());
 		const named = (title, primary, value) =>
 			frappe.prompt(
-				[{ fieldname: "name", fieldtype: "Data", label: __("Folder name"), reqd: 1, default: value || "" }],
+				[
+					{
+						fieldname: "name",
+						fieldtype: "Data",
+						label: __("Folder name"),
+						reqd: 1,
+						default: value || "",
+					},
+				],
 				(values) => done(values.name),
 				title,
 				primary
 			);
 		if (action === "create") named(__("New folder in {0}", [folder.name]), __("Create"));
-		else if (action === "rename") named(__("Rename the folder {0}", [folder.name]), __("Rename"), folder.name);
-		else if (action === "delete") frappe.confirm(__("Delete the folder {0}?", [folder.name]), () => done());
+		else if (action === "rename")
+			named(__("Rename the folder {0}", [folder.name]), __("Rename"), folder.name);
+		else if (action === "delete")
+			frappe.confirm(__("Delete the folder {0}?", [folder.name]), () => done());
 		else if (action === "empty")
-			frappe.confirm(__("Delete all the mail in {0} for good?", [folder.name]), () => done());
+			frappe.confirm(__("Delete all the mail in {0} for good?", [folder.name]), () =>
+				done()
+			);
 		else done();
 	}
 
@@ -241,7 +260,10 @@
 	// written), when it shows the change at its next Send/Receive.
 	function reread() {
 		if (state.dirty || !state.frame || !state.frame.contentWindow) {
-			frappe.show_alert({ message: __("Done: NeoMail shows it at its next Send/Receive."), indicator: "green" });
+			frappe.show_alert({
+				message: __("Done: NeoMail shows it at its next Send/Receive."),
+				indicator: "green",
+			});
 			return;
 		}
 		frappe.show_alert({ message: __("Done."), indicator: "green" }, 3);
@@ -309,7 +331,15 @@
 		const synk = state.synk;
 		const host = window.neomailHost;
 		const views = synk.offered
-			? [{ view: host.synk.view, title: words.synk, icon: host.synk.icon, badge: synk.badge, onClick: () => open_synk() }]
+			? [
+					{
+						view: host.synk.view,
+						title: words.synk,
+						icon: host.synk.icon,
+						badge: synk.badge,
+						onClick: () => open_synk(),
+					},
+			  ]
 			: [];
 		return { front: null, views };
 	}
@@ -318,7 +348,8 @@
 	// at the click when an answer had to be awaited first (a browser lets a page open a tab on a click only), or a new
 	// one. A tab the browser refused leaves the person a link.
 	function open_synk(path, tab) {
-		const address = (path && window.neomailHost.synkRoute(path)) || window.neomailHost.synk.address;
+		const address =
+			(path && window.neomailHost.synkRoute(path)) || window.neomailHost.synk.address;
 		let opened = tab || null;
 		if (opened) {
 			opened.location.href = address;
@@ -327,7 +358,9 @@
 			if (opened) opened.opener = null;
 		}
 		if (!opened) {
-			const link = `<a href="${frappe.utils.escape_html(address)}" target="_blank" rel="noopener">${__("Open in Synk")}</a>`;
+			const link = `<a href="${frappe.utils.escape_html(
+				address
+			)}" target="_blank" rel="noopener">${__("Open in Synk")}</a>`;
 			frappe.msgprint(link);
 		}
 	}
@@ -349,7 +382,10 @@
 				.filter(Boolean);
 			// The desk's own strip_html (frappe/public/js/frappe/utils/common.js): the words without their markup, then
 			// escaped, so that whatever is left of one is shown and not run
-			if (said.length) return frappe.utils.escape_html((window.strip_html || ((text) => text))(said.join(" ")));
+			if (said.length)
+				return frappe.utils.escape_html(
+					(window.strip_html || ((text) => text))(said.join(" "))
+				);
 		} catch (e) {
 			// The fallback says it
 		}
@@ -362,10 +398,18 @@
 	async function share_message(data) {
 		const asked = window.neomailHost.shareOf(data);
 		if (!asked) return;
-		const headers = { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" };
+		const headers = {
+			Accept: "application/json",
+			"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+		};
 		let found = null;
 		try {
-			const answer = await fetch(DESTINATIONS, { method: "GET", credentials: "same-origin", cache: "no-store", headers });
+			const answer = await fetch(DESTINATIONS, {
+				method: "GET",
+				credentials: "same-origin",
+				cache: "no-store",
+				headers,
+			});
 			found = answer.ok ? (await answer.json()).message : null;
 		} catch (e) {
 			found = null;
@@ -393,7 +437,11 @@
 					reqd: 1,
 				},
 				{ fieldtype: "Small Text", fieldname: "note", label: __("Your message") },
-				{ fieldtype: "Check", fieldname: "attachments", label: __("Share the attachments too") },
+				{
+					fieldtype: "Check",
+					fieldname: "attachments",
+					label: __("Share the attachments too"),
+				},
 			],
 			primary_action_label: __("Share"),
 			primary_action: async (values) => {
@@ -426,9 +474,13 @@
 				const done = (await answer.json()).message || {};
 				dialog.hide();
 				// The person stays in their mail; the post is a click away, in Synk's own tab
-				const post = done.message ? "/raven/message/" + encodeURIComponent(done.message) : null;
+				const post = done.message
+					? "/raven/message/" + encodeURIComponent(done.message)
+					: null;
 				const seen = post
-					? ` <a href="${frappe.utils.escape_html(post)}" target="_blank" rel="noopener">${__("Open in Synk")}</a>`
+					? ` <a href="${frappe.utils.escape_html(
+							post
+					  )}" target="_blank" rel="noopener">${__("Open in Synk")}</a>`
 					: "";
 				frappe.show_alert({ message: __("Shared in Synk") + seen, indicator: "green" });
 				if (done.left_out > 0) {
@@ -480,8 +532,12 @@
 		// After the question, the tab is opened on the person's « yes », while the browser lets the page open one
 		let tab = null;
 		if (done && done.ask) {
-			const people = (Array.isArray(done.with) ? done.with : []).map((name) => frappe.utils.escape_html(String(name)));
-			const names = frappe.utils.comma_and ? frappe.utils.comma_and(people) : people.join(", ");
+			const people = (Array.isArray(done.with) ? done.with : []).map((name) =>
+				frappe.utils.escape_html(String(name))
+			);
+			const names = frappe.utils.comma_and
+				? frappe.utils.comma_and(people)
+				: people.join(", ");
 			const question = done.adds
 				? __("Add {0} to this message's channel in Synk?", [names])
 				: __("Make a private channel in Synk with {0} about this message?", [names]);
@@ -505,7 +561,10 @@
 		}
 		if (done.left_out > 0) {
 			frappe.show_alert({
-				message: __("{0} person(s) on this message could not join: they are not in your Synk workspace.", [done.left_out]),
+				message: __(
+					"{0} person(s) on this message could not join: they are not in your Synk workspace.",
+					[done.left_out]
+				),
 				indicator: "orange",
 			});
 		}
@@ -517,7 +576,10 @@
 	// One of the server's methods, as the person (the desk's cookie, its CSRF token): GET without `body`, else a POST
 	// of it. The answer, or null when the server could not be reached.
 	async function to_server(address, body) {
-		const headers = { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" };
+		const headers = {
+			Accept: "application/json",
+			"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+		};
 		const init =
 			body === undefined
 				? { method: "GET", credentials: "same-origin", cache: "no-store", headers }
@@ -556,9 +618,14 @@
 	function filed(message, link, away) {
 		const escape = frappe.utils.escape_html;
 		const open = link
-			? ` <a href="${escape(link)}"${away ? ' target="_blank" rel="noopener"' : ""}>${escape(__("Open it"))}</a>`
+			? ` <a href="${escape(link)}"${away ? ' target="_blank" rel="noopener"' : ""}>${escape(
+					__("Open it")
+			  )}</a>`
 			: "";
-		frappe.show_alert({ message: escape(String(message || "")) + open, indicator: "green" }, 8);
+		frappe.show_alert(
+			{ message: escape(String(message || "")) + open, indicator: "green" },
+			8
+		);
 	}
 
 	// What NeoMail asks of an attachment (`mailcraft:attachment`): the Drive, the scanned documents, an editor. An
@@ -567,7 +634,8 @@
 		const asked = window.neomailHost.attachmentOf(data);
 		if (!asked) return;
 		// Only what the handover offered: a NeoMail asking for more is not heard
-		const offered = state.host && Array.isArray(state.host.attachments) ? state.host.attachments : [];
+		const offered =
+			state.host && Array.isArray(state.host.attachments) ? state.host.attachments : [];
 		if (!offered.includes(asked.action)) return;
 		if (asked.action === "scan") {
 			send_to_scans(asked);
@@ -599,7 +667,10 @@
 				email: asked.email,
 				attachment: asked.attachment,
 			});
-			const done = await taken(answer, __("The attachment could not be sent to the scanned documents."));
+			const done = await taken(
+				answer,
+				__("The attachment could not be sent to the scanned documents.")
+			);
 			if (done) filed(done.message, window.neomailHost.scanUrl(done.name), false);
 		} finally {
 			state.filing.delete(key);
@@ -674,7 +745,9 @@
 			element(
 				"p",
 				"neomail-picker-hint",
-				__("The file is copied by the server, straight from the e-mail: nothing is downloaded.")
+				__(
+					"The file is copied by the server, straight from the e-mail: nothing is downloaded."
+				)
 			)
 		);
 		box.append(picker);
@@ -701,8 +774,13 @@
 			line.classList.toggle("is-chosen", chosen);
 			line.setAttribute("aria-selected", String(chosen));
 			line.classList.toggle("is-muted", !folder.can_write);
-			if (folder.has_children) line.setAttribute("aria-expanded", String(Boolean(view.open[folder.name])));
-			const chevron = element("span", "neomail-picker-chevron", folder.has_children ? (view.open[folder.name] ? "▾" : "▸") : "");
+			if (folder.has_children)
+				line.setAttribute("aria-expanded", String(Boolean(view.open[folder.name])));
+			const chevron = element(
+				"span",
+				"neomail-picker-chevron",
+				folder.has_children ? (view.open[folder.name] ? "▾" : "▸") : ""
+			);
 			chevron.addEventListener("click", (event) => {
 				event.stopPropagation();
 				toggle(folder);
@@ -722,7 +800,8 @@
 			tree.replaceChildren();
 			const say = (text) => tree.append(element("div", "neomail-picker-empty", text));
 			if (view.loading) say(__("Loading…"));
-			else if (view.failed) say(__("The Drive could not be reached. Try again in a moment."));
+			else if (view.failed)
+				say(__("The Drive could not be reached. Try again in a moment."));
 			else if (view.query) {
 				if (!view.results.length) say(__("No folder found"));
 				view.results.forEach((folder) => tree.append(row(folder, 0)));
@@ -732,7 +811,8 @@
 					(folders || []).forEach((folder) => {
 						if (above.includes(folder.name)) return;
 						tree.append(row(folder, depth));
-						if (view.open[folder.name]) walk(view.children[folder.name], depth + 1, [...above, folder.name]);
+						if (view.open[folder.name])
+							walk(view.children[folder.name], depth + 1, [...above, folder.name]);
 					});
 				walk(view.roots, 0, []);
 			}
@@ -740,9 +820,16 @@
 			if (view.last) {
 				last.replaceChildren(
 					element("span", "neomail-picker-last-label", __("Last used")),
-					element("span", "neomail-picker-last-path", String(view.last.path || view.last.title || ""))
+					element(
+						"span",
+						"neomail-picker-last-path",
+						String(view.last.path || view.last.title || "")
+					)
 				);
-				last.classList.toggle("is-chosen", Boolean(view.selected && view.selected.name === view.last.name));
+				last.classList.toggle(
+					"is-chosen",
+					Boolean(view.selected && view.selected.name === view.last.name)
+				);
 			}
 			enable();
 		}
@@ -839,7 +926,9 @@
 					drive_folder: folder.name,
 					edit: editor ? 1 : 0,
 				}),
-				editor ? __("The file could not be opened.") : __("The file could not be saved in the Drive.")
+				editor
+					? __("The file could not be opened.")
+					: __("The file could not be saved in the Drive.")
 			);
 			if (!done) {
 				if (tab) tab.close();
@@ -862,7 +951,8 @@
 		dialog.onhide = () => {
 			clearTimeout(view.timer);
 			state.picking = null;
-			if (dialog.$wrapper && typeof dialog.$wrapper.remove === "function") dialog.$wrapper.remove();
+			if (dialog.$wrapper && typeof dialog.$wrapper.remove === "function")
+				dialog.$wrapper.remove();
 		};
 		state.picking = dialog;
 		dialog.show();
@@ -897,7 +987,10 @@
 				method: "GET",
 				credentials: "same-origin",
 				cache: "no-store",
-				headers: { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" },
+				headers: {
+					Accept: "application/json",
+					"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+				},
 			});
 			if (!answer.ok) return { refused: answer.status };
 			return { message: (await answer.json()).message };
@@ -964,7 +1057,8 @@
 		const realtime = frappe.realtime;
 		if (realtime && typeof realtime.on === "function") {
 			const join = () => {
-				if (typeof realtime.doctype_subscribe === "function") realtime.doctype_subscribe("Raven User");
+				if (typeof realtime.doctype_subscribe === "function")
+					realtime.doctype_subscribe("Raven User");
 			};
 			join();
 			realtime.on("raven:unread_channel_count_updated", (event) => {
@@ -1139,7 +1233,10 @@
 					method: "GET",
 					credentials: "same-origin",
 					cache: "no-store",
-					headers: { Accept: "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token || "" },
+					headers: {
+						Accept: "application/json",
+						"X-Frappe-CSRF-Token": frappe.csrf_token || "",
+					},
 				});
 				const found = answer.ok ? (await answer.json()).message : null;
 				if (found && found.account && found.mailbox) state.key = found;
@@ -1156,7 +1253,12 @@
 		if (!key || state.delivered || !state.where || !state.send) return;
 		// A folder: NeoMail says where it is before it has listed its folders and refuses one it has not (« Cette boîte
 		// aux lettres n'a pas ce dossier »): its next state, which lists them, delivers it
-		if (key.mailbox && !key.email && !window.neomailHost.knowsFolder(state.where, key.account, key.mailbox)) return;
+		if (
+			key.mailbox &&
+			!key.email &&
+			!window.neomailHost.knowsFolder(state.where, key.account, key.mailbox)
+		)
+			return;
 		state.delivered = true;
 		if (key.compose) {
 			ask("mail.new", {});
@@ -1176,7 +1278,11 @@
 			// NeoMail was switched off since the desk started: its boot still says the webmail leads here, which would
 			// send the link below straight back. In this tab, the webmail is the webmail again.
 			if (frappe.boot) frappe.boot.neomail_in_desk = 0;
-			say(__("NeoMail is not offered on this site."), "/app/webmail", __("Open the webmail"));
+			say(
+				__("NeoMail is not offered on this site."),
+				"/app/webmail",
+				__("Open the webmail")
+			);
 			return;
 		}
 		// The desk session ended, or this page's CSRF token is a session's that another sign-in replaced.
@@ -1222,7 +1328,9 @@
 		// What the build reads from the page that frames it, there before the frame starts.
 		state.host = given.host;
 		// The extensions the Drive's editors open here, for the page itself (NeoMail is not told)
-		state.editors = Array.isArray(given.editors) ? given.editors.filter((e) => typeof e === "string") : [];
+		state.editors = Array.isArray(given.editors)
+			? given.editors.filter((e) => typeof e === "string")
+			: [];
 		window.neomailHost.install(window, given.host, {
 			sessionEnded: __("Your Neoffice session has ended."),
 			onSession: (alive) => (state.banner.hidden = alive),
@@ -1257,12 +1365,20 @@
 					state.opening = null;
 					// A NeoMail that does not open a message by its id (older than the command): its folder, quietly
 					if (data.ok === false && opening.mailbox) {
-						ask("folder.select", { account: opening.account, folder: opening.mailbox }, "mailbox");
+						ask(
+							"folder.select",
+							{ account: opening.account, folder: opening.mailbox },
+							"mailbox"
+						);
 					}
 					return;
 				}
 				if (data.ok === false) {
-					console.warn("NeoMail refused a command from the desk's menu", data.id, data.error);
+					console.warn(
+						"NeoMail refused a command from the desk's menu",
+						data.id,
+						data.error
+					);
 					if (state.chosen && state.chosen.id === data.id) state.chosen = null;
 				}
 			},
@@ -1307,13 +1423,37 @@
 			give_back();
 		});
 		ask_before_unload();
+		// What a build of NeoMail that knows it calls from File › Signatures, in place of opening the builder's address in
+		// a new tab: the builder, over NeoMail, in this page
+		window.mailcraftSignaturesOpen = () => window.neomailHost.openBuilder(window);
 		open();
 		// Synk's icon, once Raven answers the person
 		count_synk();
 	};
 
+	// The signature builder, when the address asks it (`?signature_builder=1`, where NeoMail's File › Signatures and the
+	// webmail lead): taken off the address, then opened over NeoMail.
+	function take_builder() {
+		const { asked, rest } = window.neomailHost.builderAsked(window.location.search);
+		const option = frappe.route_options && frappe.route_options.signature_builder != null;
+		if (option) {
+			delete frappe.route_options.signature_builder;
+			if (!Object.keys(frappe.route_options).length) frappe.route_options = null;
+		}
+		if (!asked && !option) return;
+		if (asked) {
+			window.history.replaceState(
+				window.history.state,
+				"",
+				window.location.pathname + rest + window.location.hash
+			);
+		}
+		window.neomailHost.openBuilder(window);
+	}
+
 	// Each time the page comes to the front, its first time included.
 	frappe.pages[PAGE].on_page_show = function () {
+		take_builder();
 		front(true);
 		if (state.pending) start();
 		// A link followed while the page was open (or hidden) asks NeoMail something too

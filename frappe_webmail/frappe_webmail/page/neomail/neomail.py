@@ -57,6 +57,9 @@ NEOMAIL_ROUTE = "/app/" + PAGE
 # (Webmail.vue, applyUrlIntent). Its signatures, where NeoMail's File > Signatures leads; its filters (the server's
 # Email Filter rules, which NeoMail's own rules are not); its automations (Nora's, on the mailboxes).
 WEBMAIL_ONLY = ("signatures", "filters", "automations")
+# What both pages open alike: the signature builder (public/js/signature_builder.js), where NeoMail's File > Signatures
+# leads (www/neomail.py, SIGNATURES)
+BUILDER = "signature_builder"
 
 
 def neomail_address(query):
@@ -69,6 +72,8 @@ def neomail_address(query):
 	query = query or {}
 	if any(key in query for key in WEBMAIL_ONLY):
 		return None
+	if BUILDER in query:
+		return NEOMAIL_ROUTE + "?" + BUILDER + "=1"
 	if "compose" in query:
 		kept = {"compose": "1"}
 	else:

@@ -23,6 +23,7 @@ give the build the same functions (public/js/neomail_host.js).
 """
 
 import os
+import re
 from urllib.parse import quote
 
 import frappe
@@ -39,9 +40,10 @@ TRIAL_BUILD = f"/assets/suite/craft/{TRIAL}/index.html"
 ROUTE = "/neomail"
 # The name the person reads; the build, a fork of MailCraft, shows it in place of its own.
 PRODUCT = "NeoMail"
-# Where the person writes their signatures and sees the company's: the webmail's signatures, opened by its address
-# (Webmail.vue, applyUrlIntent).
-SIGNATURES = "/app/webmail?signatures=1"
+# Where the person sees their signature and, for those who may, makes the company's: the signature builder
+# (public/js/signature_builder.js), opened by the webmail's address (which leads to NeoMail's desk page where NeoMail is
+# the desk's mail, page/neomail/neomail.py, neomail_address). Their own signatures stay the webmail's (?signatures=1).
+SIGNATURES = "/app/webmail?signature_builder=1"
 # Where the mailboxes are set up: the person's Webmail Accounts (their servers, password, name on their mail), one
 # mailbox's form under it. NeoMail cannot change them (its account settings are its own, lost with the tab): its File >
 # Info opens these (29.10: its Settings button there did nothing that lasted, and nothing led here).
@@ -206,6 +208,13 @@ def host_mailboxes(bearer=None):
 				for src in handed:
 					placed = without_picture(placed, src)
 				signature["placed_html"] = placed
+			# What a build that sends a company signature as it is written reads (MailCraft's HTML signature): the
+			# template's HTML whole, every picture by its address on the web; none when a picture of it is not public
+			# (a person's photo), and none for a person's own signature, which MailCraft keeps as its words.
+			if chosen.get("layout"):
+				written = written_html(chosen.get("html"))
+				if written:
+					signature["written_html"] = written
 			mailbox["signature"] = signature
 		mailboxes.append(mailbox)
 	return mailboxes
@@ -213,7 +222,44 @@ def host_mailboxes(bearer=None):
 
 # How a company template places its picture, as MailCraft's signatures say it (`signature.layout`): beside the words, a
 # two-cell table when sent, or above them. The other layouts draw no picture. "Photo left" hands the person's photo.
-PICTURE_LAYOUTS = {"Logo left": "pictureLeft", "Logo above": "pictureAbove", "Photo left": "pictureLeft"}
+# "Logo centre" has no place of its own in MailCraft: a build that does not send the signature as written (written_html)
+# puts the logo beside the words.
+PICTURE_LAYOUTS = {
+	"Logo left": "pictureLeft",
+	"Logo above": "pictureAbove",
+	"Logo centre": "pictureLeft",
+	"Photo left": "pictureLeft",
+}
+# The most a signature sent as written may weigh in MailCraft (crates/model/src/signature.rs, MAX_HTML)
+MAX_WRITTEN_HTML = 64 * 1024
+_IMG_SRC = re.compile(r'(<img\b[^>]*?\bsrc=")([^"]*)(")', re.IGNORECASE)
+
+
+def written_html(html):
+	"""A company signature's HTML as MailCraft sends it when it keeps it as written (its HTML signature,
+	`signature.html`): each picture by its absolute address, a public file of the instance (the logo, the banner, the
+	icons) made https://<instance>/files/…, an https one kept. MailCraft sends no picture of its own with such a
+	signature, and the reader's mail client fetches them. None when a picture is neither (a person's photo, a private
+	file: it would show to nobody), and for an HTML larger than MailCraft keeps."""
+	if not isinstance(html, str) or not html.strip():
+		return None
+	refused = []
+
+	def absolute(found):
+		src = found.group(2)
+		if src.startswith("https://"):
+			return found.group(0)
+		if src.startswith("/files/") or src.startswith("/assets/"):
+			return found.group(1) + frappe.utils.get_url(src) + found.group(3)
+		refused.append(src)
+		return found.group(0)
+
+	written = _IMG_SRC.sub(absolute, html)
+	if refused or len(written.encode("utf-8")) > MAX_WRITTEN_HTML:
+		return None
+	return written
+
+
 # The layouts whose picture handed is the person's photo (signatures.WITH_PHOTO), not the logo
 PHOTO_LAYOUTS = frozenset(("Photo left",))
 # The most one picture of a signature may weigh in MailCraft (crates/model/src/signature.rs, MAX_PICTURE_BYTES).

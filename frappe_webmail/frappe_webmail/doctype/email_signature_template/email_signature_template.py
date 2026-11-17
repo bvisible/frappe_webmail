@@ -37,10 +37,13 @@ class EmailSignatureTemplate(Document):
 		from frappe_webmail.frappe_webmail.doctype.email_signature_social_link.email_signature_social_link import (
 			EmailSignatureSocialLink,
 		)
+		from frappe_webmail.frappe_webmail.doctype.email_signature_template_role.email_signature_template_role import (
+			EmailSignatureTemplateRole,
+		)
 
 		accent_color: DF.Color | None
 		allow_personal: DF.Check
-		applies_to: DF.Literal["Everyone", "Company", "Department"]
+		applies_to: DF.Literal["Everyone", "Company", "Department", "User Group", "Role"]
 		banner_description: DF.Data | None
 		banner_image: DF.AttachImage | None
 		banner_url: DF.Data | None
@@ -54,11 +57,13 @@ class EmailSignatureTemplate(Document):
 		enabled: DF.Check
 		font: DF.Literal["Arial", "Helvetica", "Verdana", "Georgia", "Tahoma", "Trebuchet MS", "Karla"]
 		font_size: DF.Int
-		layout: DF.Literal["Text only", "Logo left", "Logo above", "Compact", "Photo left"]
+		layout: DF.Literal["Text only", "Logo left", "Logo above", "Logo centre", "Compact", "Photo left"]
 		logo: DF.AttachImage | None
 		logo_width: DF.Int
+		roles: DF.TableMultiSelect[EmailSignatureTemplateRole]
 		show_company_address: DF.Check
 		show_company_name: DF.Check
+		show_contact_icons: DF.Check
 		show_department: DF.Check
 		show_disclaimer: DF.Check
 		show_email: DF.Check
@@ -72,6 +77,7 @@ class EmailSignatureTemplate(Document):
 		show_website: DF.Check
 		social_links: DF.Table[EmailSignatureSocialLink]
 		template_name: DF.Data
+		user_group: DF.Link | None
 	# end: auto-generated types
 
 	def validate(self):
@@ -83,17 +89,33 @@ class EmailSignatureTemplate(Document):
 		self.validate_banner()
 
 	def validate_scope(self):
-		"""A template for a company or a department names it; one for everyone names neither."""
-		if self.applies_to == "Company":
-			if not self.company:
-				frappe.throw(_("Choose the company this template applies to."))
-			self.department = None
-		elif self.applies_to == "Department":
-			if not self.department:
-				frappe.throw(_("Choose the department this template applies to."))
+		"""A template names what it applies to: a company, a department, a user group or roles (each role once); one for
+		everyone names none of them. What the other kinds would name is cleared."""
+		kind = self.applies_to
+		if kind == "Company" and not self.company:
+			frappe.throw(_("Choose the company this template applies to."))
+		if kind == "Department" and not self.department:
+			frappe.throw(_("Choose the department this template applies to."))
+		if kind == "User Group" and not self.user_group:
+			frappe.throw(_("Choose the user group this template applies to."))
+		if kind == "Role":
+			seen = set()
+			kept = []
+			for row in self.roles:
+				if row.role and row.role not in seen:
+					seen.add(row.role)
+					kept.append(row)
+			self.roles = kept
+			if not self.roles:
+				frappe.throw(_("Choose at least one role this template applies to."))
+		if kind != "Company":
 			self.company = None
-		else:
-			self.company = self.department = None
+		if kind != "Department":
+			self.department = None
+		if kind != "User Group":
+			self.user_group = None
+		if kind != "Role":
+			self.roles = []
 
 	def validate_look(self):
 		"""The accent colour is written #rrggbb, the sizes are within the bounds that keep a signature readable. What the

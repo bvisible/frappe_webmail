@@ -1158,7 +1158,7 @@ class TestMailCraftJmap(FrappeTestCase):
 				"accounts": [],
 				"language": context.lang,
 				"product": "NeoMail",
-				"signatures": frappe.utils.get_url("/app/webmail?signatures=1"),
+				"signatures": frappe.utils.get_url("/app/webmail?signature_builder=1"),
 				"accounts_home": frappe.utils.get_url("/app/webmail-account"),
 				"person": SHARED,
 			},
@@ -1407,7 +1407,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		box = next(a for a in given["accounts"] if a["email"] == MAILBOX)
 		self.assertEqual((given["product"], box["scheme"]), ("NeoMail", "bearer"))
 		self.assertTrue(given["language"])
-		self.assertEqual(given["signatures"], frappe.utils.get_url("/app/webmail?signatures=1"))
+		self.assertEqual(given["signatures"], frappe.utils.get_url("/app/webmail?signature_builder=1"))
 		self.assertEqual(given["accounts_home"], frappe.utils.get_url("/app/webmail-account"))
 		self.assertEqual(
 			given["nora"], "nora" in frappe.get_installed_apps(), "Nora only where the instance has her"
