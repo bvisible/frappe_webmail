@@ -882,6 +882,38 @@ class TestMailCraftJmap(FrappeTestCase):
 		)
 		self.assertIn(uid, server.folders["INBOX"]["messages"])
 
+	def test_a_category_is_a_keyword_kept_on_the_mail_server(self):
+		"""NeoMail keeps a message's categories as keywords of their own (`$cat:` then the name, each byte but a small letter,
+		a digit, `-`, `_` and `.` written `=` and two hex digits: neoffice-maintenance#2487). The facade writes them to the
+		mail server as IMAP keywords and gives them back, so that a category set in a tab is there at the next visit, and
+		takes one away without touching the others."""
+		server = FakeServer()
+		uid = server.put("INBOX", message("a"), {b"\\Seen", b"$custom"})
+		one = eid("INBOX", uid)
+		red, supplier = "$cat:=52ouge", "$cat:=46ournisseur=20=c3=a0=20relancer"
+
+		def keywords():
+			got = self._call(
+				"Email/get", {"accountId": self.aid, "ids": [one], "properties": ["id", "keywords"]}
+			)[1]
+			return got["list"][0]["keywords"]
+
+		with served(server):
+			patch = {f"keywords/{red}": True, f"keywords/{supplier}": True}
+			out = self._call("Email/set", {"accountId": self.aid, "update": {one: patch}})[1]
+			self.assertEqual((out["updated"], out["notUpdated"]), ({one: None}, {}))
+			self.assertTrue(
+				{red.encode(), supplier.encode()} <= server.folders["INBOX"]["messages"][uid]["flags"]
+			)
+			self.assertEqual(keywords(), {"$seen": True, "$custom": True, red: True, supplier: True})
+			out = self._call(
+				"Email/set", {"accountId": self.aid, "update": {one: {f"keywords/{red}": None}}}
+			)[1]
+			self.assertEqual(out["notUpdated"], {})
+			self.assertEqual(
+				keywords(), {"$seen": True, "$custom": True, supplier: True}, "only the one taken away goes"
+			)
+
 	# Filing and sending ------------------------------------------------------------------------------------------
 
 	def _filed(self, raw, blob="Utest"):
