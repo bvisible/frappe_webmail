@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-16 03:24+0000\n"
+"POT-Creation-Date: 2026-11-18 03:21+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language: fr\n"
@@ -32,6 +32,10 @@ msgstr "(Sans objet)"
 #: frappe_webmail/neomail_share.py:542
 msgid "(no subject)"
 msgstr "(sans objet)"
+
+#: frappe_webmail/public/js/signature_builder.js:360
+msgid "+ Add a role"
+msgstr "+ Ajouter un rôle"
 
 #: frontend/src/components/EmailViewer.vue:289
 #, python-brace-format
@@ -61,11 +65,11 @@ msgstr "1 autre message dans cette conversation"
 msgid "1st of the month at {0}"
 msgstr "Le 1er du mois à {0}"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:134
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:156
 msgid "A call to action needs both its label and its address."
 msgstr "Un appel à l'action doit avoir à la fois son libellé et son adresse."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:391
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:435
 msgid "A channel, or a person"
 msgstr "Un canal ou une personne"
 
@@ -77,7 +81,7 @@ msgstr "Une entreprise"
 msgid "A contact needs a name, a company or an address."
 msgstr "Un contact doit avoir un nom, une entreprise ou une adresse."
 
-#: frappe_webmail/webmail_api.py:1987
+#: frappe_webmail/webmail_api.py:2048
 msgid "A folder with this name already exists"
 msgstr "Un dossier portant ce nom existe déjà"
 
@@ -87,13 +91,13 @@ msgstr "Une fonction"
 
 #. Description of the 'What to show' (Section Break) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:142
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:163
 msgid "A line is left out when the person has nothing to put in it."
 msgstr "Une ligne est omise lorsque la personne n'a rien à y indiquer."
 
 #. Description of the 'Call to Action Label' (Data) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:313
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:341
 msgid "A link shown under the details. It needs both its label and its https:// address."
 msgstr "Lien affiché sous les coordonnées. Il doit avoir à la fois un libellé et une adresse https://."
 
@@ -107,15 +111,15 @@ msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
 
 #. Description of the 'On a shared mailbox, each person signs as themselves'
 #. (Check) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:123
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:144
 msgid "A mailbox that someone else owns and shares with them signs as the mailbox by default: its name and the company's main number. Checked, each person signs with their own name, job and numbers, from the mailbox's address. A mailbox that names a signature of its own keeps that one."
 msgstr "Une boîte partagée avec vous par son propriétaire signe par défaut au nom de la boîte : son nom et le numéro principal de l'entreprise. Si cette case est cochée, chaque personne signe à son propre nom, avec son poste et ses numéros, depuis l'adresse de la boîte. Une boîte qui indique une signature propre garde celle-ci."
 
-#: frappe_webmail/mailcraft_jmap.py:1647
+#: frappe_webmail/mailcraft_jmap.py:1654
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1522
+#: frappe_webmail/mailcraft_jmap.py:1529
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
 
@@ -135,13 +139,13 @@ msgstr "Un mot de passe est requis"
 
 #. Description of the 'People may use their own signature instead' (Check)
 #. field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:116
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:137
 msgid "A person who has written a signature of their own keeps it. The others get this template."
 msgstr "Une personne qui a rédigé sa propre signature la conserve. Les autres reçoivent ce modèle."
 
 #. Description of the 'Banner Picture' (Attach Image) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:331
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:359
 msgid "A picture under the signature, whatever its layout (a fair, an offer): a PNG, JPEG or GIF, uploaded as a public file. No picture, no banner."
 msgstr "Une image placée sous la signature, quelle que soit sa mise en page (un salon, une offre) : au format PNG, JPEG ou GIF, chargée comme fichier public. Sans image, pas de bannière."
 
@@ -154,13 +158,19 @@ msgstr "Une courte liste des nouveaux e-mails : expéditeur, heure, objet."
 msgid "A signature cannot be given to someone else."
 msgstr "Une signature ne peut pas être attribuée à une autre personne."
 
+#. Description of the 'Contact Icons' (Check) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:265
+msgid "A small picture before each number and address, in place of its label."
+msgstr "Une petite icône devant chaque numéro et adresse, à la place de son libellé."
+
 #: frappe_webmail/neomail_folders.py:62
 msgid "A special folder keeps its name and its place."
 msgstr "Un dossier spécial garde son nom et sa place."
 
 #. Description of the 'Enabled' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:70
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:73
 msgid "A template that is not enabled is not used: people keep the signature they have."
 msgstr "Un modèle désactivé n'est pas utilisé : les personnes gardent la signature qu'elles ont."
 
@@ -175,7 +185,7 @@ msgid "About the e-mail \"{0}\" from {1}"
 msgstr "À propos de l’e-mail « {0} » de {1}"
 
 #. Label of a Color field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:260
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:288
 msgid "Accent Colour"
 msgstr "Couleur d'accent"
 
@@ -184,10 +194,10 @@ msgstr "Couleur d'accent"
 msgid "Access Token"
 msgstr "Jeton d'accès"
 
-#: frappe_webmail/webmail_api.py:309 frappe_webmail/webmail_api.py:2419
-#: frappe_webmail/webmail_api.py:2482 frappe_webmail/webmail_api.py:2511
-#: frappe_webmail/webmail_api.py:3052 frappe_webmail/webmail_api.py:3094
-#: frappe_webmail/webmail_api.py:3844
+#: frappe_webmail/webmail_api.py:309 frappe_webmail/webmail_api.py:2480
+#: frappe_webmail/webmail_api.py:2543 frappe_webmail/webmail_api.py:2572
+#: frappe_webmail/webmail_api.py:3113 frappe_webmail/webmail_api.py:3155
+#: frappe_webmail/webmail_api.py:3905
 msgid "Access denied"
 msgstr "Accès refusé"
 
@@ -203,7 +213,7 @@ msgstr "Accès refusé à ce compte"
 msgid "Account"
 msgstr "Compte"
 
-#: frappe_webmail/webmail_api.py:3707
+#: frappe_webmail/webmail_api.py:3768
 msgid "Account is disabled"
 msgstr "Le compte est désactivé"
 
@@ -215,8 +225,8 @@ msgstr "Le compte n'est pas configuré pour OAuth2"
 msgid "Account is not using OAuth2"
 msgstr "Le compte n'utilise pas OAuth2"
 
-#: frappe_webmail/webmail_api.py:3686 frappe_webmail/webmail_api.py:3688
-#: frappe_webmail/webmail_api.py:3704
+#: frappe_webmail/webmail_api.py:3747 frappe_webmail/webmail_api.py:3749
+#: frappe_webmail/webmail_api.py:3765
 msgid "Account not found"
 msgstr "Compte introuvable"
 
@@ -253,12 +263,12 @@ msgstr "Active"
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1208
-#: frappe_webmail/www/neomail.html:746
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1314
+#: frappe_webmail/www/neomail.html:841
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte aux lettres"
 
-#: frappe_webmail/mailcraft_jmap.py:1781
+#: frappe_webmail/mailcraft_jmap.py:1788
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -276,13 +286,13 @@ msgstr "Ajouter une étoile"
 msgid "Add to contacts"
 msgstr "Ajouter aux contacts"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:486
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:542
 #, python-brace-format
 msgid "Add {0} to this message's channel in Synk?"
 msgstr "Ajouter {0} au canal de ce message dans Synk ?"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:300
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:328
 msgid "Add-ons"
 msgstr "Modules complémentaires"
 
@@ -292,7 +302,7 @@ msgid "Additional users who can access this email account"
 msgstr "Utilisateurs supplémentaires pouvant accéder à ce compte de messagerie"
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:191
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:212
 msgid "Address for Everyone"
 msgstr "Adresse pour tout le monde"
 
@@ -326,11 +336,15 @@ msgstr "Tous les dossiers"
 msgid "All mailboxes"
 msgstr "Toutes les boîtes"
 
+#: frappe_webmail/public/js/signature_builder.js:144
+msgid "All the settings: logo, font, small print, banner"
+msgstr "Tous les réglages : logo, police, mention de confidentialité, bandeau"
+
 #: frappe_webmail/attachments.py:160 frappe_webmail/neomail_attachments.py:575
 msgid "Already among the scanned documents"
 msgstr "Déjà parmi les scans de documents"
 
-#: frappe_webmail/webmail_api.py:3302
+#: frappe_webmail/webmail_api.py:3363
 msgid "Already in trusted list"
 msgstr "Déjà dans la liste de confiance"
 
@@ -370,6 +384,10 @@ msgstr "Une adresse"
 msgid "An error occurred"
 msgstr "Une erreur s'est produite"
 
+#: frappe_webmail/public/js/signature_builder.js:399
+msgid "An icon before each number and address"
+msgstr "Une icône devant chaque numéro et adresse"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:632
 #: frontend/src/components/AgentPanel.vue:448
 msgid "Any invoices to process in this mailbox?"
@@ -385,7 +403,7 @@ msgid "Applied {0} times"
 msgstr "Appliqué {0} fois"
 
 #. Label of a Select field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:88
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:91
 msgid "Applies To"
 msgstr "S'applique à"
 
@@ -450,7 +468,7 @@ msgstr "Êtes-vous sûr(e) de vouloir supprimer définitivement cet e-mail ? Cet
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Arial"
 msgstr "Arial"
@@ -459,6 +477,10 @@ msgstr "Arial"
 #: frontend/src/components/SignatureEditor.vue:112
 msgid "As it will be sent"
 msgstr "Aperçu tel qu'il sera envoyé"
+
+#: frappe_webmail/public/js/signature_builder.js:686
+msgid "As your messages carry it"
+msgstr "Tel que l'affichent vos messages"
 
 #: frontend/src/pages/Webmail.vue:178
 msgid "Ask Nora"
@@ -496,6 +518,15 @@ msgstr "Au moins une condition est requise"
 msgid "At least one filter condition must be specified"
 msgstr "Au moins une condition de filtre doit être spécifiée"
 
+#: frappe_webmail/webmail_api.py:1309
+msgid "At most 100 messages can be asked for at once"
+msgstr "Vous ne pouvez demander que 100 messages au maximum à la fois"
+
+#: frappe_webmail/mailcraft_stream.py:323
+#, python-brace-format
+msgid "At most {0} messages can be asked for at once."
+msgstr "Vous ne pouvez demander que {0} messages au maximum à la fois."
+
 #: frontend/src/components/AttachmentPicker.vue:328
 #: frontend/src/components/DocumentPicker.vue:78
 msgid "Attach"
@@ -527,7 +558,7 @@ msgstr "Joint à {0} {1}"
 msgid "Attaching…"
 msgstr "Ajout en cours…"
 
-#: frappe_webmail/webmail_api.py:2194
+#: frappe_webmail/webmail_api.py:2255
 msgid "Attachment not found"
 msgstr "Pièce jointe introuvable"
 
@@ -565,34 +596,34 @@ msgid "Automations on this mailbox"
 msgstr "Automatisations sur cette boîte mail"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:328
-#: frappe_webmail/signatures.py:838
-#: frappe_webmail/tests/test_signatures.py:1952
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:356
+#: frappe_webmail/signatures.py:933
+#: frappe_webmail/tests/test_signatures.py:2012
 msgid "Banner"
 msgstr ""
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:352
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:380
 msgid "Banner Description"
 msgstr "Description de la bannière"
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:340
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:368
 msgid "Banner Link"
 msgstr "Lien de la bannière"
 
 #. Label of a Attach Image field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:334
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:362
 msgid "Banner Picture"
 msgstr "Image de la bannière"
 
 #. Label of a Int field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:360
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:388
 msgid "Banner Width"
 msgstr "Largeur de la bannière"
 
 #. Label of a Int field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:271
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:299
 msgid "Base Font Size"
 msgstr "Taille de la police de base"
 
@@ -628,18 +659,18 @@ msgstr "Liste à puces"
 msgid "Cadence"
 msgstr "Fréquence"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:144
 msgctxt "NeoMail view"
 msgid "Calendar"
 msgstr "Calendrier"
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:316
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:344
 msgid "Call to Action Label"
 msgstr "Libellé de l'appel à l'action"
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:321
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:349
 msgid "Call to Action URL"
 msgstr "URL de l'appel à l'action"
 
@@ -658,15 +689,15 @@ msgstr "Annuler"
 msgid "Cancelled"
 msgstr "Annulée"
 
-#: frappe_webmail/webmail_api.py:2069
+#: frappe_webmail/webmail_api.py:2130
 msgid "Cannot delete folder with subfolders"
 msgstr "Impossible de supprimer un dossier contenant des sous-dossiers"
 
-#: frappe_webmail/webmail_api.py:2056
+#: frappe_webmail/webmail_api.py:2117
 msgid "Cannot delete this folder"
 msgstr "Impossible de supprimer ce dossier"
 
-#: frappe_webmail/webmail_api.py:1975
+#: frappe_webmail/webmail_api.py:2036
 msgid "Cannot rename this folder"
 msgstr "Impossible de renommer ce dossier"
 
@@ -712,13 +743,37 @@ msgstr "Discuter avec Nora"
 msgid "Check this mailbox every hour for invoices"
 msgstr "Relève cette boîte toutes les heures pour les factures"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:89
+#: frappe_webmail/public/js/signature_builder.js:327
+msgid "Choose a company"
+msgstr "Choisissez une société"
+
+#: frappe_webmail/public/js/signature_builder.js:333
+msgid "Choose a department"
+msgstr "Choisissez un département"
+
+#: frappe_webmail/public/js/signature_builder.js:340
+msgid "Choose a user group"
+msgstr "Choisissez un groupe d'utilisateurs"
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:110
+msgid "Choose at least one role this template applies to."
+msgstr "Choisissez au moins un rôle auquel ce modèle s'applique."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:96
 msgid "Choose the company this template applies to."
 msgstr "Choisissez la société à laquelle ce modèle s'applique."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:93
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:98
 msgid "Choose the department this template applies to."
 msgstr "Choisissez le département auquel ce modèle s'applique."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:100
+msgid "Choose the user group this template applies to."
+msgstr "Choisissez le groupe d'utilisateurs auquel ce modèle s'applique."
+
+#: frappe_webmail/new_senders.py:244
+msgid "Choose to accept or to block the sender."
+msgstr "Choisissez d'accepter ou de bloquer l'expéditeur."
 
 #: frappe_webmail/neomail_share.py:448
 msgid "Choose where to share the message."
@@ -763,14 +818,14 @@ msgstr "Dossiers réduits"
 
 #. Description of the 'Accent Colour' (Color) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:257
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:285
 msgid "Colours the name, the links and the rule between the logo and the details."
 msgstr "Colore le nom, les liens et la ligne qui sépare le logo des coordonnées."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
 #, fuzzy
 msgid "Compact"
 msgstr "Compact"
@@ -778,18 +833,19 @@ msgstr "Compact"
 #. Option for the 'Applies To' (Select) field in DocType 'Email Signature
 #. Template'
 #. Label of a Link field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:89
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:97
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:92
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:100
+#: frappe_webmail/public/js/signature_builder.js:69
 msgid "Company"
 msgstr ""
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:214
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:235
 msgid "Company address"
 msgstr "Adresse de la société"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:208
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:229
 msgid "Company name"
 msgstr "Raison sociale"
 
@@ -837,17 +893,22 @@ msgstr "Connexion réussie"
 msgid "Connection successful! Both IMAP and SMTP are working."
 msgstr "Connexion réussie ! IMAP et SMTP fonctionnent."
 
+#. Label of a Check field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:268
+msgid "Contact Icons"
+msgstr "Icônes de contact"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:521
 #: frontend/src/components/EmailViewer.vue:1143
 #, python-brace-format
 msgid "Contact created: {0}"
 msgstr "Contact créé : {0}"
 
-#: frappe_webmail/webmail_api.py:2932
+#: frappe_webmail/webmail_api.py:2993
 msgid "Contact not found"
 msgstr "Contact non trouvé"
 
-#: frappe_webmail/webmail_api.py:2773
+#: frappe_webmail/webmail_api.py:2834
 msgid "Contact with this email already exists"
 msgstr "Un contact avec cet email existe déjà"
 
@@ -890,7 +951,7 @@ msgstr "Impossible de supprimer l’automatisation"
 msgid "Could not load the automations"
 msgstr "Impossible de charger les automatisations"
 
-#: frappe_webmail/webmail_api.py:3924
+#: frappe_webmail/webmail_api.py:3985
 msgid "Could not read file content"
 msgstr "Impossible de lire le contenu du fichier"
 
@@ -914,8 +975,8 @@ msgstr "Impossible de démarrer l’analyse"
 msgid "Could not update the automation"
 msgstr "Impossible de mettre à jour l’automatisation"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:232
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:664
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:247
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:735
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/AgentPanel.vue:130
 #: frontend/src/components/DriveFolderPicker.vue:129
@@ -952,6 +1013,10 @@ msgstr "Créée"
 msgid "Creating..."
 msgstr "Création en cours..."
 
+#: frappe_webmail/public/js/signature_builder.js:483
+msgid "Dark"
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:627
 #: frontend/src/components/EmailComposer.vue:486
 msgid "Date:"
@@ -987,11 +1052,11 @@ msgstr "Signature par défaut"
 msgid "Delete"
 msgstr "Supprimer"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:154
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:155
 msgid "Delete Folder"
 msgstr "Supprimer le dossier"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:236
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:253
 #, python-brace-format
 msgid "Delete all the mail in {0} for good?"
 msgstr "Supprimer définitivement tout le courrier de {0} ?"
@@ -1028,7 +1093,7 @@ msgstr "Supprimer définitivement"
 msgid "Delete the automation « {0} »?"
 msgstr "Supprimer l’automatisation « {0} » ?"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:234
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:251
 #, python-brace-format
 msgid "Delete the folder {0}?"
 msgstr "Supprimer le dossier {0} ?"
@@ -1046,8 +1111,9 @@ msgstr "Bons de livraison"
 #. Template'
 #. Label of a Link field in DocType 'Email Signature Template'
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:89
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:106
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:92
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:109
+#: frappe_webmail/public/js/signature_builder.js:70
 msgid "Department"
 msgstr ""
 
@@ -1075,7 +1141,7 @@ msgstr "Désactiver"
 
 #. Label of a Check field in DocType 'Email Signature Template'
 #. Label of a Small Text field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:240
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:261
 msgid "Disclaimer"
 msgstr "Mention légale"
 
@@ -1083,11 +1149,11 @@ msgstr "Mention légale"
 msgid "Disconnect OAuth"
 msgstr "Déconnecter OAuth"
 
-#: frappe_webmail/webmail_api.py:4139
+#: frappe_webmail/webmail_api.py:4200
 msgid "DocType and document name are required"
 msgstr "Le DocType et le nom du document sont requis"
 
-#: frappe_webmail/webmail_api.py:4030 frappe_webmail/webmail_api.py:4059
+#: frappe_webmail/webmail_api.py:4091 frappe_webmail/webmail_api.py:4120
 msgid "DocType is required"
 msgstr "Le DocType est requis"
 
@@ -1099,7 +1165,7 @@ msgstr "Le DocType est requis"
 msgid "Document"
 msgstr "Document"
 
-#: frappe_webmail/webmail_api.py:4144
+#: frappe_webmail/webmail_api.py:4205
 msgid "Document not found"
 msgstr "Document introuvable"
 
@@ -1130,11 +1196,11 @@ msgstr "Terminé — {0}"
 msgid "Done — {0}, {1}. You will find it under Automations, where you can pause or delete it."
 msgstr "Terminé — {0}, {1}. Vous la trouverez sous Automatisations, où vous pourrez la mettre en pause ou la supprimer."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:247
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:269
 msgid "Done."
 msgstr "Terminé."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:244
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:264
 msgid "Done: NeoMail shows it at its next Send/Receive."
 msgstr "Terminé : NeoMail l’affichera à son prochain Envoyer/Recevoir."
 
@@ -1152,11 +1218,11 @@ msgstr "Brouillon supprimé"
 msgid "Draft inserted in a new message — add the recipient and the subject, then send."
 msgstr "J'ai inséré le brouillon dans un nouveau message — ajoutez le destinataire et l'objet, puis envoyez."
 
-#: frappe_webmail/webmail_api.py:2477 frappe_webmail/webmail_api.py:2506
+#: frappe_webmail/webmail_api.py:2538 frappe_webmail/webmail_api.py:2567
 msgid "Draft not found"
 msgstr "Brouillon non trouvé"
 
-#: frappe_webmail/webmail_api.py:1866
+#: frappe_webmail/webmail_api.py:1927
 #: frontend/src/components/EmailComposer.vue:747
 msgid "Draft saved"
 msgstr "Brouillon sauvegardé"
@@ -1171,7 +1237,7 @@ msgstr "Brouillons"
 msgid "Drafts Folder"
 msgstr "Dossier des brouillons"
 
-#: frappe_webmail/webmail_api.py:1840
+#: frappe_webmail/webmail_api.py:1901
 msgid "Drafts folder not found"
 msgstr "Dossier Brouillons non trouvé"
 
@@ -1188,6 +1254,10 @@ msgstr "Drive"
 msgid "Drop files here or click to browse"
 msgstr "Déposez des fichiers ici ou cliquez pour parcourir"
 
+#: frappe_webmail/public/js/signature_builder.js:406
+msgid "Each person may keep their own signature"
+msgstr "Chaque personne peut garder sa propre signature"
+
 #: frontend/src/components/AgentPanel.vue:265
 #: frontend/src/components/FilterManager.vue:67
 msgid "Edit"
@@ -1202,12 +1272,15 @@ msgid "Editor"
 msgstr "Éditeur"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:184
-#: frappe_webmail/signatures.py:722 frappe_webmail/tests/test_signatures.py:245
-#: frappe_webmail/tests/test_signatures.py:627
-#: frappe_webmail/tests/test_signatures.py:798
-#: frappe_webmail/tests/test_signatures.py:1174
-#: frappe_webmail/tests/test_signatures.py:1355
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:205
+#: frappe_webmail/signatures.py:817
+#: frappe_webmail/tests/test_signature_builder.py:105
+#: frappe_webmail/tests/test_signature_builder.py:109
+#: frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:687
+#: frappe_webmail/tests/test_signatures.py:858
+#: frappe_webmail/tests/test_signatures.py:1234
+#: frappe_webmail/tests/test_signatures.py:1415
 #: frontend/src/components/AutomationsPanel.vue:144
 msgid "Email"
 msgstr "E-mail"
@@ -1256,15 +1329,20 @@ msgid "Email Signature Social Link"
 msgstr "Lien social de signature e-mail"
 
 #. Name of a DocType
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:378
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:406
 msgid "Email Signature Template"
 msgstr "Modèle de signature e-mail"
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template_role/email_signature_template_role.json:26
+msgid "Email Signature Template Role"
+msgstr ""
 
 #: frontend/src/components/AutomationsPanel.vue:148
 msgid "Email address"
 msgstr "Adresse e-mail"
 
-#: frappe_webmail/webmail_api.py:2766
+#: frappe_webmail/webmail_api.py:2827
 msgid "Email address is required"
 msgstr "L'adresse email est requise"
 
@@ -1293,9 +1371,9 @@ msgstr "E-mail déplacé"
 msgid "Email moved to {0}"
 msgstr "E-mail déplacé vers {0}"
 
-#: frappe_webmail/webmail_api.py:1387 frappe_webmail/webmail_api.py:1694
-#: frappe_webmail/webmail_api.py:2183 frappe_webmail/webmail_api.py:2822
-#: frappe_webmail/webmail_api.py:3131
+#: frappe_webmail/webmail_api.py:1430 frappe_webmail/webmail_api.py:1755
+#: frappe_webmail/webmail_api.py:2244 frappe_webmail/webmail_api.py:2883
+#: frappe_webmail/webmail_api.py:3192
 msgid "Email not found"
 msgstr "Email non trouvé"
 
@@ -1304,7 +1382,7 @@ msgstr "Email non trouvé"
 msgid "Email or Domain"
 msgstr "E-mail ou domaine"
 
-#: frappe_webmail/webmail_api.py:1651
+#: frappe_webmail/webmail_api.py:1712
 msgid "Email sent successfully"
 msgstr "Email envoyé avec succès"
 
@@ -1325,7 +1403,7 @@ msgstr "EmailArray"
 msgid "Emails from trusted senders or domains will automatically display external images"
 msgstr "Les e-mails provenant d'expéditeurs ou de domaines de confiance afficheront automatiquement les images externes"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:156
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:157
 msgid "Empty Folder"
 msgstr "Vider le dossier"
 
@@ -1348,7 +1426,7 @@ msgstr "Activer"
 #. Label of a Check field in DocType 'Email Signature Template'
 #. Label of a Check field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:35
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:74
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:77
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:65
 msgid "Enabled"
 msgstr "Activé"
@@ -1379,7 +1457,7 @@ msgstr "Saisissez le mot de passe actuel de ce compte pour vous reconnecter."
 msgid "Enter the email address to report to"
 msgstr "Saisissez l’adresse e-mail à laquelle envoyer le rapport"
 
-#: frappe_webmail/webmail_api.py:3964
+#: frappe_webmail/webmail_api.py:4025
 msgid "Entity name is required"
 msgstr "Le nom de l'entité est requis"
 
@@ -1508,9 +1586,16 @@ msgstr "Toutes les heures"
 msgid "Every new PDF attachment is read by the OCR and filed in Document Scan."
 msgstr "Chaque nouvelle pièce jointe PDF est lue par l’OCR et classée dans Document Scan."
 
+#. Description of the 'Roles' (Table MultiSelect) field in DocType 'Email
+#. Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:124
+msgid "Every person of the desk who has one of these roles gets this template."
+msgstr "Toute personne du bureau qui a l'un de ces rôles reçoit ce modèle."
+
 #. Option for the 'Applies To' (Select) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:89
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:92
+#: frappe_webmail/public/js/signature_builder.js:68
 msgid "Everyone"
 msgstr ""
 
@@ -1575,7 +1660,7 @@ msgstr "Échec de l'ajout de la pièce jointe : {0}"
 msgid "Failed to connect to IMAP server: {0}"
 msgstr "Échec de connexion au serveur IMAP : {0}"
 
-#: frappe_webmail/webmail_api.py:4177
+#: frappe_webmail/webmail_api.py:4238
 #, python-brace-format
 msgid "Failed to generate PDF: {0}"
 msgstr "Échec de la génération du PDF : {0}"
@@ -1603,7 +1688,7 @@ msgstr "Échec du rafraîchissement du jeton OAuth"
 msgid "Failed to refresh OAuth token: {0}"
 msgstr "Échec du rafraîchissement du jeton OAuth : {0}"
 
-#: frappe_webmail/webmail_api.py:1657
+#: frappe_webmail/webmail_api.py:1718
 #, python-brace-format
 msgid "Failed to send email: {0}"
 msgstr "Échec de l'envoi de l'email : {0}"
@@ -1622,16 +1707,16 @@ msgstr "Échec : {0}"
 msgid "Failing"
 msgstr "En échec"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:141
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
 msgctxt "NeoMail pane"
 msgid "Favourites"
 msgstr "Favoris"
 
-#: frappe_webmail/webmail_api.py:3902
+#: frappe_webmail/webmail_api.py:3963
 msgid "File URL is required"
 msgstr "L'URL du fichier est requise"
 
-#: frappe_webmail/webmail_api.py:3915
+#: frappe_webmail/webmail_api.py:3976
 msgid "File not found"
 msgstr "Fichier introuvable"
 
@@ -1672,7 +1757,7 @@ msgstr "Nom du filtre"
 msgid "Filter name is required"
 msgstr "Le nom du filtre est requis"
 
-#: frappe_webmail/webmail_api.py:3047 frappe_webmail/webmail_api.py:3089
+#: frappe_webmail/webmail_api.py:3108 frappe_webmail/webmail_api.py:3150
 msgid "Filter not found"
 msgstr "Filtre non trouvé"
 
@@ -1713,7 +1798,7 @@ msgstr "Dossier créé"
 msgid "Folder deleted"
 msgstr "Dossier supprimé"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:227
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:238
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/FolderTree.vue:145
 msgid "Folder name"
@@ -1723,7 +1808,7 @@ msgstr "Nom du dossier"
 msgid "Folder name is required"
 msgstr "Le nom du dossier est requis"
 
-#: frappe_webmail/webmail_api.py:1983 frappe_webmail/webmail_api.py:2064
+#: frappe_webmail/webmail_api.py:2044 frappe_webmail/webmail_api.py:2125
 msgid "Folder not found"
 msgstr "Dossier introuvable"
 
@@ -1738,9 +1823,13 @@ msgid "Folders"
 msgstr "Dossiers"
 
 #. Label of a Select field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:252
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:280
 msgid "Font"
 msgstr ""
+
+#: frappe_webmail/public/js/signature_builder.js:368
+msgid "For example: Support"
+msgstr "Par exemple : Support"
 
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.js:334
 msgid "Forget my style"
@@ -1815,7 +1904,7 @@ msgid "From: {0}"
 msgstr "De : {0}"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:151
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:172
 msgid "Full name"
 msgstr "Nom complet"
 
@@ -1828,7 +1917,7 @@ msgstr "Tr : {0}"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Georgia"
 msgstr "Georgia"
@@ -1844,6 +1933,15 @@ msgstr "Allemand"
 #, python-brace-format
 msgid "Give the folder a name, without « {0} »."
 msgstr "Donnez un nom au dossier, sans « {0} »."
+
+#: frappe_webmail/public/js/signature_builder.js:619
+msgid "Give the model a name."
+msgstr "Donnez un nom au modèle."
+
+#: frappe_webmail/public/js/signature_builder.js:372
+#: frappe_webmail/public/js/signature_builder.js:373
+msgid "Given to"
+msgstr "Donné à"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -1874,13 +1972,25 @@ msgstr "Contient une pièce jointe"
 msgid "Has attachments"
 msgstr "A des pièces jointes"
 
+#: frappe_webmail/public/js/signature_builder.js:603
+msgid "Have a good day,"
+msgstr "Belle journée,"
+
+#: frappe_webmail/public/js/signature_builder.js:601
+msgid "Hello,"
+msgstr ""
+
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Helvetica"
 msgstr "Helvetica"
+
+#: frappe_webmail/public/js/signature_builder.js:602
+msgid "Here is the document we spoke about."
+msgstr "Voici le document dont nous avons parlé."
 
 #: frontend/src/components/EmailViewer.vue:153
 msgid "Hide"
@@ -1896,6 +2006,7 @@ msgstr "Masquer les dossiers"
 
 #. Label of a Check field in DocType 'Email Signature Preference'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:47
+#: frappe_webmail/public/js/signature_builder.js:660
 #: frontend/src/components/SignatureEditor.vue:67
 msgid "Hide my mobile number"
 msgstr "Masquer mon numéro de mobile"
@@ -1903,6 +2014,10 @@ msgstr "Masquer mon numéro de mobile"
 #: frontend/src/components/AttachmentPicker.vue:87
 msgid "Home"
 msgstr "Accueil"
+
+#: frappe_webmail/public/js/signature_builder.js:480
+msgid "How it is seen"
+msgstr "Affichage"
 
 #: frontend/src/components/AutomationsPanel.vue:128
 msgid "How often"
@@ -2026,31 +2141,31 @@ msgstr "Amélioration en cours…"
 
 #. Description of the 'Base Font Size' (Int) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:268
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:296
 msgid "In pixels, from 11 to 16."
 msgstr "En pixels, de 11 à 16."
 
 #. Description of the 'Banner Width' (Int) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:357
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:385
 msgid "In pixels, from 200 to 600."
 msgstr "En pixels, de 200 à 600."
 
 #. Description of the 'Logo Width' (Int) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:282
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:310
 msgid "In pixels, from 60 to 240."
 msgstr "En pixels, de 60 à 240."
 
 #. Description of the 'Signature Logo' (Attach Image) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:275
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:303
 msgid "In place of the company's logo: a PNG, JPEG or GIF among the public files. Mail clients do not show a vector logo, and dark letters on a transparent picture disappear when the reader's mail is dark: a logo on a light background stays readable."
 msgstr "À la place du logo de la société : une image PNG, JPEG ou GIF parmi les fichiers publics. Les clients de messagerie n'affichent pas de logo vectoriel, et les lettres sombres sur une image transparente disparaissent lorsque la messagerie du destinataire est en mode sombre : un logo sur fond clair reste lisible."
 
 #. Description of the 'Photo' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:225
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:246
 msgid "In the Photo left layout, for the people who agree to show theirs: each person chooses in their own signature settings."
 msgstr "Dans la mise en page « Photo à gauche », pour les personnes qui acceptent de montrer la leur : chacun choisit dans ses propres paramètres de signature."
 
@@ -2058,6 +2173,10 @@ msgstr "Dans la mise en page « Photo à gauche », pour les personnes qui accep
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:31
 msgid "In the company signature"
 msgstr "Dans la signature de la société"
+
+#: frappe_webmail/public/js/signature_builder.js:369
+msgid "In use"
+msgstr "Utilisé"
 
 #: frontend/src/utils/folderNames.js:21
 msgctxt "Mail folder"
@@ -2115,7 +2234,7 @@ msgstr "Adresse email invalide : {0}"
 msgid "Invalid or expired OAuth state"
 msgstr "État OAuth invalide ou expiré"
 
-#: frappe_webmail/webmail_api.py:3294
+#: frappe_webmail/webmail_api.py:3355
 msgid "Invalid source type. Must be 'Sender' or 'Domain'"
 msgstr "Type de source invalide. Doit être 'Sender' ou 'Domain'"
 
@@ -2153,13 +2272,13 @@ msgid "JSON array of collapsed folder names"
 msgstr "Tableau JSON des noms de dossiers réduits"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:157
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:178
 msgid "Job title"
 msgstr "Fonction"
 
 # no opinion on purpose: a typeface's name, the same in every language
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Karla"
 msgstr "Karla"
@@ -2191,7 +2310,7 @@ msgstr "Dernière exécution {0}"
 msgid "Last run {0} — {1} failure(s)"
 msgstr "Dernière exécution {0} — {1} échec(s)"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:742
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:822
 #: frontend/src/components/DriveFolderPicker.vue:38
 msgid "Last used"
 msgstr "Dernière utilisation"
@@ -2202,7 +2321,8 @@ msgstr "En retard"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
 #. Label of a Select field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:131
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:152
+#: frappe_webmail/public/js/signature_builder.js:382
 msgid "Layout"
 msgstr "Mise en page"
 
@@ -2220,6 +2340,10 @@ msgstr "Apprendre mon style d’écriture à partir de mes e-mails envoyés"
 msgid "Left empty: the IMAP password. The same address signs in to both servers at most providers."
 msgstr "Laissé vide : le mot de passe IMAP. La même adresse permet de se connecter aux deux serveurs chez la plupart des fournisseurs."
 
+#: frappe_webmail/public/js/signature_builder.js:482
+msgid "Light"
+msgstr ""
+
 #: frontend/src/components/EmailComposer.vue:129
 #: frontend/src/components/SignatureEditor.vue:146
 msgid "Link"
@@ -2231,7 +2355,7 @@ msgstr "Lien"
 msgid "Link URL:"
 msgstr "URL du lien :"
 
-#: frappe_webmail/webmail_api.py:2942
+#: frappe_webmail/webmail_api.py:3003
 msgid "Link already exists"
 msgstr "Le lien existe déjà"
 
@@ -2280,7 +2404,8 @@ msgstr "Chargement du webmail…"
 msgid "Loading..."
 msgstr "Chargement..."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:724
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:802
+#: frappe_webmail/public/js/signature_builder.js:157
 #: frontend/src/components/DocumentPicker.vue:53
 #: frontend/src/components/DriveFolderPicker.vue:44
 msgid "Loading…"
@@ -2308,29 +2433,38 @@ msgstr "Identifiant de connexion"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:221
-#: frappe_webmail/signatures.py:792
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:242
+#: frappe_webmail/signatures.py:887
 #, fuzzy
 msgid "Logo"
 msgstr "Logo"
 
 #. Label of a Int field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:285
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:313
 msgid "Logo Width"
 msgstr "Largeur du logo"
 
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
 msgid "Logo above"
 msgstr "Logo au-dessus"
 
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
+msgid "Logo centre"
+msgstr "Logo au centre"
+
+#: frappe_webmail/public/js/signature_builder.js:77
+msgid "Logo in the centre"
+msgstr "Logo au centre"
+
+#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
 msgid "Logo left"
 msgstr "Logo à gauche"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:245
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:273
 msgid "Look"
 msgstr "Apparence"
 
@@ -2338,14 +2472,14 @@ msgstr "Apparence"
 msgid "Mail"
 msgstr "Courriel"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:142
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:143
 msgctxt "NeoMail view"
 msgid "Mail"
 msgstr "Courrier"
 
 #. Description of the 'Font' (Select) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:249
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:277
 msgid "Mail clients load no font of the web: Karla shows where the reader has it, Helvetica or Arial elsewhere."
 msgstr "Les clients de messagerie ne chargent aucune police du web : Karla s'affiche là où le destinataire l'a installée, Helvetica ou Arial ailleurs."
 
@@ -2368,7 +2502,7 @@ msgstr "Stockage de la boîte mail"
 msgid "Main action"
 msgstr "Action principale"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:487
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:543
 #, python-brace-format
 msgid "Make a private channel in Synk with {0} about this message?"
 msgstr "Créer un canal privé dans Synk avec {0} à propos de ce message ?"
@@ -2377,7 +2511,7 @@ msgstr "Créer un canal privé dans Synk avec {0} à propos de ce message ?"
 msgid "Manage signatures"
 msgstr "Gérer les signatures"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:155
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:156
 msgid "Mark All as Read"
 msgstr "Tout marquer comme lu"
 
@@ -2445,23 +2579,30 @@ msgstr "Message"
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1375
+#: frappe_webmail/mailcraft_jmap.py:1382
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:177
-#: frappe_webmail/signatures.py:719 frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:198
+#: frappe_webmail/signatures.py:814
+#: frappe_webmail/tests/test_signature_builder.py:105
+#: frappe_webmail/tests/test_signatures.py:245
 #: frappe_webmail/tests/test_signatures.py:284
 #: frappe_webmail/tests/test_signatures.py:311
-#: frappe_webmail/tests/test_signatures.py:797
-#: frappe_webmail/tests/test_signatures.py:849
-#: frappe_webmail/tests/test_signatures.py:2076
+#: frappe_webmail/tests/test_signatures.py:653
+#: frappe_webmail/tests/test_signatures.py:857
+#: frappe_webmail/tests/test_signatures.py:909
+#: frappe_webmail/tests/test_signatures.py:2136
 #, fuzzy
 msgid "Mobile"
 msgstr "Mobile"
+
+#: frappe_webmail/public/js/signature_builder.js:227
+msgid "Models"
+msgstr ""
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:632
 #: frontend/src/components/AutomationsPanel.vue:302
@@ -2494,6 +2635,15 @@ msgstr "Déplacer vers {0}"
 msgid "My Drive"
 msgstr "Mon Drive"
 
+#: frappe_webmail/public/js/signature_builder.js:681
+msgid "My own signatures"
+msgstr "Mes propres signatures"
+
+#: frappe_webmail/public/js/signature_builder.js:182
+#: frappe_webmail/public/js/signature_builder.js:197
+msgid "My signature"
+msgstr "Ma signature"
+
 #: frontend/src/components/SignatureEditor.vue:14
 msgid "My signatures"
 msgstr "Mes signatures"
@@ -2502,18 +2652,22 @@ msgstr "Mes signatures"
 msgid "My style"
 msgstr "Mon style"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:662
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:733
 #: frontend/src/components/DriveFolderPicker.vue:121
 msgid "Name of the folder"
 msgstr "Nom du dossier"
 
-#: frappe_webmail/mailcraft_jmap.py:1237
+#: frappe_webmail/public/js/signature_builder.js:365
+msgid "Name of the model"
+msgstr "Nom du modèle"
+
+#: frappe_webmail/mailcraft_jmap.py:1244
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1290
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1406
 #, fuzzy
 msgid "NeoMail"
 msgstr "NeoMail"
@@ -2523,11 +2677,11 @@ msgstr "NeoMail"
 msgid "NeoMail Setting"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1199
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1305
 msgid "NeoMail could not be opened. Reload the page to try again."
 msgstr "NeoMail n’a pas pu s’ouvrir. Rechargez la page pour réessayer."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1179
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1282
 msgid "NeoMail is not offered on this site."
 msgstr "NeoMail n’est pas proposé sur ce site."
 
@@ -2545,7 +2699,7 @@ msgstr "Jamais exécutée"
 msgid "New"
 msgstr "Nouvelle"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:152
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:153
 msgid "New Folder…"
 msgstr "Nouveau dossier…"
 
@@ -2567,12 +2721,12 @@ msgstr "Nouvelle conversation"
 msgid "New filter"
 msgstr "Nouveau filtre"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:659
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:730
 #: frontend/src/components/DriveFolderPicker.vue:114
 msgid "New folder"
 msgstr "Nouveau dossier"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:232
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:247
 #, python-brace-format
 msgid "New folder in {0}"
 msgstr "Nouveau dossier dans {0}"
@@ -2599,6 +2753,11 @@ msgstr "Nouveau message"
 #, python-brace-format
 msgid "New message from {0}"
 msgstr "Nouveau message de {0}"
+
+#: frappe_webmail/public/js/signature_builder.js:229
+#: frappe_webmail/public/js/signature_builder.js:261
+msgid "New model"
+msgstr "Nouveau modèle"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/FolderTree.vue:94
@@ -2649,7 +2808,7 @@ msgstr "Aucun fichier trouvé"
 msgid "No filters configured."
 msgstr "Aucun filtre configuré."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:727
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:806
 #: frontend/src/components/DriveFolderPicker.vue:47
 msgid "No folder found"
 msgstr "Aucun dossier trouvé"
@@ -2670,10 +2829,18 @@ msgstr "Aucune facture cette année"
 msgid "No kind of document can be attached to here"
 msgstr "Aucun type de document ne peut être joint ici"
 
+#: frappe_webmail/public/js/signature_builder.js:575
+msgid "No longer"
+msgstr "Plus maintenant"
+
 #: frontend/src/pages/Webmail.vue:97
 #, python-brace-format
 msgid "No match in {0}"
 msgstr "Aucun résultat dans {0}"
+
+#: frappe_webmail/public/js/signature_builder.js:654
+msgid "No model of the company applies to you: your messages carry your own signature, if you wrote one in the webmail."
+msgstr "Aucun modèle de la société ne vous concerne : vos messages portent votre propre signature, si vous en avez rédigé une dans le webmail."
 
 #: frappe_webmail/neomail_share.py:324
 msgid "No one else on this message is in your Synk workspace."
@@ -2683,7 +2850,7 @@ msgstr "Aucune autre personne de ce message ne fait partie de votre espace de tr
 msgid "No one else on this message uses Synk."
 msgstr "Aucune autre personne de ce message n’utilise Synk."
 
-#: frappe_webmail/webmail_api.py:4033 frappe_webmail/webmail_api.py:4063
+#: frappe_webmail/webmail_api.py:4094 frappe_webmail/webmail_api.py:4124
 #, python-brace-format
 msgid "No permission to read {0}"
 msgstr "Aucune autorisation pour lire {0}"
@@ -2699,6 +2866,19 @@ msgstr "Aucun résultat trouvé"
 #: frontend/src/components/SignatureEditor.vue:32
 msgid "No signature"
 msgstr "Aucune signature"
+
+#: frappe_webmail/public/js/signature_builder.js:343
+msgid "No user group yet: make one in User Group, then come back."
+msgstr "Aucun groupe d'utilisateurs pour l'instant : créez-en un dans Groupe d'utilisateurs, puis revenez ici."
+
+#: frappe_webmail/public/js/signature_builder.js:579
+#, python-brace-format
+msgid "No {0} on their record"
+msgstr "Manque sur sa fiche : {0}"
+
+#: frappe_webmail/public/js/signature_builder.js:560
+msgid "Nobody yet: choose whom it is given to."
+msgstr "Personne pour l'instant : choisissez à qui il est donné."
 
 #: frontend/src/components/AgentPanel.vue:144
 msgid "None yet."
@@ -2799,23 +2979,30 @@ msgstr "Nora préparera des réponses à vos e-mails à votre manière d'écrire
 msgid "Nora's model did not answer (service busy). Please try again in a moment."
 msgstr "Le modèle de Nora n'a pas répondu (service surchargé). Veuillez réessayer dans un instant."
 
-#: frappe_webmail/signatures.py:918
+#: frappe_webmail/signature_builder.py:109
+#: frappe_webmail/signature_builder.py:211
+#: frappe_webmail/signature_builder.py:214 frappe_webmail/signatures.py:1015
 msgid "Not a template"
 msgstr "Ce n'est pas un modèle."
 
-#: frappe_webmail/webmail_api.py:3325 frappe_webmail/webmail_api.py:3343
+#: frappe_webmail/webmail_api.py:3386 frappe_webmail/webmail_api.py:3404
 msgid "Not found in trusted list"
 msgstr "Introuvable dans la liste de confiance"
 
 #. Description of the 'Logo' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:218
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:239
 msgid "Not in the Compact layout."
 msgstr "Non affiché dans la mise en page Compact."
 
-#: frappe_webmail/mailcraft_jmap.py:638 frappe_webmail/mailcraft_jmap.py:916
-#: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signatures.py:936
-#: frappe_webmail/webmail_api.py:2544 frappe_webmail/webmail_api.py:2612
+#: frappe_webmail/public/js/signature_builder.js:573
+msgid "Not in use"
+msgstr "Non utilisé"
+
+#: frappe_webmail/mailcraft_jmap.py:638 frappe_webmail/mailcraft_jmap.py:923
+#: frappe_webmail/mailcraft_notes.py:427 frappe_webmail/signature_builder.py:37
+#: frappe_webmail/signatures.py:1033 frappe_webmail/webmail_api.py:2605
+#: frappe_webmail/webmail_api.py:2673
 msgid "Not permitted"
 msgstr ""
 
@@ -2823,7 +3010,7 @@ msgstr ""
 # (neomail.js then shows the word as
 # it is, never another app's) and the night's robot, which fills empty msgstr
 # only, leaves it.
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:145
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:146
 #, fuzzy
 msgctxt "NeoMail view"
 msgid "Notes"
@@ -2913,7 +3100,7 @@ msgid "Oldest first"
 msgstr "Plus anciens"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:126
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:147
 msgid "On a shared mailbox, each person signs as themselves"
 msgstr "Sur une boîte partagée, chacun signe à son nom"
 
@@ -2922,11 +3109,15 @@ msgstr "Sur une boîte partagée, chacun signe à son nom"
 msgid "On {0}, {1} wrote:"
 msgstr "Le {0}, {1} a écrit :"
 
+#: frappe_webmail/public/js/signature_builder.js:202
+msgid "One model for each group of people: give it to roles, a user group, a department or the whole company. Each person gets it filled from their own record."
+msgstr "Un modèle par groupe de personnes : attribuez-le à des rôles, à un groupe d'utilisateurs, à un département ou à toute la société. Chaque personne le reçoit rempli à partir de sa propre fiche."
+
 #: frappe_webmail/neomail_folders.py:75
 msgid "Only Trash and Junk Email are emptied."
 msgstr "Seuls les dossiers Éléments supprimés et Courrier indésirable peuvent être vidés."
 
-#: frappe_webmail/webmail_api.py:2029
+#: frappe_webmail/webmail_api.py:2090
 msgid "Only Trash and Spam folders can be emptied"
 msgstr "Seuls les dossiers Corbeille et Indésirables peuvent être vidés"
 
@@ -2939,11 +3130,11 @@ msgstr "Seuls les fichiers .docx, .xlsx, .pptx ou .pdf s’ouvrent dans un édit
 msgid "Only a PDF or a picture can be sent to the scanned documents."
 msgstr "Seul un PDF ou une image peut être envoyé aux scans de documents."
 
-#: frappe_webmail/mailcraft_jmap.py:1175
+#: frappe_webmail/mailcraft_jmap.py:1182
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1786
+#: frappe_webmail/mailcraft_jmap.py:1793
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
@@ -2969,7 +3160,7 @@ msgstr "Seul le propriétaire du compte peut modifier le mot de passe"
 msgid "Only the desk's people have choices of the company signature."
 msgstr "Seuls les utilisateurs du bureau peuvent faire des choix pour la signature de la société."
 
-#: frappe_webmail/webmail_api.py:3722
+#: frappe_webmail/webmail_api.py:3783
 msgid "Only the owner of this mailbox can change its settings."
 msgstr "Seul le propriétaire de cette boîte mail peut en modifier les paramètres."
 
@@ -2990,17 +3181,21 @@ msgstr "Ouvrir l'éditeur complet (mise en forme, pièces jointes…)"
 msgid "Open in NeoMail"
 msgstr "Ouvrir dans NeoMail"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:330
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:431
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:363
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:483
 msgid "Open in Synk"
 msgstr "Ouvrir dans Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:637
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:30
+msgid "Open in the signature builder"
+msgstr "Ouvrir dans le constructeur de signatures"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:708
 #, python-brace-format
 msgid "Open in {0}"
 msgstr "Ouvrir dans {0}"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:559
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:622
 msgid "Open it"
 msgstr "Ouvrir"
 
@@ -3018,11 +3213,15 @@ msgstr "Ouvrez d'abord le message auquel vous voulez répondre — j'en rédiger
 msgid "Open the record"
 msgstr "Ouvrir l'enregistrement"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1179
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template_list.js:10
+msgid "Open the signature builder"
+msgstr "Ouvrir le constructeur de signatures"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1284
 msgid "Open the webmail"
 msgstr "Ouvrir le webmail"
 
-#: frappe_webmail/www/neomail.html:748
+#: frappe_webmail/www/neomail.html:843
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -3090,13 +3289,13 @@ msgstr "Suspendre"
 msgid "Paused"
 msgstr "En pause"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:144
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:145
 msgctxt "NeoMail view"
 msgid "People"
 msgstr "Contacts"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:119
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:140
 msgid "People may use their own signature instead"
 msgstr "Les personnes peuvent utiliser leur propre signature à la place."
 
@@ -3106,18 +3305,25 @@ msgid "Permanently delete {0} emails? This action cannot be undone."
 msgstr "Supprimer définitivement {0} e-mails ? Cette action est irréversible."
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:170
-#: frappe_webmail/signatures.py:717 frappe_webmail/tests/test_signatures.py:245
-#: frappe_webmail/tests/test_signatures.py:796
-#: frappe_webmail/tests/test_signatures.py:1613
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:191
+#: frappe_webmail/public/js/signature_builder.js:484
+#: frappe_webmail/signatures.py:812
+#: frappe_webmail/tests/test_signature_builder.py:105
+#: frappe_webmail/tests/test_signature_builder.py:106
+#: frappe_webmail/tests/test_signature_builder.py:108
+#: frappe_webmail/tests/test_signature_builder.py:113
+#: frappe_webmail/tests/test_signatures.py:245
+#: frappe_webmail/tests/test_signatures.py:652
+#: frappe_webmail/tests/test_signatures.py:856
+#: frappe_webmail/tests/test_signatures.py:1673
 msgid "Phone"
 msgstr ""
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:228
-#: frappe_webmail/signatures.py:809
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:249
+#: frappe_webmail/signatures.py:904
 #, fuzzy
 msgid "Photo"
 msgstr "Photo"
@@ -3133,11 +3339,11 @@ msgid "Photo in the signature"
 msgstr "Photo dans la signature"
 
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
 msgid "Photo left"
 msgstr "Photo à gauche"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:145
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:151
 msgid "Plain text version"
 msgstr "Version en texte brut"
 
@@ -3200,13 +3406,19 @@ msgstr "Appuyez sur {0} pour la recherche avancée."
 #. Label of a Section Break field in DocType 'Email Signature Template'
 #. Label of a HTML field in DocType 'Email Signature Template'
 #: frappe_webmail/attachments.py:53
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:365
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:393
+#: frappe_webmail/public/js/signature_builder.js:467
+#: frappe_webmail/public/js/signature_builder.js:689
 msgid "Preview"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:69
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:75
 msgid "Preview As"
 msgstr "Aperçu en tant que"
+
+#: frappe_webmail/public/js/signature_builder.js:455
+msgid "Preview for"
+msgstr "Aperçu pour"
 
 #: frontend/src/components/NoraBar.vue:67
 msgid "Processing..."
@@ -3307,14 +3519,19 @@ msgstr "Supprimer"
 msgid "Remove star"
 msgstr "Retirer l'étoile"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:233
+#: frappe_webmail/public/js/signature_builder.js:353
+#, python-brace-format
+msgid "Remove {0}"
+msgstr "Supprimer {0}"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:249
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/FolderTree.vue:115
 #: frontend/src/components/FolderTree.vue:313
 msgid "Rename"
 msgstr "Renommer"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:153
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:154
 msgid "Rename Folder…"
 msgstr "Renommer le dossier…"
 
@@ -3323,7 +3540,7 @@ msgstr "Renommer le dossier…"
 msgid "Rename folder"
 msgstr "Renommer le dossier"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:233
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:249
 #, python-brace-format
 msgid "Rename the folder {0}"
 msgstr "Renommer le dossier {0}"
@@ -3408,12 +3625,26 @@ msgstr "Reprendre"
 msgid "Retry"
 msgstr "Réessayer"
 
+#. Option for the 'Applies To' (Select) field in DocType 'Email Signature
+#. Template'
+#. Label of a Link field in DocType 'Email Signature Template Role'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:92
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template_role/email_signature_template_role.json:15
+msgid "Role"
+msgstr ""
+
+#. Label of a Table MultiSelect field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:127
+#: frappe_webmail/public/js/signature_builder.js:72
+msgid "Roles"
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/FolderTree.vue:138
 msgid "Root level"
 msgstr "Racine"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:128
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:150
 #, python-brace-format
 msgid "Row {0}: the address of a social link must start with https://"
 msgstr "Ligne {0} : l'adresse d'un lien social doit commencer par https://"
@@ -3470,13 +3701,14 @@ msgstr "SMTP : Connexion réussie"
 msgid "Safe Senders"
 msgstr "Expéditeurs de confiance"
 
+#: frappe_webmail/public/js/signature_builder.js:139
 #: frontend/src/components/EmailComposer.vue:23
 #: frontend/src/components/FilterManager.vue:208
 #: frontend/src/components/SignatureEditor.vue:162
 msgid "Save"
 msgstr "Enregistrer"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:639
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:710
 msgid "Save and open"
 msgstr "Enregistrer et ouvrir"
 
@@ -3497,12 +3729,12 @@ msgstr "Enregistrer les modifications"
 msgid "Save error"
 msgstr "Erreur d'enregistrement"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:639
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:710
 #: frontend/src/components/DriveFolderPicker.vue:134
 msgid "Save here"
 msgstr "Enregistrer ici"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:637
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:708
 #: frontend/src/components/DriveFolderPicker.vue:4
 #: frontend/src/components/DriveFolderPicker.vue:6
 msgid "Save to the Drive"
@@ -3522,6 +3754,10 @@ msgstr "Sauvegardé à {0}"
 msgid "Saved in the Drive: {0}"
 msgstr "Enregistré dans le Drive : {0}"
 
+#: frappe_webmail/public/js/signature_builder.js:638
+msgid "Saved. NeoMail, the webmail and the phone use it from the next message."
+msgstr "Enregistré. NeoMail, le webmail et le téléphone l'utilisent dès le prochain message."
+
 #: frontend/src/components/EmailComposer.vue:186
 #: frontend/src/components/FilterManager.vue:208
 #: frontend/src/components/SignatureEditor.vue:162
@@ -3533,7 +3769,7 @@ msgstr "Sauvegarde..."
 msgid "Saving…"
 msgstr "Enregistrement…"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:201
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:223
 msgid "Say in a few words what the banner shows: it is what a recipient reads where the picture is not."
 msgstr "Indiquez en quelques mots ce que montre la bannière : c'est ce que lit le destinataire là où l'image ne s'affiche pas."
 
@@ -3566,8 +3802,8 @@ msgstr "Erreur de recherche"
 msgid "Search files..."
 msgstr "Rechercher des fichiers…"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:652
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:653
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:723
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:724
 #: frontend/src/components/DriveFolderPicker.vue:25
 msgid "Search for a folder"
 msgstr "Rechercher un dossier"
@@ -3580,7 +3816,7 @@ msgstr "Rechercher dans la messagerie…"
 msgid "Search in all fields…"
 msgstr "Rechercher dans tous les champs…"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:291
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:313
 msgid "Search mail"
 msgstr "Rechercher dans le courrier"
 
@@ -3651,6 +3887,10 @@ msgstr "Envoi..."
 msgid "Sending…"
 msgstr "Envoi en cours…"
 
+#: frappe_webmail/public/js/signature_builder.js:568
+msgid "Sends it"
+msgstr "L'envoie"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:638
 #: frontend/src/components/AgentPanel.vue:1161
 msgid "Sent"
@@ -3683,19 +3923,19 @@ msgstr "Paramètres"
 msgid "Several attachments of this message look alike, and it cannot be told which one you chose: save it with Save As instead."
 msgstr "Plusieurs pièces jointes de ce message se ressemblent, et il est impossible de savoir laquelle vous avez choisie : enregistrez-la plutôt avec « Enregistrer sous »."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:398
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:446
 msgid "Share"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:385
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:429
 msgid "Share in Synk"
 msgstr "Partager dans Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:396
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:443
 msgid "Share the attachments too"
 msgstr "Partager aussi les pièces jointes"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:390
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:434
 msgid "Share with"
 msgstr ""
 
@@ -3718,7 +3958,7 @@ msgstr "Partagé avec"
 msgid "Shared by {0}"
 msgstr "Partagé par {0}"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:433
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:485
 msgid "Shared in Synk"
 msgstr "Partagé dans Synk"
 
@@ -3751,6 +3991,10 @@ msgstr ""
 msgid "Show folders"
 msgstr "Afficher les dossiers"
 
+#: frappe_webmail/public/js/signature_builder.js:664
+msgid "Show my photo"
+msgstr "Afficher ma photo"
+
 #. Label of a Check field in DocType 'Email Signature Preference'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:39
 #: frontend/src/components/SignatureEditor.vue:45
@@ -3767,13 +4011,13 @@ msgstr "Voir l'original"
 
 #. Description of the 'Address for Everyone' (Data) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:188
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:209
 msgid "Shown in everyone's signature in place of their own address: the company's general address, for example. Empty: each person's own."
 msgstr "Affichée dans la signature de tout le monde à la place de sa propre adresse : l'adresse générale de la société, par exemple. Vide : celle de chaque personne."
 
 #. Description of the 'Disclaimer' (Small Text) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:303
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:331
 msgid "Shown under the signature, in small print, when Disclaimer is ticked above."
 msgstr "Affichée sous la signature, en petits caractères, lorsque « Mention légale » est cochée ci-dessus."
 
@@ -3787,8 +4031,8 @@ msgstr "Colonne des dossiers repliée"
 msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1059
-#: frappe_webmail/www/neomail.html:754
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1153
+#: frappe_webmail/www/neomail.html:849
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -3805,7 +4049,7 @@ msgid "Signature Content"
 msgstr "Contenu de la signature"
 
 #. Label of a Attach Image field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:278
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:306
 msgid "Signature Logo"
 msgstr "Logo de signature"
 
@@ -3822,7 +4066,7 @@ msgstr "Signature supprimée"
 msgid "Signature name"
 msgstr "Nom de la signature"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:125
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:131
 msgid "Signature preview"
 msgstr "Aperçu de la signature"
 
@@ -3832,18 +4076,20 @@ msgstr "Signature enregistrée"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
+#: frappe_webmail/public/js/signature_builder.js:135
+#: frappe_webmail/public/js/signature_builder.js:137
 #: frontend/src/pages/Webmail.vue:640
 #, fuzzy
 msgid "Signatures"
 msgstr "Signatures"
 
 #. Label of a Table field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:294
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:322
 msgid "Social Links"
 msgstr "Liens vers les réseaux sociaux"
 
 #. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:234
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:255
 msgid "Social links"
 msgstr "Liens sociaux"
 
@@ -3878,7 +4124,7 @@ msgstr "Dossier Indésirables"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
-#: frappe_webmail/webmail_api.py:4118
+#: frappe_webmail/webmail_api.py:4179
 #, fuzzy
 msgid "Standard"
 msgstr "Standard"
@@ -3955,7 +4201,7 @@ msgstr "Fournisseur"
 msgid "Synk"
 msgstr "Synk"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:375
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:419
 msgid "Synk could not be reached. Try again in a moment."
 msgstr "Synk est injoignable. Réessayez dans un instant."
 
@@ -3972,7 +4218,7 @@ msgstr "Synk n’est pas accessible pour vous."
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:167
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:59
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:83
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:386
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:414
 #: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:87
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:407
 msgid "System Manager"
@@ -3981,10 +4227,15 @@ msgstr "Gestionnaire système"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Tahoma"
 msgstr "Tahoma"
+
+#: frappe_webmail/public/js/signature_builder.js:573
+#, python-brace-format
+msgid "Takes {0}"
+msgstr "Prend {0}"
 
 #. Label of a Data field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:121
@@ -4000,7 +4251,7 @@ msgid "Template"
 msgstr ""
 
 #. Label of a Data field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:63
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:66
 msgid "Template Name"
 msgstr "Nom du modèle"
 
@@ -4018,7 +4269,7 @@ msgid "Text Content"
 msgstr "Contenu texte"
 
 #. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
 msgid "Text only"
 msgstr "Texte seul"
 
@@ -4037,26 +4288,26 @@ msgstr "Cette boîte ne contient pas ce dossier."
 msgid "That mailbox isn't one of yours."
 msgstr "Cette boîte n’est pas l’une des vôtres."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:725
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:804
 msgid "The Drive could not be reached. Try again in a moment."
 msgstr "Le Drive est injoignable. Réessayez dans un instant."
 
 #: frappe_webmail/attachments.py:101 frappe_webmail/attachments.py:120
 #: frappe_webmail/attachments.py:131 frappe_webmail/drive.py:39
-#: frappe_webmail/neomail_attachments.py:519 frappe_webmail/webmail_api.py:3951
-#: frappe_webmail/webmail_api.py:3962
+#: frappe_webmail/neomail_attachments.py:519 frappe_webmail/webmail_api.py:4012
+#: frappe_webmail/webmail_api.py:4023
 msgid "The Drive is not installed on this instance"
 msgstr "Le Drive n'est pas installé sur cette instance"
 
 #. Description of the 'Mobile' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:174
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:195
 msgid "The Employee's cell number, else the User's mobile: often a private number, so it is off unless the company wants it."
 msgstr "Le numéro de mobile de l'employé, sinon celui de l'utilisateur : souvent un numéro privé, il reste désactivé sauf si la société le souhaite."
 
 #. Description of the 'Phone' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:167
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:188
 msgid "The User's phone, else the company's main number."
 msgstr "Le téléphone de l'utilisateur, sinon le numéro principal de la société."
 
@@ -4065,31 +4316,31 @@ msgstr "Le téléphone de l'utilisateur, sinon le numéro principal de la socié
 msgid "The Webmail Account the lists are of; * for the person's rules and categories."
 msgstr "Le compte webmail auquel appartiennent ces listes ; * pour les règles et catégories personnelles de l'utilisateur."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:105
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:127
 #, python-brace-format
 msgid "The accent colour must be written as #rrggbb, for example {0}."
 msgstr "La couleur d'accent doit être saisie au format #rrggbb, par exemple {0}."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:146
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:168
 #, python-brace-format
 msgid "The address for everyone must be an e-mail address, for example {0}."
 msgstr "L'adresse pour tout le monde doit être une adresse e-mail, par exemple {0}."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:183
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:205
 msgid "The address of the banner's link must start with https://"
 msgstr "L'adresse du lien de la bannière doit commencer par https://"
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:138
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:160
 msgid "The address of the call to action must start with https://"
 msgstr "L'adresse de l'appel à l'action doit commencer par https://"
 
 #. Description of the 'Email' (Check) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:181
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:202
 msgid "The address of the mailbox the person writes from, unless the template gives one for everyone below."
 msgstr "L'adresse de la boîte de messagerie depuis laquelle la personne écrit, sauf si le modèle en donne une pour tout le monde ci-dessous."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:602
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:672
 msgid "The attachment could not be sent to the scanned documents."
 msgstr "La pièce jointe n’a pas pu être envoyée aux scans de documents."
 
@@ -4098,16 +4349,16 @@ msgstr "La pièce jointe n’a pas pu être envoyée aux scans de documents."
 msgid "The automation could not be created — see the message above."
 msgstr "L'automatisation n'a pas pu être créée — voir le message ci-dessus."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:195
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:217
 msgid "The banner must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
 msgstr "La bannière doit être une image PNG, JPEG ou GIF parmi les fichiers publics de cette instance (et non privés) : tous ceux qui écrivent avec cette signature l'afficheront."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:119
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:141
 #, python-brace-format
 msgid "The banner width must be between {0} and {1} pixels."
 msgstr "La largeur de la bannière doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:113
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:135
 #, python-brace-format
 msgid "The base font size must be between {0} and {1} pixels."
 msgstr "La taille de la police de base doit être comprise entre {0} et {1} pixels."
@@ -4117,11 +4368,11 @@ msgstr "La taille de la police de base doit être comprise entre {0} et {1} pixe
 msgid "The connection starts unencrypted and switches to an encrypted one, usually on port 143: for servers that do not offer SSL on a port of their own. Without SSL or STARTTLS, the password is sent in the clear."
 msgstr "La connexion démarre non chiffrée puis passe à un mode chiffré, généralement sur le port 143 : pour les serveurs qui n'offrent pas SSL sur un port dédié. Sans SSL ni STARTTLS, le mot de passe est envoyé en clair."
 
-#: frappe_webmail/mailcraft_jmap.py:1888
+#: frappe_webmail/mailcraft_jmap.py:1895
 msgid "The connection to the mail server ended before the message was sent."
 msgstr "La connexion au serveur de messagerie s'est interrompue avant l'envoi du message."
 
-#: frappe_webmail/mailcraft_jmap.py:1830
+#: frappe_webmail/mailcraft_jmap.py:1837
 msgid "The connection to the mail server failed while the message was on its way."
 msgstr "La connexion au serveur de messagerie a échoué pendant que le message était en cours d'envoi."
 
@@ -4130,7 +4381,7 @@ msgstr "La connexion au serveur de messagerie a échoué pendant que le message 
 msgid "The contact could not be created"
 msgstr "Le contact n'a pas pu être créé"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:473
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:525
 msgid "The conversation could not be opened in Synk."
 msgstr "La conversation n’a pas pu être ouverte dans Synk."
 
@@ -4157,38 +4408,42 @@ msgstr "L'éditeur ne conserve que le texte, les liens et les images : la mise e
 msgid "The email address or password is incorrect."
 msgstr "L'adresse e-mail ou le mot de passe est incorrect."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:842
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:930
 msgid "The file could not be opened."
 msgstr "Le fichier n’a pas pu être ouvert."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:842
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:931
 msgid "The file could not be saved in the Drive."
 msgstr "Le fichier n’a pas pu être enregistré dans le Drive."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:677
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:748
 #: frontend/src/components/DriveFolderPicker.vue:99
 msgid "The file is copied by the server, straight from the e-mail: nothing is downloaded."
 msgstr "Le fichier est copié par le serveur, directement depuis l'e-mail : rien n'est téléchargé."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:806
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:893
 msgid "The folder could not be made."
 msgstr "Le dossier n’a pas pu être créé."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:116
+#: frappe_webmail/new_senders.py:259
+msgid "The list of senders is full."
+msgstr "La liste des expéditeurs est pleine."
+
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:138
 #, python-brace-format
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1884
+#: frappe_webmail/mailcraft_jmap.py:1891
 msgid "The mail server can't take the recipients just now."
 msgstr "Le serveur de messagerie ne peut pas accepter les destinataires pour le moment."
 
-#: frappe_webmail/mailcraft_jmap.py:652 frappe_webmail/mailcraft_jmap.py:812
-#: frappe_webmail/mailcraft_jmap.py:920
+#: frappe_webmail/mailcraft_jmap.py:652 frappe_webmail/mailcraft_jmap.py:817
+#: frappe_webmail/mailcraft_jmap.py:927
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1859
+#: frappe_webmail/mailcraft_jmap.py:1866
 msgid "The mail server could not be reached or signed in to."
 msgstr "Le serveur de messagerie est injoignable ou l'authentification a échoué."
 
@@ -4197,7 +4452,7 @@ msgstr "Le serveur de messagerie est injoignable ou l'authentification a échou�
 msgid "The mail server is not answering quickly enough."
 msgstr "Le serveur de messagerie ne répond pas assez vite."
 
-#: frappe_webmail/mailcraft_jmap.py:1881
+#: frappe_webmail/mailcraft_jmap.py:1888
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 
@@ -4205,29 +4460,41 @@ msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
 msgid "The mailbox"
 msgstr "La boîte entière"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:422
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:470
 msgid "The message could not be shared."
 msgstr "Le message n’a pas pu être partagé."
 
-#: frappe_webmail/webmail_api.py:1325
+#: frappe_webmail/webmail_api.py:1368
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1794
+#: frappe_webmail/mailcraft_jmap.py:1801
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1641
+#: frappe_webmail/mailcraft_jmap.py:1648
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1792
+#: frappe_webmail/mailcraft_jmap.py:1799
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1665
+#: frappe_webmail/mailcraft_jmap.py:1672
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
+
+#: frappe_webmail/webmail_api.py:1302
+msgid "The messages asked for are not a list"
+msgstr "Les messages demandés ne forment pas une liste."
+
+#: frappe_webmail/mailcraft_stream.py:320
+msgid "The messages asked for are not valid."
+msgstr "Les messages demandés ne sont pas valides."
+
+#: frappe_webmail/public/js/signature_builder.js:402
+msgid "The mobile number"
+msgstr "Le numéro de mobile"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:617
 #: frontend/src/components/AttachmentPicker.vue:493
@@ -4236,19 +4503,19 @@ msgstr "Les plus récents"
 
 #. Description of the 'Applies To' (Select) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:83
-msgid "The most specific template wins: the one for a person's department, else the one for their company, else the one for everyone."
-msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui de sa société, sinon celui qui vaut pour tout le monde."
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:86
+msgid "The most specific template wins: the one for a person's department, else the one for a user group they belong to, else the one for one of their roles, else the one for their company, else the one for everyone."
+msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui d'un groupe d'utilisateurs auquel elle appartient, sinon celui de l'un de ses rôles, sinon celui de sa société, sinon celui de tout le monde."
 
 #: frappe_webmail/mailcraft_notes.py:423
 msgid "The note was changed elsewhere: read it again."
 msgstr "La note a été modifiée ailleurs : veuillez la relire."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:70
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:76
 msgid "The person whose details the preview is written with. It changes nothing in the template."
 msgstr "La personne dont les coordonnées servent à l'aperçu. Cela ne modifie rien dans le modèle."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:105
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:111
 msgid "The preview could not be drawn."
 msgstr "L'aperçu n'a pas pu être affiché."
 
@@ -4262,9 +4529,22 @@ msgstr "Le scan de document n'a pas pu être créé"
 msgid "The sending server wants another login ID than the one the mailbox is read with, as a sending relay with an account of its own does."
 msgstr "Le serveur sortant demande un autre identifiant de connexion que celui avec lequel la boîte est consultée, comme c'est le cas d'un relais d'envoi disposant de son propre compte."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:167
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:189
 msgid "The signature logo must be a PNG, JPEG or GIF picture among this instance's public files (not private): everyone who writes with this signature shows it."
 msgstr "Le logo de signature doit être une image PNG, JPEG ou GIF parmi les fichiers publics de cette instance (et non privés) : toutes les personnes qui écrivent avec cette signature l'affichent."
+
+#: frappe_webmail/public/js/signature_builder.js:205
+msgid "The signature your messages carry, from NeoMail, the webmail and the phone alike."
+msgstr "La signature que portent vos messages, depuis NeoMail, le webmail comme le téléphone."
+
+#: frappe_webmail/public/js/signature_builder.js:403
+msgid "The small print"
+msgstr "La mention"
+
+#: frappe_webmail/public/js/signature_builder.js:182
+#: frappe_webmail/public/js/signature_builder.js:194
+msgid "The team's signatures"
+msgstr "Les signatures de l'équipe"
 
 #: frappe_webmail/webmail_api.py:742
 msgid "This account uses OAuth2. Please reconnect it instead of setting a password."
@@ -4296,7 +4576,11 @@ msgstr "Ce fichier n'existe plus dans le Drive"
 msgid "This folder no longer exists in the Drive"
 msgstr "Ce dossier n'existe plus dans le Drive"
 
-#: frappe_webmail/mailcraft_jmap.py:1769 frappe_webmail/mailcraft_jmap.py:1773
+#: frappe_webmail/new_senders.py:249 frappe_webmail/new_senders.py:251
+msgid "This is not an email address."
+msgstr "Ceci n'est pas une adresse e-mail."
+
+#: frappe_webmail/mailcraft_jmap.py:1776 frappe_webmail/mailcraft_jmap.py:1780
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -4304,9 +4588,9 @@ msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 msgid "This message"
 msgstr "Ce message"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:181
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:184
-#: frappe_webmail/mailcraft_jmap.py:1359 frappe_webmail/neomail_share.py:191
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:186
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:189
+#: frappe_webmail/mailcraft_jmap.py:1366 frappe_webmail/neomail_share.py:191
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
 
@@ -4319,7 +4603,7 @@ msgstr "Ce message n’a pas d’expéditeur."
 msgid "This message is larger than {0} MB: save the attachment with Save As instead."
 msgstr "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec « Enregistrer sous »."
 
-#: frappe_webmail/mailcraft_jmap.py:1363
+#: frappe_webmail/mailcraft_jmap.py:1370
 #: frappe_webmail/neomail_attachments.py:461
 #: frappe_webmail/neomail_share.py:194
 msgid "This message is no longer in its folder: refresh the list and try again."
@@ -4342,15 +4626,15 @@ msgid "This signature has nothing a recipient could be shown."
 msgstr "Cette signature ne contient rien qu'un destinataire puisse voir."
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:49
-#: frappe_webmail/webmail_api.py:2547
+#: frappe_webmail/webmail_api.py:2608
 msgid "This signature is too large."
 msgstr "Cette signature est trop volumineuse."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:32
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:38
 msgid "This template is not enabled: nobody gets it."
 msgstr "Ce modèle est désactivé : personne ne le reçoit."
 
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:115
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:121
 msgid "This template says nothing for this person: everything it shows is empty or off."
 msgstr "Pour cette personne, ce modèle ne contient rien : tout ce qu'il affiche est vide ou désactivé."
 
@@ -4424,11 +4708,11 @@ msgstr "Étoile (activer/désactiver)"
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1789
+#: frappe_webmail/mailcraft_jmap.py:1796
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:882
+#: frappe_webmail/mailcraft_jmap.py:889
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
@@ -4473,7 +4757,7 @@ msgstr "Dossier Corbeille"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Trebuchet MS"
 msgstr "Trebuchet MS"
@@ -4489,7 +4773,7 @@ msgstr "Source d'e-mail fiable"
 msgid "Trusted Sources"
 msgstr "Sources fiables"
 
-#: frappe_webmail/webmail_api.py:3289
+#: frappe_webmail/webmail_api.py:3350
 msgid "Trusted sources feature is not available. Please update the Webmail Account DocType."
 msgstr "La fonctionnalité des sources fiables n'est pas disponible. Veuillez mettre à jour le DocType Webmail Account."
 
@@ -4580,7 +4864,16 @@ msgstr "Utiliser un autre identifiant de connexion"
 msgid "User"
 msgstr "Utilisateur"
 
-#: frappe_webmail/signatures.py:921
+#. Option for the 'Applies To' (Select) field in DocType 'Email Signature
+#. Template'
+#. Label of a Link field in DocType 'Email Signature Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:92
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:118
+#: frappe_webmail/public/js/signature_builder.js:71
+msgid "User Group"
+msgstr ""
+
+#: frappe_webmail/signature_builder.py:183 frappe_webmail/signatures.py:1018
 #, python-brace-format
 msgid "User {0} not found"
 msgstr "Utilisateur {0} introuvable"
@@ -4588,7 +4881,7 @@ msgstr "Utilisateur {0} introuvable"
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Option for the 'Font' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:253
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:281
 #, fuzzy
 msgid "Verdana"
 msgstr "Verdana"
@@ -4613,7 +4906,7 @@ msgstr "Compte Webmail"
 msgid "Webmail Account User"
 msgstr "Utilisateur du compte Webmail"
 
-#: frappe_webmail/www/neomail.py:93 frappe_webmail/www/webmail.py:25
+#: frappe_webmail/www/neomail.py:95 frappe_webmail/www/webmail.py:25
 msgid "Webmail is part of the desk: your account has no access to it."
 msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 
@@ -4621,12 +4914,13 @@ msgstr "La messagerie fait partie du bureau : votre compte n'y a pas accès."
 #. Link'
 #. Label of a Check field in DocType 'Email Signature Template'
 #: frappe_webmail/frappe_webmail/doctype/email_signature_social_link/email_signature_social_link.json:17
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:202
-#: frappe_webmail/signatures.py:724 frappe_webmail/signatures.py:732
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:223
+#: frappe_webmail/signatures.py:819 frappe_webmail/signatures.py:827
+#: frappe_webmail/tests/test_signature_builder.py:105
 #: frappe_webmail/tests/test_signatures.py:245
-#: frappe_webmail/tests/test_signatures.py:542
-#: frappe_webmail/tests/test_signatures.py:610
-#: frappe_webmail/tests/test_signatures.py:799
+#: frappe_webmail/tests/test_signatures.py:548
+#: frappe_webmail/tests/test_signatures.py:616
+#: frappe_webmail/tests/test_signatures.py:859
 msgid "Website"
 msgstr ""
 
@@ -4650,6 +4944,10 @@ msgstr "Bienvenue dans la messagerie"
 msgid "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders."
 msgstr "Ce que NeoMail retient de l'espace de travail d'un utilisateur entre deux visites : ses règles et catégories, et, pour chaque boîte, ses expéditeurs de confiance et ses expéditeurs bloqués."
 
+#: frappe_webmail/public/js/signature_builder.js:395
+msgid "What it shows"
+msgstr "Ce qu'il affiche"
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:632
 #: frontend/src/components/AgentPanel.vue:444
 msgid "What should I reply?"
@@ -4657,12 +4955,12 @@ msgstr "Que répondre ?"
 
 #. Description of the 'Banner Description' (Data) field in DocType 'Email
 #. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:349
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:377
 msgid "What the banner says, in a few words: shown where the picture is not, and read out to those who listen to their mail."
 msgstr "Ce que dit la bannière, en quelques mots : ce texte s'affiche là où l'image n'apparaît pas, et il est lu à voix haute pour ceux qui écoutent leurs e-mails."
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:145
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:166
 msgid "What to show"
 msgstr "Éléments à afficher"
 
@@ -4673,9 +4971,13 @@ msgstr "Éléments à afficher"
 msgid "WhatsApp"
 msgstr "WhatsApp"
 
+#: frappe_webmail/public/js/signature_builder.js:231
+msgid "When several models fit a person, the most precise wins: their department, then their group, then their roles, then their company."
+msgstr "Quand plusieurs modèles conviennent à une personne, le plus précis l'emporte : son département, puis son groupe, puis ses rôles, puis sa société."
+
 #. Description of the 'Banner Link' (Data) field in DocType 'Email Signature
 #. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:337
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:365
 msgid "Where a click on the banner leads: an https:// address. Without one, the banner is a picture only."
 msgstr "Destination d'un clic sur la bannière : une adresse https://. Sans adresse, la bannière n'est qu'une image."
 
@@ -4685,9 +4987,14 @@ msgid "Which automations are active?"
 msgstr "Quelles automatisations sont actives ?"
 
 #. Label of a Section Break field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:79
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:82
 msgid "Who it applies to"
 msgstr "À qui s'applique ce modèle"
+
+#: frappe_webmail/public/js/signature_builder.js:469
+#: frappe_webmail/public/js/signature_builder.js:556
+msgid "Who sends it"
+msgstr "Qui l'envoie"
 
 #. Label of a Section Break field in DocType 'NeoMail Setting'
 #: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:42
@@ -4744,12 +5051,12 @@ msgstr "Vous ne pouvez pas créer de canal dans Synk : demandez à un administra
 msgid "You cannot read this file of the Drive"
 msgstr "Vous ne pouvez pas lire ce fichier du Drive"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:379
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:423
 msgid "You have no channel in Synk and nobody to write to yet."
 msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1206
-#: frappe_webmail/www/neomail.html:744
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1312
+#: frappe_webmail/www/neomail.html:839
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -4766,6 +5073,11 @@ msgstr "Vous n'avez pas encore configuré de compte email."
 msgid "You hit the rate limit because of too many requests. Please try after sometime."
 msgstr ""
 
+#: frappe_webmail/public/js/signature_builder.js:653
+#, python-brace-format
+msgid "You send the model « {0} »."
+msgstr "Vous envoyez le modèle « {0} »."
+
 #: frappe_webmail/neomail_share.py:228
 msgid "You wrote this message: chat with everyone on it instead."
 msgstr "Vous avez écrit ce message : discutez plutôt avec tout le monde qui y figure."
@@ -4776,22 +5088,26 @@ msgstr "Vous avez écrit ce message : discutez plutôt avec tout le monde qui y 
 msgid "YouTube"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1057
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1227
-#: frappe_webmail/www/neomail.html:733 frappe_webmail/www/neomail.html:753
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1151
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1335
+#: frappe_webmail/www/neomail.html:828 frappe_webmail/www/neomail.html:848
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
-#: frappe_webmail/signatures.py:990
+#: frappe_webmail/signatures.py:1087
 #: frontend/src/components/SignatureEditor.vue:303
 msgid "Your choice could not be saved"
 msgstr "Votre choix n'a pas pu être enregistré"
+
+#: frappe_webmail/public/js/signature_builder.js:676
+msgid "Your choices"
+msgstr "Vos choix"
 
 #: frontend/src/components/AgentPanel.vue:290
 msgid "Your draft"
 msgstr "Votre brouillon"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:395
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:439
 msgid "Your message"
 msgstr "Votre message"
 
@@ -4800,6 +5116,10 @@ msgstr "Votre message"
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:43
 msgid "Your mobile number is left out of the company signature, even when the company shows mobile numbers."
 msgstr "Votre numéro de mobile n'apparaît pas dans la signature de la société, même si celle-ci affiche les numéros de mobile."
+
+#: frappe_webmail/public/js/signature_builder.js:669
+msgid "Your model"
+msgstr "Votre modèle"
 
 #: frontend/src/components/SignatureEditor.vue:54
 msgid "Your photo could not be used: use a PNG, JPEG or GIF picture, not a private file."
@@ -4861,16 +5181,16 @@ msgstr "e-mails sélectionnés"
 
 #: frappe_webmail/webmail_api.py:714 frappe_webmail/webmail_api.py:845
 #: frappe_webmail/webmail_api.py:1100 frappe_webmail/webmail_api.py:1126
-#: frappe_webmail/webmail_api.py:1159 frappe_webmail/webmail_api.py:1244
-#: frappe_webmail/webmail_api.py:1323 frappe_webmail/webmail_api.py:1368
-#: frappe_webmail/webmail_api.py:1478 frappe_webmail/webmail_api.py:1777
-#: frappe_webmail/webmail_api.py:1911 frappe_webmail/webmail_api.py:1934
-#: frappe_webmail/webmail_api.py:1950 frappe_webmail/webmail_api.py:1968
-#: frappe_webmail/webmail_api.py:1998 frappe_webmail/webmail_api.py:2019
-#: frappe_webmail/webmail_api.py:2049 frappe_webmail/webmail_api.py:2080
-#: frappe_webmail/webmail_api.py:2159 frappe_webmail/webmail_api.py:2260
-#: frappe_webmail/webmail_api.py:2811 frappe_webmail/webmail_api.py:3106
-#: frappe_webmail/webmail_api.py:3208
+#: frappe_webmail/webmail_api.py:1159 frappe_webmail/webmail_api.py:1249
+#: frappe_webmail/webmail_api.py:1366 frappe_webmail/webmail_api.py:1411
+#: frappe_webmail/webmail_api.py:1521 frappe_webmail/webmail_api.py:1838
+#: frappe_webmail/webmail_api.py:1972 frappe_webmail/webmail_api.py:1995
+#: frappe_webmail/webmail_api.py:2011 frappe_webmail/webmail_api.py:2029
+#: frappe_webmail/webmail_api.py:2059 frappe_webmail/webmail_api.py:2080
+#: frappe_webmail/webmail_api.py:2110 frappe_webmail/webmail_api.py:2141
+#: frappe_webmail/webmail_api.py:2220 frappe_webmail/webmail_api.py:2321
+#: frappe_webmail/webmail_api.py:2872 frappe_webmail/webmail_api.py:3167
+#: frappe_webmail/webmail_api.py:3269
 msgid "imapclient package is not installed"
 msgstr "Le paquet imapclient n'est pas installé"
 
@@ -4878,46 +5198,50 @@ msgstr "Le paquet imapclient n'est pas installé"
 msgid "imapclient package is not installed. Run: pip install imapclient"
 msgstr "Le paquet imapclient n'est pas installé. Exécutez : pip install imapclient"
 
-#: frappe_webmail/pictures.py:642
+#: frappe_webmail/pictures.py:751
 msgid "it came packed in a way that can't be read"
 msgstr "elle est arrivée compressée sous une forme illisible"
 
-#: frappe_webmail/pictures.py:640
+#: frappe_webmail/pictures.py:749
 msgid "it is larger than 8 MB"
 msgstr "elle dépasse 8 Mo"
 
-#: frappe_webmail/pictures.py:648
+#: frappe_webmail/pictures.py:757
 #, python-brace-format
 msgid "it is no longer there ({0})"
 msgstr "elle n'est plus disponible ({0})"
 
-#: frappe_webmail/pictures.py:624
+#: frappe_webmail/pictures.py:733
 msgid "it is not the address of a picture on the web"
 msgstr "son adresse ne mène pas à une image sur le web"
 
-#: frappe_webmail/pictures.py:636
+#: frappe_webmail/pictures.py:745
 msgid "it took too long"
 msgstr "elle a mis trop de temps"
 
-#: frappe_webmail/pictures.py:638
+#: frappe_webmail/pictures.py:747
 msgid "it was sent on too many times"
 msgstr "elle a été redirigée trop de fois"
 
-#: frappe_webmail/pictures.py:626
+#: frappe_webmail/pictures.py:735
 msgid "its address does not lead to the public internet"
 msgstr "son adresse n'est pas accessible depuis l'internet public"
 
-#: frappe_webmail/pictures.py:628
+#: frappe_webmail/pictures.py:737
 msgid "its server could not be found"
 msgstr "son serveur est introuvable"
 
-#: frappe_webmail/pictures.py:630
+#: frappe_webmail/pictures.py:739
 msgid "its server could not be reached"
 msgstr "son serveur est injoignable"
 
-#: frappe_webmail/pictures.py:632
+#: frappe_webmail/pictures.py:741
 msgid "its server's certificate is not valid"
 msgstr "le certificat de son serveur n'est pas valide"
+
+#: frappe_webmail/signature_builder.py:158
+msgid "job title"
+msgstr "fonction"
 
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:110
@@ -4929,6 +5253,10 @@ msgstr "marquer comme lu"
 msgid "mark_starred"
 msgstr "marquer comme important"
 
+#: frappe_webmail/signature_builder.py:158
+msgid "mobile"
+msgstr ""
+
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:110
 msgid "move"
@@ -4938,6 +5266,10 @@ msgstr "déplacer"
 msgctxt "Email Filter"
 msgid "move"
 msgstr "déplacer"
+
+#: frappe_webmail/public/js/signature_builder.js:117
+msgid "off"
+msgstr ""
 
 #: frontend/src/components/AgentPanel.vue:155
 msgid "paused"
@@ -4951,34 +5283,34 @@ msgstr "voir les journaux Nora"
 msgid "shared"
 msgstr "partagé"
 
-#: frappe_webmail/pictures.py:748
+#: frappe_webmail/pictures.py:857
 msgid "so many pictures were downloaded in the last minutes that the next ones must wait"
 msgstr "tant d'images ont été téléchargées ces dernières minutes que les suivantes doivent attendre"
 
-#: frappe_webmail/pictures.py:634
+#: frappe_webmail/pictures.py:743
 msgid "the connection broke before it was all there"
 msgstr "la connexion s'est interrompue avant qu'elle soit arrivée en entier"
 
-#: frappe_webmail/pictures.py:655 frappe_webmail/pictures.py:732
+#: frappe_webmail/pictures.py:764 frappe_webmail/pictures.py:841
 msgid "the download failed"
 msgstr "le téléchargement a échoué"
 
-#: frappe_webmail/pictures.py:654
+#: frappe_webmail/pictures.py:763
 #, python-brace-format
 msgid "the server answered {0} instead of a picture"
 msgstr "le serveur a répondu {0} au lieu d'une image"
 
-#: frappe_webmail/pictures.py:652
+#: frappe_webmail/pictures.py:761
 #, python-brace-format
 msgid "the server has trouble of its own ({0})"
 msgstr "le serveur a un problème de son côté ({0})"
 
-#: frappe_webmail/pictures.py:650
+#: frappe_webmail/pictures.py:759
 #, python-brace-format
 msgid "the server is being asked too often just now ({0})"
 msgstr "le serveur est sollicité trop souvent en ce moment ({0})"
 
-#: frappe_webmail/pictures.py:646
+#: frappe_webmail/pictures.py:755
 #, python-brace-format
 msgid "the server won't hand it out ({0})"
 msgstr "le serveur refuse de la transmettre ({0})"
@@ -4987,11 +5319,11 @@ msgstr "le serveur refuse de la transmettre ({0})"
 msgid "this account"
 msgstr "ce compte"
 
-#: frappe_webmail/pictures.py:752
+#: frappe_webmail/pictures.py:872
 msgid "too many pictures are being downloaded just now"
 msgstr "trop d'images sont téléchargées en ce moment"
 
-#: frappe_webmail/pictures.py:644
+#: frappe_webmail/pictures.py:753
 msgid "what came is not a picture"
 msgstr "ce qui a été reçu n'est pas une image"
 
@@ -5003,7 +5335,7 @@ msgstr "vous@entreprise.ch"
 msgid "your email account"
 msgstr "votre compte e-mail"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:436
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:488
 #, python-brace-format
 msgid "{0} attachment(s) could not be shared."
 msgstr "{0} pièce(s) jointe(s) n’ont pas pu être partagée(s)."
@@ -5073,7 +5405,7 @@ msgstr "{0} factures cette année"
 msgid "{0} is longer than {1} characters."
 msgstr "{0} comporte plus de {1} caractères."
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:581
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:649
 #: frappe_webmail/neomail_attachments.py:552
 #, python-brace-format
 msgid "{0} is not installed on this site."
@@ -5095,7 +5427,12 @@ msgstr "{0} messages plus anciens dans cette conversation"
 msgid "{0} other messages in this conversation"
 msgstr "{0} autres messages dans cette conversation"
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:508
+#: frappe_webmail/public/js/signature_builder.js:556
+#, python-brace-format
+msgid "{0} people"
+msgstr "{0} personnes"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.js:564
 #, python-brace-format
 msgid "{0} person(s) on this message could not join: they are not in your Synk workspace."
 msgstr "{0} personne(s) de ce message n’ont pas pu être ajoutées : elles ne font pas partie de votre espace de travail Synk."
@@ -5110,7 +5447,7 @@ msgstr "{0} résultat(s) sur {1}"
 msgid "{0} unread"
 msgstr "{0} non lus"
 
-#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2935
+#: frappe_webmail/attachments.py:255 frappe_webmail/webmail_api.py:2996
 #, python-brace-format
 msgid "{0} {1} not found"
 msgstr ""
@@ -5166,6 +5503,12 @@ msgid "{0}: {1}"
 msgstr "{0} : {1}"
 
 
+#. Description of the 'Applies To' (Select) field in DocType 'Email Signature
+#. Template'
+#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:83
+msgid "The most specific template wins: the one for a person's department, else the one for their company, else the one for everyone."
+msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui de sa société, sinon celui qui vaut pour tout le monde."
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:455
 #: frontend/src/components/BulkActionBar.vue:210
 #: frontend/src/components/EmailList.vue:267
@@ -5209,238 +5552,3 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
-
-#: frappe_webmail/public/js/signature_builder.js:354
-msgid "+ Add a role"
-msgstr "+ Ajouter un rôle"
-
-#. Description of the 'Contact Icons' (Check) field in DocType 'Email Signature
-#. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:265
-msgid "A small picture before each number and address, in place of its label."
-msgstr "Une petite icône devant chaque numéro et adresse, à la place de son libellé."
-
-#: frappe_webmail/public/js/signature_builder.js:143
-msgid "All the settings: logo, font, small print, banner"
-msgstr "Tous les réglages : logo, police, mention de confidentialité, bandeau"
-
-#: frappe_webmail/public/js/signature_builder.js:393
-msgid "An icon before each number and address"
-msgstr "Une icône devant chaque numéro et adresse"
-
-#: frappe_webmail/public/js/signature_builder.js:677
-msgid "As your messages carry it"
-msgstr "Tel que l'affichent vos messages"
-
-#: frappe_webmail/webmail_api.py:1309
-msgid "At most 100 messages can be asked for at once"
-msgstr "Vous ne pouvez demander que 100 messages au maximum à la fois"
-
-#: frappe_webmail/mailcraft_stream.py:323
-#, python-brace-format
-msgid "At most {0} messages can be asked for at once."
-msgstr "Vous ne pouvez demander que {0} messages au maximum à la fois."
-
-#: frappe_webmail/public/js/signature_builder.js:321
-msgid "Choose a company"
-msgstr "Choisissez une société"
-
-#: frappe_webmail/public/js/signature_builder.js:327
-msgid "Choose a department"
-msgstr "Choisissez un département"
-
-#: frappe_webmail/public/js/signature_builder.js:334
-msgid "Choose a user group"
-msgstr "Choisissez un groupe d'utilisateurs"
-
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:110
-msgid "Choose at least one role this template applies to."
-msgstr "Choisissez au moins un rôle auquel ce modèle s'applique."
-
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:100
-msgid "Choose the user group this template applies to."
-msgstr "Choisissez le groupe d'utilisateurs auquel ce modèle s'applique."
-
-#: frappe_webmail/new_senders.py:244
-msgid "Choose to accept or to block the sender."
-msgstr "Choisissez d'accepter ou de bloquer l'expéditeur."
-
-#. Label of a Check field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:268
-msgid "Contact Icons"
-msgstr "Icônes de contact"
-
-#: frappe_webmail/public/js/signature_builder.js:400
-msgid "Each person may keep their own signature"
-msgstr "Chaque personne peut garder sa propre signature"
-
-#. Description of the 'Roles' (Table MultiSelect) field in DocType 'Email
-#. Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:124
-msgid "Every person of the desk who has one of these roles gets this template."
-msgstr "Toute personne du bureau qui a l'un de ces rôles reçoit ce modèle."
-
-#: frappe_webmail/public/js/signature_builder.js:362
-msgid "For example: Support"
-msgstr "Par exemple : Support"
-
-#: frappe_webmail/public/js/signature_builder.js:610
-msgid "Give the model a name."
-msgstr "Donnez un nom au modèle."
-
-#: frappe_webmail/public/js/signature_builder.js:366
-#: frappe_webmail/public/js/signature_builder.js:367
-msgid "Given to"
-msgstr "Donné à"
-
-#: frappe_webmail/public/js/signature_builder.js:593
-msgid "Have a good day,"
-msgstr "Belle journée,"
-
-#: frappe_webmail/public/js/signature_builder.js:592
-msgid "Here is the document we spoke about."
-msgstr "Voici le document dont nous avons parlé."
-
-#: frappe_webmail/public/js/signature_builder.js:471
-msgid "How it is seen"
-msgstr "Affichage"
-
-#: frappe_webmail/signature_builder.py:158
-msgid "job title"
-msgstr "fonction"
-
-#. Option for the 'Layout' (Select) field in DocType 'Email Signature Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:159
-msgid "Logo centre"
-msgstr "Logo au centre"
-
-#: frappe_webmail/public/js/signature_builder.js:77
-msgid "Logo in the centre"
-msgstr "Logo au centre"
-
-#: frappe_webmail/public/js/signature_builder.js:672
-msgid "My own signatures"
-msgstr "Mes propres signatures"
-
-#: frappe_webmail/public/js/signature_builder.js:359
-msgid "Name of the model"
-msgstr "Nom du modèle"
-
-#: frappe_webmail/public/js/signature_builder.js:566
-msgid "No longer"
-msgstr "Plus maintenant"
-
-#: frappe_webmail/public/js/signature_builder.js:645
-msgid "No model of the company applies to you: your messages carry your own signature, if you wrote one in the webmail."
-msgstr "Aucun modèle de la société ne vous concerne : vos messages portent votre propre signature, si vous en avez rédigé une dans le webmail."
-
-#: frappe_webmail/public/js/signature_builder.js:337
-msgid "No user group yet: make one in User Group, then come back."
-msgstr "Aucun groupe d'utilisateurs pour l'instant : créez-en un dans Groupe d'utilisateurs, puis revenez ici."
-
-#: frappe_webmail/public/js/signature_builder.js:570
-#, python-brace-format
-msgid "No {0} on their record"
-msgstr "Manque sur sa fiche : {0}"
-
-#: frappe_webmail/public/js/signature_builder.js:551
-msgid "Nobody yet: choose whom it is given to."
-msgstr "Personne pour l'instant : choisissez à qui il est donné."
-
-#: frappe_webmail/public/js/signature_builder.js:564
-msgid "Not in use"
-msgstr "Non utilisé"
-
-#: frappe_webmail/public/js/signature_builder.js:196
-msgid "One model for each group of people: give it to roles, a user group, a department or the whole company. Each person gets it filled from their own record."
-msgstr "Un modèle par groupe de personnes : attribuez-le à des rôles, à un groupe d'utilisateurs, à un département ou à toute la société. Chaque personne le reçoit rempli à partir de sa propre fiche."
-
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.js:30
-msgid "Open in the signature builder"
-msgstr "Ouvrir dans le constructeur de signatures"
-
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template_list.js:10
-msgid "Open the signature builder"
-msgstr "Ouvrir le constructeur de signatures"
-
-#: frappe_webmail/public/js/signature_builder.js:446
-msgid "Preview for"
-msgstr "Aperçu pour"
-
-#: frappe_webmail/public/js/signature_builder.js:629
-msgid "Saved. NeoMail, the webmail and the phone use it from the next message."
-msgstr "Enregistré. NeoMail, le webmail et le téléphone l'utilisent dès le prochain message."
-
-#: frappe_webmail/public/js/signature_builder.js:559
-msgid "Sends it"
-msgstr "L'envoie"
-
-#: frappe_webmail/public/js/signature_builder.js:655
-msgid "Show my photo"
-msgstr "Afficher ma photo"
-
-#: frappe_webmail/public/js/signature_builder.js:564
-#, python-brace-format
-msgid "Takes {0}"
-msgstr "Prend {0}"
-
-#: frappe_webmail/new_senders.py:259
-msgid "The list of senders is full."
-msgstr "La liste des expéditeurs est pleine."
-
-#: frappe_webmail/webmail_api.py:1302
-msgid "The messages asked for are not a list"
-msgstr "Les messages demandés ne forment pas une liste."
-
-#: frappe_webmail/mailcraft_stream.py:320
-msgid "The messages asked for are not valid."
-msgstr "Les messages demandés ne sont pas valides."
-
-#: frappe_webmail/public/js/signature_builder.js:396
-msgid "The mobile number"
-msgstr "Le numéro de mobile"
-
-#. Description of the 'Applies To' (Select) field in DocType 'Email Signature
-#. Template'
-#: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:86
-msgid "The most specific template wins: the one for a person's department, else the one for a user group they belong to, else the one for one of their roles, else the one for their company, else the one for everyone."
-msgstr "Le modèle le plus précis l'emporte : celui du département de la personne, sinon celui d'un groupe d'utilisateurs auquel elle appartient, sinon celui de l'un de ses rôles, sinon celui de sa société, sinon celui de tout le monde."
-
-#: frappe_webmail/public/js/signature_builder.js:199
-msgid "The signature your messages carry, from NeoMail, the webmail and the phone alike."
-msgstr "La signature que portent vos messages, depuis NeoMail, le webmail comme le téléphone."
-
-#: frappe_webmail/public/js/signature_builder.js:397
-msgid "The small print"
-msgstr "La mention"
-
-#: frappe_webmail/public/js/signature_builder.js:178
-#: frappe_webmail/public/js/signature_builder.js:188
-msgid "The team's signatures"
-msgstr "Les signatures de l'équipe"
-
-#: frappe_webmail/new_senders.py:249 frappe_webmail/new_senders.py:251
-msgid "This is not an email address."
-msgstr "Ceci n'est pas une adresse e-mail."
-
-#: frappe_webmail/public/js/signature_builder.js:225
-msgid "When several models fit a person, the most precise wins: their department, then their group, then their roles, then their company."
-msgstr "Quand plusieurs modèles conviennent à une personne, le plus précis l'emporte : son département, puis son groupe, puis ses rôles, puis sa société."
-
-#: frappe_webmail/public/js/signature_builder.js:460
-#: frappe_webmail/public/js/signature_builder.js:547
-msgid "Who sends it"
-msgstr "Qui l'envoie"
-
-#: frappe_webmail/public/js/signature_builder.js:644
-#, python-brace-format
-msgid "You send the model « {0} »."
-msgstr "Vous envoyez le modèle « {0} »."
-
-#: frappe_webmail/public/js/signature_builder.js:667
-msgid "Your choices"
-msgstr "Vos choix"
-
-#: frappe_webmail/public/js/signature_builder.js:660
-msgid "Your model"
-msgstr "Votre modèle"
