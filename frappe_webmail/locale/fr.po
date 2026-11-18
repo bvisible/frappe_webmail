@@ -266,7 +266,7 @@ msgstr "Active sur cette boîte"
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1314
 #: frappe_webmail/www/neomail.html:841
 msgid "Add a mailbox"
-msgstr "Ajouter une boîte aux lettres"
+msgstr "Ajouter une boîte"
 
 #: frappe_webmail/mailcraft_jmap.py:1788
 msgid "Add at least one recipient."
@@ -5552,3 +5552,293 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#: frappe_webmail/public/js/mail_team.js:117
+msgid "Add the mailbox"
+msgstr "Ajouter la boîte"
+
+#: frappe_webmail/public/js/mail_team.js:441
+#, python-brace-format
+msgid "Added by {0}"
+msgstr "Ajoutée par {0}"
+
+#: frappe_webmail/public/js/mail_team.js:473
+msgid "Another mailbox? Your administrator adds it in Settings › Mail."
+msgstr "Une autre boîte ? Votre administrateur l'ajoute dans Réglages › Courrier."
+
+#: frappe_webmail/mail_team.py:91 frappe_webmail/mail_team.py:95
+#: frappe_webmail/public/js/mail_team.js:95
+msgid "Another provider"
+msgstr "Un autre fournisseur"
+
+#: frappe_webmail/mail_team.py:466
+msgid "Another provider's servers are set by the mailbox's owner: add it for yourself, or choose Neoservice, Google or Microsoft."
+msgstr "Les serveurs d'un autre fournisseur sont fixés par le propriétaire de la boîte : ajoutez-la pour vous, ou choisissez Neoservice, Google ou Microsoft."
+
+#: frappe_webmail/mail_team.py:456
+msgid "Choose where the mailbox is."
+msgstr "Choisissez chez qui se trouve la boîte."
+
+#: frappe_webmail/public/js/mail_team.js:427
+#, python-brace-format
+msgid "Connect at {0}"
+msgstr "Se connecter chez {0}"
+
+#: frappe_webmail/mail_team.py:101
+msgctxt "Mailbox"
+msgid "Disabled"
+msgstr "Désactivée"
+
+#: frappe_webmail/public/js/mail_team.js:82
+msgid "Gmail or Google Workspace. The person signs in once at Google: no password here."
+msgstr "Gmail ou Google Workspace. La personne se connecte une seule fois chez Google : aucun mot de passe ici."
+
+#: frappe_webmail/public/js/mail_team.js:161
+msgid "How does it sign in?"
+msgstr "Comment se connecte-t-elle ?"
+
+#: frappe_webmail/public/js/mail_team.js:173
+msgid "IMAP port"
+msgstr "Port IMAP"
+
+#: frappe_webmail/public/js/mail_team.js:169
+msgid "IMAP server"
+msgstr "Serveur IMAP"
+
+#: frappe_webmail/public/js/mail_team.js:327
+#, python-brace-format
+msgid "It does not sign in: {0}"
+msgstr "Elle ne se connecte pas : {0}"
+
+#: frappe_webmail/public/js/mail_team.js:196
+msgid "Leave it empty for a mailbox of their own. Each person named here sees it in their NeoMail; its owner sees who reads it."
+msgstr "Laissez vide pour une boîte personnelle. Chaque personne citée ici la voit dans son NeoMail ; son propriétaire voit qui la lit."
+
+#: frappe_webmail/public/js/mail_team.js:246
+#, python-brace-format
+msgid "Looking where {0} receives its mail…"
+msgstr "Recherche chez qui {0} reçoit son courrier…"
+
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:234
+#: frappe_webmail/public/js/mail_team.js:449
+msgid "My mail"
+msgstr "Mon courrier"
+
+#: frappe_webmail/public/js/mail_team.js:457
+msgid "My mailboxes"
+msgstr "Mes boîtes"
+
+#: frappe_webmail/mail_team.py:347 frappe_webmail/public/js/mail_team.js:248
+#, python-brace-format
+msgid "Neoffice could not look up where {0} receives its mail: try again in a moment."
+msgstr "Neoffice n'a pas pu trouver chez qui {0} reçoit son courrier : réessayez dans un instant."
+
+#: frappe_webmail/mail_team.py:94 frappe_webmail/public/js/mail_team.js:74
+msgid "Neoservice e-mail"
+msgstr "E-mail Neoservice"
+
+#: frappe_webmail/public/js/mail_team.js:268
+msgid "Next: the password and the two servers. Neoffice tries them before adding."
+msgstr "Ensuite : le mot de passe et les deux serveurs. Neoffice les teste avant d'ajouter."
+
+#: frappe_webmail/public/js/mail_team.js:265
+msgid "Next: the person signs in once at their provider and says yes, from « My mail »."
+msgstr "Ensuite : la personne se connecte une fois chez son fournisseur et confirme depuis « Mon courrier »."
+
+#: frappe_webmail/public/js/mail_team.js:478
+msgid "No mailbox yet."
+msgstr "Aucune boîte pour l'instant."
+
+#: frappe_webmail/public/js/mail_team.js:520
+#, python-brace-format
+msgid "Once connected, {0} will read this mailbox too. Connect it?"
+msgstr "Une fois connectée, {0} lira aussi cette boîte. La connecter maintenant ?"
+
+#: frappe_webmail/mail_team.py:62
+msgid "Only the company's administrator manages the team's mailboxes."
+msgstr "Seul l'administrateur de la société gère les boîtes de l'équipe."
+
+#: frappe_webmail/public/js/mail_team.js:89
+msgid "Outlook or Microsoft 365. The person signs in once at Microsoft: no password here."
+msgstr "Outlook ou Microsoft 365. La personne se connecte une seule fois chez Microsoft : aucun mot de passe ici."
+
+#: frappe_webmail/public/js/mail_team.js:195
+msgid "Read also by"
+msgstr "Lue aussi par"
+
+#: frappe_webmail/public/js/mail_team.js:420
+#, python-brace-format
+msgid "Read also by {0}"
+msgstr "Lue aussi par {0}"
+
+#: frappe_webmail/mail_team.py:104 frappe_webmail/mail_team.py:108
+#: frappe_webmail/mail_team.py:113
+msgctxt "Mailbox"
+msgid "Ready"
+msgstr "Prête"
+
+#: frappe_webmail/public/js/mail_team.js:422
+#, python-brace-format
+msgid "Shared · {0} answers for it"
+msgstr "Partagée · {0} en répond"
+
+#: frappe_webmail/webmail_api.py:311
+msgid "Sign in to Neoffice as the owner of this mailbox, then connect it again."
+msgstr "Connectez-vous à Neoffice en tant que propriétaire de cette boîte, puis reconnectez-la."
+
+#: frappe_webmail/public/js/mail_team.js:160
+msgctxt "Add a mailbox"
+msgid "Sign-in"
+msgstr "La connexion"
+
+#: frappe_webmail/public/js/mail_team.js:180
+msgid "SMTP port"
+msgstr "Port SMTP"
+
+#: frappe_webmail/public/js/mail_team.js:176
+msgid "SMTP server"
+msgstr "Serveur SMTP"
+
+#: frappe_webmail/public/js/mail_team.js:140
+msgid "The address"
+msgstr "L'adresse"
+
+#: frappe_webmail/public/js/mail_team.js:96
+msgid "The address, its password, and the IMAP and SMTP servers the provider gives."
+msgstr "L'adresse, son mot de passe, et les serveurs IMAP et SMTP que fournit le fournisseur."
+
+#: frappe_webmail/public/js/mail_team.js:232
+#, python-brace-format
+msgid "The address: {0}. Choose who serves it; Neoffice does the settings."
+msgstr "L'adresse : {0}. Choisissez le fournisseur ; Neoffice s'occupe des réglages."
+
+#: frappe_webmail/mail_team.py:354 frappe_webmail/public/js/mail_team.js:258
+#, python-brace-format
+msgid "The domain {0} does not receive its mail at Neoservice's: choose the provider that hosts it."
+msgstr "Le domaine {0} ne reçoit pas son courrier chez Neoservice : choisissez le fournisseur qui l'héberge."
+
+#: frappe_webmail/public/js/mail_team.js:254
+#, python-brace-format
+msgid "The domain {0} receives its mail at our host: its servers are set."
+msgstr "Le domaine {0} reçoit son courrier chez notre hébergeur : ses serveurs sont réglés."
+
+#: frappe_webmail/public/js/mail_team.js:75
+msgid "The mailbox Neoservice provides. Its address and its password: Neoffice finds the right settings itself."
+msgstr "La boîte fournie par Neoservice. Son adresse et son mot de passe : Neoffice trouve seul les bons réglages."
+
+#: frappe_webmail/public/js/mail_team.js:404
+#, python-brace-format
+msgid "The mailbox {0} is added: it opens in NeoMail."
+msgstr "La boîte {0} est ajoutée : elle s'ouvre dans NeoMail."
+
+#: frappe_webmail/public/js/mail_team.js:400
+#, python-brace-format
+msgid "The mailbox {0} is added: its owner connects it once, from « My mail »."
+msgstr "La boîte {0} est ajoutée : son propriétaire la connecte une fois, depuis « Mon courrier »."
+
+#: frappe_webmail/mail_team.py:475
+#, python-brace-format
+msgid "The mailbox {0} is already there."
+msgstr "La boîte {0} existe déjà."
+
+#: frappe_webmail/public/js/mail_team.js:167
+msgid "The mailbox's password"
+msgstr "Le mot de passe de la boîte"
+
+#: frappe_webmail/public/js/mail_team.js:305
+#, python-brace-format
+msgid "The mailbox's password, as {0} gave it. Neoffice tries it before adding the mailbox."
+msgstr "Le mot de passe de la boîte, tel que {0} l'a donné. Neoffice le teste avant d'ajouter la boîte."
+
+#: frappe_webmail/mail_team.py:417
+msgid "The readers of the mailbox could not be read."
+msgstr "Impossible de lire la liste des lecteurs de la boîte."
+
+#: frappe_webmail/public/js/mail_team.js:134
+msgid "They answer for it: it opens in their NeoMail."
+msgstr "Ces personnes en répondent : elle s'ouvre dans leur NeoMail."
+
+#: frappe_webmail/mail_team.py:471 frappe_webmail/public/js/mail_team.js:264
+msgid "This site cannot sign in at this provider yet: ask Neoservice."
+msgstr "Ce site ne peut pas encore se connecter chez ce fournisseur : demandez à Neoservice."
+
+#: frappe_webmail/mail_team.py:110
+msgctxt "Mailbox"
+msgid "To connect"
+msgstr "À connecter"
+
+#: frappe_webmail/mail_team.py:109
+msgctxt "Mailbox"
+msgid "To connect again"
+msgstr "À reconnecter"
+
+#: frappe_webmail/public/js/mail_team.js:319
+msgid "Trying the mailbox's servers…"
+msgstr "Essai des serveurs de la boîte…"
+
+#: frappe_webmail/public/js/mail_team.js:431
+msgid "Type its password"
+msgstr "Saisir son mot de passe"
+
+#: frappe_webmail/mail_team.py:482
+msgid "Type the mailbox's password."
+msgstr "Saisissez le mot de passe de la boîte."
+
+#: frappe_webmail/mail_team.py:359
+msgid "Type the servers the provider gives: IMAP and SMTP."
+msgstr "Saisissez les serveurs fournis par le fournisseur : IMAP et SMTP."
+
+#: frappe_webmail/mail_team.py:112
+msgctxt "Mailbox"
+msgid "Waiting for its password"
+msgstr "Mot de passe à saisir"
+
+#: frappe_webmail/public/js/mail_team.js:147
+msgctxt "Add a mailbox"
+msgid "Where"
+msgstr "Chez qui"
+
+#: frappe_webmail/public/js/mail_team.js:148
+msgid "Where is this mailbox?"
+msgstr "Chez qui se trouve cette boîte ?"
+
+#: frappe_webmail/public/js/mail_team.js:189
+msgid "Who else reads this mailbox?"
+msgstr "Qui d'autre lit cette boîte ?"
+
+#: frappe_webmail/public/js/mail_team.js:188
+msgctxt "Add a mailbox"
+msgid "Who reads it"
+msgstr "Qui la lit"
+
+#: frappe_webmail/public/js/mail_team.js:121
+msgctxt "Add a mailbox"
+msgid "Whose"
+msgstr "Pour qui"
+
+#: frappe_webmail/public/js/mail_team.js:114
+#: frappe_webmail/public/js/mail_team.js:122
+msgid "Whose mailbox is it?"
+msgstr "Pour qui est cette boîte ?"
+
+#: frappe_webmail/mail_team.py:426
+msgid "You make this mailbox for someone else: its owner shares it with you, if they wish."
+msgstr "Vous créez cette boîte pour quelqu'un d'autre : son propriétaire peut la partager avec vous, s'il le souhaite."
+
+#: frappe_webmail/public/js/mail_team.js:421
+msgid "Yours alone"
+msgstr "Rien qu'à vous"
+
+#: frappe_webmail/mail_team.py:432 frappe_webmail/mail_team.py:460
+#, python-brace-format
+msgid "{0} is not one of the desk's people."
+msgstr "{0} ne fait pas partie des personnes du bureau."
+
+#: frappe_webmail/public/js/mail_team.js:303
+#, python-brace-format
+msgid "{0} signs in at {1} once, from « My mail »: Neoffice never sees their password."
+msgstr "{0} se connecte une fois chez {1}, depuis « Mon courrier » : Neoffice ne voit jamais son mot de passe."
+
+#: frappe_webmail/public/js/mail_team.js:323
+msgid "✓ The mailbox signs in."
+msgstr "✓ La boîte se connecte."

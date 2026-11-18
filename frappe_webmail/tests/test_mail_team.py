@@ -69,8 +69,13 @@ class TestMailTeam(FrappeTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 		frappe.set_user("Administrator")
-		# A site without Neoffice's theme has no « Admin » role: the company's administrator's, made for the scene
-		if not frappe.db.exists("Role", "Admin"):
+		# A site without Neoffice's theme has no « Admin » role: the company's administrator's, made for the scene, with
+		# its right on the templates; what the scene adds is taken away after (test_signatures counts who holds it)
+		template = signature_builder.TEMPLATE
+		cls.made_role = not frappe.db.exists("Role", "Admin")
+		cls.custom_rules = frappe.db.count("Custom DocPerm", {"parent": template})
+		cls.admin_rule = frappe.db.exists("Custom DocPerm", {"parent": template, "role": "Admin"})
+		if cls.made_role:
 			frappe.get_doc({"doctype": "Role", "role_name": "Admin", "desk_access": 1}).insert(
 				ignore_permissions=True
 			)
@@ -109,6 +114,15 @@ class TestMailTeam(FrappeTestCase):
 		for email in (OWNER, READER, MANAGER, PORTAL):
 			if frappe.db.exists("User", email):
 				frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+		template = signature_builder.TEMPLATE
+		if not cls.custom_rules:
+			# Frappe copied the standard rules to add the scene's: the template goes back to them alone
+			frappe.db.delete("Custom DocPerm", {"parent": template})
+		elif not cls.admin_rule:
+			frappe.db.delete("Custom DocPerm", {"parent": template, "role": "Admin"})
+		if cls.made_role:
+			frappe.delete_doc("Role", "Admin", force=True, ignore_permissions=True)
+		frappe.clear_cache(doctype=template)
 		frappe.db.commit()
 		super().tearDownClass()
 
