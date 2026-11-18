@@ -7,7 +7,13 @@ NeoMail's actions on an attachment, in the desk's page /app/neomail, as the old 
 the scanned documents (`to_scans`); or save it in the Drive and open it in the Drive's editor of its type, NeoDoc,
 NeoGrille, NeoPrés or NeoPDF (`save_to_drive` with `edit`, then the page opens the copy).
 
-NeoMail offers what the handover's `attachments` lists (`offered`: "drive", "scan", "edit") and names the attachment to
+« Ouvrir dans NeoGrille » (`open_in_editor`, the handover's "open", 18.11.2026): NeoMail's first action on a file one of
+the Drive's editors opens, the formats it imports included (a .xls, a .csv, a .odt…, which the Drive saves as a new .xlsx
+or .docx: suite's `opened_extensions`), in one click and with no folder to pick: the copy goes into the person's own Drive,
+in « Pièces jointes » / « <the message's date> <its subject> », private to them as all of their Drive is; the same
+attachment opened again opens the same copy, edits and all (`_copy_key`, a default of the person's).
+
+NeoMail offers what the handover's `attachments` lists (`offered`: "drive", "scan", "edit", "open") and names the attachment to
 the page (`mailcraft:attachment`): the mailbox, the message's JMAP id, and what NeoMail knows of the file, its rank
 among NeoMail's attachments and how many it sees, its name, size, type and Content-ID. None of it is trusted. The
 server reads the message from its server itself, under the webmail's rule for the mailbox (owned or shared with the
@@ -80,6 +86,10 @@ EDITORS = {
 	"pptx": ("deck", "NeoPrés"),
 	"pdf": ("pdf", "NeoPDF"),
 }
+# The products by the editor's key in suite, for a format an editor imports (suite's `opened_extensions`).
+PRODUCTS = {"word": "NeoDoc", "sheet": "NeoGrille", "deck": "NeoPrés", "pdf": "NeoPDF"}
+# The longest name of the folder of a message's attachments (« 2026-11-18 Liste des clients »).
+MAX_MESSAGE_FOLDER = 100
 
 
 class Wanted(NamedTuple):
@@ -183,10 +193,30 @@ def installed_editors():
 	return {extension for extension, (editor, _product) in EDITORS.items() if editor in have}
 
 
+def openable():
+	"""The extensions this site's Drive opens in one of its editors, by the editor's key ({"xlsx": "sheet", "csv":
+	"sheet", "odt": "word", …}): the formats they write back and those they import (suite's `opened_extensions`, a
+	suite that has it), else the formats they write back only (`installed_editors`)."""
+	from frappe_webmail import drive
+
+	if not drive.available():
+		return {}
+	try:
+		from suite.drive.wopi.craft import opened_extensions
+	except ImportError:
+		return {extension: EDITORS[extension][0] for extension in installed_editors()}
+	return {
+		str(extension).lower(): key
+		for extension, key in (opened_extensions() or {}).items()
+		if key in PRODUCTS and str(extension).isalnum()
+	}
+
+
 def offered():
 	"""What NeoMail offers on an attachment to the session's person, the handover's `attachments`: the old webmail's
 	menu (attachments.get_attachment_actions) says "drive" where the Drive is installed and "scan" where they may create
-	a scanned document; "edit" where the Drive has an editor too."""
+	a scanned document; "edit" (a folder to pick first) and "open" (one click, `open_in_editor`) where the Drive has an
+	editor too."""
 	from frappe_webmail import attachments
 
 	keys = {action.get("key") for action in attachments.get_attachment_actions()}
@@ -197,6 +227,7 @@ def offered():
 		out.append("scan")
 	if "drive" in out and installed_editors():
 		out.append("edit")
+		out.append("open")
 	return out
 
 
@@ -483,6 +514,12 @@ def read(account, email, attachment):
 	"""(name, type, bytes) of the attachment NeoMail names: of a mailbox of the person's own or shared with them
 	(get_account, which answers another's as one that does not exist), in the message whose JMAP id is `email`
 	(mailcraft_jmap.message_place), found by `find`. The name is cleaned as it is saved (neomail_share._file_name)."""
+	name, mime, data, _message = _read(account, email, attachment)
+	return name, mime, data
+
+
+def _read(account, email, attachment):
+	"""`read`, and the message the attachment was found in."""
 	from frappe_webmail import mailcraft_jmap as jmap
 	from frappe_webmail import webmail_api as webmail
 	from frappe_webmail.frappe_webmail.page.neomail import neomail as desk
@@ -500,7 +537,7 @@ def read(account, email, attachment):
 	# Nothing to save where NeoMail sees a file: never an empty file announced as saved
 	if not data and (wanted.size or 0) > 0:
 		frappe.throw(_("This attachment cannot be read from its message here: save it with Save As instead."))
-	return _file_name(found.name or _unnamed(found)), found.mime, data
+	return _file_name(found.name or _unnamed(found)), found.mime, data, message
 
 
 @frappe.whitelist(methods=["POST"])
@@ -550,6 +587,213 @@ def _editable(name):
 		frappe.throw(_("Only a .docx, .xlsx, .pptx or .pdf file opens in an editor of the Drive."))
 	if found[0] not in installed_editors():
 		frappe.throw(_("{0} is not installed on this site.").format(found[1]))
+
+
+@frappe.whitelist(methods=["POST"])
+@per_person
+def open_in_editor(account=None, email=None, attachment=None):
+	"""« Ouvrir dans NeoGrille »: the attachment NeoMail names (as `save_to_drive` takes it) copied into the person's own
+	Drive, in « Pièces jointes » / « <date> <subject> » of its message (`_message_folder`), with no folder to pick, then
+	opened by the page in the Drive's editor of its type, a format the editor imports included (`openable`). The same
+	attachment opened again (the message moved to another folder included) opens the same copy, the person's edits and
+	all, while it is in their Drive and theirs to write (`_kept_copy`; for an imported format, the file the editor saved
+	its work in beside it). Answers {name, file_name, folder, url (/drive/f/<name>), editor (suite's key), product,
+	reused, message}."""
+	from frappe_webmail import drive
+
+	_gate()
+	if not drive.available():
+		frappe.throw(_("The Drive is not installed on this instance"))
+	# What NeoMail says of the name first, at no cost; then the name the message gives.
+	_openable(_wanted(attachment).name)
+	name, _mime, payload, message = _read(account, email, attachment)
+	found = _openable(name)
+	key = _copy_key(account, email, attachment, message)
+	kept = _kept_copy(key)
+	if kept:
+		return _opened(kept, extension(kept.file_name), reused=True)
+	saved = drive.deposit(payload, name, _message_folder(message))
+	_keep_copy(key, saved.name)
+	return _opened(saved, found, reused=False)
+
+
+def _openable(name):
+	"""The extension of `name` when an editor of this site's Drive opens it (`openable`), else refused, as `_editable`."""
+	found = extension(_file_name(name))
+	opens = openable()
+	if found not in opens:
+		frappe.throw(_("No editor of the Drive opens this type of file here."))
+	return found
+
+
+def _opened(row, found, reused):
+	"""What `open_in_editor` answers for the Drive file `row` of extension `found`."""
+	from frappe_webmail import drive
+
+	key = openable().get(found) or (EDITORS.get(found) or ("", ""))[0]
+	product = PRODUCTS.get(key, "")
+	return {
+		"name": row.name,
+		"file_name": row.file_name,
+		"folder": row.folder,
+		"url": drive.file_url(row.name),
+		"editor": key,
+		"product": product,
+		"reused": reused,
+		"message": _("Opened in {0}: {1}").format(product, row.file_name),
+	}
+
+
+# Where the Drive copies of the attachments the person opened are kept, beside the site's defaults: rows of the defaults'
+# table under a parent of their own (never the person's, which every page of the desk loads), one a copy.
+COPIES = "__neomail_opened_copies"
+
+
+def _copy_key(account, email, attachment, message):
+	"""The key of the Drive copy of this attachment: the person, the message (its Message-ID, which a move to another
+	folder keeps; else its id) and what identifies the file (its rank, name, size, Content-ID), hashed."""
+	import hashlib
+
+	wanted = _wanted(attachment)
+	try:
+		said_id = str(message.get("Message-ID") or "").strip()
+	except Exception:
+		said_id = ""
+	which = said_id or f"{account}\n{email}"
+	said = "\n".join(
+		str(part) for part in (frappe.session.user, which, wanted.index, wanted.name, wanted.size, wanted.cid)
+	)
+	return "neomail_opened:" + hashlib.sha1(said.encode()).hexdigest()
+
+
+def _kept_copy(key):
+	"""The Drive copy kept under `key`, while it is in the Drive (not in its bin, nor under a folder in it) and the
+	person may still write it; for an imported format, the file the editor saved the work in beside it when there is
+	one (`_saved_beside`). None otherwise, and the key forgotten."""
+	name = frappe.db.get_value("DefaultValue", {"parent": COPIES, "defkey": key}, "defvalue")
+	if not name:
+		return None
+	row = _usable(name)
+	if not row:
+		frappe.db.delete("DefaultValue", {"parent": COPIES, "defkey": key})
+		return None
+	return _saved_beside(row) or row
+
+
+def _keep_copy(key, name):
+	"""Keep `name` as the Drive copy under `key`."""
+	frappe.db.delete("DefaultValue", {"parent": COPIES, "defkey": key})
+	frappe.get_doc(
+		{
+			"doctype": "DefaultValue",
+			"parent": COPIES,
+			"parenttype": "__neomail",
+			"parentfield": "system_defaults",
+			"defkey": key,
+			"defvalue": name,
+		}
+	).insert(ignore_permissions=True)
+
+
+# The type an editor saves an imported file as (suite's save_import): beside it, under its stem.
+SAVED_AS = {"sheet": "xlsx", "word": "docx"}
+
+
+def _saved_beside(row):
+	"""For a copy of a format its editor imports, the newest file the editor saved the work in beside it (« Liste.xlsx »
+	or « Liste (1).xlsx » for « Liste.xls »), that the person may write; None otherwise."""
+	found = extension(row.file_name)
+	native = SAVED_AS.get(openable().get(found, ""))
+	if not native or found == native:
+		return None
+	stem = row.file_name[: -(len(found) + 1)]
+	near = frappe.get_all(
+		"File",
+		filters={"folder": row.folder, "is_folder": 0, "file_name": ["like", f"{stem}%.{native}"]},
+		fields=["name", "file_name"],
+		order_by="creation desc",
+		limit=20,
+	)
+	pattern = re.compile(re.escape(stem) + r"( \(\d+\))?\." + native + "$", re.IGNORECASE)
+	for each in near:
+		if pattern.match(each.file_name):
+			usable = _usable(each.name)
+			if usable:
+				return usable
+	return None
+
+
+def _usable(name):
+	"""The Drive file `name` ({name, file_name, folder}) while it is a file in the Drive, neither in its bin nor under a
+	folder that is, that the person may write; else None."""
+	from suite.drive.api.permissions import user_has_permission
+
+	row = frappe.db.get_value(
+		"File", name, ["name", "file_name", "folder", "is_folder", "status"], as_dict=True
+	)
+	if not row or row.is_folder or row.status not in (None, "", "Active"):
+		return None
+	folder, depth = row.folder, 0
+	while folder and depth < 64:
+		above = frappe.db.get_value("File", folder, ["status", "folder"], as_dict=True)
+		if not above or above.status not in (None, "", "Active"):
+			return None
+		folder, depth = above.folder, depth + 1
+	return row if user_has_permission(frappe.get_doc("File", name), "write") else None
+
+
+def _message_folder(message):
+	"""The folder of the person's own Drive where the attachments of `message` go: « Pièces jointes » (in their
+	language), then « <its date> <its subject> », each made the first time (suite's create_folder, the person's right),
+	private as all of their Drive is. The title is cleaned as a file's name is (no path, no character a system refuses
+	or that changes how it reads)."""
+	from email.utils import parsedate_to_datetime
+
+	try:
+		when = parsedate_to_datetime(str(message.get("Date") or "")).date()
+	except Exception:
+		# A date that cannot be read, or one whose zone is beyond any (an overflow): today's
+		when = frappe.utils.getdate()
+	try:
+		subject = " ".join(str(message.get("Subject") or "").split())
+	except Exception:
+		subject = ""
+	title = _file_name(f"{when.isoformat()} {subject or _('(no subject)')}")[:MAX_MESSAGE_FOLDER].strip(" .")
+	attachments = _subfolder(_home(), _("Attachments"))
+	return _subfolder(attachments, title or when.isoformat())
+
+
+def _home():
+	"""The person's own Drive folder (suite's, made the first time)."""
+	from suite.drive.utils import get_user_folder
+
+	return get_user_folder().name
+
+
+def _subfolder(parent, title):
+	"""The folder `title` of `parent` (one of the person's), made when it is not there. Two first opens at once: the
+	one that made it second finds the other's."""
+	from frappe_webmail import drive
+
+	def found():
+		names = frappe.get_all(
+			"File",
+			filters={"folder": parent, "is_folder": 1, "file_name": title, "status": "Active"},
+			pluck="name",
+			limit=1,
+		)
+		return names[0] if names else None
+
+	existing = found()
+	if existing:
+		return existing
+	try:
+		return drive.create_folder(parent, title)["name"]
+	except frappe.ValidationError:
+		again = found()
+		if again:
+			return again
+		raise
 
 
 @frappe.whitelist(methods=["POST"])

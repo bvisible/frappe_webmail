@@ -159,16 +159,18 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertEqual(given["build_url"], context.build_url, "the build /neomail frames")
 		www = json.loads(context.host_json)
 		self.assertEqual(
-			set(given["host"]) - {"share", "attachments"},
+			set(given["host"]) - {"share", "attachments", "editors"},
 			{*www, "chrome"},
 			"the fields /neomail hands over, and one more",
 		)
 		# What NeoMail offers on an attachment, as the old webmail's menu offers it, and only on this page
-		# (neomail_attachments.py)
+		# (neomail_attachments.py); and the extensions « Ouvrir dans » opens, which the page knows too
 		from frappe_webmail import neomail_attachments
 
 		self.assertEqual(given["host"].get("attachments", []), neomail_attachments.offered())
 		self.assertNotIn("attachments", www, "/neomail does not file an attachment")
+		self.assertEqual(given["host"].get("editors"), given.get("editors"))
+		self.assertNotIn("editors", www, "/neomail opens no attachment in an editor")
 		self.assertEqual(given["host"]["chrome"], "menu", "the desk's menu draws NeoMail's navigation")
 		self.assertNotIn("chrome", www, "/neomail has no menu: NeoMail keeps its own navigation there")
 		# Share in Synk, for someone who may share there, and only on this page (neomail_share.py)
@@ -215,6 +217,7 @@ class TestNeoMailDeskPage(FrappeTestCase):
 		self.assertTrue(given["host"]["accounts"])
 		self.assertNotIn("attachments", given["host"])
 		self.assertNotIn("editors", given)
+		self.assertNotIn("editors", given["host"])
 		# The title first, the traceback after it
 		self.assertEqual(
 			logged.call_args.args[0], "NeoMail: the actions on an attachment could not be offered"

@@ -416,7 +416,7 @@ def _attachment_actions():
 
 	try:
 		actions = neomail_attachments.offered()
-		editors = sorted(neomail_attachments.installed_editors()) if "edit" in actions else []
+		editors = sorted(neomail_attachments.openable()) if "edit" in actions else []
 	except Exception:
 		frappe.log_error("NeoMail: the actions on an attachment could not be offered", frappe.get_traceback())
 		return [], []

@@ -580,9 +580,21 @@ window.neomailHost = (function () {
 	}
 
 	// What NeoMail may ask of an attachment, where the handover's `attachments` offers it (neomail_attachments.py).
-	const ATTACHMENT_ACTIONS = ["drive", "scan", "edit"];
-	// The Drive's editors, by the extension they open (suite/drive/wopi/craft.py): product names, never translated.
+	const ATTACHMENT_ACTIONS = ["drive", "scan", "edit", "open"];
+	// The Drive's editors, by the extension they open (suite/drive/wopi/craft.py): product names, never translated. The
+	// formats they write back (`edit`, a folder picked first), and those they import, which « Ouvrir dans » opens too
+	// (`open`, neomail_attachments.open_in_editor) where the site's Drive does (the handover's `editors`).
 	const EDITORS = { docx: "NeoDoc", xlsx: "NeoGrille", pptx: "NeoPrés", pdf: "NeoPDF" };
+	const IMPORTED = {
+		xls: "NeoGrille",
+		xlsb: "NeoGrille",
+		ods: "NeoGrille",
+		csv: "NeoGrille",
+		tsv: "NeoGrille",
+		doc: "NeoDoc",
+		odt: "NeoDoc",
+		rtf: "NeoDoc",
+	};
 
 	/*
 	 * What NeoMail asks of an attachment (`mailcraft:attachment`): {action ("drive", "scan" or "edit"), account, email
@@ -635,13 +647,24 @@ window.neomailHost = (function () {
 		return (shown.length > 140 ? shown.slice(0, 139) + "…" : shown) || "attachment";
 	}
 
-	/* The editor of the Drive that opens a file named `name`, by its extension: {extension, product}, or null. */
-	function editorOf(name) {
-		const parts = fileLabel(name).split(".");
+	/*
+	 * The editor of the Drive that opens a file named `name`, by its extension: {extension, product}, or null; one that
+	 * imports it too with `imported` (« Ouvrir dans » only, never « Enregistrer et ouvrir », which writes it back).
+	 */
+	function editorOf(name, imported) {
+		// (From the whole name: the label cuts a long one, its extension with it.)
+		const whole = String(name || "")
+			.replace(/\\/g, "/")
+			.split("/")
+			.pop()
+			.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "")
+			.trim();
+		const parts = whole.split(".");
 		const extension = parts.length > 1 ? parts.pop().toLowerCase() : "";
-		return Object.prototype.hasOwnProperty.call(EDITORS, extension)
-			? { extension, product: EDITORS[extension] }
-			: null;
+		const own = (table) => Object.prototype.hasOwnProperty.call(table, extension);
+		if (own(EDITORS)) return { extension, product: EDITORS[extension] };
+		if (imported && own(IMPORTED)) return { extension, product: IMPORTED[extension] };
+		return null;
 	}
 
 	/* A size in bytes as people read it (« 12.4 KB »); empty for none. */

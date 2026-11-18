@@ -147,7 +147,7 @@ def hand_over(sample=None, build=None):
 
 	try:
 		actions = neomail_attachments.offered()
-		editors = sorted(neomail_attachments.installed_editors()) if "edit" in actions else []
+		editors = sorted(neomail_attachments.openable()) if "edit" in actions else []
 	except Exception:
 		frappe.log_error("NeoMail: the actions on an attachment could not be offered", frappe.get_traceback())
 		actions, editors = [], []
@@ -155,6 +155,8 @@ def hand_over(sample=None, build=None):
 		framed["host"]["attachments"] = actions
 	if editors:
 		framed["editors"] = editors
+		# NeoMail too: it offers « Ouvrir dans NeoGrille » for these only (the formats imported included).
+		framed["host"]["editors"] = editors
 	return framed
 
 

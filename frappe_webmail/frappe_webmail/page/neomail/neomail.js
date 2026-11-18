@@ -68,6 +68,7 @@
 	// (attachments.py).
 	const TO_DRIVE = "/api/method/frappe_webmail.neomail_attachments.save_to_drive";
 	const TO_SCANS = "/api/method/frappe_webmail.neomail_attachments.to_scans";
+	const TO_EDITOR = "/api/method/frappe_webmail.neomail_attachments.open_in_editor";
 	const FOLDERS = "/api/method/frappe_webmail.attachments.get_drive_folders";
 	const NEW_FOLDER = "/api/method/frappe_webmail.attachments.create_drive_folder";
 
@@ -641,6 +642,16 @@
 			send_to_scans(asked);
 			return;
 		}
+		if (asked.action === "open") {
+			const editor = window.neomailHost.editorOf(asked.attachment.name, true);
+			if (!editor) return;
+			if (!state.editors.includes(editor.extension)) {
+				frappe.msgprint(__("{0} is not installed on this site.", [editor.product]));
+				return;
+			}
+			open_in_editor(asked, editor);
+			return;
+		}
 		let editor = null;
 		if (asked.action === "edit") {
 			editor = window.neomailHost.editorOf(asked.attachment.name);
@@ -672,6 +683,38 @@
 				__("The attachment could not be sent to the scanned documents.")
 			);
 			if (done) filed(done.message, window.neomailHost.scanUrl(done.name), false);
+		} finally {
+			state.filing.delete(key);
+		}
+	}
+
+	// « Ouvrir dans NeoGrille »: at once, with no folder to pick (neomail_attachments.open_in_editor copies the file into
+	// the person's own Drive, « Pièces jointes », or finds the copy made before), then the copy in its editor, in a new tab
+	// opened on the click itself (the click in NeoMail's frame is this page's too; a browser blocks a tab opened after a
+	// wait). One call for an attachment while it runs, however many clicks.
+	async function open_in_editor(asked, editor) {
+		const key = ["open", asked.account, asked.email, asked.attachment.index].join("\n");
+		if (state.filing.has(key)) return;
+		state.filing.add(key);
+		const tab = window.open("", "_blank");
+		if (tab) tab.opener = null;
+		try {
+			const done = await taken(
+				await to_server(TO_EDITOR, {
+					account: asked.account,
+					email: asked.email,
+					attachment: asked.attachment,
+				}),
+				__("The file could not be opened in {0}.", [editor.product])
+			);
+			const url = done && window.neomailHost.driveUrl(done.url);
+			if (!url) {
+				if (tab) tab.close();
+				return;
+			}
+			if (tab) tab.location.replace(window.location.origin + url);
+			else window.open(url, "_blank", "noopener");
+			filed(done.message, url, true);
 		} finally {
 			state.filing.delete(key);
 		}

@@ -653,6 +653,232 @@ class TestWhereItGoes(TestWebmailAPIBase):
 		client.fetch.assert_not_called()
 
 
+# What « Ouvrir dans » opens in the tests: by extension, the editor's key in suite.
+OPENS = {"pdf": "pdf", "xlsx": "sheet", "xls": "sheet", "csv": "sheet", "docx": "word"}
+
+
+class TestOpenInEditor(TestWebmailAPIBase):
+	"""« Ouvrir dans NeoGrille »: one click, no folder to pick, a copy in the person's own Drive, the same copy again."""
+
+	@contextmanager
+	def drive(self, opens=None):
+		"""The Drive stood in for: the person's own folder (« home »), the folders made in it, the copies put there,
+		and those the person removed since (`self.gone`)."""
+		put, folders, self.gone = [], [], set()
+
+		def deposit(payload, name, folder):
+			put.append((payload, name, folder))
+			return SimpleNamespace(name=f"copy-{len(put)}", file_name=name, folder=folder)
+
+		def subfolder(parent, title):
+			folders.append((parent, title))
+			return f"{parent}/{title}"
+
+		def usable(name):
+			for i, (_payload, file_name, folder) in enumerate(put, 1):
+				if f"copy-{i}" == name and name not in self.gone:
+					return SimpleNamespace(name=name, file_name=file_name, folder=folder)
+			return None
+
+		with (
+			patch.object(files, "_gate"),
+			patch("frappe_webmail.drive.available", return_value=True),
+			patch("frappe_webmail.drive.deposit", side_effect=deposit),
+			patch.object(files, "openable", return_value=OPENS if opens is None else opens),
+			patch.object(files, "_home", return_value="home"),
+			patch.object(files, "_subfolder", side_effect=subfolder),
+			patch.object(files, "_usable", side_effect=usable),
+		):
+			yield put, folders
+
+	def dated(self, *attached, date="Tue, 17 Nov 2026 10:00:00 +0100", subject=None):
+		message = email.message_from_bytes(mail(*attached))
+		message["Date"] = date
+		message["Message-ID"] = "<invoice-118@example.org>"
+		if subject is not None:
+			del message["Subject"]
+			message["Subject"] = subject
+		return message.as_bytes()
+
+	def tearDown(self):
+		frappe.db.delete("DefaultValue", {"parent": files.COPIES})
+		super().tearDown()
+
+	def test_the_copy_goes_into_the_person_s_attachments_by_the_message_s_date_and_subject(self):
+		with self.drive() as (put, folders), mocked_imap(server(self.dated(invoice()))):
+			answer = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertEqual(
+			folders, [("home", "Attachments"), ("home/Attachments", "2026-11-17 Facture 2026-118")]
+		)
+		self.assertEqual(put, [(PDF, "Relevé 2026-118.pdf", "home/Attachments/2026-11-17 Facture 2026-118")])
+		self.assertRegex(answer["url"], DRIVE_FILE)
+		self.assertEqual((answer["editor"], answer["product"], answer["reused"]), ("pdf", "NeoPDF", False))
+		self.assertIn("Relevé 2026-118.pdf", answer["message"])
+
+	def test_the_same_attachment_opened_again_opens_the_same_copy(self):
+		raw = self.dated(invoice())
+		with self.drive() as (put, _folders):
+			with mocked_imap(server(raw)):
+				first = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+			with mocked_imap(server(raw)):
+				again = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+			self.assertEqual((again["name"], again["reused"]), (first["name"], True))
+			# The copy removed from the Drive (or no longer theirs to write): a new one
+			self.gone.add(first["name"])
+			with mocked_imap(server(raw)):
+				third = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertNotEqual(third["name"], first["name"])
+		self.assertFalse(third["reused"])
+		self.assertEqual(len(put), 2)
+
+	def test_a_format_an_editor_imports_opens_in_it_and_one_none_opens_is_refused_before_the_mail_is_read(
+		self,
+	):
+		listing = _named(
+			MIMEApplication(b"\xd0\xcf\x11\xe0 a made-up sheet", _subtype="vnd.ms-excel"), "Liste.xls"
+		)
+		raw = self.dated(listing, plan())
+		with self.drive() as (put, _folders), mocked_imap(server(raw)):
+			answer = files.open_in_editor(
+				self.test_account_email,
+				EMAIL_ID,
+				{"index": 1, "name": "Liste.xls", "mime": "application/vnd.ms-excel"},
+			)
+		self.assertEqual((answer["editor"], answer["product"]), ("sheet", "NeoGrille"))
+		self.assertEqual(put[0][1], "Liste.xls")
+		client = server(raw)
+		with self.drive() as (put, _folders), mocked_imap(client):
+			with self.assertRaisesRegex(frappe.ValidationError, "No editor of the Drive opens this type"):
+				files.open_in_editor(
+					self.test_account_email, EMAIL_ID, {"index": 2, "name": "plan.png", "mime": "image/png"}
+				)
+		client.fetch.assert_not_called()
+		self.assertEqual(put, [])
+		# A NeoMail that calls a picture a sheet: the name the message gives decides
+		with self.drive() as (put, _folders), mocked_imap(server(raw)):
+			with self.assertRaisesRegex(frappe.ValidationError, "No editor of the Drive opens this type"):
+				files.open_in_editor(
+					self.test_account_email,
+					EMAIL_ID,
+					{"index": 2, "name": "plan.xlsx", "size": len(PLAN), "mime": "image/png"},
+				)
+		self.assertEqual(put, [])
+
+	def test_the_copy_is_the_message_s_wherever_it_was_moved_and_the_person_s_own(self):
+		message = email.message_from_bytes(self.dated(invoice()), policy=policy.default)
+		key = files._copy_key("ada@example.org", "INBOX-id", INVOICE, message)
+		self.assertEqual(
+			key, files._copy_key("ada@example.org", "Archive-id", INVOICE, message), "by its Message-ID"
+		)
+		self.assertNotEqual(
+			key, files._copy_key("ada@example.org", "INBOX-id", {**INVOICE, "index": 2}, message)
+		)
+		del message["Message-ID"]
+		self.assertNotEqual(
+			files._copy_key("ada@example.org", "INBOX-id", INVOICE, message),
+			files._copy_key("ada@example.org", "Archive-id", INVOICE, message),
+			"without one, by its id",
+		)
+		with patch("frappe.session", frappe._dict(user="someone-else@example.org")):
+			self.assertNotEqual(files._copy_key("ada@example.org", "INBOX-id", INVOICE, message), key)
+
+	def test_a_reused_import_opens_the_file_its_editor_saved_the_work_in(self):
+		original = SimpleNamespace(name="copy-1", file_name="Liste.xls", folder="msg")
+		near = [
+			frappe._dict(name="other", file_name="Liste old.xlsx"),
+			frappe._dict(name="saved-2", file_name="Liste (1).xlsx"),
+			frappe._dict(name="saved-1", file_name="Liste.xlsx"),
+		]
+		with (
+			patch.object(files, "openable", return_value=OPENS),
+			patch.object(frappe, "get_all", return_value=near) as asked,
+			patch.object(
+				files,
+				"_usable",
+				side_effect=lambda name: SimpleNamespace(name=name) if name != "saved-2" else None,
+			),
+		):
+			self.assertEqual(
+				files._saved_beside(original).name, "saved-1", "the newest one the person may still write"
+			)
+		self.assertEqual(asked.call_args.kwargs["filters"]["folder"], "msg")
+		with patch.object(files, "openable", return_value=OPENS):
+			self.assertIsNone(
+				files._saved_beside(SimpleNamespace(name="x", file_name="Lettre.docx", folder="msg"))
+			)
+
+	def test_a_copy_under_a_folder_in_the_bin_is_no_copy(self):
+		import sys
+
+		rows = {
+			"copy-1": frappe._dict(
+				name="copy-1", file_name="a.xlsx", folder="msg", is_folder=0, status="Active"
+			),
+			"msg": frappe._dict(status="Active", folder="attachments"),
+			"attachments": frappe._dict(status="Trashed", folder="home"),
+			"home": frappe._dict(status="Active", folder=None),
+		}
+		permissions = SimpleNamespace(user_has_permission=lambda doc, ptype: True)
+		with (
+			patch.dict(sys.modules, {"suite.drive.api.permissions": permissions}),
+			patch.object(
+				frappe.db, "get_value", side_effect=lambda dt, name, fields, as_dict=False: rows.get(name)
+			),
+			patch.object(frappe, "get_doc", return_value=None),
+		):
+			self.assertIsNone(files._usable("copy-1"))
+			rows["attachments"].status = "Active"
+			self.assertEqual(files._usable("copy-1").name, "copy-1")
+
+	def test_a_subject_becomes_a_folder_s_name_as_a_file_s_name_would(self):
+		with (
+			self.drive() as (_put, folders),
+			mocked_imap(server(self.dated(invoice(), subject="Re: AW: Offre <urgent> \u202e?"))),
+		):
+			files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertEqual(folders[1][1], "2026-11-17 Re AW Offre urgent")
+		with (
+			self.drive() as (_put, folders),
+			mocked_imap(
+				server(self.dated(invoice(), date="Tue, 17 Nov 2026 10:00:00 +99999999999999999999"))
+			),
+		):
+			files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertTrue(
+			folders[1][1].startswith(frappe.utils.getdate().isoformat()), "a date beyond any zone: today's"
+		)
+
+	def test_a_message_without_a_date_or_a_subject_still_has_its_folder(self):
+		with (
+			self.drive() as (_put, folders),
+			mocked_imap(server(self.dated(invoice(), date="not a date", subject=""))),
+		):
+			files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertEqual(folders[1][1], f"{frappe.utils.getdate().isoformat()} (no subject)")
+
+	def test_what_opens_is_what_this_site_s_drive_opens(self):
+		import sys
+
+		with patch("frappe_webmail.drive.available", return_value=True):
+			craft = SimpleNamespace(
+				opened_extensions=lambda: {
+					"xlsx": "sheet",
+					"CSV": "sheet",
+					"odt": "word",
+					"x/y": "word",
+					"zip": "nobody",
+				}
+			)
+			with patch.dict(sys.modules, {"suite.drive.wopi.craft": craft}):
+				self.assertEqual(files.openable(), {"xlsx": "sheet", "csv": "sheet", "odt": "word"})
+			# A suite that does not say: the formats its editors write back
+			with patch.dict(sys.modules, {"suite.drive.wopi.craft": SimpleNamespace()}):
+				with patch.object(files, "installed_editors", return_value={"docx", "pdf"}):
+					self.assertEqual(files.openable(), {"docx": "word", "pdf": "pdf"})
+		with patch("frappe_webmail.drive.available", return_value=False):
+			self.assertEqual(files.openable(), {})
+
+
 class TestWhoAndWhat(TestWebmailAPIBase):
 	"""What NeoMail is offered, and who may ask."""
 
@@ -664,7 +890,7 @@ class TestWhoAndWhat(TestWebmailAPIBase):
 
 		with menu("preview", "download", "save_to_drive", "document_scan", "forward"):
 			with patch.object(files, "installed_editors", return_value={"docx"}):
-				self.assertEqual(files.offered(), ["drive", "scan", "edit"])
+				self.assertEqual(files.offered(), ["drive", "scan", "edit", "open"])
 			with patch.object(files, "installed_editors", return_value=set()):
 				self.assertEqual(files.offered(), ["drive", "scan"])
 		with menu("preview", "document_scan"), patch.object(files, "installed_editors", return_value={"pdf"}):
