@@ -1422,7 +1422,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertEqual(given["attachments"], neomail_attachments.offered())
 		self.assertEqual(
 			given["editors"],
-			sorted(neomail_attachments.installed_editors()) if "edit" in given["attachments"] else [],
+			sorted(neomail_attachments.openable()) if "edit" in given["attachments"] else [],
 		)
 		self.assertEqual(
 			self._authenticated(SESSION, box["secret"], alive=False)[0],
@@ -1528,7 +1528,7 @@ class TestMailCraftJmap(FrappeTestCase):
 
 		with (
 			patch.object(neomail_attachments, "offered", return_value=["drive", "scan", "edit"]),
-			patch.object(neomail_attachments, "installed_editors", return_value={"xlsx", "docx"}),
+			patch.object(neomail_attachments, "openable", return_value={"xlsx": "sheet", "docx": "word"}),
 		):
 			given = self._hand_over(self._bearer())
 		self.assertEqual(
@@ -1536,7 +1536,7 @@ class TestMailCraftJmap(FrappeTestCase):
 		)
 		with (
 			patch.object(neomail_attachments, "offered", return_value=["drive"]),
-			patch.object(neomail_attachments, "installed_editors", return_value={"docx"}),
+			patch.object(neomail_attachments, "openable", return_value={"docx": "word"}),
 		):
 			self.assertEqual(
 				self._hand_over(self._bearer())["editors"], [], "no editor where none is offered"
