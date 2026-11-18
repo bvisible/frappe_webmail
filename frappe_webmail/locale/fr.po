@@ -5842,3 +5842,22 @@ msgstr "{0} se connecte une fois chez {1}, depuis « Mon courrier » : Neoffice 
 #: frappe_webmail/public/js/mail_team.js:323
 msgid "✓ The mailbox signs in."
 msgstr "✓ La boîte se connecte."
+
+#: frappe_webmail/mail_team.py:556
+msgid "a mailbox to set up"
+msgstr "une boîte mail à régler"
+
+#: frappe_webmail/mail_team.py:543
+#, python-brace-format
+msgid "Your mailbox {0} waits for you"
+msgstr "Votre boîte {0} vous attend"
+
+#: frappe_webmail/mail_team.py:558
+#, python-brace-format
+msgid "{0} mailboxes to set up"
+msgstr "{0} boîtes mail à régler"
+
+#: frappe_webmail/mail_team.py:546
+#, python-brace-format
+msgid "{0} of your mailboxes wait for you"
+msgstr "{0} de vos boîtes vous attendent"

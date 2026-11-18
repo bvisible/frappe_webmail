@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-18 10:52+0000\n"
-"PO-Revision-Date: 2026-11-18 10:52+0000\n"
+"POT-Creation-Date: 2026-11-18 12:27+0000\n"
+"PO-Revision-Date: 2026-11-18 12:27+0000\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language-Team: hello@neoservice.ai\n"
 "MIME-Version: 1.0\n"
@@ -253,8 +253,8 @@ msgid "Active on this mailbox"
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1314
-#: frappe_webmail/public/js/mail_team.js:115
-#: frappe_webmail/public/js/mail_team.js:470
+#: frappe_webmail/public/js/mail_team.js:120
+#: frappe_webmail/public/js/mail_team.js:477
 #: frappe_webmail/www/neomail.html:841
 msgid "Add a mailbox"
 msgstr ""
@@ -272,7 +272,7 @@ msgstr ""
 msgid "Add star"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:117
+#: frappe_webmail/public/js/mail_team.js:122
 msgid "Add the mailbox"
 msgstr ""
 
@@ -291,7 +291,7 @@ msgstr ""
 msgid "Add-ons"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:441
+#: frappe_webmail/public/js/mail_team.js:448
 #, python-brace-format
 msgid "Added by {0}"
 msgstr ""
@@ -388,7 +388,7 @@ msgstr ""
 msgid "An icon before each number and address"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:473
+#: frappe_webmail/public/js/mail_team.js:480
 msgid "Another mailbox? Your administrator adds it in Settings › Mail."
 msgstr ""
 
@@ -879,7 +879,7 @@ msgstr ""
 msgid "Connect OAuth"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:427
+#: frappe_webmail/public/js/mail_team.js:434
 #, python-brace-format
 msgid "Connect at {0}"
 msgstr ""
@@ -2012,7 +2012,7 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:161
+#: frappe_webmail/public/js/mail_team.js:166
 msgid "How does it sign in?"
 msgstr ""
 
@@ -2088,11 +2088,11 @@ msgstr ""
 msgid "IMAP folder name for trash (e.g., Trash, Deleted Items)"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:173
+#: frappe_webmail/public/js/mail_team.js:178
 msgid "IMAP port"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:169
+#: frappe_webmail/public/js/mail_team.js:174
 msgid "IMAP server"
 msgstr ""
 
@@ -2258,7 +2258,7 @@ msgstr ""
 msgid "Is Default"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:327
+#: frappe_webmail/public/js/mail_team.js:334
 #, python-brace-format
 msgid "It does not sign in: {0}"
 msgstr ""
@@ -2335,7 +2335,7 @@ msgstr ""
 msgid "Learn my writing style from my sent emails"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:196
+#: frappe_webmail/public/js/mail_team.js:201
 msgid "Leave it empty for a mailbox of their own. Each person named here sees it in their NeoMail; its owner sees who reads it."
 msgstr ""
 
@@ -2407,7 +2407,7 @@ msgid "Loading..."
 msgstr ""
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:802
-#: frappe_webmail/public/js/mail_team.js:459
+#: frappe_webmail/public/js/mail_team.js:466
 #: frappe_webmail/public/js/signature_builder.js:216
 #: frontend/src/components/DocumentPicker.vue:53
 #: frontend/src/components/DriveFolderPicker.vue:44
@@ -2465,7 +2465,7 @@ msgstr ""
 msgid "Look"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:246
+#: frappe_webmail/public/js/mail_team.js:251
 #, python-brace-format
 msgid "Looking where {0} receives its mail…"
 msgstr ""
@@ -2635,12 +2635,12 @@ msgstr ""
 msgid "My Drive"
 msgstr ""
 
-#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:234
-#: frappe_webmail/public/js/mail_team.js:449
+#: frappe_webmail/frappe_webmail/page/neomail/neomail.py:240
+#: frappe_webmail/public/js/mail_team.js:456
 msgid "My mail"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:457
+#: frappe_webmail/public/js/mail_team.js:464
 msgid "My mailboxes"
 msgstr ""
 
@@ -2691,7 +2691,7 @@ msgstr ""
 msgid "NeoMail is not offered on this site."
 msgstr ""
 
-#: frappe_webmail/mail_team.py:347 frappe_webmail/public/js/mail_team.js:248
+#: frappe_webmail/mail_team.py:347 frappe_webmail/public/js/mail_team.js:253
 #, python-brace-format
 msgid "Neoffice could not look up where {0} receives its mail: try again in a moment."
 msgstr ""
@@ -2784,11 +2784,11 @@ msgstr ""
 msgid "Newest first"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:268
+#: frappe_webmail/public/js/mail_team.js:273
 msgid "Next: the password and the two servers. Neoffice tries them before adding."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:265
+#: frappe_webmail/public/js/mail_team.js:270
 msgid "Next: the person signs in once at their provider and says yes, from « My mail »."
 msgstr ""
 
@@ -2856,7 +2856,7 @@ msgstr ""
 msgid "No longer"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:478
+#: frappe_webmail/public/js/mail_team.js:485
 msgid "No mailbox yet."
 msgstr ""
 
@@ -3125,7 +3125,7 @@ msgstr ""
 msgid "On {0}, {1} wrote:"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:520
+#: frappe_webmail/public/js/mail_team.js:527
 #, python-brace-format
 msgid "Once connected, {0} will read this mailbox too. Connect it?"
 msgstr ""
@@ -3468,11 +3468,11 @@ msgstr ""
 msgid "Quotations"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:195
+#: frappe_webmail/public/js/mail_team.js:200
 msgid "Read also by"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:420
+#: frappe_webmail/public/js/mail_team.js:427
 #, python-brace-format
 msgid "Read also by {0}"
 msgstr ""
@@ -3724,11 +3724,11 @@ msgstr ""
 msgid "SMTP Settings"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:180
+#: frappe_webmail/public/js/mail_team.js:185
 msgid "SMTP port"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:176
+#: frappe_webmail/public/js/mail_team.js:181
 msgid "SMTP server"
 msgstr ""
 
@@ -3956,7 +3956,7 @@ msgstr ""
 msgid "Sent to the scanned documents: the reading takes about a minute"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:450 frontend/src/pages/Webmail.vue:642
+#: frappe_webmail/public/js/mail_team.js:457 frontend/src/pages/Webmail.vue:642
 msgid "Settings"
 msgstr ""
 
@@ -4016,7 +4016,7 @@ msgstr ""
 msgid "Shared with {0}"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:422
+#: frappe_webmail/public/js/mail_team.js:429
 #, python-brace-format
 msgid "Shared · {0} answers for it"
 msgstr ""
@@ -4086,7 +4086,7 @@ msgstr ""
 msgid "Sign in to Neoffice as the owner of this mailbox, then connect it again."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:160
+#: frappe_webmail/public/js/mail_team.js:165
 msgctxt "Add a mailbox"
 msgid "Sign-in"
 msgstr ""
@@ -4361,7 +4361,7 @@ msgstr ""
 msgid "The accent colour must be written as #rrggbb, for example {0}."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:140
+#: frappe_webmail/public/js/mail_team.js:145
 msgid "The address"
 msgstr ""
 
@@ -4388,7 +4388,7 @@ msgstr ""
 msgid "The address, its password, and the IMAP and SMTP servers the provider gives."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:232
+#: frappe_webmail/public/js/mail_team.js:237
 #, python-brace-format
 msgid "The address: {0}. Choose who serves it; Neoffice does the settings."
 msgstr ""
@@ -4448,12 +4448,12 @@ msgstr ""
 msgid "The dates of the ERP are read-only here: change them in the document they come from."
 msgstr ""
 
-#: frappe_webmail/mail_team.py:354 frappe_webmail/public/js/mail_team.js:258
+#: frappe_webmail/mail_team.py:354 frappe_webmail/public/js/mail_team.js:263
 #, python-brace-format
 msgid "The domain {0} does not receive its mail at Neoservice's: choose the provider that hosts it."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:254
+#: frappe_webmail/public/js/mail_team.js:259
 #, python-brace-format
 msgid "The domain {0} receives its mail at our host: its servers are set."
 msgstr ""
@@ -4527,12 +4527,12 @@ msgstr ""
 msgid "The mailbox Neoservice provides. Its address and its password: Neoffice finds the right settings itself."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:404
+#: frappe_webmail/public/js/mail_team.js:411
 #, python-brace-format
 msgid "The mailbox {0} is added: it opens in NeoMail."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:400
+#: frappe_webmail/public/js/mail_team.js:407
 #, python-brace-format
 msgid "The mailbox {0} is added: its owner connects it once, from « My mail »."
 msgstr ""
@@ -4542,11 +4542,11 @@ msgstr ""
 msgid "The mailbox {0} is already there."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:167
+#: frappe_webmail/public/js/mail_team.js:172
 msgid "The mailbox's password"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:305
+#: frappe_webmail/public/js/mail_team.js:310
 #, python-brace-format
 msgid "The mailbox's password, as {0} gave it. Neoffice tries it before adding the mailbox."
 msgstr ""
@@ -4602,7 +4602,7 @@ msgstr ""
 msgid "The note was changed elsewhere: read it again."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:128
+#: frappe_webmail/public/js/mail_team.js:133
 msgid "The person"
 msgstr ""
 
@@ -4645,7 +4645,7 @@ msgstr ""
 msgid "The team's signatures"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:134
+#: frappe_webmail/public/js/mail_team.js:139
 msgid "They answer for it: it opens in their NeoMail."
 msgstr ""
 
@@ -4733,7 +4733,7 @@ msgstr ""
 msgid "This signature is too large."
 msgstr ""
 
-#: frappe_webmail/mail_team.py:471 frappe_webmail/public/js/mail_team.js:264
+#: frappe_webmail/mail_team.py:471 frappe_webmail/public/js/mail_team.js:269
 msgid "This site cannot sign in at this provider yet: ask Neoservice."
 msgstr ""
 
@@ -4895,7 +4895,7 @@ msgstr ""
 msgid "Try fewer filters or a different folder."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:319
+#: frappe_webmail/public/js/mail_team.js:326
 msgid "Trying the mailbox's servers…"
 msgstr ""
 
@@ -4904,7 +4904,7 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:431
+#: frappe_webmail/public/js/mail_team.js:438
 msgid "Type its password"
 msgstr ""
 
@@ -5098,7 +5098,7 @@ msgstr ""
 msgid "When several models fit a person, the most precise wins: their department, then their group, then their roles, then their company."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:147
+#: frappe_webmail/public/js/mail_team.js:152
 msgctxt "Add a mailbox"
 msgid "Where"
 msgstr ""
@@ -5109,7 +5109,7 @@ msgstr ""
 msgid "Where a click on the banner leads: an https:// address. Without one, the banner is a picture only."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:148
+#: frappe_webmail/public/js/mail_team.js:153
 msgid "Where is this mailbox?"
 msgstr ""
 
@@ -5118,7 +5118,7 @@ msgstr ""
 msgid "Which automations are active?"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:189
+#: frappe_webmail/public/js/mail_team.js:194
 msgid "Who else reads this mailbox?"
 msgstr ""
 
@@ -5127,7 +5127,7 @@ msgstr ""
 msgid "Who it applies to"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:188
+#: frappe_webmail/public/js/mail_team.js:193
 msgctxt "Add a mailbox"
 msgid "Who reads it"
 msgstr ""
@@ -5137,13 +5137,13 @@ msgstr ""
 msgid "Who sends it"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:121
+#: frappe_webmail/public/js/mail_team.js:126
 msgctxt "Add a mailbox"
 msgid "Whose"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:114
-#: frappe_webmail/public/js/mail_team.js:122
+#: frappe_webmail/public/js/mail_team.js:119
+#: frappe_webmail/public/js/mail_team.js:127
 msgid "Whose mailbox is it?"
 msgstr ""
 
@@ -5259,6 +5259,11 @@ msgstr ""
 msgid "Your draft"
 msgstr ""
 
+#: frappe_webmail/mail_team.py:543
+#, python-brace-format
+msgid "Your mailbox {0} waits for you"
+msgstr ""
+
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:439
 msgid "Your message"
 msgstr ""
@@ -5292,8 +5297,12 @@ msgstr ""
 msgid "Your way of writing was learnt on {0} from {1}."
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:421
+#: frappe_webmail/public/js/mail_team.js:428
 msgid "Yours alone"
+msgstr ""
+
+#: frappe_webmail/mail_team.py:556
+msgid "a mailbox to set up"
 msgstr ""
 
 #: frontend/src/components/AgentPanel.vue:155
@@ -5394,7 +5403,7 @@ msgstr ""
 
 #: frappe_webmail/signature_builder.py:158
 #: frappe_webmail/signature_builder.py:195
-#: frappe_webmail/tests/test_mail_team.py:402
+#: frappe_webmail/tests/test_mail_team.py:432
 msgid "job title"
 msgstr ""
 
@@ -5572,10 +5581,20 @@ msgstr ""
 msgid "{0} is not one of the desk's people."
 msgstr ""
 
+#: frappe_webmail/mail_team.py:558
+#, python-brace-format
+msgid "{0} mailboxes to set up"
+msgstr ""
+
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/EmailList.vue:789
 #, python-brace-format
 msgid "{0} new messages"
+msgstr ""
+
+#: frappe_webmail/mail_team.py:546
+#, python-brace-format
+msgid "{0} of your mailboxes wait for you"
 msgstr ""
 
 #: frontend/src/components/EmailViewer.vue:527
@@ -5603,7 +5622,7 @@ msgstr ""
 msgid "{0} result(s) out of {1}"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:303
+#: frappe_webmail/public/js/mail_team.js:308
 #, python-brace-format
 msgid "{0} signs in at {1} once, from « My mail »: Neoffice never sees their password."
 msgstr ""
@@ -5668,7 +5687,7 @@ msgstr ""
 msgid "{0}: {1}"
 msgstr ""
 
-#: frappe_webmail/public/js/mail_team.js:323
+#: frappe_webmail/public/js/mail_team.js:330
 msgid "✓ The mailbox signs in."
 msgstr ""
 
