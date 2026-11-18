@@ -24,7 +24,7 @@ frappe.provide("frappe_webmail.mail_team");
 	// Versioned: a browser that keeps an older builder (without `mount`) would draw nothing
 	const BUILDER_JS = "/assets/frappe_webmail/js/signature_builder.js?v=2";
 	const BUILDER_CSS = "/assets/frappe_webmail/css/signature_builder.css?v=2";
-	const STYLE = "/assets/frappe_webmail/css/mail_team.css?v=1";
+	const STYLE = "/assets/frappe_webmail/css/mail_team.css?v=2";
 	const esc = (v) => frappe.utils.escape_html(v == null ? "" : String(v));
 
 	// A file asked once, by a tag (frappe.require never runs an address that carries a version)
@@ -102,7 +102,12 @@ frappe.provide("frappe_webmail.mail_team");
 
 	// ---- « Add a mailbox » ---------------------------------------------------------------------------------------------
 
+	// « Who else reads it » is a list of the desk's people: its table's description must be known to the page first
 	function add_mailbox(opts) {
+		return frappe.model.with_doctype("Webmail Account User").then(() => make_wizard(opts));
+	}
+
+	function make_wizard(opts) {
 		const options = opts || {};
 		const S = {
 			provider: "neoservice",

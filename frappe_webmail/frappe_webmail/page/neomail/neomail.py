@@ -234,7 +234,7 @@ def _my_mail_in_the_user_menu(bootinfo):
 			"label": _("My mail"),
 			"icon": "mail",
 			"badge": waiting,
-			"script": "/assets/frappe_webmail/js/mail_team.js?v=1",
+			"script": "/assets/frappe_webmail/js/mail_team.js?v=2",
 			"call": "frappe_webmail.mail_team.open_mine",
 		}
 	)
