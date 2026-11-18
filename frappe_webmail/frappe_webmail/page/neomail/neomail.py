@@ -211,6 +211,11 @@ def extend_bootinfo(bootinfo):
 		_my_mail_in_the_user_menu(bootinfo)
 
 
+# The windows of the team's mail (« Add a mailbox », « My mail »), versioned here only: the boot hands the address to who
+# loads them (the person's menu, the Mail tab of the theme's Settings), so a change of the windows needs no other app to follow
+MAIL_TEAM_JS = "/assets/frappe_webmail/js/mail_team.js?v=3"
+
+
 def _my_mail_in_the_user_menu(bootinfo):
 	"""« My mail » in the person's menu (the cockpit's, `neo_user_menu`: what an app adds there, each entry a label, an
 	icon, a script to load and the function it calls), with how many of their own mailboxes wait for them (to connect,
@@ -225,6 +230,7 @@ def _my_mail_in_the_user_menu(bootinfo):
 	except Exception:
 		frappe.log_error("NeoMail: My mail's count for the user menu failed", frappe.get_traceback())
 		waiting = 0
+	bootinfo["neo_mail_team_js"] = MAIL_TEAM_JS
 	menu = bootinfo.get("neo_user_menu")
 	if not isinstance(menu, list):
 		menu = bootinfo["neo_user_menu"] = []
@@ -234,7 +240,7 @@ def _my_mail_in_the_user_menu(bootinfo):
 			"label": _("My mail"),
 			"icon": "mail",
 			"badge": waiting,
-			"script": "/assets/frappe_webmail/js/mail_team.js?v=2",
+			"script": MAIL_TEAM_JS,
 			"call": "frappe_webmail.mail_team.open_mine",
 		}
 	)

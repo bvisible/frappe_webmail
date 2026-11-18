@@ -23,7 +23,7 @@ frappe.provide("frappe_webmail.mail_team");
 	const API = "frappe_webmail.mail_team.";
 	// Versioned: a browser that keeps an older builder (without `mount`) would draw nothing
 	const BUILDER_JS = "/assets/frappe_webmail/js/signature_builder.js?v=2";
-	const BUILDER_CSS = "/assets/frappe_webmail/css/signature_builder.css?v=2";
+	const BUILDER_CSS = "/assets/frappe_webmail/css/signature_builder.css?v=3";
 	const STYLE = "/assets/frappe_webmail/css/mail_team.css?v=2";
 	const esc = (v) => frappe.utils.escape_html(v == null ? "" : String(v));
 
@@ -313,6 +313,8 @@ frappe.provide("frappe_webmail.mail_team");
 				  );
 			d.fields_dict.how.$wrapper.html(`<p class="mlt-lead">${esc(text)}</p>`);
 			paint_tried();
+			// The sentence of the footer (« 1 champ à compléter ») counts again, now the password is asked or not
+			setTimeout(() => d.$wrapper.trigger("change"), 0);
 		}
 
 		function paint_tried() {

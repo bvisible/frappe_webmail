@@ -170,3 +170,9 @@
 .sigb-page--small .sigb-page-body {
 	padding: 14px 16px;
 }
+/* In a column of another window (« My mail »), the builder's own two columns stack: the preview under the choices */
+.sigb-page--small .sigb-cols,
+.sigb-page--small .sigb-cols.mine {
+	grid-template-columns: minmax(0, 1fr);
+	min-height: 0;
+}

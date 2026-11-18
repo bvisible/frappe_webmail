@@ -5564,7 +5564,7 @@ msgstr "Ajoutée par {0}"
 
 #: frappe_webmail/public/js/mail_team.js:473
 msgid "Another mailbox? Your administrator adds it in Settings › Mail."
-msgstr "Une autre boîte ? Votre administrateur l'ajoute dans Réglages › Courrier."
+msgstr "Une autre boîte ? Votre administrateur l'ajoute dans Paramètres › Courrier."
 
 #: frappe_webmail/mail_team.py:91 frappe_webmail/mail_team.py:95
 #: frappe_webmail/public/js/mail_team.js:95
@@ -5756,7 +5756,7 @@ msgstr "Impossible de lire la liste des lecteurs de la boîte."
 
 #: frappe_webmail/public/js/mail_team.js:134
 msgid "They answer for it: it opens in their NeoMail."
-msgstr "Ces personnes en répondent : elle s'ouvre dans leur NeoMail."
+msgstr "Elle en répond : la boîte s'ouvre dans son NeoMail."
 
 #: frappe_webmail/mail_team.py:471 frappe_webmail/public/js/mail_team.js:264
 msgid "This site cannot sign in at this provider yet: ask Neoservice."
