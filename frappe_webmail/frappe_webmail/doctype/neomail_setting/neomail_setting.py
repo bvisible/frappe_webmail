@@ -2,8 +2,8 @@
 # For license information, please see license.txt
 
 """NeoMail Setting: what NeoMail keeps of a person's window between two visits (mailcraft_settings.py): the person's
-rules and categories (`account` "*"), or the Safe Senders and Blocked Senders of one of their mailboxes. Written and
-read by the facade alone, for the person whose token it is; a System Manager may look."""
+rules and categories (`account` "*"), or the Safe Senders and Blocked Senders of one of their mailboxes and what was
+marked done in it. Written and read by the facade alone, for the person whose token it is; a System Manager may look."""
 
 import frappe
 from frappe.model.document import Document
@@ -21,6 +21,7 @@ class NeoMailSetting(Document):
 		account: DF.Data | None
 		blocked_senders: DF.JSON | None
 		categories: DF.JSON | None
+		done_messages: DF.JSON | None
 		rules: DF.JSON | None
 		safe_senders: DF.JSON | None
 		user: DF.Link

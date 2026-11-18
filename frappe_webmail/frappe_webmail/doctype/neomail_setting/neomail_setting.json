@@ -2,7 +2,7 @@
  "actions": [],
  "autoname": "hash",
  "creation": "2026-10-28 18:00:00.000000",
- "description": "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders.",
+ "description": "What NeoMail keeps of a person's window between two visits: their rules and categories, and each mailbox's Safe Senders and Blocked Senders and what was marked done in it.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -13,7 +13,8 @@
   "categories",
   "sb_mailbox",
   "safe_senders",
-  "blocked_senders"
+  "blocked_senders",
+  "done_messages"
  ],
  "fields": [
   {
@@ -69,12 +70,19 @@
    "fieldtype": "JSON",
    "label": "Blocked Senders",
    "read_only": 1
+  },
+  {
+   "description": "Each message marked done in this mailbox (by its Message-ID): the folder it came from, when, and what its row said.",
+   "fieldname": "done_messages",
+   "fieldtype": "JSON",
+   "label": "Marked as Done",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-28 18:00:00.000000",
+ "modified": "2026-11-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "NeoMail Setting",

@@ -2,11 +2,13 @@
 # For license information, please see license.txt
 
 """What NeoMail keeps of a person's window between two visits (mailcraft_settings, maintenance#1956): their rules and
-categories, and the Safe Senders and Blocked Senders of each of their mailboxes.
+categories, and the Safe Senders and Blocked Senders of each of their mailboxes and what was marked done in it.
 
 Every mailbox offers it; the person reads and writes their own, in a mailbox they may open: a mailbox shared with them
-holds their own lists, not its owner's, and a mailbox of somebody else is refused. What is not a rule, a category or a
-list of addresses is refused, and so is too much of it. A person or a mailbox deleted takes its records with it.
+holds their own lists, not its owner's, and a mailbox of somebody else is refused. What is not a rule, a category, a
+list of addresses or a list of messages marked done is refused, and so is too much of it. A site whose records have no
+field for what was marked done yet (its `bench migrate` to come) neither says it nor takes it. A person or a mailbox
+deleted takes its records with it.
 
 Run with:
     bench --site prodclone.local run-tests --app frappe_webmail --module frappe_webmail.tests.test_mailcraft_settings
@@ -40,6 +42,13 @@ RULE = {
 	"stop": False,
 }
 CATEGORY = {"name": "Customers", "color": [46, 139, 87]}
+DONE = {
+	"messageId": "plans.42@example.com",
+	"from": "MSU5CT1g",
+	"at": 1_792_000_000,
+	"who": "Grace",
+	"subject": "The plans",
+}
 
 
 class TestMailCraftSettings(FrappeTestCase):
@@ -116,13 +125,23 @@ class TestMailCraftSettings(FrappeTestCase):
 			self.assertEqual(session["primaryAccounts"][settings.SETTINGS], aid)
 			taken = session["accounts"][aid]["accountCapabilities"][settings.SETTINGS]
 			self.assertEqual(taken["maxSenders"], settings.MAX_SENDERS)
+			self.assertEqual(taken["maxDone"], settings.MAX_DONE)
 
 	def test_nothing_kept_says_so(self):
 		self._as(OWNER)
 		got = self._get(OWNER_BOX)
 		self.assertEqual(
 			got["list"],
-			[{"id": "singleton", "rules": None, "categories": None, "safeSenders": [], "blockedSenders": []}],
+			[
+				{
+					"id": "singleton",
+					"rules": None,
+					"categories": None,
+					"safeSenders": [],
+					"blockedSenders": [],
+					"done": [],
+				}
+			],
 		)
 
 	def test_what_is_written_is_read_at_the_next_visit(self):
@@ -287,3 +306,95 @@ class TestMailCraftSettings(FrappeTestCase):
 		self.assertFalse(frappe.has_permission(settings.DOCTYPE, "read"))
 		with self.assertRaises(frappe.PermissionError):
 			frappe.get_list(settings.DOCTYPE)
+
+	def test_what_was_marked_done_is_each_mailboxs_and_each_persons(self):
+		self._as(OWNER)
+		later = {**DONE, "messageId": "offer.7@example.com", "at": DONE["at"] + 60}
+		done = self._set(OWNER_BOX, done=[later, DONE], blockedSenders=["spam.example"])
+		self.assertEqual(done["updated"], {"singleton": None}, done)
+		got = self._get(OWNER_BOX)["list"][0]
+		self.assertEqual((got["done"], got["blockedSenders"]), ([later, DONE], ["spam.example"]))
+		self.assertEqual(self._get(SECOND_BOX)["list"][0]["done"], [], "another mailbox has its own")
+		# Changed: what it holds changes, and the state with it.
+		before = self._get(OWNER_BOX)["state"]
+		self._set(OWNER_BOX, done=[DONE])
+		self.assertEqual(self._get(OWNER_BOX)["list"][0]["done"], [DONE])
+		self.assertNotEqual(self._get(OWNER_BOX)["state"], before)
+		# A mailbox shared with a colleague: their own, not the owner's.
+		self._as(COLLEAGUE)
+		self.assertEqual(self._get(OWNER_BOX)["list"][0]["done"], [])
+		self._set(OWNER_BOX, done=[later])
+		self._as(OWNER)
+		self.assertEqual(self._get(OWNER_BOX)["list"][0]["done"], [DONE])
+
+	def test_what_is_not_a_list_of_messages_marked_done_is_refused(self):
+		self._as(OWNER)
+		for done in (
+			"all",
+			[DONE] * (settings.MAX_DONE + 1),
+			["plans.42@example.com"],
+			[{**DONE, "messageId": ""}],
+			[{**DONE, "messageId": 42}],
+			[{**DONE, "messageId": "x" * 1_001}],
+			[{key: value for key, value in DONE.items() if key != "at"}],
+			[{**DONE, "at": "today"}],
+			[{**DONE, "at": True}],
+			[{**DONE, "at": -1}],
+			[{**DONE, "who": 3}],
+			[{**DONE, "subject": "s" * 1_001}],
+			# (Each entry within its bounds, but too much of them: past MAX_DONE_BYTES.)
+			[
+				{
+					**DONE,
+					"messageId": f"m{n}@example.com",
+					"from": "f" * 1_000,
+					"subject": "s" * 1_000,
+					"who": "w" * 1_000,
+				}
+				for n in range(200)
+			],
+		):
+			answer = self._set(OWNER_BOX, done=done)
+			self.assertIsNone(answer["updated"], str(done)[:80])
+			self.assertEqual(answer["notUpdated"]["singleton"]["type"], "invalidProperties", str(done)[:80])
+		frappe.set_user("Administrator")
+		self.assertFalse(frappe.db.exists(settings.DOCTYPE, {"user": OWNER}), "nothing was written")
+
+	def test_each_message_marked_done_is_kept_once_and_in_its_shape(self):
+		self._as(OWNER)
+		other = {**DONE, "messageId": "offer.7@example.com"}
+		# Whatever else an entry carries is not kept (a number JSON can't hold would fail in the database), and a message
+		# named twice is kept as it is named first.
+		loose = {**DONE, "extra": {"deep": [1]}, "score": float("nan")}
+		bare = {"messageId": "bare.1@example.com", "at": DONE["at"]}
+		answer = self._set(OWNER_BOX, done=[loose, {**DONE, "at": DONE["at"] - 60}, other, bare])
+		self.assertEqual(answer["updated"], {"singleton": None}, answer)
+		got = self._get(OWNER_BOX)
+		whole_bare = {**bare, "from": "", "who": "", "subject": ""}
+		self.assertEqual(got["list"][0]["done"], [DONE, other, whole_bare])
+		self.assertEqual(self._get(OWNER_BOX)["state"], got["state"], "read twice, the same state")
+		# As many as NeoMail keeps go through.
+		most = [{**DONE, "messageId": f"m{n}@example.com"} for n in range(settings.MAX_DONE)]
+		self.assertEqual(self._set(OWNER_BOX, done=most)["updated"], {"singleton": None})
+		self.assertEqual(len(self._get(OWNER_BOX)["list"][0]["done"]), settings.MAX_DONE)
+
+	def test_a_site_still_to_migrate_neither_says_nor_takes_what_was_marked_done(self):
+		self._as(OWNER)
+		with patch.object(settings, "_keeps_done", return_value=False):
+			session = json.loads(jmap.session(OWNER_BOX).get_data())
+			taken = session["accounts"][jmap.account_id(OWNER_BOX)]["accountCapabilities"][settings.SETTINGS]
+			self.assertNotIn("maxDone", taken, "its session doesn't offer what it refuses")
+			self.assertEqual(taken["maxSenders"], settings.MAX_SENDERS)
+			got = self._get(OWNER_BOX)["list"][0]
+			self.assertNotIn("done", got, "NeoMail then never sends it")
+			answer = self._set(OWNER_BOX, done=[DONE])
+			self.assertEqual(answer["notUpdated"]["singleton"]["type"], "invalidProperties")
+			self.assertEqual(
+				self._set(OWNER_BOX, blockedSenders=["spam.example"])["updated"], {"singleton": None}
+			)
+			self.assertEqual(self._get(OWNER_BOX)["list"][0]["blockedSenders"], ["spam.example"])
+		self.assertEqual(self._get(OWNER_BOX)["list"][0]["done"], [])
+
+	def test_a_site_without_the_table_yet_doesnt_fail_on_what_was_marked_done(self):
+		with patch.object(frappe.db, "table_exists", return_value=False):
+			self.assertFalse(settings._keeps_done())

@@ -3,16 +3,20 @@
 
 """
 What NeoMail keeps of a person's window between two visits (maintenance#1956): their rules, their categories, and the
-Safe Senders and Blocked Senders of each of their mailboxes. NeoMail's tab in the desk and Neodesk's window keep nothing
-of their own (the browser build's `keeps_local`): without this, all of it was gone at the next visit.
+Safe Senders and Blocked Senders of each of their mailboxes, and what they marked done in each (« Marqués comme traités »).
+NeoMail's tab in the desk and Neodesk's window keep nothing of their own (the browser build's `keeps_local`): without
+this, all of it was gone at the next visit.
 
 Where it is kept. The mailboxes are the person's own at their provider (IMAP, read through the webmail): no standard place
 there takes MailCraft's rules or lists (no JMAP for Sieve, RFC 9661, over IMAP; ManageSieve is not offered by every
 provider). So the instance keeps them, in `NeoMail Setting`: one record of the person (`account` empty) for the rules and
-the categories, which are their whole window's (`account` PERSON), and one record per mailbox for its two lists, the person's own even in a
-mailbox shared with them. What they hold is MailCraft's own shape (a rule's conditions and actions, a category's name and
-colour), checked for its shape and its size only; a rule that files into a folder names it by its mailbox and the
-folder's id on the server, never by an id of this visit.
+the categories, which are their whole window's (`account` PERSON), and one record per mailbox for its two lists and what
+was marked done in it, the person's own even in a mailbox shared with them. What they hold is MailCraft's own shape (a
+rule's conditions and actions, a category's name and colour), checked for its shape and its size only; a rule that files
+into a folder names it by its mailbox and the folder's id on the server, never by an id of this visit. What was marked done
+names each message by its Message-ID (an id of the facade names the place, and changes as the message goes to the
+Archive) and the folder it came from by its id on the server, with when (seconds) and what its row said; NeoMail keeps
+the last week's, MAX_DONE at most, and puts back those whose message is in the mailbox's Archive.
 
 JMAP has no standard for these: a data type of our own in its shape, under SETTINGS, with NeomailSettings/get and
 NeomailSettings/set (one object, `singleton`, in each mailbox). Offered in every mailbox of the facade (mailcraft_jmap):
@@ -37,21 +41,24 @@ MAX_SENDER = 320  # an address, or a domain
 MAX_NAME = 255
 MAX_RULES_BYTES = 512 * 1024
 MAX_CATEGORIES_BYTES = 256 * 1024
+MAX_DONE = 200  # as NeoMail keeps (the web build's kept.rs)
+MAX_DONE_TEXT = 1_000  # a Message-ID, a folder's id, a sender, a subject
+MAX_DONE_AT = 1 << 41  # seconds: far past any date
+MAX_DONE_BYTES = 512 * 1024
 # The record of the person's rules and categories, which are their whole window's (no Webmail Account is named so).
 PERSON = "*"
 PERSON_FIELDS = {"rules": "rules", "categories": "categories"}
-MAILBOX_FIELDS = {"safeSenders": "safe_senders", "blockedSenders": "blocked_senders"}
+SENDER_FIELDS = {"safeSenders": "safe_senders", "blockedSenders": "blocked_senders"}
+MAILBOX_FIELDS = {**SENDER_FIELDS, "done": "done_messages"}
+FIELDS = (*PERSON_FIELDS.values(), *MAILBOX_FIELDS.values())
 
 
 def session_parts(account):
 	"""What every mailbox's session adds: the capability, and what its account takes."""
-	return {SETTINGS: {}}, {
-		SETTINGS: {
-			"maxRules": MAX_RULES,
-			"maxCategories": MAX_CATEGORIES,
-			"maxSenders": MAX_SENDERS,
-		}
-	}
+	takes = {"maxRules": MAX_RULES, "maxCategories": MAX_CATEGORIES, "maxSenders": MAX_SENDERS}
+	if _keeps_done():
+		takes["maxDone"] = MAX_DONE
+	return {SETTINGS: {}}, {SETTINGS: takes}
 
 
 def _record(user, account):
@@ -59,14 +66,19 @@ def _record(user, account):
 	return frappe.db.get_value(DOCTYPE, {"user": user, "account": account}, "name")
 
 
+def _keeps_done():
+	"""Whether the records have their field for what was marked done: not on a site whose `bench migrate` is still to run
+	after this change, which then neither says nor takes it (NeoMail writes it only where it is said)."""
+	return frappe.db.table_exists(DOCTYPE) and frappe.db.has_column(DOCTYPE, "done_messages")
+
+
 def _read(user, account):
 	name = _record(user, account)
 	if not name:
 		return {}
-	row = frappe.db.get_value(
-		DOCTYPE, name, ["rules", "categories", "safe_senders", "blocked_senders"], as_dict=True
-	)
-	return {key: _loaded(row.get(key)) for key in ("rules", "categories", "safe_senders", "blocked_senders")}
+	fields = [field for field in FIELDS if field != "done_messages" or _keeps_done()]
+	row = frappe.db.get_value(DOCTYPE, name, fields, as_dict=True)
+	return {key: _loaded(row.get(key)) for key in fields}
 
 
 def _loaded(value):
@@ -87,7 +99,7 @@ def _state(person, mailbox):
 
 
 def _object(person, mailbox):
-	return {
+	answer = {
 		"id": SINGLETON,
 		# None: never kept; MailCraft keeps what it has
 		"rules": person.get("rules"),
@@ -95,6 +107,10 @@ def _object(person, mailbox):
 		"safeSenders": mailbox.get("safe_senders") or [],
 		"blockedSenders": mailbox.get("blocked_senders") or [],
 	}
+	# Said whenever it is kept, [] when nothing was: NeoMail writes it only to a server that says it
+	if _keeps_done():
+		answer["done"] = mailbox.get("done_messages") or []
+	return answer
 
 
 def settings_get(args):
@@ -165,7 +181,7 @@ def _checked(patch):
 	"""The person's fields and the mailbox's fields of a patch, checked: ValueError says what is wrong."""
 	if not isinstance(patch, dict):
 		raise ValueError("the object is not a JSON object")
-	unknown = set(patch) - set(PERSON_FIELDS) - set(MAILBOX_FIELDS)
+	unknown = set(patch) - set(PERSON_FIELDS) - set(MAILBOX_FIELDS if _keeps_done() else SENDER_FIELDS)
 	if unknown:
 		raise ValueError("unknown properties: " + ", ".join(sorted(str(u)[:40] for u in unknown)[:10]))
 	person, mailbox = {}, {}
@@ -173,9 +189,11 @@ def _checked(patch):
 		person["rules"] = _rules(patch["rules"])
 	if "categories" in patch:
 		person["categories"] = _categories(patch["categories"])
-	for key, field in MAILBOX_FIELDS.items():
+	for key, field in SENDER_FIELDS.items():
 		if key in patch:
 			mailbox[field] = _senders(patch[key], key)
+	if "done" in patch:
+		mailbox["done_messages"] = _done(patch["done"])
 	return person, mailbox
 
 
@@ -233,6 +251,39 @@ def _senders(senders, key):
 		):
 			raise ValueError(f"{key}: each entry is an address or a domain")
 		kept.append(sender)
+	return kept
+
+
+def _done(done):
+	"""What was marked done in a mailbox: a list of entries, each naming its message by its Message-ID. Kept in its shape,
+	nothing else an entry carries, and each message once (as it is named first)."""
+	if not isinstance(done, list) or len(done) > MAX_DONE:
+		raise ValueError(f"done: a list of {MAX_DONE} entries at most")
+	kept = {}
+	for entry in done:
+		if not isinstance(entry, dict):
+			raise ValueError("done: each entry is an object")
+		message_id, at = entry.get("messageId"), entry.get("at")
+		if not isinstance(message_id, str) or not message_id.strip() or len(message_id) > MAX_DONE_TEXT:
+			raise ValueError("done: each entry names its message by its Message-ID")
+		if not isinstance(at, int) or isinstance(at, bool) or not 0 <= at < MAX_DONE_AT:
+			raise ValueError("done: each entry says when, in seconds")
+		for key in ("from", "who", "subject"):
+			if not isinstance(entry.get(key, ""), str) or len(entry.get(key, "")) > MAX_DONE_TEXT:
+				raise ValueError(f"done: an entry's {key} is a text of {MAX_DONE_TEXT} characters at most")
+		kept.setdefault(
+			message_id,
+			{
+				"messageId": message_id,
+				"from": entry.get("from", ""),
+				"at": at,
+				"who": entry.get("who", ""),
+				"subject": entry.get("subject", ""),
+			},
+		)
+	kept = list(kept.values())
+	if _size(kept) > MAX_DONE_BYTES:
+		raise ValueError("done: too large")
 	return kept
 
 
