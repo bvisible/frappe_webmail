@@ -405,6 +405,22 @@ class TestMailTeam(FrappeTestCase):
 			_my_mail_in_the_user_menu(boot)
 		self.assertNotIn("neo_user_menu", boot)
 
+	def test_mon_espace_says_when_ones_own_mailbox_waits_and_nothing_of_others(self):
+		with as_role("sales_user", email=OWNER):
+			self.assertEqual(mail_team.day_summary("all"), [])
+		_box(f"google@{DOMAIN}", OWNER, oauth="Gmail")
+		_box(f"lea@{DOMAIN}", OWNER)
+		_box(f"other@{DOMAIN}", READER, oauth="Gmail")
+		with as_role("sales_user", email=OWNER):
+			rows = mail_team.day_summary("all")
+		self.assertEqual(len(rows), 1)
+		self.assertIn(f"google@{DOMAIN}", rows[0]["title"])
+		self.assertNotIn(f"other@{DOMAIN}", json.dumps(rows))
+		self.assertEqual(rows[0]["route"], "/app/neomail?my_mail=1")
+		self.assertTrue(rows[0]["phrase"])
+		with as_role(PORTAL):
+			self.assertEqual(mail_team.day_summary("all"), [])
+
 	# ---- the signature of each ---------------------------------------------------------------------------------------
 
 	def test_the_signature_of_each_is_for_those_who_make_the_signatures(self):

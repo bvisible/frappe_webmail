@@ -523,3 +523,38 @@ def waiting_count(user: str) -> int:
 	rows = _boxes({"user": user, "enabled": 1})
 	stored = _secrets([row.name for row in rows])
 	return sum(1 for row in rows if _state_of(row, stored)["code"] in WAITING)
+
+
+def day_summary(scope=None) -> list[dict]:
+	"""« Mon espace »'s « Not to forget » (the theme's hook `neoffice_day_summary`): one line when the reader's own
+	mailboxes wait for them (to connect at Google or Microsoft, again, or a password), which opens « My mail ». A
+	person's own mailboxes only, whatever the scope: nothing of anyone else's."""
+	user = frappe.session.user
+	if user == "Guest" or frappe.get_cached_value("User", user, "user_type") != "System User":
+		return []
+	rows = _boxes({"user": user, "enabled": 1})
+	stored = _secrets([row.name for row in rows])
+	waiting = [(row, _state_of(row, stored)) for row in rows]
+	waiting = [(row, state) for row, state in waiting if state["code"] in WAITING]
+	if not waiting:
+		return []
+	if len(waiting) == 1:
+		row, state = waiting[0]
+		title = _("Your mailbox {0} waits for you").format(row.email)
+		meta = f"{state['label']} · {_provider_of(row)}"
+	else:
+		title = _("{0} of your mailboxes wait for you").format(len(waiting))
+		meta = ", ".join(row.email for row, _state in waiting[:3])
+	return [
+		{
+			"title": title,
+			"meta": meta,
+			"route": "/app/neomail?my_mail=1",
+			"icon": "mail",
+			"tone": "amber",
+			# Its part of the day's sentence (« You have {0}. »)
+			"phrase": _("a mailbox to set up")
+			if len(waiting) == 1
+			else _("{0} mailboxes to set up").format(len(waiting)),
+		}
+	]

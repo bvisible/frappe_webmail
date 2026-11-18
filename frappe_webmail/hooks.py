@@ -299,3 +299,6 @@ website_route_rules = [
 	{"from_route": "/webmail", "to_route": "webmail"},
 	{"from_route": "/webmail/<path:app_path>", "to_route": "webmail"},
 ]
+
+# « Mon espace » (neoffice_theme's day summary) says when the reader's own mailboxes wait for them, and opens « My mail »
+neoffice_day_summary = ["frappe_webmail.mail_team.day_summary"]

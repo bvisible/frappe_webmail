@@ -1451,9 +1451,41 @@
 		window.neomailHost.openBuilder(window);
 	}
 
+	// « My mail », when the address asks it (`?my_mail=1`: the line of « Mon espace » that says a mailbox waits):
+	// taken off the address, then opened over NeoMail (mail_team.js, at the address the boot gives).
+	function take_my_mail() {
+		const params = new URLSearchParams(window.location.search);
+		const option = frappe.route_options && frappe.route_options.my_mail != null;
+		if (option) {
+			delete frappe.route_options.my_mail;
+			if (!Object.keys(frappe.route_options).length) frappe.route_options = null;
+		}
+		if (!params.has("my_mail") && !option) return;
+		if (params.has("my_mail")) {
+			params.delete("my_mail");
+			const rest = params.toString();
+			window.history.replaceState(
+				window.history.state,
+				"",
+				window.location.pathname + (rest ? "?" + rest : "") + window.location.hash
+			);
+		}
+		const src =
+			(frappe.boot && frappe.boot.neo_mail_team_js) ||
+			"/assets/frappe_webmail/js/mail_team.js";
+		const open = () => window.frappe_webmail.mail_team.open_mine();
+		const team = window.frappe_webmail && window.frappe_webmail.mail_team;
+		if (team && team.open_mine) return open();
+		const script = document.createElement("script");
+		script.src = src;
+		script.onload = open;
+		document.head.appendChild(script);
+	}
+
 	// Each time the page comes to the front, its first time included.
 	frappe.pages[PAGE].on_page_show = function () {
 		take_builder();
+		take_my_mail();
 		front(true);
 		if (state.pending) start();
 		// A link followed while the page was open (or hidden) asks NeoMail something too
