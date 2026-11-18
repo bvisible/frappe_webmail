@@ -32,24 +32,30 @@ The bench fetches a few at a time (`_slots`: a third of its web workers, which i
 free for everything else: one more is answered 503 at once, and the page asks again a moment later. A person fetches
 so many pictures and so many bytes in ten minutes at most. The address of a picture is never logged: it may say who
 the message went to.
+
+The site's own public pictures (the logo and the icons of a company's signature) are read from its disk, with no request
+at all (`own_picture`, maintenance#2833): from inside, a server's name often leads to the server itself, an address the
+rules refuse.
 """
 
 import http.client
 import ipaddress
 import json
+import os
 import re
 import secrets
 import socket
 import ssl
+import stat
 import threading
 import time
 import zlib
-from urllib.parse import parse_qsl, unquote
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 import frappe
 from frappe import _
 from frappe.translate import get_user_lang
-from frappe.utils import cint
+from frappe.utils import cint, get_url
 from werkzeug.wrappers import Response
 
 MAX_BYTES = 8 * 1024 * 1024
@@ -616,6 +622,105 @@ def picture_kind(data):
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# The site's own public pictures
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def own_picture(url):
+	"""The site's own public picture at `url`, read from its disk: (its bytes, its kind); None when `url` is not one."""
+	real = own_file(url)
+	return None if real is None else read_own(real)
+
+
+def own_file(url):
+	"""The file on this site's disk that is the public picture at `url`, or None when `url` is not one.
+
+	From inside, a server's name often leads to the server itself (`/etc/hosts`: `127.0.1.1 <name>`), an address the
+	rules refuse: the logo and the icons of a company's signature, which NeoMail asks for at the instance's own public
+	address, were refused there (maintenance#2833). What the whole internet reads at that address is read from the disk
+	instead (read_own), with no request at all, and only that:
+	- the host is the site's own, the one its links are made with (`get_url()`), on the usual port; the host a request
+	  says it came to is not trusted;
+	- the path, decoded, takes no step up and has no empty step, and is `/files/<name>` of a public File of the site
+	  (that very address, whatever the database's way of comparing), or `/assets/<app>/…` of an app the site runs;
+	- the file, every link on its way followed, lies inside the site's public files or that app's public folder.
+	Any other address goes the way of every address, where the rules refuse the inside."""
+	try:
+		place = address(url)
+	except PictureError:
+		return None
+	if place.host.rstrip(".") != _own_host():
+		return None
+	path = unquote(place.target.partition("?")[0])
+	steps = path.split("/")
+	if "\0" in path or "\\" in path or any(step in ("", ".", "..") for step in steps[1:]):
+		return None
+	found = _public_file(path) or _asset(path)
+	if not found:
+		return None
+	root, candidate = found
+	real = os.path.realpath(candidate)
+	if not real.startswith(os.path.realpath(root) + os.sep):
+		return None
+	return real
+
+
+def read_own(real):
+	"""The bytes of the picture `real` (own_file) and its kind: a plain file, no larger than MAX_BYTES, whose first bytes
+	say a picture, read without following a link put in its place since it was found (PictureError otherwise)."""
+	try:
+		descriptor = os.open(real, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+	except OSError:
+		raise PictureError("status", 404) from None
+	with os.fdopen(descriptor, "rb") as picture:
+		facts = os.fstat(picture.fileno())
+		if not stat.S_ISREG(facts.st_mode):
+			raise PictureError("status", 404)
+		if facts.st_size > MAX_BYTES:
+			raise PictureError("too_large")
+		head = picture.read(16)
+		if picture_kind(head) is None:
+			raise PictureError("not_picture")
+		body = head + picture.read(MAX_BYTES + 1 - len(head))
+	if len(body) > MAX_BYTES:
+		raise PictureError("too_large")
+	kind = picture_kind(body)
+	if kind is None:
+		raise PictureError("not_picture")
+	return body, kind
+
+
+def _own_host():
+	"""The name this site's links are made with."""
+	return (urlsplit(get_url()).hostname or "").rstrip(".")
+
+
+def _public_file(path):
+	"""(the folder, the file) of `/files/<name>` when a public File of the site has exactly that address."""
+	if not path.startswith("/files/"):
+		return None
+	name = path[len("/files/") :]
+	if not name or "/" in name:
+		return None
+	# The database compares without case and trailing spaces: the address itself is compared here.
+	if path not in frappe.get_all("File", filters={"file_url": path, "is_private": 0}, pluck="file_url"):
+		return None
+	root = frappe.get_site_path("public", "files")
+	return root, os.path.join(root, name)
+
+
+def _asset(path):
+	"""(the folder, the file) of `/assets/<app>/…` when `<app>` is an app the site runs."""
+	if not path.startswith("/assets/"):
+		return None
+	app, slash, rest = path[len("/assets/") :].partition("/")
+	if not slash or not rest or app not in frappe.get_installed_apps():
+		return None
+	root = os.path.join(frappe.local.sites_path, "assets", app)
+	return root, os.path.join(root, rest)
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # The relay
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -751,6 +856,17 @@ def _relay(url, user):
 		return _problem(
 			429, _("so many pictures were downloaded in the last minutes that the next ones must wait")
 		)
+	# The site's own public picture is read from its disk: no turn, no request (maintenance#2833). It counts in the
+	# person's window before it is read, whatever comes of it.
+	real = own_file(url)
+	if real is not None:
+		_count(user, pictures=1)
+		try:
+			body, kind = read_own(real)
+		except PictureError as e:
+			return _problem(*_reason(e))
+		_count(user, size=len(body))
+		return _picture(body, kind)
 	holder = _take_turn()
 	if holder is None:
 		return _problem(503, _("too many pictures are being downloaded just now"), retry=True)
@@ -762,6 +878,10 @@ def _relay(url, user):
 	finally:
 		_give_back(holder)
 	_count(user, size=len(body))
+	return _picture(body, kind)
+
+
+def _picture(body, kind):
 	response = Response(body, status=200, content_type=kind)
 	# A stranger's bytes: nothing reads them as anything but the picture they are.
 	response.headers["X-Content-Type-Options"] = "nosniff"

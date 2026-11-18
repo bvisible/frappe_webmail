@@ -15,6 +15,7 @@ import gzip
 import http.server
 import ipaddress
 import json
+import os
 import threading
 import time
 from types import SimpleNamespace
@@ -479,6 +480,98 @@ class TestPictures(FrappeTestCase):
 				self.assertEqual(pictures.relay("http://pictures.example/logo.png", DESK).status_code, 503)
 			pictures._give_back(held)
 		self.assertEqual(frappe.cache().mget(pictures._spent_keys(DESK)), [None, None])
+
+	# The site's own public pictures (maintenance#2833) ------------------------------------------------------------
+
+	def own_site(self):
+		"""This site as the one its links are made with: `https://own.example`."""
+		return patch.dict(frappe.local.conf, {"host_name": "https://own.example"})
+
+	def a_file(self, private, content=PNG):
+		doc = frappe.get_doc(
+			{
+				"doctype": "File",
+				"file_name": f"_t2833-{frappe.generate_hash(length=8)}.png",
+				"content": content,
+				"is_private": private,
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "File", doc.name, force=True, ignore_permissions=True)
+		return doc
+
+	def test_the_sites_own_public_pictures_are_read_from_its_disk_and_nothing_is_asked(self):
+		logo = self.a_file(private=0)
+		icon = "/assets/frappe_webmail/images/signature/email.png"
+		with open(
+			frappe.get_app_path("frappe_webmail", "public", "images", "signature", "email.png"), "rb"
+		) as f:
+			icon_bytes = f.read()
+		with (
+			self.own_site(),
+			patch.object(pictures, "fetch", side_effect=AssertionError("the network was asked")),
+		):
+			for path, expected in ((logo.file_url, PNG), (icon, icon_bytes), (icon + "?v=3", icon_bytes)):
+				answer = pictures.relay("https://own.example" + path, DESK)
+				self.assertEqual((answer.status_code, answer.content_type), (200, "image/png"), path)
+				self.assertEqual(answer.get_data(), expected, path)
+				self.assertEqual(answer.headers["X-Content-Type-Options"], "nosniff")
+		# It counts in the person's window like any other picture.
+		self.assertEqual(int(frappe.cache().mget(pictures._spent_keys(DESK))[0]), 3)
+
+	def test_what_is_not_the_sites_own_public_picture_goes_the_guarded_way(self):
+		public = self.a_file(private=0)
+		private = self.a_file(private=1)
+		sites = frappe.get_site_path()
+		cases = [
+			# a private File, by its address and by its name under the public folder
+			"https://own.example" + private.file_url,
+			"https://own.example/files/" + private.file_name,
+			# steps out of an app's folder, written plainly or escaped
+			"https://own.example/assets/../sites/common_site_config.json",
+			"https://own.example/assets/frappe_webmail/%2e%2e/%2e%2e/frappe_webmail/hooks.py",
+			"https://own.example/assets/frappe_webmail/..%2f..%2fhooks.py",
+			# an app the site doesn't run, or no app at all
+			"https://own.example/assets/not_an_app_of_this_site/images/x.png",
+			"https://own.example/assets/assets.json",
+			# an address inside, or another site, with the path of a public picture of this one
+			"http://10.9.9.9" + public.file_url,
+			"http://127.0.0.1/assets/frappe_webmail/images/signature/email.png",
+			"https://elsewhere.example" + public.file_url,
+			# the site's own name on another port
+			"https://own.example:8443" + public.file_url,
+			# a path from the root of the machine, written after an app's folder
+			"https://own.example/assets/frappe_webmail//etc/hostname",
+			"https://own.example/assets/frappe_webmail/%2Fetc%2Fhostname",
+			# a public File's address in other letters: another file on the disk
+			"https://own.example/files/" + public.file_url.rsplit("/", 1)[1].upper(),
+		]
+		# A public File whose file is a link out of the public folder (to the site's own configuration)
+		link_name = f"_t2833-{frappe.generate_hash(length=8)}.png"
+		link = os.path.join(frappe.get_site_path("public", "files"), link_name)
+		os.symlink(os.path.abspath(os.path.join(sites, "site_config.json")), link)
+		self.addCleanup(os.remove, link)
+		frappe.get_doc(
+			{"doctype": "File", "file_name": link_name, "file_url": "/files/" + link_name, "is_private": 0}
+		).db_insert()
+		cases.append("https://own.example/files/" + link_name)
+		with self.own_site():
+			for url in cases:
+				self.assertIsNone(pictures.own_file(url), url)
+			# The host a request says it came to is not trusted: an inside address named so stays an inside address.
+			with patch.object(frappe.local, "request", SimpleNamespace(host="169.254.169.254"), create=True):
+				self.assertIsNone(pictures.own_file("http://169.254.169.254" + public.file_url))
+			with patch.object(pictures, "fetch", side_effect=pictures.PictureError("not_public")) as network:
+				for url in cases:
+					self.assertEqual(pictures.relay(url, DESK).status_code, 400, url)
+			self.assertEqual(network.call_count, len(cases), "each one went the guarded way, refused there")
+			# A file of the site that is not a picture is not handed out, nor one too large.
+			with patch.object(pictures, "fetch", side_effect=AssertionError("the network was asked")):
+				readme = "https://own.example/assets/frappe_webmail/images/signature/README.md"
+				self.assertEqual(pictures.relay(readme, DESK).status_code, 415)
+				with patch.object(pictures, "MAX_BYTES", len(PNG) - 1):
+					self.assertEqual(
+						pictures.relay("https://own.example" + public.file_url, DESK).status_code, 413
+					)
 
 	def test_only_the_facade_s_token_asks_for_a_picture(self):
 		path = "/api/method/frappe_webmail.mailcraft_jmap.picture"
