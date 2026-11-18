@@ -38,6 +38,8 @@ import json
 import mimetypes
 import re
 import unicodedata
+from contextlib import contextmanager
+from datetime import timezone
 from email import message_from_bytes, policy
 from email.errors import HeaderParseError
 from email.header import decode_header
@@ -608,12 +610,14 @@ def open_in_editor(account=None, email=None, attachment=None):
 	_openable(_wanted(attachment).name)
 	name, _mime, payload, message = _read(account, email, attachment)
 	found = _openable(name)
-	key = _copy_key(account, email, attachment, message)
-	kept = _kept_copy(key)
-	if kept:
-		return _opened(kept, extension(kept.file_name), reused=True)
-	saved = drive.deposit(payload, name, _message_folder(message))
-	_keep_copy(key, saved.name)
+	key = _copy_key(account, email, attachment, message, payload)
+	# One copy for one attachment, however many clicks at once: the key's lock, then a look again
+	with _copy_lock(key):
+		kept = _kept_copy(key)
+		if kept:
+			return _opened(kept, extension(kept.file_name), reused=True)
+		saved = drive.deposit(payload, name, _message_folder(message))
+		_keep_copy(key, saved.name)
 	return _opened(saved, found, reused=False)
 
 
@@ -649,9 +653,10 @@ def _opened(row, found, reused):
 COPIES = "__neomail_opened_copies"
 
 
-def _copy_key(account, email, attachment, message):
+def _copy_key(account, email, attachment, message, payload):
 	"""The key of the Drive copy of this attachment: the person, the message (its Message-ID, which a move to another
-	folder keeps; else its id) and what identifies the file (its rank, name, size, Content-ID), hashed."""
+	folder keeps; else its id), what identifies the file (its rank, name, Content-ID) and its own bytes (two messages
+	of one Message-ID with files alike but for their content are two copies), hashed."""
 	import hashlib
 
 	wanted = _wanted(attachment)
@@ -660,10 +665,32 @@ def _copy_key(account, email, attachment, message):
 	except Exception:
 		said_id = ""
 	which = said_id or f"{account}\n{email}"
+	content = hashlib.sha256(payload or b"").hexdigest()
 	said = "\n".join(
-		str(part) for part in (frappe.session.user, which, wanted.index, wanted.name, wanted.size, wanted.cid)
+		str(part) for part in (frappe.session.user, which, wanted.index, wanted.name, wanted.cid, content)
 	)
 	return "neomail_opened:" + hashlib.sha1(said.encode()).hexdigest()
+
+
+# How long a second open of the same attachment waits for the first one's copy, in seconds.
+COPY_LOCK_S = 20
+
+
+@contextmanager
+def _copy_lock(key):
+	"""The database's named lock on `key` while a copy is looked for and made (MariaDB GET_LOCK, which every worker of
+	the bench shares): two opens of one attachment at once make one copy. One that waits too long is refused."""
+	got = frappe.db.sql("SELECT GET_LOCK(%s, %s)", (key, COPY_LOCK_S))[0][0]
+	if not got:
+		frappe.throw(_("This attachment is being opened already: try again in a moment."))
+	try:
+		# A snapshot of its own (what the open that held the lock before committed is seen: nothing of this one's is
+		# written yet), then the copy and its key committed before the lock is let go, as suite's hold_folder_names does
+		frappe.db.commit()
+		yield
+		frappe.db.commit()
+	finally:
+		frappe.db.sql("SELECT RELEASE_LOCK(%s)", (key,))
 
 
 def _kept_copy(key):
@@ -700,26 +727,22 @@ SAVED_AS = {"sheet": "xlsx", "word": "docx"}
 
 
 def _saved_beside(row):
-	"""For a copy of a format its editor imports, the newest file the editor saved the work in beside it (« Liste.xlsx »
-	or « Liste (1).xlsx » for « Liste.xls »), that the person may write; None otherwise."""
+	"""For a copy of a format its editor imports, the newest file the editor saved the work in from that very copy
+	(suite's `saved_from`, which the Drive records when it saves an import), that the person may write; None otherwise.
+	Never a file of the same name that is not the editor's work from this copy (another attachment's copy beside it)."""
 	found = extension(row.file_name)
 	native = SAVED_AS.get(openable().get(found, ""))
 	if not native or found == native:
 		return None
-	stem = row.file_name[: -(len(found) + 1)]
-	near = frappe.get_all(
-		"File",
-		filters={"folder": row.folder, "is_folder": 0, "file_name": ["like", f"{stem}%.{native}"]},
-		fields=["name", "file_name"],
-		order_by="creation desc",
-		limit=20,
-	)
-	pattern = re.compile(re.escape(stem) + r"( \(\d+\))?\." + native + "$", re.IGNORECASE)
-	for each in near:
-		if pattern.match(each.file_name):
-			usable = _usable(each.name)
-			if usable:
-				return usable
+	try:
+		from suite.drive.wopi.craft import saved_from
+	except ImportError:
+		# A suite that does not record it: the copy itself, never a guess by the name
+		return None
+	for name in saved_from(row.name) or []:
+		usable = _usable(name)
+		if usable:
+			return usable
 	return None
 
 
@@ -747,20 +770,48 @@ def _message_folder(message):
 	language), then « <its date> <its subject> », each made the first time (suite's create_folder, the person's right),
 	private as all of their Drive is. The title is cleaned as a file's name is (no path, no character a system refuses
 	or that changes how it reads)."""
-	from email.utils import parsedate_to_datetime
-
-	try:
-		when = parsedate_to_datetime(str(message.get("Date") or "")).date()
-	except Exception:
-		# A date that cannot be read, or one whose zone is beyond any (an overflow): today's
-		when = frappe.utils.getdate()
+	when = _local_day(message)
 	try:
 		subject = " ".join(str(message.get("Subject") or "").split())
 	except Exception:
 		subject = ""
-	title = _file_name(f"{when.isoformat()} {subject or _('(no subject)')}")[:MAX_MESSAGE_FOLDER].strip(" .")
+	title = _folder_title(f"{when.isoformat()} {subject or _('(no subject)')}")
 	attachments = _subfolder(_home(), _("Attachments"))
 	return _subfolder(attachments, title or when.isoformat())
+
+
+def _local_day(message):
+	"""The day of `message` in the person's time zone, as NeoMail shows it (their own zone, else the site's): its Date
+	header; today where it cannot be read (or its zone is beyond any)."""
+	from email.utils import parsedate_to_datetime
+	from zoneinfo import ZoneInfo
+
+	try:
+		sent = parsedate_to_datetime(str(message.get("Date") or ""))
+	except Exception:
+		return frappe.utils.getdate()
+	# A Date without a zone (« -0000 ») is UTC's time
+	if sent.tzinfo is None:
+		sent = sent.replace(tzinfo=timezone.utc)
+	try:
+		return sent.astimezone(ZoneInfo(_zone())).date()
+	except Exception:
+		# A zone that is no zone: the day the message says
+		return sent.date()
+
+
+def _zone():
+	"""The person's time zone, else the site's."""
+	return frappe.db.get_value("User", frappe.session.user, "time_zone") or frappe.utils.get_system_timezone()
+
+
+def _folder_title(text):
+	"""A folder's name from a message's date and subject: a separator of paths becomes a dash, never a cut (« Facture
+	n° 2026/0457 » stays whole); what a system refuses in a name or what changes how it reads goes; MAX_MESSAGE_FOLDER
+	characters at most."""
+	text = str(text or "").replace("/", "-").replace("\\", "-")
+	text = "".join(ch for ch in text if ch.isprintable() and ch not in '<>:"|?*')
+	return " ".join(text.split())[:MAX_MESSAGE_FOLDER].strip(" .")
 
 
 def _home():

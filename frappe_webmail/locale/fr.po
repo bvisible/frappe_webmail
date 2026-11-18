@@ -5861,3 +5861,17 @@ msgstr "{0} boîtes mail à régler"
 #, python-brace-format
 msgid "{0} of your mailboxes wait for you"
 msgstr "{0} de vos boîtes vous attendent"
+
+#, python-brace-format
+msgid "Opened in {0}: {1}"
+msgstr "Ouvert dans {0} : {1}"
+
+msgid "No editor of the Drive opens this type of file here."
+msgstr "Aucun éditeur du Drive n’ouvre ce type de fichier ici."
+
+#, python-brace-format
+msgid "The file could not be opened in {0}."
+msgstr "Le fichier n’a pas pu être ouvert dans {0}."
+
+msgid "This attachment is being opened already: try again in a moment."
+msgstr "Cette pièce jointe est déjà en train de s’ouvrir : réessayez dans un instant."

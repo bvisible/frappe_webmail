@@ -682,6 +682,8 @@ class TestOpenInEditor(TestWebmailAPIBase):
 
 		with (
 			patch.object(files, "_gate"),
+			# (The copy's lock commits: not here, the test's records are rolled back)
+			patch.object(frappe.db, "commit"),
 			patch("frappe_webmail.drive.available", return_value=True),
 			patch("frappe_webmail.drive.deposit", side_effect=deposit),
 			patch.object(files, "openable", return_value=OPENS if opens is None else opens),
@@ -766,32 +768,35 @@ class TestOpenInEditor(TestWebmailAPIBase):
 
 	def test_the_copy_is_the_message_s_wherever_it_was_moved_and_the_person_s_own(self):
 		message = email.message_from_bytes(self.dated(invoice()), policy=policy.default)
-		key = files._copy_key("ada@example.org", "INBOX-id", INVOICE, message)
+		key = files._copy_key("ada@example.org", "INBOX-id", INVOICE, message, PDF)
 		self.assertEqual(
-			key, files._copy_key("ada@example.org", "Archive-id", INVOICE, message), "by its Message-ID"
+			key, files._copy_key("ada@example.org", "Archive-id", INVOICE, message, PDF), "by its Message-ID"
 		)
 		self.assertNotEqual(
-			key, files._copy_key("ada@example.org", "INBOX-id", {**INVOICE, "index": 2}, message)
+			key, files._copy_key("ada@example.org", "INBOX-id", {**INVOICE, "index": 2}, message, PDF)
+		)
+		self.assertNotEqual(
+			key,
+			files._copy_key("ada@example.org", "INBOX-id", INVOICE, message, PDF[:-2] + b"x\n"),
+			"another message of the same Message-ID, a file alike but for its bytes: another copy",
 		)
 		del message["Message-ID"]
 		self.assertNotEqual(
-			files._copy_key("ada@example.org", "INBOX-id", INVOICE, message),
-			files._copy_key("ada@example.org", "Archive-id", INVOICE, message),
+			files._copy_key("ada@example.org", "INBOX-id", INVOICE, message, PDF),
+			files._copy_key("ada@example.org", "Archive-id", INVOICE, message, PDF),
 			"without one, by its id",
 		)
 		with patch("frappe.session", frappe._dict(user="someone-else@example.org")):
-			self.assertNotEqual(files._copy_key("ada@example.org", "INBOX-id", INVOICE, message), key)
+			self.assertNotEqual(files._copy_key("ada@example.org", "INBOX-id", INVOICE, message, PDF), key)
 
-	def test_a_reused_import_opens_the_file_its_editor_saved_the_work_in(self):
-		original = SimpleNamespace(name="copy-1", file_name="Liste.xls", folder="msg")
-		near = [
-			frappe._dict(name="other", file_name="Liste old.xlsx"),
-			frappe._dict(name="saved-2", file_name="Liste (1).xlsx"),
-			frappe._dict(name="saved-1", file_name="Liste.xlsx"),
-		]
+	def test_a_reused_import_opens_only_the_file_its_editor_saved_from_that_copy(self):
+		import sys
+
+		original = SimpleNamespace(name="copy-1", file_name="Budget.xls", folder="msg")
+		craft = SimpleNamespace(saved_from=lambda name: ["saved-2", "saved-1"] if name == "copy-1" else [])
 		with (
 			patch.object(files, "openable", return_value=OPENS),
-			patch.object(frappe, "get_all", return_value=near) as asked,
+			patch.dict(sys.modules, {"suite.drive.wopi.craft": craft}),
 			patch.object(
 				files,
 				"_usable",
@@ -799,13 +804,76 @@ class TestOpenInEditor(TestWebmailAPIBase):
 			),
 		):
 			self.assertEqual(
-				files._saved_beside(original).name, "saved-1", "the newest one the person may still write"
+				files._saved_beside(original).name, "saved-1", "the newest the person may still write"
 			)
-		self.assertEqual(asked.call_args.kwargs["filters"]["folder"], "msg")
-		with patch.object(files, "openable", return_value=OPENS):
+			# Another attachment's « Budget.xlsx » beside it is no work of this copy's
 			self.assertIsNone(
-				files._saved_beside(SimpleNamespace(name="x", file_name="Lettre.docx", folder="msg"))
+				files._saved_beside(SimpleNamespace(name="copy-3", file_name="Budget.xls", folder="msg"))
 			)
+			self.assertIsNone(
+				files._saved_beside(SimpleNamespace(name="copy-1", file_name="Budget.xlsx", folder="msg"))
+			)
+		# A suite that does not record it: the copy itself
+		with (
+			patch.object(files, "openable", return_value=OPENS),
+			patch.dict(sys.modules, {"suite.drive.wopi.craft": SimpleNamespace()}),
+		):
+			self.assertIsNone(files._saved_beside(original))
+
+	def test_the_lock_sees_what_the_open_before_it_committed_and_commits_before_it_is_let_go(self):
+		said = []
+		real_sql = frappe.db.sql
+
+		def sql(query, *args, **kwargs):
+			if "GET_LOCK" in str(query) or "RELEASE_LOCK" in str(query):
+				said.append(str(query).split("(")[0].split()[-1])
+			return real_sql(query, *args, **kwargs)
+
+		with (
+			patch.object(frappe.db, "sql", side_effect=sql),
+			patch.object(frappe.db, "commit", side_effect=lambda: said.append("commit")),
+		):
+			with files._copy_lock("neomail_opened:test-lock"):
+				said.append("copy")
+		self.assertEqual(said, ["GET_LOCK", "commit", "copy", "commit", "RELEASE_LOCK"])
+		# A copy that failed: nothing committed after it, the lock let go all the same
+		said.clear()
+		with (
+			patch.object(frappe.db, "sql", side_effect=sql),
+			patch.object(frappe.db, "commit", side_effect=lambda: said.append("commit")),
+		):
+			with self.assertRaises(RuntimeError), files._copy_lock("neomail_opened:test-lock"):
+				raise RuntimeError("the Drive is full")
+		self.assertEqual(said, ["GET_LOCK", "commit", "RELEASE_LOCK"])
+
+	def test_two_opens_at_once_make_one_copy(self):
+		raw = self.dated(invoice())
+		seen = []
+		with self.drive() as (put, _folders):
+			real = files._kept_copy
+
+			def kept(key):
+				# The second open comes in while the first holds the lock: it waits, then finds the first's copy
+				seen.append(key)
+				return real(key)
+
+			with patch.object(files, "_kept_copy", side_effect=kept), mocked_imap(server(raw)):
+				first = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+			with patch.object(files, "_kept_copy", side_effect=kept), mocked_imap(server(raw)):
+				again = files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertEqual(len(put), 1)
+		self.assertEqual(again["name"], first["name"])
+		# A lock another open holds too long: refused, never a second copy
+		real_sql = frappe.db.sql
+
+		def held(query, *args, **kwargs):
+			return [[0]] if "GET_LOCK" in str(query) else real_sql(query, *args, **kwargs)
+
+		with self.drive() as (put, _folders), mocked_imap(server(raw)):
+			with patch.object(frappe.db, "sql", side_effect=held):
+				with self.assertRaisesRegex(frappe.ValidationError, "being opened already"):
+					files.open_in_editor(self.test_account_email, EMAIL_ID, {**INVOICE, "index": 1})
+		self.assertEqual(put, [])
 
 	def test_a_copy_under_a_folder_in_the_bin_is_no_copy(self):
 		import sys
@@ -829,6 +897,22 @@ class TestOpenInEditor(TestWebmailAPIBase):
 			self.assertIsNone(files._usable("copy-1"))
 			rows["attachments"].status = "Active"
 			self.assertEqual(files._usable("copy-1").name, "copy-1")
+
+	def test_a_subject_s_slashes_stay_in_its_folder_s_name_and_the_day_is_the_person_s(self):
+		for subject, title in (
+			("Facture n° 2026/0457", "2026-11-17 Facture n° 2026-0457"),
+			("Rendez-vous du 25/11", "2026-11-17 Rendez-vous du 25-11"),
+			("Plan \\ serveur", "2026-11-17 Plan - serveur"),
+		):
+			with self.drive() as (_put, folders), mocked_imap(server(self.dated(invoice(), subject=subject))):
+				files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+			self.assertEqual(folders[1][1], title)
+		# Written in the evening in California, read the next morning in Zurich: the morning's day
+		late = "Tue, 18 Nov 2026 23:30:00 -0800"
+		with patch.object(files, "_zone", return_value="Europe/Zurich"):
+			with self.drive() as (_put, folders), mocked_imap(server(self.dated(invoice(), date=late))):
+				files.open_in_editor(self.test_account_email, EMAIL_ID, INVOICE)
+		self.assertTrue(folders[1][1].startswith("2026-11-19 "), folders[1][1])
 
 	def test_a_subject_becomes_a_folder_s_name_as_a_file_s_name_would(self):
 		with (
