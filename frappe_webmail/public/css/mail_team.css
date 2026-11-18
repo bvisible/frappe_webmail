@@ -1,0 +1,58 @@
+/* The team's mail windows (public/js/mail_team.js): « Add a mailbox » and « My mail », drawn with the Neoffice design
+   system (bvisible/neoffice-design-system): ink for actions, the signal for what is chosen, the five tones of a state
+   (§6.3), paper and sand around. Its canvas: « Courrier dans Paramètres », 18.11.2026. */
+
+.mlt-lead { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--text-muted, #524b41); }
+.mlt-lead b { color: var(--text-color, #141414); }
+.mlt-small { margin: 8px 0 0; font-size: 13.5px; color: var(--text-muted, #6f665a); }
+.mlt-label { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted, #524b41); }
+.mlt-link { all: unset; cursor: pointer; font-size: 14px; font-weight: 600; color: #aa3700; }
+.mlt-link:hover { text-decoration: underline; color: #81300f; }
+
+.mlt-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .mlt-tiles { grid-template-columns: minmax(0, 1fr); } }
+.mlt-tile {
+	display: flex; gap: 14px; align-items: flex-start; text-align: left; cursor: pointer;
+	border: 1px solid #dcd4c7; background: #fff; border-radius: 14px; padding: 16px 18px; color: #141414; font: inherit;
+}
+.mlt-tile.is-on { border: 2px solid #f55d1a; padding: 15px 17px; background: #fffdf8; }
+.mlt-tile:focus-visible { outline: 2px solid #f55d1a; outline-offset: 2px; }
+.mlt-mark {
+	width: 40px; height: 40px; flex: none; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+	font-weight: 700; font-size: 15px;
+}
+.mlt-mark-neoservice { background: #ffeae2; color: #81300f; }
+.mlt-mark-google { background: #e7edfb; color: #1d4ed8; }
+.mlt-mark-microsoft { background: #e6f4ea; color: #15803d; }
+.mlt-mark-other { background: #ece7de; color: #3a342c; }
+.mlt-tile-text { display: flex; flex-direction: column; gap: 4px; }
+.mlt-tile-name { font-weight: 600; font-size: 15.5px; }
+.mlt-tile-how { font-size: 13.5px; line-height: 1.45; color: #524b41; }
+.mlt-note { margin-top: 14px; border-radius: 12px; background: #f6f3ed; padding: 12px 16px; font-size: 14px; line-height: 1.5; color: #3a342c; }
+.mlt-note-ok { background: #e6f4ea; color: #15803d; }
+.mlt-note-bad { background: #fdeae4; color: #c2410c; }
+
+.mlt-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.mlt-pill i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background: currentColor; }
+.mlt-ok { background: #e6f4ea; color: #15803d; }
+.mlt-warn { background: #fdf3dc; color: #a16207; }
+.mlt-bad { background: #fdeae4; color: #c2410c; }
+.mlt-mute { background: #ece7de; color: #524b41; }
+.mlt-info { background: #e7edfb; color: #1d4ed8; }
+
+.mlt-mine { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
+.mlt-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.mlt-list { display: flex; flex-direction: column; gap: 12px; }
+.mlt-box { border: 1px solid #ece7de; background: #fff; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.mlt-box.is-waiting { border-color: #fdeae4; }
+.mlt-box-address { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.mlt-box-facts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: #6f665a; }
+.mlt-box-who { font-size: 13.5px; color: #524b41; }
+.mlt-box .btn { align-self: flex-start; }
+
+[data-theme="dark"] .mlt-tile,
+[data-theme="dark"] .mlt-box { background: #1b1611; border-color: rgba(255, 251, 245, 0.12); color: #fffdf8; }
+[data-theme="dark"] .mlt-tile.is-on { background: #2a221b; }
+[data-theme="dark"] .mlt-tile-how,
+[data-theme="dark"] .mlt-box-who { color: #dcd4c7; }
+[data-theme="dark"] .mlt-note { background: #232020; color: #dcd4c7; }

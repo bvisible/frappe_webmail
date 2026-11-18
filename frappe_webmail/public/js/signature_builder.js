@@ -117,7 +117,73 @@ frappe.provide("frappe_webmail.signature_builder");
 		return model.enabled ? said : said + " · " + __("off");
 	}
 
+	// Where the builder is drawn: a window of the desk (NeoMail's File › Signatures, the lists of templates), or a block of
+	// a page (Settings › Mail › Signatures, 18.11: « une partie signature où on tombe sur le constructeur »), with the same
+	// title, the same « Save » and the same way to all the settings.
+	function window_host() {
+		let saving = () => {};
+		const d = new frappe.ui.Dialog({
+			title: __("Signatures"),
+			size: "extra-large",
+			eyebrow: "NeoMail · " + __("Signatures"),
+			fields: [{ fieldtype: "HTML", fieldname: "body" }],
+			primary_action_label: __("Save"),
+			primary_action: () => saving(),
+		});
+		return {
+			$body: d.fields_dict.body.$wrapper,
+			on_save: (fn) => (saving = fn),
+			set_title: (title) => d.set_title(title),
+			show_save: (on) => d.get_primary_btn().toggleClass("hide", !on),
+			link: (label, fn) => d.add_footer_link(label, fn),
+			leave: () => d.hide(),
+			dirty: (fn) => (d.neo_is_dirty = fn),
+			show: () => d.show(),
+			result: d,
+		};
+	}
+
+	function page_host($host, small) {
+		$host.html(`<section class="sigb-page${small ? " sigb-page--small" : ""}">
+			<header class="sigb-page-head">
+				<h2 class="sigb-page-title"></h2>
+				<div class="sigb-page-actions">
+					<button type="button" class="sigb-link sigb-page-settings hide"></button>
+					<button type="button" class="btn btn-primary btn-sm sigb-page-save">${esc(__("Save"))}</button>
+				</div>
+			</header>
+			<div class="sigb-page-body"></div>
+		</section>`);
+		const $title = $host.find(".sigb-page-title");
+		const $save = $host.find(".sigb-page-save");
+		const $settings = $host.find(".sigb-page-settings");
+		return {
+			$body: $host.find(".sigb-page-body"),
+			on_save: (fn) => $save.off("click").on("click", () => fn()),
+			set_title: (title) => $title.text(title),
+			show_save: (on) => $save.toggleClass("hide", !on),
+			link: (label, fn) => {
+				$settings.text(label).off("click").on("click", fn);
+				return $settings;
+			},
+			leave: () => {},
+			// The page that holds it asks before leaving a part (`sigb-dirty`), and the browser before closing the tab
+			dirty: (fn) => {
+				$host.data("sigb-dirty", fn);
+				window.addEventListener("beforeunload", (e) => {
+					if (document.body.contains($host[0]) && fn()) e.preventDefault();
+				});
+			},
+			show: () => {},
+			result: $host,
+		};
+	}
+
 	function open(opts) {
+		return build(window_host(), opts);
+	}
+
+	function build(host, opts) {
 		const options = opts || {};
 		const S = {
 			data: null,
@@ -131,16 +197,9 @@ frappe.provide("frappe_webmail.signature_builder");
 			preview: null,
 			ask: 0,
 		};
-		const d = new frappe.ui.Dialog({
-			title: __("Signatures"),
-			size: "extra-large",
-			eyebrow: "NeoMail · " + __("Signatures"),
-			fields: [{ fieldtype: "HTML", fieldname: "body" }],
-			primary_action_label: __("Save"),
-			primary_action: () => save(),
-		});
-		d.neo_is_dirty = () => S.dirty;
-		const $settings = d.add_footer_link(
+		host.on_save(() => save());
+		host.dirty(() => S.dirty);
+		const $settings = host.link(
 			__("All the settings: logo, font, small print, banner"),
 			() => {
 				const m = S.models[S.at];
@@ -149,13 +208,13 @@ frappe.provide("frappe_webmail.signature_builder");
 						? ["Form", "Email Signature Template", m.name]
 						: ["List", "Email Signature Template"]
 				);
-				d.hide();
+				host.leave();
 			}
 		);
 		$settings.addClass("hide");
-		const $body = d.fields_dict.body.$wrapper;
+		const $body = host.$body;
 		$body.html(`<div class="sigb"><div class="sigb-empty">${esc(__("Loading…"))}</div></div>`);
-		d.show();
+		host.show();
 
 		frappe.call({ method: API + "state" }).then((r) => {
 			S.data = r.message || {};
@@ -179,16 +238,18 @@ frappe.provide("frappe_webmail.signature_builder");
 		}
 
 		function set_title() {
-			d.set_title(S.tab === "team" ? __("The team's signatures") : __("My signature"));
-			d.get_primary_btn().toggleClass("hide", S.tab !== "team");
+			host.set_title(S.tab === "team" ? __("The team's signatures") : __("My signature"));
+			host.show_save(S.tab === "team");
 			// The template's whole form is for those who make the company's signatures, from their tab
 			$settings.toggleClass("hide", S.tab !== "team" || !(S.data && S.data.can_edit));
 		}
 
 		function draw() {
 			set_title();
-			const tabs = S.data.can_edit
-				? `<div class="sigb-tabs" role="tablist">
+			// « My mail » shows the person's own signature alone (only_mine), whoever they are
+			const tabs =
+				S.data.can_edit && !options.only_mine
+					? `<div class="sigb-tabs" role="tablist">
 					<button type="button" class="sigb-tab" role="tab" data-tab="team" aria-selected="${
 						S.tab === "team"
 					}">${esc(__("The team's signatures"))}</button>
@@ -196,7 +257,7 @@ frappe.provide("frappe_webmail.signature_builder");
 						S.tab === "mine"
 					}">${esc(__("My signature"))}</button>
 				</div>`
-				: "";
+					: "";
 			const lead =
 				S.tab === "team"
 					? __(
@@ -715,11 +776,18 @@ frappe.provide("frappe_webmail.signature_builder");
 			});
 		}
 
-		return d;
+		return host.result;
 	}
 
 	frappe_webmail.signature_builder.open = function (opts) {
 		return open(opts);
+	};
+
+	// Drawn in a block of a page instead of a window (Settings › Mail › Signatures): `$host` is emptied and holds it.
+	// `opts` as for open (`tab`: « mine » for the person's own signature), and `only_mine` (no tab of the team's) and
+	// `small_head` (its title as a label, inside another window: « My mail »).
+	frappe_webmail.signature_builder.mount = function ($host, opts) {
+		return build(page_host($host, opts && opts.small_head), opts);
 	};
 
 	// Loaded on demand, then opened: what the pages that offer it call

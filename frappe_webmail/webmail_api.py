@@ -303,6 +303,15 @@ def oauth_callback(code=None, state=None, error=None):  # permission-check: ok i
 	account_name = state_data["account"]
 	user = state_data["user"]
 
+	# The consent comes back to the browser of the person who asked for it: a link to it sent to someone else, who
+	# consents in their own session, would store their tokens in the asker's mailbox (review of 18.11.2026, before « Add a
+	# mailbox » made the owner of a mailbox someone else than its maker)
+	if frappe.session.user != user:
+		frappe.throw(
+			_("Sign in to Neoffice as the owner of this mailbox, then connect it again."),
+			frappe.PermissionError,
+		)
+
 	# Get account
 	account = frappe.get_doc("Webmail Account", account_name)
 	if account.user != user:

@@ -171,6 +171,45 @@ def reach(doc: str | dict) -> dict:
 	return {"people": people, "count": sum(1 for p in people if p["sends"])}
 
 
+@frappe.whitelist()
+def each() -> dict:
+	"""« The signature of each » (Settings > Mail): for those who may write the templates, each of the desk's people with
+	the model they send today (`template`, `template_name`; none: their own signature, if they wrote one), the choices they
+	made of it (`photo`, `hide_mobile`), whether they wrote a signature of their own (`own`), and what their record lacks
+	for it (`missing`: job title, mobile; a mobile they hide is not missing)."""
+	_desk_person()
+	frappe.has_permission(TEMPLATE, "write", throw=True)
+	saved = signatures.enabled_templates()
+	given = signatures.roles_given(r.name for r in saved if r.applies_to == "Role")
+	titles = dict(frappe.get_all(TEMPLATE, fields=["name", "template_name"], as_list=True))
+	own = (
+		set(frappe.get_all("Email Signature", filters={"user": ["is", "set"]}, pluck="user"))
+		if frappe.db.table_exists("Email Signature")
+		else set()
+	)
+	people = []
+	for person in _people():
+		today = signatures.winning_template(signatures.scope_of(person.user, saved), saved, given)
+		choices = signatures.preference_of(person.user)
+		card = signatures.person_of(person.user)
+		missing = [_("job title")] if not card.job_title else []
+		if not card.mobile and not choices.hide_mobile:
+			missing.append(_("mobile"))
+		people.append(
+			{
+				"user": person.user,
+				"full_name": person.full_name or person.user,
+				"template": today,
+				"template_name": titles.get(today) if today else None,
+				"photo": bool(choices.photo_allowed),
+				"hide_mobile": bool(choices.hide_mobile),
+				"own": person.user in own,
+				"missing": missing,
+			}
+		)
+	return {"people": people}
+
+
 @frappe.whitelist(methods=["POST"])
 def preview(doc: str | dict, user: str | None = None) -> dict:
 	"""The signature a template (saved or not) gives a person, as their messages carry it: {html, text}. The person who

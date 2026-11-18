@@ -11,6 +11,8 @@ dependencies = [
     # "frappe~=15.0.0" # Installed and managed by bench.
     "imapclient>=2.3.0",
     "bleach>=6.0.0",
+    # Where a domain receives its mail (its MX records), for « Add a mailbox » (mail_team.mx_hosts)
+    "dnspython>=2.0",
 ]
 
 [build-system]

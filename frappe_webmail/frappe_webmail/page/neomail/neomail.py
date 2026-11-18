@@ -207,3 +207,34 @@ def extend_bootinfo(bootinfo):
 	if not offered and isinstance(bootinfo.get("page_info"), dict):
 		bootinfo["page_info"].pop(PAGE, None)
 	bootinfo["neomail_in_desk"] = 1 if offered else 0
+	if offered:
+		_my_mail_in_the_user_menu(bootinfo)
+
+
+def _my_mail_in_the_user_menu(bootinfo):
+	"""« My mail » in the person's menu (the cockpit's, `neo_user_menu`: what an app adds there, each entry a label, an
+	icon, a script to load and the function it calls), with how many of their own mailboxes wait for them (to connect,
+	a password). The desk's people only; a failure leaves the menu as it was and is logged."""
+	user = frappe.session.user
+	if user == "Guest" or frappe.get_cached_value("User", user, "user_type") != "System User":
+		return
+	try:
+		from frappe_webmail import mail_team
+
+		waiting = mail_team.waiting_count(user)
+	except Exception:
+		frappe.log_error("NeoMail: My mail's count for the user menu failed", frappe.get_traceback())
+		waiting = 0
+	menu = bootinfo.get("neo_user_menu")
+	if not isinstance(menu, list):
+		menu = bootinfo["neo_user_menu"] = []
+	menu.append(
+		{
+			"key": "my_mail",
+			"label": _("My mail"),
+			"icon": "mail",
+			"badge": waiting,
+			"script": "/assets/frappe_webmail/js/mail_team.js?v=1",
+			"call": "frappe_webmail.mail_team.open_mine",
+		}
+	)

@@ -121,3 +121,52 @@
 @media (max-width: 1100px) {
 	.sigb-cols, .sigb-cols.mine { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* The builder drawn in a block of a page (Settings › Mail › Signatures, 18.11.2026): its title at a section's size
+   (design system 6.13, the space's --ws-h2), « Save » in ink and the way to all the settings at its right. */
+.sigb-page {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+.sigb-page-head {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px 18px;
+	flex-wrap: wrap;
+}
+.sigb-page-title {
+	margin: 0;
+	font-family: Forum, Georgia, serif;
+	font-weight: 400;
+	font-size: var(--ws-h2, 26px);
+	line-height: 1.15;
+	color: var(--text-color, #141414);
+}
+.sigb-page-actions {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+.sigb-page-body {
+	border: 1px solid #ece7de;
+	border-radius: 18px;
+	padding: 20px 22px;
+	background: #fdfbf7;
+}
+[data-theme="dark"] .sigb-page-body {
+	border-color: rgba(255, 251, 245, 0.1);
+	background: #1b1611;
+}
+.sigb-page--small .sigb-page-title {
+	font-family: Karla, "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--text-muted, #524b41);
+}
+.sigb-page--small .sigb-page-body {
+	padding: 14px 16px;
+}
