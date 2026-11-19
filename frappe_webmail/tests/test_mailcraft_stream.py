@@ -323,8 +323,11 @@ def corrections(box, monkeypatch):
 	return box
 
 
-def _correct(*pairs):
-	return ms.stream_set({"accountId": "Aaaa", "corrections": [{"id": i, "stream": s} for i, s in pairs]})
+def _correct(*pairs, sender=None):
+	corrections = [{"id": i, "stream": s} for i, s in pairs]
+	if sender is not None:
+		corrections = [{**c, "sender": sender} for c in corrections]
+	return ms.stream_set({"accountId": "Aaaa", "corrections": corrections})
 
 
 def test_the_capability_says_correct_only_where_the_site_takes_corrections(monkeypatch):
@@ -350,6 +353,7 @@ def test_the_set_method_is_unknown_without_the_key(box):
 		[{"id": "x", "stream": "spam"}],
 		[{"id": 3, "stream": "person"}],
 		[{"id": "x" * 300, "stream": "person"}],
+		[{"id": "x", "stream": "person", "sender": "yes"}],
 	],
 )
 def test_the_corrections_are_checked(bad, monkeypatch, box):
@@ -365,8 +369,10 @@ def test_a_corrected_message_moves_at_once_and_the_box_hears_of_it_in_a_job(corr
 	assert answer["updated"] == [three] and answer["notUpdated"] == {}
 	entry = _ask([three])["list"][0]
 	assert (entry["stream"], entry["source"]) == ("newsletter", "person")
-	sender = ms.sender_hash("marie.favre@exemple.ch")
-	assert corrections.kept == [("marc@garage.example", ACCOUNT.name, {sender: "newsletter"})]
+	# The message alone: its sender is not chosen unless the person says yes to the next ones too.
+	assert corrections.kept == [
+		("marc@garage.example", ACCOUNT.name, {ms.message_key("INBOX", 7, 3): "newsletter"})
+	]
 	((_args, job),) = corrections.enqueued
 	assert job["taught"] == [[3, "newsletter"]] and job["folder"] == "INBOX" and job["validity"] == 7
 
@@ -429,3 +435,43 @@ def test_the_newest_choices_are_kept_and_no_more_than_the_limit(monkeypatch):
 def test_a_sender_is_kept_as_a_hash_never_as_its_address():
 	h = ms.sender_hash(" Marie.Favre@Exemple.ch ")
 	assert h == ms.sender_hash("marie.favre@exemple.ch") and "exemple" not in h and len(h) == 20
+
+
+# A message alone, or its sender too (« the next ones from this sender too ? », as Gmail asks)
+
+
+def test_a_correction_moves_its_message_and_not_its_senders_others(corrections):
+	corrections.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
+	three, four = _ids(3, 4)
+	_correct((three, "newsletter"))
+	by_id = {e["id"]: e for e in _ask([three, four])["list"]}
+	assert (by_id[three]["stream"], by_id[three]["source"]) == ("newsletter", "person")
+	assert by_id[four]["source"] != "person", "the sender's other message is left as the model says"
+
+
+def test_with_the_sender_its_others_and_next_ones_follow(corrections):
+	corrections.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
+	three, four = _ids(3, 4)
+	_correct((three, "notification"), sender=True)
+	sender = ms.sender_hash("marie.favre@exemple.ch")
+	assert corrections.prefs[sender] == "notification"
+	by_id = {e["id"]: e for e in _ask([three, four])["list"]}
+	assert {by_id[i]["stream"] for i in (three, four)} == {"notification"}
+
+
+def test_a_messages_own_choice_wins_over_its_senders(corrections):
+	corrections.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
+	three, four = _ids(3, 4)
+	_correct((three, "person"))
+	_correct((four, "newsletter"), sender=True)
+	by_id = {e["id"]: e for e in _ask([three, four])["list"]}
+	assert (by_id[three]["stream"], by_id[four]["stream"]) == ("person", "newsletter")
+
+
+def test_the_yes_after_a_correction_does_not_teach_the_box_twice(corrections):
+	three = _ids(3)[0]
+	_correct((three, "newsletter"))
+	_correct((three, "newsletter"), sender=True)
+	assert len(corrections.enqueued) == 1, "the same message under the same tab is taught once"
+	_correct((three, "notification"))
+	assert len(corrections.enqueued) == 2, "a new tab for it is new"

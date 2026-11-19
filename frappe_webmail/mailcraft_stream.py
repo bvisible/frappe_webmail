@@ -21,13 +21,15 @@ This module is the part that reads the mailbox and keeps the answer:
 - **Only where the site asks for it**: `nora_decide_mail` = `on` (the box's decisions, nora.api.decide). Elsewhere the capability is
   not offered, and the method answers `unknownMethod`.
 
-A person may correct a tab (19.11.2026, neoffice-maintenance#3142): `NeomailStream/set {accountId, corrections: [{id, stream}]}`,
-offered where the site also says `nora_decide_mail_feedback` = 1 (the capability then says `correct: true`). The message moves at
-once (`source: person`), and so do this sender's others for this person and this mailbox: their choice is kept in their
-NeoMail Setting of the mailbox (`sender_streams`, a hash of the sender's address and the tab, never an address) and wins over the
-headers and the model, on this window and on the phone's Mail tab. Then, in a background job, the sender, the subject and the
-first words (what the model reads) go to the box as a person's correction (nora.api.decide.feedback): one vote in its memory
-of senders, and what vega's Learner learns from.
+A person may correct a tab (19.11.2026, neoffice-maintenance#3142): `NeomailStream/set {accountId, corrections: [{id, stream,
+sender?}]}`, offered where the site also says `nora_decide_mail_feedback` = 1 (the capability then says `correct: true`). The
+message moves at once (`source: person`), for this person and this mailbox; with `sender: true` (the person said yes to « the
+next ones from this sender too », as Gmail asks), so do this sender's other messages and the next ones. Both are kept in their
+NeoMail Setting of the mailbox (`sender_streams`: a hash of the sender's address, or `m:` and a hash of the message's place, and
+the tab; never an address), the message's own choice before the sender's, and win over the headers and the model, on this window
+and on the phone's Mail tab. Then, in a background job, the sender, the subject and the first words (what the model reads) go to
+the box as a person's correction (nora.api.decide.feedback): one vote in its memory of senders, and what vega's Learner learns
+from; a message already put under that tab is not told again.
 """
 
 import hashlib
@@ -50,7 +52,7 @@ CACHE_S = 30 * 24 * 3600  # settled by the headers or the model: a message does 
 DEFAULT_CACHE_S = 3600  # settled by nothing: another look later, the model may have been away
 SOURCES = ("headers", "model", "default", "person")
 STREAMS = ("person", "notification", "newsletter")
-# A person's corrections: the site's key, the record field, how many senders a mailbox keeps (the newest)
+# A person's corrections: the site's key, the record field, how many choices (messages and senders) a mailbox keeps (the newest)
 CORRECT_KEY = "nora_decide_mail_feedback"
 PREFS_DOCTYPE = "NeoMail Setting"
 PREFS_FIELD = "sender_streams"
@@ -91,8 +93,14 @@ def sender_hash(address):
 	return hashlib.sha256(str(address or "").strip().lower().encode()).hexdigest()[:20]
 
 
+def message_key(folder, validity, uid):
+	"""What stands for a message in a person's choices (beside the senders' hashes): its place in the mailbox, hashed."""
+	text = f"{folder}\x00{int(validity)}\x00{int(uid)}"
+	return "m:" + hashlib.sha256(text.encode()).hexdigest()[:20]
+
+
 def _prefs(user, account_name):
-	"""{sender hash: stream} of this person in this mailbox, {} without any or where the key is off."""
+	"""{sender hash or message key: stream} of this person in this mailbox, {} without any or where the key is off."""
 	if not corrections_enabled():
 		return {}
 	value = frappe.db.get_value(PREFS_DOCTYPE, {"user": user, "account": account_name}, PREFS_FIELD)
@@ -107,9 +115,14 @@ def _prefs(user, account_name):
 	)
 
 
-def _apply(entry, prefs):
-	"""The entry as the person sees it: their choice for this sender wins."""
-	chosen = prefs.get(entry.get("from") or "")
+def _chosen(prefs, message, sender):
+	"""The person's choice for this message, else for its sender, else none."""
+	return prefs.get(message) or prefs.get(sender or "")
+
+
+def _apply(entry, prefs, message=""):
+	"""The entry as the person sees it: their choice for this message, else for this sender, wins."""
+	chosen = _chosen(prefs, message, entry.get("from"))
 	return {**entry, "stream": chosen, "source": "person"} if chosen else entry
 
 
@@ -275,7 +288,7 @@ def stream_get(args):
 			hit = cache.get_value(_key(account.name, folder, validity, uid))
 			# A person's choice is never the mailbox's (#3151): an entry of that source, written before, is read again.
 			if hit and hit.get("source") != "person":
-				listed.append({"id": jid, **_said(_apply(hit, prefs))})
+				listed.append({"id": jid, **_said(_apply(hit, prefs, message_key(folder, validity, uid)))})
 			else:
 				by_validity.setdefault(validity, []).append((jid, uid))
 		for validity, misses in by_validity.items():
@@ -284,14 +297,19 @@ def stream_get(args):
 			if gone:
 				not_found += [jid for jid, _uid in misses]
 				continue
-			# A sender this person chose a tab for is answered by their choice, without the model: nothing is cached of it,
-			# since the cache is the mailbox's and the choice is theirs alone (#3151).
+			# A message or a sender this person chose a tab for is answered by their choice, without the model: nothing is
+			# cached of it, since the cache is the mailbox's and the choice is theirs alone (#3151).
 			chosen = {}
 			for _jid, uid in misses:
 				message = messages.get(uid)
 				sender = sender_hash(message.get("address")) if message is not None else ""
-				if sender in prefs:
-					chosen[uid] = {"stream": prefs[sender], "source": "person", "from": sender}
+				tab = (
+					_chosen(prefs, message_key(folder, validity, uid), sender)
+					if message is not None
+					else None
+				)
+				if tab:
+					chosen[uid] = {"stream": tab, "source": "person", "from": sender}
 			messages = {uid: m for uid, m in messages.items() if uid not in chosen}
 			_count("asked", len(messages))
 			results, waiting = classify(
@@ -307,7 +325,9 @@ def stream_get(args):
 						entry,
 						expires_in_sec=CACHE_S if entry["source"] != "default" else DEFAULT_CACHE_S,
 					)
-					listed.append({"id": jid, **_said(_apply(entry, prefs))})
+					listed.append(
+						{"id": jid, **_said(_apply(entry, prefs, message_key(folder, validity, uid)))}
+					)
 				elif uid in waiting:
 					pending.append(jid)
 				else:
@@ -442,8 +462,9 @@ def get_streams(account_name, folder="INBOX", uids=None):  # permission-check: o
 
 
 def stream_set(args):
-	"""`NeomailStream/set {accountId, corrections: [{id, stream}]}` → `{accountId, updated, notUpdated}`: the person put these
-	messages under these tabs. Each moves at once, its sender's others for this person and mailbox too, and the box is told."""
+	"""`NeomailStream/set {accountId, corrections: [{id, stream, sender?}]}` → `{accountId, updated, notUpdated}`: the person
+	put these messages under these tabs, for them and this mailbox; with `sender: true`, their senders' others and next ones too.
+	The box is told of each message the first time it is put under a tab."""
 	if not corrections_enabled():
 		raise jmap.JmapError("unknownMethod", "NeomailStream/set")
 	account = jmap._account(args.get("accountId"))
@@ -457,12 +478,14 @@ def stream_set(args):
 			and isinstance(c.get("id"), str)
 			and len(c["id"]) <= 255
 			and c.get("stream") in STREAMS
+			and isinstance(c.get("sender", False), bool)
 			for c in corrections
 		)
 	):
 		raise jmap.JmapError("invalidArguments", "corrections")
-	wanted = {c["id"]: c["stream"] for c in corrections}
+	wanted = {c["id"]: (c["stream"], c.get("sender", False)) for c in corrections}
 	folders, not_found = jmap._by_folder(list(wanted))
+	before = _prefs(_who(), account.name)
 	updated, chosen = [], {}
 	for folder, ids in folders.items():
 		by_validity = {}
@@ -478,9 +501,14 @@ def stream_set(args):
 					continue
 				# The choice is kept for this person alone (`_keep_choices`), and `stream_get` applies it: never in the cache,
 				# which is the mailbox's and is read by everyone the mailbox is shared with (#3151).
-				tab, sender = wanted[jid], sender_hash(message.get("address"))
-				chosen[sender] = tab
-				taught.append((uid, tab))
+				(tab, whole_sender), key = wanted[jid], message_key(folder, validity, uid)
+				if before.get(key) != tab:
+					taught.append(
+						(uid, tab)
+					)  # not twice for the same message under the same tab (the « yes » after it)
+				chosen[key] = tab
+				if whole_sender:
+					chosen[sender_hash(message.get("address"))] = tab
 				updated.append(jid)
 			if taught:
 				_teach_later(account.name, folder, validity, taught)
@@ -495,7 +523,7 @@ def stream_set(args):
 
 
 def _keep_choices(user, account_name, chosen):
-	"""The person's choice for these senders in this mailbox: the newest win, MAX_PREFS kept."""
+	"""The person's choice for these messages and senders in this mailbox: the newest win, MAX_PREFS kept."""
 	from frappe_webmail import mailcraft_settings
 
 	prefs = _prefs(user, account_name)

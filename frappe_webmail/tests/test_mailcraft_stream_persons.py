@@ -37,7 +37,7 @@ def two_persons(request, monkeypatch):
 def test_what_a_person_chose_moves_their_senders_other_messages_and_nobody_elses(two_persons):
 	two_persons.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
 	three, four = _ids(3, 4)
-	_correct((three, "newsletter"))
+	_correct((three, "newsletter"), sender=True)
 	assert list(two_persons.kept_by_person) == [("alice", ACCOUNT.name)]
 	alice = {e["id"]: e for e in _ask([three, four])["list"]}
 	assert {alice[i]["stream"] for i in (three, four)} == {"newsletter"}
@@ -69,7 +69,7 @@ def test_a_person_entry_cached_before_the_fix_is_read_again(two_persons):
 def test_a_sender_the_person_chose_is_answered_without_the_model(two_persons):
 	two_persons.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
 	three, four = _ids(3, 4)
-	_correct((three, "newsletter"))
+	_correct((three, "newsletter"), sender=True)
 	asked = len(two_persons.asked)
 	answer = {e["id"]: e for e in _ask([three, four])["list"]}
 	assert {answer[i]["stream"] for i in (three, four)} == {"newsletter"}
