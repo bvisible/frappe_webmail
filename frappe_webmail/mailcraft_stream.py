@@ -20,14 +20,24 @@ This module is the part that reads the mailbox and keeps the answer:
   in `pending`, and is finished by a background job, so that the next ask (a few seconds later) finds it in the cache.
 - **Only where the site asks for it**: `nora_decide_mail` = `on` (the box's decisions, nora.api.decide). Elsewhere the capability is
   not offered, and the method answers `unknownMethod`.
+
+A person may correct a tab (19.11.2026, neoffice-maintenance#3142): `NeomailStream/set {accountId, corrections: [{id, stream}]}`,
+offered where the site also says `nora_decide_mail_feedback` = 1 (the capability then says `correct: true`). The message moves at
+once (`source: person`), and so do this sender's others for this person and this mailbox: their choice is kept in their
+NeoMail Setting of the mailbox (`sender_streams`, a hash of the sender's address and the tab, never an address) and wins over the
+headers and the model, on this window and on the phone's Mail tab. Then, in a background job, the sender, the subject and the
+first words (what the model reads) go to the box as a person's correction (nora.api.decide.feedback): one vote in its memory
+of senders, and what vega's Learner learns from.
 """
 
 import hashlib
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
 import frappe
 from frappe import _
+from frappe.utils import cint
 
 from frappe_webmail import mailcraft_jmap as jmap
 from frappe_webmail import stream
@@ -38,7 +48,13 @@ BUDGET_S = 4.0  # what the model has, for one ask
 WORKERS = 4
 CACHE_S = 30 * 24 * 3600  # settled by the headers or the model: a message does not change
 DEFAULT_CACHE_S = 3600  # settled by nothing: another look later, the model may have been away
-SOURCES = ("headers", "model", "default")
+SOURCES = ("headers", "model", "default", "person")
+STREAMS = ("person", "notification", "newsletter")
+# A person's corrections: the site's key, the record field, how many senders a mailbox keeps (the newest)
+CORRECT_KEY = "nora_decide_mail_feedback"
+PREFS_DOCTYPE = "NeoMail Setting"
+PREFS_FIELD = "sender_streams"
+MAX_PREFS = 1_000
 # Background jobs one person may have queued or running at once for one mailbox (_finish_later). Each different set of
 # messages left pending made a job of its own, so that one person asking with other sets kept the short queue busy for
 # everyone; past these, what is pending waits for the next ask, which tries again (it is asked within seconds).
@@ -50,11 +66,51 @@ def enabled():
 	return str(frappe.conf.get("nora_decide_mail") or "").strip().lower() == "on"
 
 
+def corrections_enabled():
+	"""Whether a person may correct a tab here: the tabs, and `nora_decide_mail_feedback` = 1, and the record field migrated."""
+	return (
+		enabled()
+		and cint(frappe.conf.get(CORRECT_KEY))
+		and frappe.db.table_exists(PREFS_DOCTYPE)
+		and frappe.db.has_column(PREFS_DOCTYPE, PREFS_FIELD)
+	)
+
+
 def session_parts(account):
 	"""What every mailbox's session adds: the capability, where the site offers it."""
 	if not enabled():
 		return {}, {}
-	return {STREAM: {}}, {STREAM: {"maxIds": MAX_IDS}}
+	takes = {"maxIds": MAX_IDS}
+	if corrections_enabled():
+		takes["correct"] = True
+	return {STREAM: {}}, {STREAM: takes}
+
+
+def sender_hash(address):
+	"""What stands for a sender in the cache and in a person's choices: a hash of the address, never the address."""
+	return hashlib.sha256(str(address or "").strip().lower().encode()).hexdigest()[:20]
+
+
+def _prefs(user, account_name):
+	"""{sender hash: stream} of this person in this mailbox, {} without any or where the key is off."""
+	if not corrections_enabled():
+		return {}
+	value = frappe.db.get_value(PREFS_DOCTYPE, {"user": user, "account": account_name}, PREFS_FIELD)
+	try:
+		prefs = json.loads(value) if isinstance(value, str) and value else (value or {})
+	except ValueError:
+		return {}
+	return (
+		{k: v for k, v in prefs.items() if isinstance(k, str) and v in STREAMS}
+		if isinstance(prefs, dict)
+		else {}
+	)
+
+
+def _apply(entry, prefs):
+	"""The entry as the person sees it: their choice for this sender wins."""
+	chosen = prefs.get(entry.get("from") or "")
+	return {**entry, "stream": chosen, "source": "person"} if chosen else entry
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -147,14 +203,22 @@ def classify(messages, previews_of, ask, deadline):
 	for uid, message in messages.items():
 		first = stream.of_headers(message.get("headers") or {}, message.get("address", ""))
 		if first["stream"]:
-			results[uid] = {"stream": first["stream"], "source": "headers"}
+			results[uid] = {
+				"stream": first["stream"],
+				"source": "headers",
+				"from": sender_hash(message.get("address")),
+			}
 		else:
 			unsettled.append(uid)
 	if not unsettled:
 		return results, []
 	if ask is None:
 		for uid in unsettled:
-			results[uid] = {"stream": "person", "source": "default"}
+			results[uid] = {
+				"stream": "person",
+				"source": "default",
+				"from": sender_hash(messages[uid].get("address")),
+			}
 		_count("unavailable", len(unsettled))
 		return results, []
 	previews = previews_of(unsettled)
@@ -171,7 +235,11 @@ def classify(messages, previews_of, ask, deadline):
 	for future, uid in futures.items():
 		if future in finished and not future.exception():
 			decided = future.result()
-			results[uid] = {"stream": decided["stream"], "source": decided["source"]}
+			results[uid] = {
+				"stream": decided["stream"],
+				"source": decided["source"],
+				"from": sender_hash(messages[uid].get("address")),
+			}
 		else:
 			pending.append(uid)
 	return results, pending
@@ -200,12 +268,13 @@ def stream_get(args):
 	cache, listed, pending = _cache(), [], []
 	deadline = time.monotonic() + BUDGET_S
 	ask = _model()
+	prefs = _prefs(_who(), account.name)
 	for folder, wanted in folders.items():
 		by_validity = {}
 		for jid, validity, uid in wanted:
 			hit = cache.get_value(_key(account.name, folder, validity, uid))
 			if hit:
-				listed.append({"id": jid, **hit})
+				listed.append({"id": jid, **_said(_apply(hit, prefs))})
 			else:
 				by_validity.setdefault(validity, []).append((jid, uid))
 		for validity, misses in by_validity.items():
@@ -226,7 +295,7 @@ def stream_get(args):
 						entry,
 						expires_in_sec=CACHE_S if entry["source"] != "default" else DEFAULT_CACHE_S,
 					)
-					listed.append({"id": jid, **entry})
+					listed.append({"id": jid, **_said(_apply(entry, prefs))})
 				elif uid in waiting:
 					pending.append(jid)
 				else:
@@ -240,6 +309,11 @@ def stream_get(args):
 		"notFound": not_found,
 		"pending": pending,
 	}
+
+
+def _said(entry):
+	"""What NeoMail is told of an entry: the stream and how it was settled, not the sender's hash."""
+	return {"stream": entry["stream"], "source": entry["source"]}
 
 
 def _finish_later(account_name, folder, validity, uids):
@@ -350,4 +424,115 @@ def get_streams(account_name, folder="INBOX", uids=None):  # permission-check: o
 	}
 
 
-METHODS = {"NeomailStream/get": stream_get}
+# ---------------------------------------------------------------------------------------------------------------
+# A person's corrections
+# ---------------------------------------------------------------------------------------------------------------
+
+
+def stream_set(args):
+	"""`NeomailStream/set {accountId, corrections: [{id, stream}]}` → `{accountId, updated, notUpdated}`: the person put these
+	messages under these tabs. Each moves at once, its sender's others for this person and mailbox too, and the box is told."""
+	if not corrections_enabled():
+		raise jmap.JmapError("unknownMethod", "NeomailStream/set")
+	account = jmap._account(args.get("accountId"))
+	corrections = args.get("corrections")
+	if (
+		not isinstance(corrections, list)
+		or not corrections
+		or len(corrections) > MAX_IDS
+		or not all(
+			isinstance(c, dict)
+			and isinstance(c.get("id"), str)
+			and len(c["id"]) <= 255
+			and c.get("stream") in STREAMS
+			for c in corrections
+		)
+	):
+		raise jmap.JmapError("invalidArguments", "corrections")
+	wanted = {c["id"]: c["stream"] for c in corrections}
+	folders, not_found = jmap._by_folder(list(wanted))
+	cache, updated, chosen = _cache(), [], {}
+	for folder, ids in folders.items():
+		by_validity = {}
+		for jid, validity, uid in ids:
+			by_validity.setdefault(validity, []).append((jid, uid))
+		for validity, items in by_validity.items():
+			messages, gone = _read(account, folder, validity, [uid for _jid, uid in items])
+			taught = []
+			for jid, uid in items:
+				message = messages.get(uid)
+				if gone or message is None:
+					not_found.append(jid)
+					continue
+				tab, sender = wanted[jid], sender_hash(message.get("address"))
+				cache.set_value(
+					_key(account.name, folder, validity, uid),
+					{"stream": tab, "source": "person", "from": sender},
+					expires_in_sec=CACHE_S,
+				)
+				chosen[sender] = tab
+				taught.append((uid, tab))
+				updated.append(jid)
+			if taught:
+				_teach_later(account.name, folder, validity, taught)
+	if chosen:
+		_keep_choices(_who(), account.name, chosen)
+	_count("corrected", len(updated))
+	return {
+		"accountId": args.get("accountId"),
+		"updated": updated,
+		"notUpdated": {jid: {"type": "notFound", "description": "no such message"} for jid in not_found},
+	}
+
+
+def _keep_choices(user, account_name, chosen):
+	"""The person's choice for these senders in this mailbox: the newest win, MAX_PREFS kept."""
+	from frappe_webmail import mailcraft_settings
+
+	prefs = _prefs(user, account_name)
+	for sender, tab in chosen.items():
+		prefs.pop(sender, None)
+		prefs[sender] = tab
+	prefs = dict(list(prefs.items())[-MAX_PREFS:])
+	mailcraft_settings._write(user, account_name, {PREFS_FIELD: prefs})
+
+
+def _teach_later(account_name, folder, validity, taught):
+	"""The box hears of the corrections in a background job: reading the messages again takes the mail server's time."""
+	try:
+		frappe.enqueue(
+			"frappe_webmail.mailcraft_stream.teach",
+			queue="short",
+			timeout=120,
+			account_name=account_name,
+			folder=folder,
+			validity=validity,
+			taught=[[int(uid), tab] for uid, tab in taught],
+		)
+	except Exception:
+		frappe.log_error("NeoMail stream: a correction could not be queued", frappe.get_traceback())
+
+
+def teach(account_name, folder, validity, taught):
+	"""The background job: what the model reads of each corrected message, to the box with the person's tab."""
+	try:
+		from nora.api import decide
+	except Exception:
+		return
+	account = jmap.webmail.get_account(account_name)
+	uids = [uid for uid, _tab in taught]
+	messages, gone = _read(account, folder, validity, uids)
+	if gone:
+		return
+	previews = _previews(account, folder, validity, uids)
+	for uid, tab in taught:
+		message = messages.get(uid)
+		if not message:
+			continue
+		text = stream.model_text(
+			message.get("name"), message.get("address"), message.get("subject"), previews.get(uid, "")
+		)
+		decide.feedback("mail_stream", text, tab)
+
+
+METHODS = {"NeomailStream/get": stream_get, "NeomailStream/set": stream_set}

@@ -135,8 +135,10 @@ def test_a_message_in_the_cache_is_not_read_nor_asked_again(box):
 
 
 def test_the_cache_keeps_a_kind_and_a_source_and_never_a_word_of_a_message(box):
-	_ask(_ids(1, 2, 3))
-	assert all(set(v) == {"stream", "source"} for v in box.cache.store.values())
+	answer = _ask(_ids(1, 2, 3))
+	# and a hash of the sender (a person's corrections move their others, neoffice-maintenance#3142), never told to NeoMail
+	assert all(set(v) == {"stream", "source", "from"} for v in box.cache.store.values())
+	assert all(set(e) == {"id", "stream", "source"} for e in answer["list"])
 	text = " ".join(list(box.cache.store) + [str(v) for v in box.cache.store.values()])
 	assert "garage" not in text and "brand.example" not in text and "devis" not in text
 	# settled by the headers or the model: long; settled by nothing: short
@@ -299,3 +301,131 @@ def test_the_uids_are_checked(phone, uids):
 	with pytest.raises(frappe.ValidationError):
 		ms.get_streams(ACCOUNT.name, "INBOX", uids)
 	assert phone.reads == []
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# A person's corrections (neoffice-maintenance#3142)
+# ---------------------------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def corrections(box, monkeypatch):
+	"""The site also takes corrections; what is kept of the person's choices and what goes to the box are recorded."""
+	box.kept, box.prefs, box.taught = [], {}, []
+	monkeypatch.setattr(ms, "corrections_enabled", lambda: True)
+	monkeypatch.setattr(ms, "_prefs", lambda user, account_name: dict(box.prefs))
+
+	def keep(user, account_name, chosen):
+		box.kept.append((user, account_name, dict(chosen)))
+		box.prefs.update(chosen)
+
+	monkeypatch.setattr(ms, "_keep_choices", keep)
+	return box
+
+
+def _correct(*pairs):
+	return ms.stream_set({"accountId": "Aaaa", "corrections": [{"id": i, "stream": s} for i, s in pairs]})
+
+
+def test_the_capability_says_correct_only_where_the_site_takes_corrections(monkeypatch):
+	monkeypatch.setattr(ms, "enabled", lambda: True)
+	monkeypatch.setattr(ms, "corrections_enabled", lambda: False)
+	assert "correct" not in ms.session_parts(ACCOUNT)[1][ms.STREAM]
+	monkeypatch.setattr(ms, "corrections_enabled", lambda: True)
+	assert ms.session_parts(ACCOUNT)[1][ms.STREAM]["correct"] is True
+
+
+def test_the_set_method_is_unknown_without_the_key(box):
+	with pytest.raises(jmap.JmapError) as error:
+		_correct((_ids(3)[0], "newsletter"))
+	assert error.value.type == "unknownMethod" and box.reads == [] and box.enqueued == []
+
+
+@pytest.mark.parametrize(
+	"bad",
+	[
+		None,
+		[],
+		[{"id": "x"}],
+		[{"id": "x", "stream": "spam"}],
+		[{"id": 3, "stream": "person"}],
+		[{"id": "x" * 300, "stream": "person"}],
+	],
+)
+def test_the_corrections_are_checked(bad, monkeypatch, box):
+	monkeypatch.setattr(ms, "corrections_enabled", lambda: True)
+	with pytest.raises(jmap.JmapError) as error:
+		ms.stream_set({"accountId": "Aaaa", "corrections": bad})
+	assert error.value.type == "invalidArguments"
+
+
+def test_a_corrected_message_moves_at_once_and_the_box_hears_of_it_in_a_job(corrections):
+	three = _ids(3)[0]
+	answer = _correct((three, "newsletter"))
+	assert answer["updated"] == [three] and answer["notUpdated"] == {}
+	entry = _ask([three])["list"][0]
+	assert (entry["stream"], entry["source"]) == ("newsletter", "person")
+	sender = ms.sender_hash("marie.favre@exemple.ch")
+	assert corrections.kept == [("marc@garage.example", ACCOUNT.name, {sender: "newsletter"})]
+	((_args, job),) = corrections.enqueued
+	assert job["taught"] == [[3, "newsletter"]] and job["folder"] == "INBOX" and job["validity"] == 7
+
+
+def test_the_persons_choice_moves_the_senders_other_messages(corrections):
+	corrections.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
+	corrections.prefs[ms.sender_hash("marie.favre@exemple.ch")] = "notification"
+	by_id = {e["id"]: e for e in _ask(_ids(3, 4, 1))["list"]}
+	three, four, one = _ids(3, 4, 1)
+	assert (by_id[three]["stream"], by_id[three]["source"]) == ("notification", "person")
+	assert (by_id[four]["stream"], by_id[four]["source"]) == ("notification", "person")
+	assert by_id[one]["source"] == "headers"  # another sender stays as it was
+	again = {e["id"]: e for e in _ask(_ids(3, 4))["list"]}  # from the cache too
+	assert again[three]["source"] == again[four]["source"] == "person"
+
+
+def test_a_message_gone_is_not_updated(corrections):
+	corrections.gone = True
+	three = _ids(3)[0]
+	answer = _correct((three, "person"))
+	assert (
+		answer["updated"] == []
+		and three in answer["notUpdated"]
+		and corrections.kept == []
+		and corrections.enqueued == []
+	)
+
+
+def test_the_job_tells_the_box_what_the_model_reads_and_the_persons_tab(corrections, monkeypatch):
+	decide = pytest.importorskip("nora.api.decide")  # the app's own CI does not install nora
+
+	told = []
+	monkeypatch.setattr(
+		decide, "feedback", lambda task, text, label: told.append((task, text, label)), raising=False
+	)
+	monkeypatch.setattr(jmap.webmail, "get_account", lambda name: ACCOUNT)
+	ms.teach(ACCOUNT.name, "INBOX", 7, [[3, "newsletter"]])
+	((task, text, label),) = told
+	assert (task, label) == ("mail_stream", "newsletter")
+	assert text == ms.stream.model_text("Marc", "marie.favre@exemple.ch", "devis", "Ok pour mardi.")
+
+
+def test_the_newest_choices_are_kept_and_no_more_than_the_limit(monkeypatch):
+	written = []
+	from frappe_webmail import mailcraft_settings
+
+	monkeypatch.setattr(mailcraft_settings, "_write", lambda user, account, fields: written.append(fields))
+	monkeypatch.setattr(ms, "MAX_PREFS", 3)
+	monkeypatch.setattr(
+		ms, "_prefs", lambda user, account_name: {"a": "person", "b": "person", "c": "newsletter"}
+	)
+	ms._keep_choices("marc@garage.example", ACCOUNT.name, {"a": "notification", "d": "person"})
+	assert list(written[0][ms.PREFS_FIELD].items()) == [
+		("c", "newsletter"),
+		("a", "notification"),
+		("d", "person"),
+	]
+
+
+def test_a_sender_is_kept_as_a_hash_never_as_its_address():
+	h = ms.sender_hash(" Marie.Favre@Exemple.ch ")
+	assert h == ms.sender_hash("marie.favre@exemple.ch") and "exemple" not in h and len(h) == 20

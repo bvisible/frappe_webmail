@@ -14,7 +14,8 @@
   "sb_mailbox",
   "safe_senders",
   "blocked_senders",
-  "done_messages"
+  "done_messages",
+  "sender_streams"
  ],
  "fields": [
   {
@@ -77,12 +78,19 @@
    "fieldtype": "JSON",
    "label": "Marked as Done",
    "read_only": 1
+  },
+  {
+   "description": "This person's tab for each sender of this mailbox (Main, Notifications, Newsletters), by a hash of the sender's address: what they chose by moving a message to a tab.",
+   "fieldname": "sender_streams",
+   "fieldtype": "JSON",
+   "label": "Tabs Chosen per Sender",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-11-18 12:00:00.000000",
+ "modified": "2026-11-19 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Webmail",
  "name": "NeoMail Setting",
