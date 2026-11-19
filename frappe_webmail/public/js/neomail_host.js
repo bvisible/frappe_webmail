@@ -215,6 +215,9 @@ window.neomailHost = (function () {
 		spam: "lucide-shield-alert",
 		trash: "lucide-trash-2",
 		outbox: "lucide-clock",
+		// « Plus tard », the folder its server keeps put-away messages in (NeoMail's `snoozed`): the clock of NeoMail's own
+		// quick action, so that the folder and the button that fills it look alike
+		snoozed: "lucide-clock",
 	};
 	// NeoMail's views, in its order, and their icons (lucide names, without the prefix the menu's items take).
 	const VIEW_ICONS = {

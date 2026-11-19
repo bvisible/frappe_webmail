@@ -508,6 +508,36 @@ describe("navSections", () => {
 		]);
 	});
 
+	it("draws « Plus tard » (role `snoozed`) with the clock of NeoMail's quick action, and keeps its name and place", () => {
+		const later = structuredClone(STATE);
+		later.accounts[0].folders.splice(1, 0, {
+			id: "M-later",
+			name: "Plus tard",
+			role: "snoozed",
+			parent: null,
+			unread: 0,
+			selectable: true,
+			count: { value: 2, kind: "total" },
+		});
+		const ada = lent(later).nav[1];
+		const item = ada.items[1];
+		expect([item.label, item.icon, item.badge, item.badgeTone]).toEqual([
+			"Plus tard",
+			"lucide-clock",
+			"[2]",
+			undefined,
+		]);
+		const actions = page()
+			.host.folderActions(later.accounts[0].folders[1], false, {})
+			.map((entry) => [entry.action, entry.disabled]);
+		expect(actions).toEqual([
+			["create", false],
+			["rename", true],
+			["delete", true],
+			["read", false],
+		]);
+	});
+
 	it("shows the number NeoMail's pane shows: its count, a total in brackets, nothing when it shows none", () => {
 		const counted = structuredClone(STATE);
 		const [inbox, clients, projects, sent] = counted.accounts[0].folders;
