@@ -674,6 +674,7 @@ def _session(address):
 		mailcraft_stream,
 		neomail_history,
 		neomail_icons,
+		neomail_snooze,
 	)
 
 	account = webmail.get_account(address)
@@ -694,6 +695,8 @@ def _session(address):
 	history, account_history = _optional_parts(neomail_history.session_parts, account)
 	# The icon of a sender's domain, for the round of NeoMail's rows (neomail_icons).
 	icons, account_icons = _optional_parts(neomail_icons.session_parts, account)
+	# « Plus tard »: a message put away until a chosen time comes back by itself (neomail_snooze).
+	snooze, account_snooze = _optional_parts(neomail_snooze.session_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -716,6 +719,7 @@ def _session(address):
 			**streams,
 			**history,
 			**icons,
+			**snooze,
 		},
 		"accounts": {
 			aid: {
@@ -740,6 +744,7 @@ def _session(address):
 					**account_streams,
 					**account_history,
 					**account_icons,
+					**account_snooze,
 				},
 			}
 		},
@@ -749,7 +754,16 @@ def _session(address):
 			QUOTA: aid,
 			**{
 				capability: aid
-				for capability in (*contacts, *calendars, *notes, *settings, *streams, *history, *icons)
+				for capability in (
+					*contacts,
+					*calendars,
+					*notes,
+					*settings,
+					*streams,
+					*history,
+					*icons,
+					*snooze,
+				)
 			},
 		},
 		"username": frappe.session.user,
@@ -821,10 +835,10 @@ def _api():
 
 
 def _more_methods():
-	"""The address book's, the calendars', the notes', the kept settings', the streams' and the folders' methods
-	(mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream, neomail_folders,
-	neomail_history, neomail_icons), and what changed in the mail and the folders (mailcraft_changes), which read this
-	module: imported when first asked."""
+	"""The address book's, the calendars', the notes', the kept settings', the streams', the folders' and « Plus tard »'s
+	methods (mailcraft_contacts, mailcraft_calendars, mailcraft_notes, mailcraft_settings, mailcraft_stream,
+	neomail_folders, neomail_history, neomail_icons, neomail_snooze), and what changed in the mail and the folders
+	(mailcraft_changes), which read this module: imported when first asked."""
 	from frappe_webmail.mailcraft_calendars import METHODS as CALENDAR_METHODS
 	from frappe_webmail.mailcraft_changes import METHODS as CHANGES_METHODS
 	from frappe_webmail.mailcraft_contacts import METHODS as CONTACT_METHODS
@@ -834,6 +848,7 @@ def _more_methods():
 	from frappe_webmail.neomail_folders import METHODS as FOLDER_METHODS
 	from frappe_webmail.neomail_history import METHODS as HISTORY_METHODS
 	from frappe_webmail.neomail_icons import METHODS as ICON_METHODS
+	from frappe_webmail.neomail_snooze import METHODS as SNOOZE_METHODS
 
 	return {
 		**CONTACT_METHODS,
@@ -844,6 +859,7 @@ def _more_methods():
 		**FOLDER_METHODS,
 		**HISTORY_METHODS,
 		**ICON_METHODS,
+		**SNOOZE_METHODS,
 		**CHANGES_METHODS,
 	}
 

@@ -5701,3 +5701,172 @@ msgstr ""
 #: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:75
 msgid "Each message marked done in this mailbox (by its Message-ID): the folder it came from, when, and what its row said."
 msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "Snoozed"
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The time to bring the message back is not a time."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "Choose a time in the future."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server refused the mailbox's password."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server could not be reached."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mailbox is disabled or no longer yours to open."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server would not move it back."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mailbox is busy: try again in a moment."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message is no longer in its folder."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message has no Message-ID: it could not be found again once put away."
+msgstr ""
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message is no longer put away."
+msgstr ""
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "NeoMail Snooze"
+msgstr ""
+
+#. Description of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "A message a person put away in NeoMail until a chosen time (« Plus tard »): it waits in its mailbox's Snoozed folder and comes back to the folder it came from, unread, at that time."
+msgstr ""
+
+#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The Webmail Account the message is in."
+msgstr ""
+
+#. Label of a Select field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "State"
+msgstr ""
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Waiting"
+msgstr ""
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Returned"
+msgstr ""
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "CalledOff"
+msgstr ""
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Until (UTC)"
+msgstr ""
+
+#. Description of the 'Until (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "When the message comes back, in UTC."
+msgstr ""
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Returned At (UTC)"
+msgstr ""
+
+#. Description of the 'Returned At (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "When it came back, in UTC."
+msgstr ""
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Message-ID"
+msgstr ""
+
+#. Description of the 'Message-ID' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The message's Message-ID, by which it is found again when its UID changed."
+msgstr ""
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Folder"
+msgstr ""
+
+#. Description of the 'Folder' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The folder it waits in."
+msgstr ""
+
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "UID"
+msgstr ""
+
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "UIDVALIDITY"
+msgstr ""
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "From Folder"
+msgstr ""
+
+#. Description of the 'From Folder' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The folder it goes back to (the Inbox when that one is gone)."
+msgstr ""
+
+#. Label of a Section Break field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Tries"
+msgstr ""
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Next Try (UTC)"
+msgstr ""
+
+#. Description of the 'Next Try (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Not tried again before this time, in UTC."
+msgstr ""
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Last Error"
+msgstr ""
+
+#. Label of a Data field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Active Key"
+msgstr ""
+
+#. Description of the 'Active Key' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Set while the message waits: one waiting record per person, mailbox and message."
+msgstr ""

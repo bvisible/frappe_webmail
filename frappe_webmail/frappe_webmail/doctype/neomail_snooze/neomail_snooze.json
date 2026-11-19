@@ -1,0 +1,167 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-11-19 12:00:00.000000",
+ "description": "A message a person put away in NeoMail until a chosen time (« Plus tard »): it waits in its mailbox's Snoozed folder and comes back to the folder it came from, unread, at that time.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "account",
+  "state",
+  "until_utc",
+  "returned_at",
+  "sb_message",
+  "message_id",
+  "folder",
+  "uid",
+  "uidvalidity",
+  "from_folder",
+  "sb_tries",
+  "tries",
+  "next_try",
+  "last_error",
+  "active_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "description": "The Webmail Account the message is in.",
+   "fieldname": "account",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Mailbox",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Waiting",
+   "fieldname": "state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "State",
+   "options": "Waiting\nReturned\nCalledOff\nFailed",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "description": "When the message comes back, in UTC.",
+   "fieldname": "until_utc",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Until (UTC)",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "description": "When it came back, in UTC.",
+   "fieldname": "returned_at",
+   "fieldtype": "Datetime",
+   "label": "Returned At (UTC)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_message",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "description": "The message's Message-ID, by which it is found again when its UID changed.",
+   "fieldname": "message_id",
+   "fieldtype": "Small Text",
+   "label": "Message-ID",
+   "read_only": 1
+  },
+  {
+   "description": "The folder it waits in.",
+   "fieldname": "folder",
+   "fieldtype": "Small Text",
+   "label": "Folder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uid",
+   "fieldtype": "Long Int",
+   "label": "UID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uidvalidity",
+   "fieldtype": "Long Int",
+   "label": "UIDVALIDITY",
+   "read_only": 1
+  },
+  {
+   "description": "The folder it goes back to (the Inbox when that one is gone).",
+   "fieldname": "from_folder",
+   "fieldtype": "Small Text",
+   "label": "From Folder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_tries",
+   "fieldtype": "Section Break",
+   "label": "Tries"
+  },
+  {
+   "default": "0",
+   "fieldname": "tries",
+   "fieldtype": "Int",
+   "label": "Tries",
+   "read_only": 1
+  },
+  {
+   "description": "Not tried again before this time, in UTC.",
+   "fieldname": "next_try",
+   "fieldtype": "Datetime",
+   "label": "Next Try (UTC)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "read_only": 1
+  },
+  {
+   "description": "Set while the message waits: one waiting record per person, mailbox and message.",
+   "fieldname": "active_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Active Key",
+   "read_only": 1,
+   "unique": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-19 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Webmail",
+ "name": "NeoMail Snooze",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "user"
+}

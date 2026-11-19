@@ -5914,3 +5914,172 @@ msgstr "Plus tard"
 msgctxt "Synk menu"
 msgid "Threads"
 msgstr "Fils de discussion"
+
+#: frappe_webmail/neomail_snooze.py
+msgid "Snoozed"
+msgstr "Plus tard"
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The time to bring the message back is not a time."
+msgstr "L’heure de retour du message n’est pas une heure valide."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "Choose a time in the future."
+msgstr "Choisissez une heure à venir."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server refused the mailbox's password."
+msgstr "Le serveur de messagerie a refusé le mot de passe de la boîte."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server could not be reached."
+msgstr "Le serveur de messagerie est injoignable."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mailbox is disabled or no longer yours to open."
+msgstr "La boîte est désactivée ou ne vous est plus accessible."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mail server would not move it back."
+msgstr "Le serveur de messagerie n’a pas pu le ramener."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "The mailbox is busy: try again in a moment."
+msgstr "La boîte est occupée : réessayez dans un instant."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message is no longer in its folder."
+msgstr "Ce message ne se trouve plus dans son dossier."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message has no Message-ID: it could not be found again once put away."
+msgstr "Ce message n’a pas de Message-ID : il ne peut pas être retrouvé une fois mis de côté."
+
+#: frappe_webmail/neomail_snooze.py
+msgid "This message is no longer put away."
+msgstr "Ce message n’est plus mis de côté."
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "NeoMail Snooze"
+msgstr "Plus tard NeoMail"
+
+#. Description of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "A message a person put away in NeoMail until a chosen time (« Plus tard »): it waits in its mailbox's Snoozed folder and comes back to the folder it came from, unread, at that time."
+msgstr "Un message qu’une personne a mis de côté dans NeoMail jusqu’à une heure choisie (« Plus tard ») : il attend dans le dossier Plus tard de sa boîte et revient, non lu, dans le dossier d’où il venait, à cette heure-là."
+
+#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The Webmail Account the message is in."
+msgstr "Le compte de messagerie web où se trouve le message."
+
+#. Label of a Select field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "State"
+msgstr "État"
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Waiting"
+msgstr "En attente"
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Returned"
+msgstr "Revenu"
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "CalledOff"
+msgstr "Annulé"
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Until (UTC)"
+msgstr "Jusqu’à (UTC)"
+
+#. Description of the 'Until (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "When the message comes back, in UTC."
+msgstr "Quand le message revient, en UTC."
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Returned At (UTC)"
+msgstr "Revenu à (UTC)"
+
+#. Description of the 'Returned At (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "When it came back, in UTC."
+msgstr "Quand il est revenu, en UTC."
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Message-ID"
+msgstr "Message-ID"
+
+#. Description of the 'Message-ID' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The message's Message-ID, by which it is found again when its UID changed."
+msgstr "Le Message-ID du message, qui permet de le retrouver quand son UID a changé."
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Folder"
+msgstr "Dossier"
+
+#. Description of the 'Folder' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The folder it waits in."
+msgstr "Le dossier dans lequel il attend."
+
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "UID"
+msgstr "UID"
+
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "UIDVALIDITY"
+msgstr "UIDVALIDITY"
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "From Folder"
+msgstr "Dossier d’origine"
+
+#. Description of the 'From Folder' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "The folder it goes back to (the Inbox when that one is gone)."
+msgstr "Le dossier de retour (la Boîte de réception si celui-ci n’existe plus)."
+
+#. Label of a Section Break field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Tries"
+msgstr "Tentatives"
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Next Try (UTC)"
+msgstr "Prochaine tentative (UTC)"
+
+#. Description of the 'Next Try (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Not tried again before this time, in UTC."
+msgstr "Pas de nouvelle tentative avant cette heure, en UTC."
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Last Error"
+msgstr "Dernière erreur"
+
+#. Label of a Data field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Active Key"
+msgstr "Clé active"
+
+#. Description of the 'Active Key' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "Set while the message waits: one waiting record per person, mailbox and message."
+msgstr "Définie tant que le message attend : un seul enregistrement en attente par personne, boîte et message."

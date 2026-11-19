@@ -170,14 +170,31 @@ doc_events = {
 		"on_trash": [
 			"frappe_webmail.frappe_webmail.doctype.email_signature_preference.email_signature_preference.on_user_trash",
 			"frappe_webmail.mailcraft_settings.on_user_trash",
+			"frappe_webmail.neomail_snooze.on_user_trash",
 		]
 	},
-	# A mailbox deleted takes everybody's Safe Senders and Blocked Senders of it (mailcraft_settings)
-	"Webmail Account": {"on_trash": "frappe_webmail.mailcraft_settings.on_account_trash"},
+	# A mailbox deleted takes everybody's Safe Senders and Blocked Senders of it (mailcraft_settings), and the records of
+	# what was put away in it (neomail_snooze)
+	"Webmail Account": {
+		"on_trash": [
+			"frappe_webmail.mailcraft_settings.on_account_trash",
+			"frappe_webmail.neomail_snooze.on_account_trash",
+		],
+		# and a mailbox renamed keeps what was put away in it (neomail_snooze)
+		"after_rename": "frappe_webmail.neomail_snooze.on_account_rename",
+	},
 }
 
 # Scheduled Tasks
 # ---------------
+
+# « Plus tard »: every minute, what NeoMail put away and is due comes back, one job per mailbox (neomail_snooze); one
+# indexed read when nothing is due.
+scheduler_events = {
+	"cron": {
+		"* * * * *": ["frappe_webmail.neomail_snooze.tick"],
+	},
+}
 
 # scheduler_events = {
 # 	"all": [
@@ -258,6 +275,11 @@ user_data_fields = [
 	# Rules and lists are JSON, which a partial redaction leaves: the records go whole
 	{
 		"doctype": "NeoMail Setting",
+		"filter_by": "user",
+	},
+	# What was put away and when it comes back
+	{
+		"doctype": "NeoMail Snooze",
 		"filter_by": "user",
 	},
 ]
