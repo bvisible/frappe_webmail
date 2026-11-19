@@ -45,13 +45,32 @@ def test_what_a_person_chose_moves_their_senders_other_messages_and_nobody_elses
 	assert two_persons.kept_by_person.get(("bob", ACCOUNT.name)) is None  # bob chose nothing
 
 
-@pytest.mark.xfail(
-	strict=True,
-	reason="the corrected message is cached for the whole mailbox as `person`: another person of that mailbox reads it (neoffice-maintenance#3151)",
-)
 def test_another_person_of_the_mailbox_does_not_see_the_choice(two_persons):
+	# neoffice-maintenance#3151: the corrected message was cached for the whole mailbox as `person`.
 	three = _ids(3)[0]
 	_correct((three, "newsletter"))
+	assert _ask([three])["list"][0]["source"] == "person"  # alice sees her choice
 	two_persons.sign_in("bob")
 	entry = _ask([three])["list"][0]
 	assert (entry["stream"], entry["source"]) != ("newsletter", "person")
+
+
+def test_a_person_entry_cached_before_the_fix_is_read_again(two_persons):
+	three = _ids(3)[0]
+	key = ms._key(ACCOUNT.name, "INBOX", 7, 3)
+	ms._cache().set_value(
+		key, {"stream": "newsletter", "source": "person", "from": ms.sender_hash("marie.favre@exemple.ch")}
+	)
+	two_persons.sign_in("bob")
+	entry = _ask([three])["list"][0]
+	assert entry["source"] != "person"
+
+
+def test_a_sender_the_person_chose_is_answered_without_the_model(two_persons):
+	two_persons.messages[4] = _message("marie.favre@exemple.ch", subject="autre chose")
+	three, four = _ids(3, 4)
+	_correct((three, "newsletter"))
+	asked = len(two_persons.asked)
+	answer = {e["id"]: e for e in _ask([three, four])["list"]}
+	assert {answer[i]["stream"] for i in (three, four)} == {"newsletter"}
+	assert len(two_persons.asked) == asked, "the model is not asked about a sender the person chose"

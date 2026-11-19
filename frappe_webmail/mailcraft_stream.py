@@ -273,7 +273,8 @@ def stream_get(args):
 		by_validity = {}
 		for jid, validity, uid in wanted:
 			hit = cache.get_value(_key(account.name, folder, validity, uid))
-			if hit:
+			# A person's choice is never the mailbox's (#3151): an entry of that source, written before, is read again.
+			if hit and hit.get("source") != "person":
 				listed.append({"id": jid, **_said(_apply(hit, prefs))})
 			else:
 				by_validity.setdefault(validity, []).append((jid, uid))
@@ -283,12 +284,23 @@ def stream_get(args):
 			if gone:
 				not_found += [jid for jid, _uid in misses]
 				continue
+			# A sender this person chose a tab for is answered by their choice, without the model: nothing is cached of it,
+			# since the cache is the mailbox's and the choice is theirs alone (#3151).
+			chosen = {}
+			for _jid, uid in misses:
+				message = messages.get(uid)
+				sender = sender_hash(message.get("address")) if message is not None else ""
+				if sender in prefs:
+					chosen[uid] = {"stream": prefs[sender], "source": "person", "from": sender}
+			messages = {uid: m for uid, m in messages.items() if uid not in chosen}
 			_count("asked", len(messages))
 			results, waiting = classify(
 				messages, lambda wanted_uids: _previews(account, folder, validity, wanted_uids), ask, deadline
 			)
 			for jid, uid in misses:
-				if uid in results:
+				if uid in chosen:
+					listed.append({"id": jid, **_said(chosen[uid])})
+				elif uid in results:
 					entry = results[uid]
 					cache.set_value(
 						_key(account.name, folder, validity, uid),
@@ -451,7 +463,7 @@ def stream_set(args):
 		raise jmap.JmapError("invalidArguments", "corrections")
 	wanted = {c["id"]: c["stream"] for c in corrections}
 	folders, not_found = jmap._by_folder(list(wanted))
-	cache, updated, chosen = _cache(), [], {}
+	updated, chosen = [], {}
 	for folder, ids in folders.items():
 		by_validity = {}
 		for jid, validity, uid in ids:
@@ -464,12 +476,9 @@ def stream_set(args):
 				if gone or message is None:
 					not_found.append(jid)
 					continue
+				# The choice is kept for this person alone (`_keep_choices`), and `stream_get` applies it: never in the cache,
+				# which is the mailbox's and is read by everyone the mailbox is shared with (#3151).
 				tab, sender = wanted[jid], sender_hash(message.get("address"))
-				cache.set_value(
-					_key(account.name, folder, validity, uid),
-					{"stream": tab, "source": "person", "from": sender},
-					expires_in_sec=CACHE_S,
-				)
 				chosen[sender] = tab
 				taught.append((uid, tab))
 				updated.append(jid)
