@@ -538,6 +538,35 @@ describe("navSections", () => {
 		]);
 	});
 
+	it("draws the Outbox with an icon of its own, not the clock of « Plus tard » nor Sent's", () => {
+		const both = structuredClone(STATE);
+		both.accounts[0].folders.push(
+			{
+				id: "local:7",
+				name: "Boîte d'envoi",
+				role: "outbox",
+				parent: null,
+				unread: 0,
+				selectable: true,
+				count: null,
+			},
+			{
+				id: "M-later",
+				name: "Plus tard",
+				role: "snoozed",
+				parent: null,
+				unread: 0,
+				selectable: true,
+				count: null,
+			}
+		);
+		const ada = lent(both).nav[1];
+		const icon = (name) => ada.items.find((item) => item.label === name).icon;
+		expect(icon("Boîte d'envoi")).toBe("lucide-mail");
+		expect(icon("Plus tard")).toBe("lucide-clock");
+		expect(icon("Éléments envoyés")).toBe("lucide-send");
+	});
+
 	it("shows the number NeoMail's pane shows: its count, a total in brackets, nothing when it shows none", () => {
 		const counted = structuredClone(STATE);
 		const [inbox, clients, projects, sent] = counted.accounts[0].folders;

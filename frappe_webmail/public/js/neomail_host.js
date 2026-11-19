@@ -214,7 +214,9 @@ window.neomailHost = (function () {
 		archive: "lucide-archive",
 		spam: "lucide-shield-alert",
 		trash: "lucide-trash-2",
-		outbox: "lucide-clock",
+		// Mail that waits to go out: a letter, neither Sent's plane nor the clock of « Plus tard » (the cockpit's menu draws
+		// no `send-horizontal` nor an outbox of Lucide's)
+		outbox: "lucide-mail",
 		// « Plus tard », the folder its server keeps put-away messages in (NeoMail's `snoozed`): the clock of NeoMail's own
 		// quick action, so that the folder and the button that fills it look alike
 		snoozed: "lucide-clock",
