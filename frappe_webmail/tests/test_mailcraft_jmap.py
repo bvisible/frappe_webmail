@@ -543,6 +543,42 @@ class TestMailCraftJmap(FrappeTestCase):
 		self.assertIn(jmap.QUOTA, session["accounts"][self.aid]["accountCapabilities"])
 		self.assertEqual(session["primaryAccounts"][jmap.QUOTA], self.aid)
 
+	def test_the_session_names_the_mailbox_s_mail_server(self):
+		"""Its IMAP host: the server whose Authentication-Results, on top of its mail, NeoMail believes."""
+		session = json.loads(jmap.session(MAILBOX).get_data())
+		self.assertEqual(session["capabilities"][jmap.MAIL_SERVER], {})
+		capabilities = session["accounts"][self.aid]["accountCapabilities"]
+		self.assertEqual(capabilities[jmap.MAIL_SERVER], {"incomingHost": "imap.test.local"})
+		self.assertEqual(session["primaryAccounts"][jmap.MAIL_SERVER], self.aid)
+
+	def test_the_mail_server_is_a_host_name_or_nothing(self):
+		self.assertEqual(jmap.incoming_host(" IMAP.Test.Local. "), "imap.test.local")
+		self.assertEqual(jmap.incoming_host("192.0.2.10"), "192.0.2.10")
+		odd = ("", None, "localhost", "imap.test.local:993", "imap test.local", "imap..test.local", "imap://test.local")
+		for host in odd:
+			self.assertIsNone(jmap.incoming_host(host), host)
+		# A mailbox whose host is none: the session names no mail server, and NeoMail believes no results.
+		self.assertEqual(jmap._mail_server_parts(SimpleNamespace(imap_host="localhost")), ({}, {}))
+
+	def test_the_header_is_given_in_its_order_topmost_first(self):
+		"""The mail server writes its Authentication-Results on top; a pass a sender wrote in its name lies under them. NeoMail reads
+		the topmost only, so the header goes as it is, in its order: in the rows of a window and in the message itself."""
+		own = "imap.test.local; spf=fail smtp.mailfrom=news.example; dmarc=none header.from=news.example"
+		forged = "imap.test.local; dmarc=pass header.from=news.example"
+		results = f"Authentication-Results: {own}\r\nAuthentication-Results: {forged}\r\n"
+		raw = message("Forged results", "letter@news.example", results)
+		server = FakeServer()
+		uid = server.put("INBOX", raw, set())
+		with served(server):
+			properties = ["id", "blobId", "headers"]
+			_n, got, _c = self._call("Email/get", {"accountId": self.aid, "ids": [eid("INBOX", uid)], "properties": properties})
+			row = got["list"][0]
+			downloaded = self._download(row["blobId"])
+		given = [h["value"] for h in row["headers"] if h["name"].lower() == "authentication-results"]
+		self.assertEqual(given, [f" {own}", f" {forged}"])
+		body = downloaded.get_data()
+		self.assertLess(body.index(own.encode()), body.index(forged.encode()))
+
 	def test_the_quota_is_the_storage_the_webmail_reads(self):
 		"""16 MB used out of 20 GB, as the webmail's storage bar shows it: octets for NeoMail (RFC 9425)."""
 		frappe.cache().delete_value(f"mailcraft_jmap:quota:{MAILBOX}")

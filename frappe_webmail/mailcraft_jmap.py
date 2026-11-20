@@ -62,6 +62,12 @@ CORE = "urn:ietf:params:jmap:core"
 MAIL = "urn:ietf:params:jmap:mail"
 SUBMISSION = "urn:ietf:params:jmap:submission"
 QUOTA = "urn:ietf:params:jmap:quota"
+# The mail server behind a mailbox (`incomingHost`, its IMAP host): the server that writes the Authentication-Results its mail
+# arrives with, on top. NeoMail believes those as it believes an IMAP account's server's (its unsubscribe, its sender checks);
+# a pass a sender wrote under them, in the server's name, it does not: only the topmost is read.
+MAIL_SERVER = "https://neoffice.me/jmap/neomail-mail-server"
+# A host name, as the session names it: letters, digits, dashes and dots, every label non-empty.
+_HOST = re.compile(r"^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$")
 
 METHOD_PREFIX = "frappe_webmail.mailcraft_jmap."
 # The five addresses a token is good for, under each API prefix Frappe routes.
@@ -697,6 +703,8 @@ def _session(address):
 	icons, account_icons = _optional_parts(neomail_icons.session_parts, account)
 	# « Plus tard »: a message put away until a chosen time comes back by itself (neomail_snooze).
 	snooze, account_snooze = _optional_parts(neomail_snooze.session_parts, account)
+	# The mailbox's mail server, whose Authentication-Results NeoMail believes (MAIL_SERVER).
+	server, account_server = _optional_parts(_mail_server_parts, account)
 	return {
 		"capabilities": {
 			CORE: {
@@ -720,6 +728,7 @@ def _session(address):
 			**history,
 			**icons,
 			**snooze,
+			**server,
 		},
 		"accounts": {
 			aid: {
@@ -745,6 +754,7 @@ def _session(address):
 					**account_history,
 					**account_icons,
 					**account_snooze,
+					**account_server,
 				},
 			}
 		},
@@ -763,6 +773,7 @@ def _session(address):
 					*history,
 					*icons,
 					*snooze,
+					*server,
 				)
 			},
 		},
@@ -772,6 +783,21 @@ def _session(address):
 		"uploadUrl": base + "upload?accountId={accountId}",
 		"state": "0",
 	}
+
+
+def incoming_host(value):
+	"""The mailbox's IMAP host as the session names it: in lower case, without a trailing dot; None when it is no host name."""
+	host = str(value or "").strip().rstrip(".").lower()
+	return host if _HOST.match(host) else None
+
+
+def _mail_server_parts(account):
+	"""What the session says of the mailbox's mail server (MAIL_SERVER): its IMAP host, the server that delivers its mail and
+	writes, on top of each message, what its checks found. Nothing when the host is no host name."""
+	host = incoming_host(account.imap_host)
+	if not host:
+		return {}, {}
+	return {MAIL_SERVER: {}}, {MAIL_SERVER: {"incomingHost": host}}
 
 
 def _optional_parts(parts, account):
