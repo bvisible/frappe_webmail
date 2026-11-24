@@ -317,6 +317,14 @@ export_python_type_annotations = True
 # NeoMail's former address, while links to it may still exist; a 302, so that no browser keeps it.
 website_redirects = [{"source": "/mailcraft", "target": "/neomail", "redirect_http_status": 302}]
 
+# NeoMail is an application of the desk, not a page of the showcase: it stays open where the website is closed, an
+# instance in maintenance (no showcase site) and an entry offer without a website (Neoffice Go, neoffice_theme's
+# offer_gate), where the menu's « E-mail » led to a 404 (neoffice-maintenance#3300). Its former address too, so that
+# its redirect still answers. The page signs a visitor in and refuses a portal account (www/neomail.py). The webmail
+# needs nothing: an application mounted by a route rule stays open by itself. Read by frappe's
+# website_route_stays_open (frappe/website/path_resolver.py).
+website_maintenance_open_routes = ["neomail", "mailcraft"]
+
 website_route_rules = [
 	{"from_route": "/webmail", "to_route": "webmail"},
 	{"from_route": "/webmail/<path:app_path>", "to_route": "webmail"},
