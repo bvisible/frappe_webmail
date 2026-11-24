@@ -212,20 +212,32 @@ def _facade_id(event):
 	return _event_id(event.get("id"))
 
 
-def _with_series(client, events):
+def _with_series(client, events, window=False):
 	"""`events` as the Suite read them, each occurrence (`recurrenceId`) with the series it belongs to (`baseEventId`):
 	the mail server gives it only when it is asked for by name (Stalwart's `CalendarEvent/get`), which the Suite's get
 	doesn't do; its `get_base_event_ids` does. Without it, an occurrence would be named by its own id, which the server
-	renumbers."""
+	renumbers.
+
+	`window`: read by the ids of a query with its occurrences, where the server names every event by an id of that one
+	answer, an event alone too (`eaaaaaai`, then `eaaaaai`, for the event `i`). Such an event takes its own id back: the
+	one a creation answered (the client knows the event it made, and shows it once), and the only one the server
+	changes or deletes it by (neoffice-maintenance#3325)."""
 	from suite.calendar.jmap_events import get_base_event_ids
 
-	needing = [e["id"] for e in events if e.get("recurrenceId") and not e.get("baseEventId") and e.get("id")]
-	if needing:
-		bases = _reading(lambda: get_base_event_ids(client, needing))
-		for event in events:
-			base = bases.get(event.get("id"))
-			if base and base != event.get("id") and not event.get("baseEventId"):
-				event["baseEventId"] = base
+	needing = [
+		e["id"]
+		for e in events
+		if e.get("id") and not e.get("baseEventId") and (window or e.get("recurrenceId"))
+	]
+	bases = _reading(lambda: get_base_event_ids(client, needing)) if needing else {}
+	for event in events:
+		base = event.get("baseEventId") or bases.get(event.get("id"))
+		if not base or base == event.get("id"):
+			continue
+		if event.get("recurrenceId"):
+			event["baseEventId"] = base
+		elif window:
+			event["id"] = base
 	return events
 
 
@@ -904,16 +916,9 @@ def _shared_read(shared, after, before, expand):
 			).get("ids")
 			or []
 		)
-		read = (
-			{
-				e.get("id"): e
-				for e in _with_series(
-					client, _reading(lambda client=client, raws=raws: get_events(client, raws))
-				)
-			}
-			if raws
-			else {}
-		)
+		events = _reading(lambda client=client, raws=raws: get_events(client, raws)) if raws else []
+		read = {e.get("id"): e for e in events}
+		_with_series(client, events, window=expand)
 		for raw in raws:
 			event = read.get(raw)
 			if event and _in_calendars(event, calendar_ids):
@@ -938,12 +943,14 @@ def _namespaced(event, account):
 
 
 def _named_by_series(suite_account, raws):
-	"""The facade ids of the events a query found, each occurrence by its series and its start; what was read for it is
-	kept for the request's `CalendarEvent/get`."""
+	"""The facade ids of the events a query found, each occurrence by its series and its start, an event alone by its own
+	id; what was read for it is kept for the request's `CalendarEvent/get`."""
 	from suite.calendar.jmap_events import get_events
 
 	client = _reading(lambda: _client(suite_account))
-	read = {e.get("id"): e for e in _with_series(client, _reading(lambda: get_events(client, list(raws))))}
+	events = _reading(lambda: get_events(client, list(raws)))
+	read = {e.get("id"): e for e in events}
+	_with_series(client, events, window=True)
 	kept = _request_events()
 	kept.clear()
 	ids = []
@@ -1819,6 +1826,13 @@ def _addressed(suite_account, client, vid):
 		raise frappe.DoesNotExistError
 	if stored.get("recurrenceId"):
 		return raw, stored, _master_of(client, raw), stored["recurrenceId"], stored
+	# An event alone a client still names by the id of an older answer (`_with_series`): by its own from here on, the
+	# server refusing a change by the other.
+	own = _master_of(client, raw)
+	if own != raw:
+		raw, stored = own, _stored(client, own)
+		if not stored:
+			raise frappe.DoesNotExistError
 	return raw, stored, None, None, stored
 
 
@@ -1924,7 +1938,8 @@ def _check_writable(stored, calendars):
 
 
 def _master_of(client, raw):
-	"""The series an occurrence belongs to (its own id when the server knows no other)."""
+	"""The series an occurrence belongs to, the event another id of an event alone names (its own id when the server
+	knows no other)."""
 	from suite.calendar.jmap_events import get_base_event_ids
 
 	return _reading(lambda: get_base_event_ids(client, [raw])).get(raw, raw)

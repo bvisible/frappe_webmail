@@ -540,6 +540,102 @@ class TestMailCraftCalendars(FrappeTestCase):
 			got = self._calls(("CalendarEvent/get", {"accountId": jmap.account_id(BOX), "ids": [own]}))
 			self.assertEqual([e.get("baseEventId") for e in got[0][1]["list"]], [vid])
 
+	def test_an_event_alone_is_named_by_its_own_id_where_a_window_renames_it(self):
+		"""A query with its occurrences makes the mail server (Stalwart) name every event by an id of that one answer, an
+		event alone too, which it refuses to change or delete. The client is given the event's own id, the one its
+		creation answered: it shows the event once, changes it and deletes it (neoffice-maintenance#3325)."""
+		from suite.calendar import jmap_events
+		from suite.calendar.doctype.calendar_event import calendar_event
+
+		self._as(PERSON)
+		real = {
+			name: getattr(jmap_events, name) for name in ("query_events", "get_events", "get_base_event_ids")
+		}
+		real_update, real_delete = calendar_event.update_calendar_event, calendar_event.delete_calendar_events
+		answers = [0]
+		own_of = {}
+
+		def query(client, **arguments):
+			answer = real["query_events"](client, **arguments)
+			if not arguments.get("expand_recurrences"):
+				return answer
+			answers[0] += 1
+			alone = [e["id"] for e in real["get_events"](client, answer["ids"]) if not e.get("recurrenceId")]
+			renamed = {i: f"answer{answers[0]}-{i}" for i in alone}
+			own_of.update({new: own for own, new in renamed.items()})
+			return {**answer, "ids": [renamed.get(i, i) for i in answer["ids"]]}
+
+		def get(client, ids=None):
+			other = {own_of[i]: i for i in ids or [] if i in own_of}
+			events = real["get_events"](client, [own_of.get(i, i) for i in ids or []])
+			return [{**e, "id": other.get(e["id"], e["id"])} for e in events]
+
+		def bases(client, ids):
+			known = real["get_base_event_ids"](client, [i for i in ids if i not in own_of])
+			return {**known, **{i: own_of[i] for i in ids if i in own_of}}
+
+		def update(*args, **arguments):
+			if own_of.keys() & {v for v in [*args, *arguments.values()] if isinstance(v, str)}:
+				raise ValueError("Updating synthetic ids is not yet supported.")
+			return real_update(*args, **arguments)
+
+		def delete(*args, **arguments):
+			if own_of.keys() & set(arguments.get("ids") or []):
+				raise ValueError("Deleting synthetic ids is not yet supported.")
+			return real_delete(*args, **arguments)
+
+		event = {
+			"@type": "Event",
+			"uid": f"mc-test-{frappe.generate_hash(length=10)}",
+			"calendarIds": {self._calendar(): True},
+			"title": "Handover (alone)",
+			"start": "2030-10-07T09:00:00",
+			"duration": "PT1H",
+			"timeZone": "Europe/Zurich",
+		}
+		series = {
+			**event,
+			"uid": event["uid"] + "-s",
+			"title": "Handover (series)",
+			"recurrenceRule": {"@type": "RecurrenceRule", "frequency": "weekly", "count": 2},
+		}
+		october = {"after": "2030-10-01T00:00:00Z", "before": "2030-11-01T00:00:00Z"}
+
+		def named():
+			return [e["id"] for e in self._window(october) if e.get("uid") == event["uid"]]
+
+		with (
+			patch.object(jmap_events, "query_events", query),
+			patch.object(jmap_events, "get_events", get),
+			patch.object(jmap_events, "get_base_event_ids", bases),
+			patch.object(calendar_event, "update_calendar_event", update),
+			patch.object(calendar_event, "delete_calendar_events", delete),
+		):
+			made = self._set(create={"k": event, "s": series})
+			self.assertEqual(made["notCreated"], {})
+			vid = made["created"]["k"]["id"]
+			self.assertEqual(named(), [vid], "the id its creation answered")
+			self.assertEqual(named(), [vid], "the same at the next read")
+			weekly = [e for e in self._window(october) if e.get("uid") == series["uid"]]
+			self.assertEqual(
+				{e["id"][:1] for e in weekly}, {"O"}, "an occurrence by its series and its start"
+			)
+			self.assertEqual(
+				self._set(update={vid: {"title": "Handover (moved)"}})["notUpdated"],
+				{},
+				"changed by its own id",
+			)
+			# What a client still holds from an older answer reaches the event too.
+			former = calendars._event_id(
+				next(k for k, own in own_of.items() if own == calendars._raw(vid, "V"))
+			)
+			self.assertEqual(self._set(update={former: {"title": "Handover (room D)"}})["notUpdated"], {})
+			self.assertEqual(
+				[e["title"] for e in self._window(october) if e["id"] == vid], ["Handover (room D)"]
+			)
+			self.assertEqual(self._set(destroy=[former])["notDestroyed"], {})
+			self.assertEqual(named(), [])
+
 	def test_one_occurrence_of_a_series_is_changed_or_deleted_alone(self):
 		self._as(PERSON)
 		series = {
