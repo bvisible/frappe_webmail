@@ -12,10 +12,27 @@
 			background: #fdf3d8; color: #4a3a12; border-bottom: 1px solid #e8d7a4; }
 		#signin a { color: inherit; font-weight: 600; margin-left: 8px; }
 		@media (prefers-color-scheme: dark) { #signin { background: #3a3220; color: #f4e8c8; border-color: #5a4a2a; } }
-		#none { max-width: 36rem; margin: 18vh auto 0; padding: 0 24px; font: 15px/1.5 system-ui, sans-serif; color: #2a2d33; }
-		#none h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; }
-		#none a { color: #1d7f8c; font-weight: 600; }
-		@media (prefers-color-scheme: dark) { #none { color: #e6e7ea; } #none a { color: #5cc3d0; } }
+		/* No mailbox yet: a card of the house on the paper, its one action in ink (neoffice-maintenance#3359). The desk's
+		   two faces when the theme is there, the system's otherwise. */
+		@font-face { font-family: "Forum"; src: url("/assets/neoffice_theme/fonts/webfonts/Forum-Regular.woff2") format("woff2"); font-display: swap; }
+		@font-face { font-family: "Karla"; src: url("/assets/neoffice_theme/fonts/webfonts/Karla-Regular.ttf") format("truetype"); font-display: swap; }
+		body:has(#none) { background: #faf3ea; overflow: auto; }
+		#none { max-width: 30rem; margin: 16vh auto 48px; padding: 32px; box-sizing: border-box; width: calc(100% - 32px);
+			background: #fff; border: 1px solid #dcd4c7; border-radius: 20px; font: 16px/1.5 Karla, system-ui, sans-serif; color: #3a342c; }
+		#none h1 { font: 400 32px/1.15 Forum, Georgia, serif; color: #141414; margin: 0 0 12px; }
+		#none p { margin: 0; }
+		#none .do { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+		#none a { display: inline-flex; align-items: center; min-height: 42px; padding: 8px 18px; border-radius: 10px; border: 1px solid #141414;
+			font-weight: 700; text-decoration: none; color: #141414; box-sizing: border-box; }
+		#none a.ink { background: #141414; color: #fffdf8; }
+		#none a:focus-visible { outline: 2px solid #f55d1a; outline-offset: 2px; }
+		@media (prefers-color-scheme: dark) {
+			body:has(#none) { background: #171513; }
+			#none { background: #1f1c19; border-color: #3d372f; color: #dcd4c7; }
+			#none h1 { color: #f7f2ea; }
+			#none a { border-color: #f7f2ea; color: #f7f2ea; }
+			#none a.ink { background: #f7f2ea; color: #141414; }
+		}
 	</style>
 </head>
 <body>
@@ -38,11 +55,14 @@
 	<main id="none">
 		<h1>NeoMail</h1>
 		<p>{{ _("You have no mailbox in Neoffice yet.") }}</p>
-		{% if add_mailbox_in_form %}
-		<p><a href="/app/webmail-account/new">{{ _("Add a mailbox") }}</a></p>
-		{% else %}
-		<p><a href="/app/webmail">{{ _("Open the webmail to add one") }}</a></p>
-		{% endif %}
+		<p class="do">
+			{% if add_mailbox_in_form %}
+			<a class="ink" href="/app/webmail-account/new">{{ _("Add a mailbox") }}</a>
+			{% else %}
+			<a class="ink" href="/app/webmail">{{ _("Open the webmail to add one") }}</a>
+			{% endif %}
+			<a href="/app">{{ _("Home") }}</a>
+		</p>
 	</main>
 	{% else %}
 	<div id="signin" role="alert" hidden>
