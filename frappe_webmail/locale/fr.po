@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-19 03:21+0000\n"
+"POT-Creation-Date: 2026-11-25 03:21+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language: fr\n"
@@ -82,6 +82,10 @@ msgstr "Une entreprise"
 msgid "A contact needs a name, a company or an address."
 msgstr "Un contact doit avoir un nom, une entreprise ou une adresse."
 
+#: frappe_webmail/neomail_snooze.py:651
+msgid "A copy of this message is put away already."
+msgstr "Une copie de ce message a déjà été archivée."
+
 #: frappe_webmail/webmail_api.py:2057
 msgid "A folder with this name already exists"
 msgstr "Un dossier portant ce nom existe déjà"
@@ -116,11 +120,16 @@ msgstr "Une boîte partagée avec vous est configurée par son propriétaire."
 msgid "A mailbox that someone else owns and shares with them signs as the mailbox by default: its name and the company's main number. Checked, each person signs with their own name, job and numbers, from the mailbox's address. A mailbox that names a signature of its own keeps that one."
 msgstr "Une boîte partagée avec vous par son propriétaire signe par défaut au nom de la boîte : son nom et le numéro principal de l'entreprise. Si cette case est cochée, chaque personne signe à son propre nom, avec son poste et ses numéros, depuis l'adresse de la boîte. Une boîte qui indique une signature propre garde celle-ci."
 
-#: frappe_webmail/mailcraft_jmap.py:1654
+#. Description of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
+msgid "A message a person put away in NeoMail until a chosen time (« Plus tard »): it waits in its mailbox's Snoozed folder and comes back to the folder it came from, unread, at that time."
+msgstr "Un message qu’une personne a mis de côté dans NeoMail jusqu’à une heure choisie (« Plus tard ») : il attend dans le dossier Plus tard de sa boîte et revient, non lu, dans le dossier d’où il venait, à cette heure-là."
+
+#: frappe_webmail/mailcraft_jmap.py:1696
 msgid "A message goes into one folder."
 msgstr "Un message va dans un seul dossier."
 
-#: frappe_webmail/mailcraft_jmap.py:1529
+#: frappe_webmail/mailcraft_jmap.py:1571
 msgid "A message stays in one folder."
 msgstr "Un message reste dans un seul dossier."
 
@@ -260,6 +269,11 @@ msgstr "Actions sur {0}"
 msgid "Active"
 msgstr "Active"
 
+#. Label of a Data field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:143
+msgid "Active Key"
+msgstr "Clé active"
+
 #: frontend/src/components/AutomationsPanel.vue:20
 msgid "Active on this mailbox"
 msgstr "Active sur cette boîte"
@@ -267,11 +281,11 @@ msgstr "Active sur cette boîte"
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1357
 #: frappe_webmail/public/js/mail_team.js:120
 #: frappe_webmail/public/js/mail_team.js:477
-#: frappe_webmail/www/neomail.html:864
+#: frappe_webmail/www/neomail.html:887
 msgid "Add a mailbox"
 msgstr "Ajouter une boîte"
 
-#: frappe_webmail/mailcraft_jmap.py:1788
+#: frappe_webmail/mailcraft_jmap.py:1830
 msgid "Add at least one recipient."
 msgstr "Ajoutez au moins un destinataire."
 
@@ -547,7 +561,7 @@ msgstr "Au moins une condition de filtre doit être spécifiée"
 msgid "At most 100 messages can be asked for at once"
 msgstr "Vous ne pouvez demander que 100 messages au maximum à la fois"
 
-#: frappe_webmail/mailcraft_stream.py:323
+#: frappe_webmail/mailcraft_stream.py:429
 #, python-brace-format
 msgid "At most {0} messages can be asked for at once."
 msgstr "Vous ne pouvez demander que {0} messages au maximum à la fois."
@@ -668,7 +682,7 @@ msgid "Blind copy..."
 msgstr "Copie cachée..."
 
 #. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:71
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:72
 msgid "Blocked Senders"
 msgstr "Expéditeurs bloqués"
 
@@ -699,6 +713,11 @@ msgstr "Libellé de l'appel à l'action"
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:349
 msgid "Call to Action URL"
 msgstr "URL de l'appel à l'action"
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:55
+msgid "CalledOff"
+msgstr "Annulé"
 
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:491
 #: frontend/src/components/AgentPanel.vue:133
@@ -732,7 +751,7 @@ msgid "Carbon copy..."
 msgstr "Copie carbone..."
 
 #. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:54
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:55
 msgid "Categories"
 msgstr "Catégories"
 
@@ -776,6 +795,10 @@ msgstr "Choisissez une société"
 #: frappe_webmail/public/js/signature_builder.js:394
 msgid "Choose a department"
 msgstr "Choisissez un département"
+
+#: frappe_webmail/neomail_snooze.py:154
+msgid "Choose a time in the future."
+msgstr "Choisissez une heure à venir."
 
 #: frappe_webmail/public/js/signature_builder.js:401
 msgid "Choose a user group"
@@ -1296,7 +1319,7 @@ msgstr "Déposez des fichiers ici ou cliquez pour parcourir"
 
 #. Description of the 'Marked as Done' (JSON) field in DocType 'NeoMail
 #. Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:75
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:76
 msgid "Each message marked done in this mailbox (by its Message-ID): the folder it came from, when, and what its row said."
 msgstr "Chaque message marqué comme traité dans cette boîte (par son Message-ID) : le dossier d'où il venait, quand, et ce qu'en disait sa ligne."
 
@@ -1690,6 +1713,8 @@ msgstr "Les images externes ont été bloquées pour votre sécurité."
 msgid "Facebook"
 msgstr "Facebook"
 
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:55
 #: frappe_webmail/public/js/frappe_webmail.bundle.iife.js:638
 #: frontend/src/components/AgentPanel.vue:1163
 msgid "Failed"
@@ -1819,6 +1844,11 @@ msgstr "Filtres"
 msgid "Filters allow you to automatically sort your emails."
 msgstr "Les filtres permettent de trier automatiquement vos emails."
 
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:91
+msgid "Folder"
+msgstr "Dossier"
+
 #. Label of a Section Break field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:341
 msgid "Folder Mapping"
@@ -1925,6 +1955,11 @@ msgstr "Français"
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:81
 msgid "From Contains"
 msgstr "De contient"
+
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:110
+msgid "From Folder"
+msgstr "Dossier d’origine"
 
 #: frontend/src/components/FilterManager.vue:127
 msgid "From contains"
@@ -2065,6 +2100,7 @@ msgstr "Masquer les dossiers"
 msgid "Hide my mobile number"
 msgstr "Masquer mon numéro de mobile"
 
+#: frappe_webmail/www/neomail.html:891
 #: frontend/src/components/AttachmentPicker.vue:87
 msgid "Home"
 msgstr "Accueil"
@@ -2283,7 +2319,7 @@ msgstr "Numéro de port IMAP invalide"
 msgid "Invalid OAuth callback"
 msgstr "Callback OAuth invalide"
 
-#: frappe_webmail/mailcraft_jmap.py:514
+#: frappe_webmail/mailcraft_jmap.py:520
 msgid "Invalid Request"
 msgstr ""
 
@@ -2364,6 +2400,11 @@ msgstr ""
 msgid "Last Applied"
 msgstr "Dernière application"
 
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:135
+msgid "Last Error"
+msgstr "Dernière erreur"
+
 #. Label of a Datetime field in DocType 'Email Draft'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json:107
 msgid "Last Saved"
@@ -2387,7 +2428,7 @@ msgstr "Dernière exécution {0} — {1} échec(s)"
 msgid "Last used"
 msgstr "Dernière utilisation"
 
-#: frappe_webmail/mailcraft_calendars.py:815
+#: frappe_webmail/mailcraft_calendars.py:827
 msgid "Late"
 msgstr "En retard"
 
@@ -2571,7 +2612,9 @@ msgstr "Paramètres de messagerie"
 
 #. Label of a Data field in DocType 'NeoMail Setting'
 #. Label of a Section Break field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:36
+#. Label of a Data field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:37
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:43
 #: frontend/src/components/AgentPanel.vue:115
 msgid "Mailbox"
 msgstr "Boîte"
@@ -2633,7 +2676,7 @@ msgid "Mark as unread"
 msgstr "Marquer comme non lu"
 
 #. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:78
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:79
 msgid "Marked as Done"
 msgstr "Marqués comme traités"
 
@@ -2657,6 +2700,8 @@ msgstr "Maximum 25 Mo par fichier"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
+#. Label of a Section Break field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:78
 #: frontend/src/components/AgentPanel.vue:222
 #, fuzzy
 msgid "Message"
@@ -2666,7 +2711,12 @@ msgstr "Message"
 msgid "Message subject"
 msgstr "Objet du message"
 
-#: frappe_webmail/mailcraft_jmap.py:1382
+#. Label of a Small Text field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:84
+msgid "Message-ID"
+msgstr "Message-ID"
+
+#: frappe_webmail/mailcraft_jmap.py:1424
 msgid "Messages are imported, not created."
 msgstr "Les messages sont importés, et non créés."
 
@@ -2761,7 +2811,7 @@ msgstr "Nom du dossier"
 msgid "Name of the model"
 msgstr "Nom du modèle"
 
-#: frappe_webmail/mailcraft_jmap.py:1244
+#: frappe_webmail/mailcraft_jmap.py:1286
 msgid "Name the messages to read."
 msgstr "Indiquez les messages à lire."
 
@@ -2773,9 +2823,14 @@ msgid "NeoMail"
 msgstr "NeoMail"
 
 #. Name of a DocType
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:88
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:96
 msgid "NeoMail Setting"
 msgstr ""
+
+#. Name of a DocType
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:154
+msgid "NeoMail Snooze"
+msgstr "Plus tard NeoMail"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1348
 msgid "NeoMail could not be opened. Reload the page to try again."
@@ -2877,6 +2932,11 @@ msgstr "Nouveau nom"
 #: frontend/src/components/EmailList.vue:616
 msgid "Newest first"
 msgstr "Plus récents"
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:129
+msgid "Next Try (UTC)"
+msgstr "Prochaine tentative (UTC)"
 
 #: frappe_webmail/public/js/mail_team.js:273
 msgid "Next: the password and the two servers. Neoffice tries them before adding."
@@ -3124,12 +3184,18 @@ msgstr "Non affiché dans la mise en page Compact."
 msgid "Not in use"
 msgstr "Non utilisé"
 
-#: frappe_webmail/mail_team.py:70 frappe_webmail/mailcraft_jmap.py:638
-#: frappe_webmail/mailcraft_jmap.py:923 frappe_webmail/mailcraft_notes.py:427
+#: frappe_webmail/mail_team.py:70 frappe_webmail/mailcraft_jmap.py:644
+#: frappe_webmail/mailcraft_jmap.py:965 frappe_webmail/mailcraft_notes.py:427
 #: frappe_webmail/signature_builder.py:37 frappe_webmail/signatures.py:1033
 #: frappe_webmail/webmail_api.py:2614 frappe_webmail/webmail_api.py:2682
 msgid "Not permitted"
 msgstr ""
+
+#. Description of the 'Next Try (UTC)' (Datetime) field in DocType 'NeoMail
+#. Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:126
+msgid "Not tried again before this time, in UTC."
+msgstr "Pas de nouvelle tentative avant cette heure, en UTC."
 
 # no opinion on purpose: French says « Notes » too. Fuzzy, it is not compiled
 # (neomail.js then shows the word as
@@ -3260,11 +3326,11 @@ msgstr "Seuls les fichiers .docx, .xlsx, .pptx ou .pdf s’ouvrent dans un édit
 msgid "Only a PDF or a picture can be sent to the scanned documents."
 msgstr "Seul un PDF ou une image peut être envoyé aux scans de documents."
 
-#: frappe_webmail/mailcraft_jmap.py:1182
+#: frappe_webmail/mailcraft_jmap.py:1224
 msgid "Only a folder can be listed."
 msgstr "Seul un dossier peut être listé."
 
-#: frappe_webmail/mailcraft_jmap.py:1793
+#: frappe_webmail/mailcraft_jmap.py:1835
 msgid "Only a message just written here can be sent."
 msgstr "Seul un message qui vient d'être rédigé ici peut être envoyé."
 
@@ -3355,7 +3421,7 @@ msgstr "Ouvrir le constructeur de signatures"
 msgid "Open the webmail"
 msgstr "Ouvrir le webmail"
 
-#: frappe_webmail/www/neomail.html:866
+#: frappe_webmail/www/neomail.html:889
 msgid "Open the webmail to add one"
 msgstr "Ouvrir le webmail pour en ajouter une"
 
@@ -3783,6 +3849,16 @@ msgstr "Reprendre"
 msgid "Retry"
 msgstr "Réessayer"
 
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:55
+msgid "Returned"
+msgstr "Revenu"
+
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:72
+msgid "Returned At (UTC)"
+msgstr "Revenu à (UTC)"
+
 #. Option for the 'Applies To' (Select) field in DocType 'Email Signature
 #. Template'
 #. Label of a Link field in DocType 'Email Signature Template Role'
@@ -3808,7 +3884,7 @@ msgid "Row {0}: the address of a social link must start with https://"
 msgstr "Ligne {0} : l'adresse d'un lien social doit commencer par https://"
 
 #. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:48
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:49
 msgid "Rules"
 msgstr ""
 
@@ -3863,7 +3939,7 @@ msgid "SMTP: Connected successfully"
 msgstr "SMTP : Connexion réussie"
 
 #. Label of a JSON field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:65
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:66
 msgid "Safe Senders"
 msgstr "Expéditeurs de confiance"
 
@@ -4082,6 +4158,11 @@ msgstr "Envoyé par Nora"
 msgid "Sent to the scanned documents: the reading takes about a minute"
 msgstr "Envoyé aux scans de documents : la lecture prend environ une minute"
 
+#. Description of the 'Active Key' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:139
+msgid "Set while the message waits: one waiting record per person, mailbox and message."
+msgstr "Définie tant que le message attend : un seul enregistrement en attente par personne, boîte et message."
+
 #: frappe_webmail/public/js/mail_team.js:457 frontend/src/pages/Webmail.vue:642
 msgid "Settings"
 msgstr "Paramètres"
@@ -4204,7 +4285,7 @@ msgid "Sidebar Width"
 msgstr "Largeur de la barre latérale"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1196
-#: frappe_webmail/www/neomail.html:872
+#: frappe_webmail/www/neomail.html:897
 msgid "Sign in again"
 msgstr "Se reconnecter"
 
@@ -4327,6 +4408,11 @@ msgstr "Suivis"
 msgid "Starting style analysis..."
 msgstr "Démarrage de l’analyse du style…"
 
+#. Label of a Select field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:54
+msgid "State"
+msgstr "État"
+
 #. Label of a Section Break field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:138
 msgid "Statistics"
@@ -4400,10 +4486,16 @@ msgstr "Synk n’est pas accessible pour vous."
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:59
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:83
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.json:414
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:95
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:103
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:160
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:407
 msgid "System Manager"
 msgstr "Gestionnaire système"
+
+#. Label of a JSON field in DocType 'NeoMail Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:86
+msgid "Tabs Chosen per Sender"
+msgstr "Onglets choisis par expéditeur"
 
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
@@ -4494,9 +4586,14 @@ msgid "The User's phone, else the company's main number."
 msgstr "Le téléphone de l'utilisateur, sinon le numéro principal de la société."
 
 #. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:32
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:33
 msgid "The Webmail Account the lists are of; * for the person's rules and categories."
 msgstr "Le compte webmail auquel appartiennent ces listes ; * pour les règles et catégories personnelles de l'utilisateur."
+
+#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:39
+msgid "The Webmail Account the message is in."
+msgstr "Le compte de messagerie web où se trouve le message."
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template/email_signature_template.py:127
 #, python-brace-format
@@ -4563,11 +4660,11 @@ msgstr "La taille de la police de base doit être comprise entre {0} et {1} pixe
 msgid "The connection starts unencrypted and switches to an encrypted one, usually on port 143: for servers that do not offer SSL on a port of their own. Without SSL or STARTTLS, the password is sent in the clear."
 msgstr "La connexion démarre non chiffrée puis passe à un mode chiffré, généralement sur le port 143 : pour les serveurs qui n'offrent pas SSL sur un port dédié. Sans SSL ni STARTTLS, le mot de passe est envoyé en clair."
 
-#: frappe_webmail/mailcraft_jmap.py:1895
+#: frappe_webmail/mailcraft_jmap.py:1937
 msgid "The connection to the mail server ended before the message was sent."
 msgstr "La connexion au serveur de messagerie s'est interrompue avant l'envoi du message."
 
-#: frappe_webmail/mailcraft_jmap.py:1837
+#: frappe_webmail/mailcraft_jmap.py:1879
 msgid "The connection to the mail server failed while the message was on its way."
 msgstr "La connexion au serveur de messagerie a échoué pendant que le message était en cours d'envoi."
 
@@ -4586,7 +4683,7 @@ msgstr "La conversation n’a pas pu être ouverte dans Synk."
 msgid "The copy of your photo that your messages carry, made from the picture of your employee record, else of your user."
 msgstr "La copie de votre photo qui accompagne vos messages : elle est faite à partir de la photo de votre fiche employé ou, à défaut, de celle de votre compte utilisateur."
 
-#: frappe_webmail/mailcraft_calendars.py:1209
+#: frappe_webmail/mailcraft_calendars.py:1216
 msgid "The dates of the ERP are read-only here: change them in the document they come from."
 msgstr "Les dates de l’ERP sont en lecture seule ici : modifiez-les dans le document d’origine."
 
@@ -4635,6 +4732,17 @@ msgstr "Le fichier est copié par le serveur, directement depuis l'e-mail : rie
 msgid "The folder could not be made."
 msgstr "Le dossier n’a pas pu être créé."
 
+#. Description of the 'From Folder' (Small Text) field in DocType 'NeoMail
+#. Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:107
+msgid "The folder it goes back to (the Inbox when that one is gone)."
+msgstr "Le dossier de retour (la Boîte de réception si celui-ci n’existe plus)."
+
+#. Description of the 'Folder' (Small Text) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:88
+msgid "The folder it waits in."
+msgstr "Le dossier dans lequel il attend."
+
 #: frappe_webmail/new_senders.py:259
 msgid "The list of senders is full."
 msgstr "La liste des expéditeurs est pleine."
@@ -4644,27 +4752,39 @@ msgstr "La liste des expéditeurs est pleine."
 msgid "The logo width must be between {0} and {1} pixels."
 msgstr "La largeur du logo doit être comprise entre {0} et {1} pixels."
 
-#: frappe_webmail/mailcraft_jmap.py:1891
+#: frappe_webmail/mailcraft_jmap.py:1933
 msgid "The mail server can't take the recipients just now."
 msgstr "Le serveur de messagerie ne peut pas accepter les destinataires pour le moment."
 
-#: frappe_webmail/mailcraft_jmap.py:652 frappe_webmail/mailcraft_jmap.py:817
-#: frappe_webmail/mailcraft_jmap.py:927
+#: frappe_webmail/mailcraft_jmap.py:658 frappe_webmail/mailcraft_jmap.py:857
+#: frappe_webmail/mailcraft_jmap.py:969 frappe_webmail/neomail_snooze.py:546
 msgid "The mail server could not answer."
 msgstr "Le serveur de messagerie n'a pas pu répondre."
 
-#: frappe_webmail/mailcraft_jmap.py:1866
+#: frappe_webmail/mailcraft_jmap.py:1908
 msgid "The mail server could not be reached or signed in to."
 msgstr "Le serveur de messagerie est injoignable ou l'authentification a échoué."
+
+#: frappe_webmail/neomail_snooze.py:407 frappe_webmail/neomail_snooze.py:526
+msgid "The mail server could not be reached."
+msgstr "Le serveur de messagerie est injoignable."
 
 #: frappe_webmail/tests/test_imap_timeouts.py:470
 #: frappe_webmail/utils/imap_client.py:91
 msgid "The mail server is not answering quickly enough."
 msgstr "Le serveur de messagerie ne répond pas assez vite."
 
-#: frappe_webmail/mailcraft_jmap.py:1888
+#: frappe_webmail/neomail_snooze.py:406
+msgid "The mail server refused the mailbox's password."
+msgstr "Le serveur de messagerie a refusé le mot de passe de la boîte."
+
+#: frappe_webmail/mailcraft_jmap.py:1930
 msgid "The mail server takes none of the recipients."
 msgstr "Le serveur de messagerie n'accepte aucun des destinataires."
+
+#: frappe_webmail/neomail_snooze.py:409
+msgid "The mail server would not move it back."
+msgstr "Le serveur de messagerie n’a pas pu le ramener."
 
 #: frontend/src/components/AgentPanel.vue:48
 msgid "The mailbox"
@@ -4673,6 +4793,14 @@ msgstr "La boîte entière"
 #: frappe_webmail/public/js/mail_team.js:75
 msgid "The mailbox Neoservice provides. Its address and its password: Neoffice finds the right settings itself."
 msgstr "La boîte fournie par Neoservice. Son adresse et son mot de passe : Neoffice trouve seul les bons réglages."
+
+#: frappe_webmail/neomail_snooze.py:483 frappe_webmail/neomail_snooze.py:537
+msgid "The mailbox is busy: try again in a moment."
+msgstr "La boîte est occupée : réessayez dans un instant."
+
+#: frappe_webmail/neomail_snooze.py:408
+msgid "The mailbox is disabled or no longer yours to open."
+msgstr "La boîte est désactivée ou ne vous est plus accessible."
 
 #: frappe_webmail/public/js/mail_team.js:411
 #, python-brace-format
@@ -4706,27 +4834,33 @@ msgstr "Le message n’a pas pu être partagé."
 msgid "The message is required"
 msgstr "Le message est requis."
 
-#: frappe_webmail/mailcraft_jmap.py:1801
+#: frappe_webmail/mailcraft_jmap.py:1843
 msgid "The message must be from this mailbox."
 msgstr "Le message doit provenir de cette boîte."
 
-#: frappe_webmail/mailcraft_jmap.py:1648
+#: frappe_webmail/mailcraft_jmap.py:1690
 msgid "The message to file was not found."
 msgstr "Le message à classer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1799
+#: frappe_webmail/mailcraft_jmap.py:1841
 msgid "The message to send was not found."
 msgstr "Le message à envoyer est introuvable."
 
-#: frappe_webmail/mailcraft_jmap.py:1672
+#: frappe_webmail/mailcraft_jmap.py:1714
 msgid "The message was filed but cannot be found."
 msgstr "Le message a été classé, mais il est introuvable."
+
+#. Description of the 'Message-ID' (Small Text) field in DocType 'NeoMail
+#. Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:81
+msgid "The message's Message-ID, by which it is found again when its UID changed."
+msgstr "Le Message-ID du message, qui permet de le retrouver quand son UID a changé."
 
 #: frappe_webmail/webmail_api.py:1311
 msgid "The messages asked for are not a list"
 msgstr "Les messages demandés ne forment pas une liste."
 
-#: frappe_webmail/mailcraft_stream.py:320
+#: frappe_webmail/mailcraft_stream.py:426
 msgid "The messages asked for are not valid."
 msgstr "Les messages demandés ne sont pas valides."
 
@@ -4792,6 +4926,10 @@ msgstr "La mention"
 msgid "The team's signatures"
 msgstr "Les signatures de l'équipe"
 
+#: frappe_webmail/neomail_snooze.py:151
+msgid "The time to bring the message back is not a time."
+msgstr "L’heure de retour du message n’est pas une heure valide."
+
 #: frappe_webmail/public/js/mail_team.js:139
 msgid "They answer for it: it opens in their NeoMail."
 msgstr "Elle en répond : la boîte s'ouvre dans son NeoMail."
@@ -4813,7 +4951,7 @@ msgstr "Cette pièce jointe ne peut pas être lue depuis son message ici : enre
 msgid "This attachment is being opened already: try again in a moment."
 msgstr "Cette pièce jointe est déjà en train de s’ouvrir : réessayez dans un instant."
 
-#: frappe_webmail/mailcraft_calendars.py:1211
+#: frappe_webmail/mailcraft_calendars.py:1218
 msgid "This calendar is shared with you to read only: its events are changed by its owner."
 msgstr "Ce calendrier est partagé avec vous en lecture seule : ses événements sont modifiés par son propriétaire."
 
@@ -4834,7 +4972,7 @@ msgstr "Ce dossier n'existe plus dans le Drive"
 msgid "This is not an email address."
 msgstr "Ceci n'est pas une adresse e-mail."
 
-#: frappe_webmail/mailcraft_jmap.py:1776 frappe_webmail/mailcraft_jmap.py:1780
+#: frappe_webmail/mailcraft_jmap.py:1818 frappe_webmail/mailcraft_jmap.py:1822
 msgid "This mailbox can only send as itself."
 msgstr "Cette boîte ne peut envoyer qu'avec sa propre adresse."
 
@@ -4844,9 +4982,13 @@ msgstr "Ce message"
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:188
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.py:191
-#: frappe_webmail/mailcraft_jmap.py:1366 frappe_webmail/neomail_share.py:191
+#: frappe_webmail/mailcraft_jmap.py:1408 frappe_webmail/neomail_share.py:191
 msgid "This message cannot be found."
 msgstr "Ce message est introuvable."
+
+#: frappe_webmail/neomail_snooze.py:632
+msgid "This message has no Message-ID: it could not be found again once put away."
+msgstr "Ce message n’a pas de Message-ID : il ne peut pas être retrouvé une fois mis de côté."
 
 #: frappe_webmail/neomail_share.py:225
 msgid "This message has no sender."
@@ -4857,11 +4999,19 @@ msgstr "Ce message n’a pas d’expéditeur."
 msgid "This message is larger than {0} MB: save the attachment with Save As instead."
 msgstr "Ce message dépasse {0} Mo : enregistrez plutôt la pièce jointe avec « Enregistrer sous »."
 
-#: frappe_webmail/mailcraft_jmap.py:1370
+#: frappe_webmail/neomail_snooze.py:627 frappe_webmail/neomail_snooze.py:766
+msgid "This message is no longer in its folder."
+msgstr "Ce message ne se trouve plus dans son dossier."
+
+#: frappe_webmail/mailcraft_jmap.py:1412
 #: frappe_webmail/neomail_attachments.py:494
 #: frappe_webmail/neomail_share.py:194
 msgid "This message is no longer in its folder: refresh the list and try again."
 msgstr "Ce message ne se trouve plus dans son dossier : actualisez la liste et réessayez."
+
+#: frappe_webmail/neomail_snooze.py:747 frappe_webmail/neomail_snooze.py:763
+msgid "This message is no longer put away."
+msgstr "Ce message n’est plus mis de côté."
 
 #: frappe_webmail/neomail_share.py:198
 msgid "This message is too large to be shared."
@@ -4874,6 +5024,12 @@ msgstr "Le canal de ce message dans Synk est archivé : rouvrez-le dans Synk ou 
 #: frappe_webmail/mailcraft_notes.py:536
 msgid "This note is changed in Neoffice's Notes: open it there."
 msgstr "Cette note a été modifiée dans Notes de Neoffice : veuillez l'ouvrir là-bas."
+
+#. Description of the 'Tabs Chosen per Sender' (JSON) field in DocType 'NeoMail
+#. Setting'
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:83
+msgid "This person's tab for each sender of this mailbox (Main, Notifications, Newsletters), by a hash of the sender's address: what they chose by moving a message to a tab."
+msgstr "Onglet choisi par cette personne pour chaque expéditeur de cette boîte mail (Principal, Notifications, Infolettres), identifié par un hachage de l'adresse de l'expéditeur : c'est le choix effectué en déplaçant un message vers un onglet."
 
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.py:52
 msgid "This signature has nothing a recipient could be shown."
@@ -4950,7 +5106,7 @@ msgstr "Date de fin"
 msgid "To — recipient email"
 msgstr "À — adresse destinataire"
 
-#: frappe_webmail/tests/test_mailcraft_calendars.py:1401
+#: frappe_webmail/tests/test_mailcraft_calendars.py:1497
 msgctxt "fr"
 msgid "To-dos and tasks"
 msgstr "À faire et tâches"
@@ -4976,11 +5132,11 @@ msgstr "Étoile (activer/désactiver)"
 msgid "Token Expiry"
 msgstr "Expiration du jeton"
 
-#: frappe_webmail/mailcraft_jmap.py:1796
+#: frappe_webmail/mailcraft_jmap.py:1838
 msgid "Too many messages sent in a short time; try again in a few minutes."
 msgstr "Trop de messages envoyés en peu de temps. Réessayez dans quelques minutes."
 
-#: frappe_webmail/mailcraft_jmap.py:889
+#: frappe_webmail/mailcraft_jmap.py:931
 msgid "Too many messages waiting to be filed."
 msgstr "Trop de messages en attente de classement."
 
@@ -5029,6 +5185,12 @@ msgstr "Dossier Corbeille"
 #, fuzzy
 msgid "Trebuchet MS"
 msgstr "Trebuchet MS"
+
+#. Label of a Section Break field in DocType 'NeoMail Snooze'
+#. Label of a Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:116
+msgid "Tries"
+msgstr "Tentatives"
 
 #. Name of a DocType
 #: frappe_webmail/frappe_webmail/doctype/trusted_email_source/trusted_email_source.json:33
@@ -5082,6 +5244,16 @@ msgstr "Tapez des mots pour chercher dans le sujet, le corps et l'expéditeur."
 msgid "UI Preferences"
 msgstr "Préférences de l'interface"
 
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:97
+msgid "UID"
+msgstr "UID"
+
+#. Label of a Long Int field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:103
+msgid "UIDVALIDITY"
+msgstr "UIDVALIDITY"
+
 # no opinion on purpose: repeating the source erases the translation another
 # app ships (neoffice-maintenance#335)
 #. Label of a Data field in DocType 'Email Signature Social Link'
@@ -5113,6 +5285,11 @@ msgstr "Action de dossier inconnue."
 msgid "Unread"
 msgstr "Non lus"
 
+#. Label of a Datetime field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:64
+msgid "Until (UTC)"
+msgstr "Jusqu’à (UTC)"
+
 #. Label of a Check field in DocType 'Webmail Account'
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:167
 msgid "Use SSL"
@@ -5138,12 +5315,14 @@ msgstr "Utiliser un autre identifiant de connexion"
 #. Label of a Link field in DocType 'Email Signature'
 #. Label of a Link field in DocType 'Email Signature Preference'
 #. Label of a Link field in DocType 'NeoMail Setting'
+#. Label of a Link field in DocType 'NeoMail Snooze'
 #. Label of a Link field in DocType 'Webmail Account User'
 #: frappe_webmail/frappe_webmail/doctype/email_draft/email_draft.json:29
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:41
 #: frappe_webmail/frappe_webmail/doctype/email_signature/email_signature.json:20
 #: frappe_webmail/frappe_webmail/doctype/email_signature_preference/email_signature_preference.json:22
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:25
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:26
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:32
 #: frappe_webmail/frappe_webmail/doctype/webmail_account_user/webmail_account_user.json:14
 msgid "User"
 msgstr "Utilisateur"
@@ -5174,6 +5353,11 @@ msgstr "Verdana"
 #: frappe_webmail/frappe_webmail/doctype/webmail_account/webmail_account.json:238
 msgid "Verify the SMTP server's certificate"
 msgstr "Vérifier le certificat du serveur SMTP"
+
+#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:55
+msgid "Waiting"
+msgstr "En attente"
 
 #: frappe_webmail/mail_team.py:112
 msgctxt "Mailbox"
@@ -5260,9 +5444,21 @@ msgstr "Éléments à afficher"
 msgid "WhatsApp"
 msgstr "WhatsApp"
 
+#. Description of the 'Returned At (UTC)' (Datetime) field in DocType 'NeoMail
+#. Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:69
+msgid "When it came back, in UTC."
+msgstr "Quand il est revenu, en UTC."
+
 #: frappe_webmail/public/js/signature_builder.js:292
 msgid "When several models fit a person, the most precise wins: their department, then their group, then their roles, then their company."
 msgstr "Quand plusieurs modèles conviennent à une personne, le plus précis l'emporte : son département, puis son groupe, puis ses rôles, puis sa société."
+
+#. Description of the 'Until (UTC)' (Datetime) field in DocType 'NeoMail
+#. Snooze'
+#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json:60
+msgid "When the message comes back, in UTC."
+msgstr "Quand le message revient, en UTC."
 
 #: frappe_webmail/public/js/mail_team.js:152
 msgctxt "Add a mailbox"
@@ -5314,7 +5510,7 @@ msgid "Whose mailbox is it?"
 msgstr "Pour qui est cette boîte ?"
 
 #. Label of a Section Break field in DocType 'NeoMail Setting'
-#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:43
+#: frappe_webmail/frappe_webmail/doctype/neomail_setting/neomail_setting.json:44
 msgid "Window"
 msgstr "Fenêtre"
 
@@ -5373,7 +5569,7 @@ msgid "You have no channel in Synk and nobody to write to yet."
 msgstr "Vous n’avez encore aucun canal dans Synk ni personne à qui écrire."
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1355
-#: frappe_webmail/www/neomail.html:862
+#: frappe_webmail/www/neomail.html:884
 msgid "You have no mailbox in Neoffice yet."
 msgstr "Vous n’avez pas encore de boîte aux lettres dans Neoffice."
 
@@ -5411,7 +5607,7 @@ msgstr ""
 
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1194
 #: frappe_webmail/frappe_webmail/page/neomail/neomail.js:1378
-#: frappe_webmail/www/neomail.html:851 frappe_webmail/www/neomail.html:871
+#: frappe_webmail/www/neomail.html:873 frappe_webmail/www/neomail.html:896
 msgid "Your Neoffice session has ended."
 msgstr "Votre session Neoffice est terminée."
 
@@ -5918,168 +6114,3 @@ msgstr "Fils de discussion"
 #: frappe_webmail/neomail_snooze.py
 msgid "Snoozed"
 msgstr "Plus tard"
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The time to bring the message back is not a time."
-msgstr "L’heure de retour du message n’est pas une heure valide."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "Choose a time in the future."
-msgstr "Choisissez une heure à venir."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The mail server refused the mailbox's password."
-msgstr "Le serveur de messagerie a refusé le mot de passe de la boîte."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The mail server could not be reached."
-msgstr "Le serveur de messagerie est injoignable."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The mailbox is disabled or no longer yours to open."
-msgstr "La boîte est désactivée ou ne vous est plus accessible."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The mail server would not move it back."
-msgstr "Le serveur de messagerie n’a pas pu le ramener."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "The mailbox is busy: try again in a moment."
-msgstr "La boîte est occupée : réessayez dans un instant."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "This message is no longer in its folder."
-msgstr "Ce message ne se trouve plus dans son dossier."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "This message has no Message-ID: it could not be found again once put away."
-msgstr "Ce message n’a pas de Message-ID : il ne peut pas être retrouvé une fois mis de côté."
-
-#: frappe_webmail/neomail_snooze.py
-msgid "This message is no longer put away."
-msgstr "Ce message n’est plus mis de côté."
-
-#. Name of a DocType
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "NeoMail Snooze"
-msgstr "Plus tard NeoMail"
-
-#. Description of a DocType
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "A message a person put away in NeoMail until a chosen time (« Plus tard »): it waits in its mailbox's Snoozed folder and comes back to the folder it came from, unread, at that time."
-msgstr "Un message qu’une personne a mis de côté dans NeoMail jusqu’à une heure choisie (« Plus tard ») : il attend dans le dossier Plus tard de sa boîte et revient, non lu, dans le dossier d’où il venait, à cette heure-là."
-
-#. Description of the 'Mailbox' (Data) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "The Webmail Account the message is in."
-msgstr "Le compte de messagerie web où se trouve le message."
-
-#. Label of a Select field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "State"
-msgstr "État"
-
-#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Waiting"
-msgstr "En attente"
-
-#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Returned"
-msgstr "Revenu"
-
-#. Option for the 'State' (Select) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "CalledOff"
-msgstr "Annulé"
-
-#. Label of a Datetime field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Until (UTC)"
-msgstr "Jusqu’à (UTC)"
-
-#. Description of the 'Until (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "When the message comes back, in UTC."
-msgstr "Quand le message revient, en UTC."
-
-#. Label of a Datetime field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Returned At (UTC)"
-msgstr "Revenu à (UTC)"
-
-#. Description of the 'Returned At (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "When it came back, in UTC."
-msgstr "Quand il est revenu, en UTC."
-
-#. Label of a Small Text field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Message-ID"
-msgstr "Message-ID"
-
-#. Description of the 'Message-ID' (Small Text) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "The message's Message-ID, by which it is found again when its UID changed."
-msgstr "Le Message-ID du message, qui permet de le retrouver quand son UID a changé."
-
-#. Label of a Small Text field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Folder"
-msgstr "Dossier"
-
-#. Description of the 'Folder' (Small Text) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "The folder it waits in."
-msgstr "Le dossier dans lequel il attend."
-
-#. Label of a Long Int field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "UID"
-msgstr "UID"
-
-#. Label of a Long Int field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "UIDVALIDITY"
-msgstr "UIDVALIDITY"
-
-#. Label of a Small Text field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "From Folder"
-msgstr "Dossier d’origine"
-
-#. Description of the 'From Folder' (Small Text) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "The folder it goes back to (the Inbox when that one is gone)."
-msgstr "Le dossier de retour (la Boîte de réception si celui-ci n’existe plus)."
-
-#. Label of a Section Break field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Tries"
-msgstr "Tentatives"
-
-#. Label of a Datetime field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Next Try (UTC)"
-msgstr "Prochaine tentative (UTC)"
-
-#. Description of the 'Next Try (UTC)' (Datetime) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Not tried again before this time, in UTC."
-msgstr "Pas de nouvelle tentative avant cette heure, en UTC."
-
-#. Label of a Small Text field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Last Error"
-msgstr "Dernière erreur"
-
-#. Label of a Data field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Active Key"
-msgstr "Clé active"
-
-#. Description of the 'Active Key' (Data) field in DocType 'NeoMail Snooze'
-#: frappe_webmail/frappe_webmail/doctype/neomail_snooze/neomail_snooze.json
-msgid "Set while the message waits: one waiting record per person, mailbox and message."
-msgstr "Définie tant que le message attend : un seul enregistrement en attente par personne, boîte et message."
