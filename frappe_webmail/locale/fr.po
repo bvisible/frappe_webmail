@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Frappe Webmail VERSION\n"
 "Report-Msgid-Bugs-To: hello@neoservice.ai\n"
-"POT-Creation-Date: 2026-11-25 03:21+0000\n"
+"POT-Creation-Date: 2026-11-26 03:21+0000\n"
 "PO-Revision-Date: 2026-01-25 15:22+0034\n"
 "Last-Translator: hello@neoservice.ai\n"
 "Language: fr\n"
@@ -1405,7 +1405,7 @@ msgstr "Modèle de signature e-mail"
 #. Name of a DocType
 #: frappe_webmail/frappe_webmail/doctype/email_signature_template_role/email_signature_template_role.json:26
 msgid "Email Signature Template Role"
-msgstr ""
+msgstr "Rôle du modèle de signature e-mail"
 
 #: frontend/src/components/AutomationsPanel.vue:148
 msgid "Email address"
@@ -5788,7 +5788,7 @@ msgstr "marquer comme important"
 #: frappe_webmail/signature_builder.py:158
 #: frappe_webmail/signature_builder.py:197
 msgid "mobile"
-msgstr ""
+msgstr "Mobile"
 
 #. Option for the 'Action' (Select) field in DocType 'Email Filter'
 #: frappe_webmail/frappe_webmail/doctype/email_filter/email_filter.json:110
