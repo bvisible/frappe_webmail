@@ -205,6 +205,7 @@ import AttachmentPicker from "./AttachmentPicker.vue";
 import NoraBar from "./NoraBar.vue";
 import { joinQuote, splitQuote } from "../quoteSplit";
 import { SignatureBlock, signatureAfterText } from "../signatureBlock";
+import { MAX_PASTED_IMAGE, imagesToPaste, readAsDataUrl } from "../pastedImages";
 import {
 	X,
 	Paperclip,
@@ -368,13 +369,24 @@ export default {
 			this.editor = new Editor({
 				content: initialContent,
 				onUpdate: () => this.markDirty(),
+				editorProps: {
+					// A picture pasted goes in the text (pastedImages.js); anything else, as the editor pastes it
+					handlePaste: (view, event) => {
+						const images = imagesToPaste(event.clipboardData);
+						if (!images.length) return false;
+						event.preventDefault();
+						this.pasteImages(images);
+						return true;
+					},
+				},
 				extensions: [
 					// The signature as it came, its table and logo kept (signatureBlock.js)
 					SignatureBlock,
 					StarterKit,
 					Underline,
 					Link.configure({ openOnClick: false }),
-					Image.configure({ inline: true }),
+					// A pasted picture is a `data:` address until it is sent (inline_images.py makes it a part)
+					Image.configure({ inline: true, allowBase64: true }),
 					Placeholder.configure({
 						placeholder: __("Write your message..."),
 					}),
@@ -534,6 +546,34 @@ export default {
 			const url = prompt(__("Link URL:"));
 			if (url) {
 				this.editor.chain().focus().setLink({ href: url }).run();
+			}
+		},
+
+		async pasteImages(files) {
+			for (const file of files) {
+				if (file.size > MAX_PASTED_IMAGE) {
+					frappe.toast({
+						message: __(
+							"This picture is too large to go in the text (5 MB at most): join it instead."
+						),
+						indicator: "orange",
+					});
+					continue;
+				}
+				try {
+					const src = await readAsDataUrl(file);
+					if (this.editor)
+						this.editor
+							.chain()
+							.focus()
+							.setImage({ src, alt: file.name || "" })
+							.run();
+				} catch (e) {
+					frappe.toast({
+						message: __("This picture could not be read."),
+						indicator: "red",
+					});
+				}
 			}
 		},
 
